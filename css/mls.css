@@ -2450,3 +2450,103 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
     .league-select-wrap { flex: 1 1 auto; max-width: none; }
     #headerLeagueSelect { width: 100%; }
 }
+
+/* --- The Scoreboard's MVPs & LVPs (week/thisWeek.js, improvements S22): a folded section under the tiles. --- */
+.mls-recap { margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 0.6rem; }
+/* The Scoreboard's folds (Still in play, MVPs & LVPs; S22 round 3): the chevron turns at the league cards' speed while a
+   "cards" view transition moves the box (week/thisWeek.js, toggleWeekFold). */
+.mls-week-fold-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; width: 100%; padding: 0.2rem 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.mls-week-fold-toggle:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
+.mls-week-fold-toggle .mls-week-sub { margin: 0; }
+.mls-week-inplay { margin-top: 0.6rem; }
+.mls-week-chevron { flex-shrink: 0; color: var(--text-muted); transition: transform var(--vt-ms) var(--vt-ease); }
+@media (prefers-reduced-motion: reduce) { .mls-week-chevron { transition: none; } }
+.mls-week-fold:not(.is-open) .mls-week-chevron { transform: rotate(-90deg); }
+.mls-week-export { margin-top: 1rem; display: flex; justify-content: flex-end; }
+.mls-week-export .btn { display: inline-flex; align-items: center; gap: 0.4rem; margin-bottom: 0; }
+.mls-recap-title { font-size: 0.95rem; font-weight: 700; color: var(--text-main); }
+.mls-recap-subhead { display: flex; align-items: center; gap: 0.4rem; margin: 0.8rem 0 0.4rem; }
+.mls-recap-subhead .mls-week-sub { margin: 0; }
+/* "MVPs" / "LVPs" as written, not in the subheadings' capitals (round 7: "MVPS" read like a typo). */
+.mls-week-sub.mls-recap-sub { text-transform: none; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; }
+.mls-recap-league { color: var(--text-muted); }
+/* The tables: one grid per table, each row a subgrid, so the columns fit their numbers and line up; the name takes
+   what's left and wraps, never cut. A reading width on wide screens, so the numbers stay near the names. */
+.mls-recap-table { list-style: none; margin: 0; padding: 0; max-width: 760px; display: grid; column-gap: 0.75rem; font-variant-numeric: tabular-nums; }
+/* MVPs and LVPs share one shape since round 8: Player | Own | the verdict's points (or Boomed / Busted) | Pts | Started. */
+.mls-recap-table { grid-template-columns: minmax(0, 1fr) repeat(4, auto); }
+/* One league (round 10): no Own or Started, so Player | Half PPR | Pts. */
+.mls-recap-table.is-single { grid-template-columns: minmax(0, 1fr) repeat(2, auto); }
+.mls-recap-row { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: baseline; padding: 0.3rem 0; border-bottom: 1px solid var(--border); }
+.mls-recap-headrow { padding-top: 0; font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.mls-recap-cell { min-width: 0; white-space: nowrap; color: var(--text-muted); }
+.mls-recap-cell.mls-recap-player { white-space: normal; }
+.mls-recap-cell:not(.mls-recap-player) { text-align: right; }
+.mls-recap-name { color: var(--text-main); font-weight: 600; overflow-wrap: break-word; }
+.mls-recap-row.is-partial .mls-recap-name { font-weight: 500; }
+.mls-recap-cell-label { display: none; }
+.mls-recap-note { margin: 0.4rem 0 0; font-size: 0.78rem; color: var(--text-muted); }
+.mls-recap-extra { margin: 0.8rem 0 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.8rem; color: var(--text-muted); }
+.mls-recap-extra strong { color: var(--text-main); }
+.mls-recap-extra-note { font-size: 0.75rem; }
+.mls-recap-sublist { margin: 0.2rem 0 0; padding-left: 1.1rem; list-style: circle; display: flex; flex-direction: column; gap: 0.1rem; }
+.mls-recap-more { list-style: none; font-style: italic; }
+.mls-recap-foot { margin: 0.6rem 0 0; font-size: 0.75rem; }
+/* Phones: Started drops to a second line under the name rather than the table scrolling sideways. */
+@media (max-width: 600px) {
+    .mls-recap-table { column-gap: 0.55rem; }
+    .mls-recap-table { grid-template-columns: minmax(0, 1fr) repeat(3, auto); }
+    .mls-recap-table.is-single { grid-template-columns: minmax(0, 1fr) repeat(2, auto); }
+    .mls-recap-table .mls-recap-started { grid-column: 1 / -1; text-align: left; font-size: 0.75rem; }
+    .mls-recap-table .mls-recap-headrow .mls-recap-started { display: none; }
+    .mls-recap-table .mls-recap-started .mls-recap-cell-label { display: inline; }
+}
+
+/* Advanced Settings: MVP / LVP Lines (week/recapLines.js). */
+.recap-lines-grid { display: grid; grid-template-columns: 3rem minmax(0, 7rem) minmax(0, 7rem); gap: 0.4rem 0.6rem; align-items: center; margin: 0.6rem 0; }
+.recap-lines-head { font-size: 0.75rem; color: var(--text-muted); }
+.recap-lines-pos { font-weight: 700; color: var(--text-main); }
+.recap-lines-grid .form-input[aria-invalid="true"] { border-color: #ef4444; }
+.recap-lines-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.recap-lines-msg { margin-top: 0.5rem; font-size: 0.8rem; color: var(--primary-green); }
+.recap-lines-msg:empty { display: none; }
+.recap-lines-msg.is-error { color: #fb923c; }
+
+/* The Scoreboard's share image (week/shareImage.js, S22 round 2): drawn only in html2canvas's clone of #thisWeekCard. */
+.mls-share-image { width: 480px; max-width: none; margin: 0; padding: 1rem 1.1rem; box-sizing: border-box; border-radius: 8px; background: #1c2541; color: var(--text-main); font-size: 0.85rem; }
+.mls-share-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.mls-share-title { font-size: 1rem; font-weight: 700; }
+.mls-share-summary { margin-top: 0.3rem; font-size: 0.9rem; font-weight: 600; }
+.mls-share-splits { display: flex; flex-wrap: wrap; gap: 0.4rem 0.6rem; margin-top: 0.5rem; }
+.mls-share-split { display: inline-flex; }
+/* Each part draws its own border and rounding (round 5): html2canvas dropped the outline of a pill drawn as one bordered
+   box with overflow: hidden. */
+.mls-share-split-part { padding: 2px 9px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; border: 1px solid var(--border); }
+.mls-share-split-part:first-child { border-radius: 999px 0 0 999px; }
+.mls-share-split-part:last-child { border-radius: 0 999px 999px 0; }
+.mls-share-split-part:only-child { border-radius: 999px; }
+.mls-share-split-part + .mls-share-split-part { border-left: 0; }
+.mls-share-muted { font-weight: 500; color: var(--text-muted); }
+.mls-share-section { margin-top: 0.7rem; padding-top: 0.55rem; border-top: 1px solid var(--border); }
+/* "MVPs" / "LVPs" as written (round 7: in capitals they read "MVPS" / "LVPS"). */
+.mls-share-sub { margin-bottom: 0.25rem; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.02em; color: var(--text-muted); }
+.mls-share-row { display: flex; align-items: baseline; gap: 0.5rem; padding: 0.15rem 0; }
+.mls-share-name { flex: 1 1 auto; min-width: 0; font-weight: 600; }
+.mls-share-detail { flex-shrink: 0; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+.mls-share-num { flex-shrink: 0; min-width: 4.5rem; text-align: right; white-space: nowrap; }
+.mls-share-foot { margin-top: 0.8rem; font-size: 0.7rem; color: var(--text-muted); }
+
+/* Biggest win / worst loss under the record (S22, round 4): two compact rows, side by side on wider screens, each
+   opening its league's lineup. The colored edge matches the tiles'. */
+.mls-week-extremes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.4rem 0.6rem; margin: 0.5rem 0 0.2rem; max-width: 760px; }
+.mls-week-extreme { display: flex; align-items: baseline; gap: 0.5rem; min-width: 0; padding: 0.35rem 0.55rem; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.mls-week-extreme:hover { background: rgba(255, 255, 255, 0.04); }
+.mls-week-extreme:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
+.mls-week-extreme.is-win { border-left-color: #10b981; }
+.mls-week-extreme.is-loss { border-left-color: #ef4444; }
+.mls-week-extreme-label { flex-shrink: 0; font-size: 0.72rem; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-muted); }
+.mls-week-extreme .mls-week-name { flex: 1 1 auto; min-width: 0; font-size: 0.85rem; }
+.mls-week-extreme .mls-week-tile-margin { flex-shrink: 0; font-size: 0.85rem; }
+.recap-lines-scale { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.6rem; }
+.recap-lines-scale label { font-weight: 600; color: var(--text-main); }
+.recap-lines-scale .form-input { width: auto; min-width: 9rem; }

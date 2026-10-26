@@ -6211,3 +6211,425 @@ the screenshot league, a redraft one).
 **Guide baselines from CI.** The first CI run on the pull request (1af38ff) failed on exactly
 `desktop/` and `phone/mls-league-guide.png`; 517 other tests passed. Each `-expected.png` matched the committed baseline
 byte for byte, and CI's renders (desktop 1280×7577, phone 390×16616) were committed as the new baselines.
+
+## S22 — This week's MVPs and LVPs across your leagues
+
+**User-visible effect.** On the **Scoreboard** tab, under the league tiles (once a game has kicked off), a section
+**"MVPs & LVPs"**, folded to one line until you tap it ("4 MVPs · 2 LVPs" and Provisional / Final; open or folded is
+remembered). Opened:
+- A short line: how many Sleeper leagues count, what Own means, and the Boom / Bust lines in use.
+- **MVPs** (Player | Own | Boomed | Pts | Started): "Ja'Marr Chase WR · 100% (2) · 2 of 2 · 20.0–25.0 · 2 of 2". On
+  phones Started drops to a second line under the name ("Started 2 of 2") rather than the table scrolling sideways.
+- **LVPs** (Player | Own | Started | Pts).
+- Five rows each, then "Show all N" (until the week changes).
+- A **Partial boom** line when someone boomed in under half the leagues that own him; then one line each, when there is
+  something to say: **Started zeros** ("0.0 usually means he didn't play; the app can't check that"), **Dead weight**,
+  **Still open** (games not final: could land on either list), **Worst benchings**, players **not in Sleeper's player
+  map** (with any Boom-level score called out), and a **Best Ball** note when a listed player sat on a Best Ball bench.
+- "Provisional until the week's last game is final", gone once it is.
+- **Advanced Settings** on the Dashboard gains **"MVP / LVP Lines"**: Boom at / Bust under for QB, RB, WR and TE (your
+  lines as defaults), Save and Reset to Defaults, with a note that they're separate from the Simulator's boom/bust
+  chances. Errors show under the form and mark the field (both positive, Boom above Bust); nothing is saved then.
+- The Guide's Scoreboard item gains a line for MVPs & LVPs.
+
+**Owner's decisions (asked before building).**
+1. Where: **a section of the Scoreboard tab** (S21's view became a tab in its round 6), **folded until opened**.
+2. Lines: **editable in Advanced Settings**, the owner's as defaults, with the note about the Simulator; **no K / DEF**.
+3. Ownership: **Sleeper leagues only**, so every percent has points behind it. Manual leagues are mentioned in the
+   intro line, not counted.
+4. Rows before "Show all": **5 and 5**.
+
+**Rules as built** (`js/mls/week/playerRecap.js`, my readings where the card left room):
+- Leagues counted (N): every Sleeper league whose matchups loaded this week with your entry holding players. A league
+  whose fetch failed, or a chopped guillotine team, isn't in N.
+- Points: Sleeper's `players_points` in each league (its own scoring); a rostered player with none counts 0.
+- MVP: at or above Boom in at least one league, whatever his game's state (a Boom mid-game stays a Boom). Ranked by
+  leagues boomed, then ownership, then his best score. **Partial boom**: boomed in fewer than half the leagues that own
+  him (the card's TE: 1 of 6). Partial booms go after every full one (by boom count alone, a 1-of-6 TE would tie a
+  1-of-1 player and win on ownership, which the card says should rank low), and get the call-out line.
+- LVP: his team's game is `post`, he's under Bust in at least one league, and he isn't an MVP. Ranked by leagues where
+  he started and busted, then ownership. Without game states (ESPN didn't load) nobody is final, so no LVPs.
+- Started zeros: 0.0 as a starter in a league, game final. Dead weight: owned in at least max(2, 20% of N) leagues,
+  benched in all of them, 0.0 everywhere, game final. Still open: game not final, not already an MVP; by ownership.
+- Worst benchings: Sleeper's matchups don't say which slot each starter fills (the league object keeps only slot counts),
+  so "the starter in that slot" is **your lowest-scoring starter at the bench player's position** in that league: a
+  same-position swap is always legal. Counted when the bench player reached Boom and the starter, whose game is final
+  (or who was on a bye), scored at least 10 less. Never in Best Ball. Top 3 by the gap.
+- Left out: byes (`getByeWeek`), no team, K, DEF (team-code ids are skipped quietly, not "unresolved").
+
+**What changed, and where.**
+- `js/mls/week/playerRecap.js` (new, no app state): `buildPlayerRecap`, `DEFAULT_LINES`, `normalizeLines`,
+  `validateLines`, `ownText`, `pointsRange`.
+- `js/mls/week/recapLines.js` (new): the lines' storage and the Settings form (`getRecapLines`, `applyRecapLinesToUI`,
+  `saveRecapLines`, `resetRecapLines`). Called from `init.js` (fill the form) and `main.js` (data-actions).
+- `js/mls/week/thisWeek.js`: `recapInput` (each league's own entry from `State.lineupActualPoints`, S21's fetch; no
+  second request), `recapHTML` / `recapTable`, `togglePlayerRecap`, `showAllRecap`. Drawn by `renderScoreboard` after
+  the tiles once the week has started.
+- `lineup/index.html`: the "MVP / LVP Lines" accordion in Advanced Settings; the Guide's line. `css/mls.css`: the section
+  (each table is one grid with subgrid rows, so columns fit their numbers; 760px reading width) and the form.
+- `js/shared/storage/keys.js`: `mls_recap_lines` (only while different from the defaults; Reset removes it) and
+  `mls_player_recap_open` ('1' while open). Both `mls_`, so Backup / Restore and Factory Reset take them.
+- `sw.js`: the two modules in `PRECACHE_ASSETS`, `CACHE_NAME` v2.8.111 → v2.8.112. CHANGELOG: two lines under Lineup
+  Strategist.
+- No new badge: the section reuses S21's Provisional / Final pill (already in the legend).
+
+**Tests.** `tests/unit/playerRecap.test.mjs` (13): ownership, boom count then ownership, the partial-boom TE (1 of 6, a
+TE-premium 15.7), LVP order by started busts, bye / no team / K / DEF left out, a 0.0 starter on a final team as a
+started zero (and one still to play as still open), still open mid-game, dead weight, worst benchings (Best Ball
+skipped, small gaps and unfinished starters skipped), unresolved ids, custom lines, empty input, validation.
+`tests/mls-mvp-lvp.spec.mjs` (both widths) with S21's fixtures: folded line and counts, both tables' cells, dead weight
+and still open, the open state surviving a reload; a started zero, a starter LVP and a worst benching (Second Fixture
+League's points changed in the route); Final after Refresh; a failed league left out of N; the Settings form
+(validation, Save, "Show all 6", Reset); nothing before kickoff; at 375px and 1280px every cell inside the section,
+names whole, Started on a second line on phones only. `tests/mls-this-week.spec.mjs`: its three Provisional / Final
+checks now look in the header (the section has its own pill).
+
+**Screenshots.** Six change, by design (main and this branch rendered here and compared with `npm run pxdiff`; the other
+36 are identical). The Scoreboard PNG doesn't change: the screenshot league is before kickoff, so the section isn't drawn.
+- `desktop/` and `phone/mls-empty-setup.png`, `mls-league-setup.png`: the "MVP / LVP Lines" row in Advanced Settings.
+- `desktop/` and `phone/mls-league-guide.png`: the Guide's MVPs & LVPs line.
+This container can't reproduce CI's renders (its newer Chromium), so take the six from the pull request's CI run.
+
+**Checks run.** check-precache OK; 437 unit tests pass; Playwright 525 passed, 5 skipped, only `visual.spec.mjs` stopping
+on the environment message (as on main here).
+
+**Left over.**
+- Re-take the six PNGs from CI (above).
+- Open follow-up this touches: the **image of the Scoreboard for a group chat** (docs/TESTING.md, "Wanted by the owner")
+  noted "fits with S22"; not built here. MVPs & LVPs are in the same card now, so an export could include them.
+- Worst benchings by actual slot would need the league's `roster_positions` order saved at sync (the starters array
+  follows it); a small sync change if same-position comparisons ever miss one the owner cares about.
+- Best Ball's "Started" is Sleeper's lineup as it stands; the note says so rather than recomputing Best Ball's lineup.
+
+### S22, round 2: the owner's review (real leagues, week 8): Started %, slot order, the share image
+
+The owner looked at the section with their 19 Sleeper leagues (screenshot: 21 MVPs, 97 LVPs) and asked for three things.
+I asked three questions first; the owner took my suggestion each time.
+
+1. **MVPs need Started, not just Own** ("Eli Raridon may be owned in 6 leagues, but I didn't start him anywhere. So he
+   isn't really an MVP"). Decisions: **an MVP must have boomed in a league where you started him**; in Best Ball any boom
+   counts, since its lineup picks itself. MVPs rank by those started booms, then all booms, then ownership. A player who
+   boomed only on your bench leaves the table for a line of his own: **"Boomed on your bench: Eli Raridon TE (15.4–17.6
+   in 6 leagues). Not MVPs: you didn't start them where they boomed."** **Started reads as a share of the leagues that own
+   him**, "67% (4)", in both tables (Own stays the share of all your leagues). Bench boomers aren't LVPs or "still open"
+   either. (`startedBoomed`, `startedPct`, `benchBooms`, `startedText` in week/playerRecap.js.)
+2. **Each league's slot order, saved at sync** (owner: useful later for the Lineup tab too). `league.starterSlots`:
+   Sleeper's `roster_positions` without BN, in order (`leagues/sync.js`); a matchup's `starters` follow it, so
+   `starters[i]` filled `starterSlots[i]`. Rebuilt on every sync, so nothing to carry over; Backup / Restore copies it
+   with the league. A league synced before this has none until its next sync. Used now by **worst benchings**: the
+   benched player is compared with the lowest starter in any slot that takes his position (`SLEEPER_SLOT_POSITIONS`: FLEX,
+   SUPER_FLEX, REC_FLEX, WRRB_FLEX), so a WR benched for an RB in the FLEX counts, and the line names the slot ("over
+   CeeDee Lamb (FLEX) 8.0"). Without slots, or when they don't match the starters, the same-position rule from round 1.
+3. **The Scoreboard image** (the open follow-up from S21), as **a summary, a "TL;DR"** (owner: 21 tiles would be too
+   much to share). Decision: **headline plus highlights**, at any number of leagues: "My Lineup Strategist · Week 7
+   Recap" and Provisional / Final; the record ("Record 12–7 · 2 still live", or too early to call); the splits; **Still
+   in play**: up to 3, most uncertain first, with the win chance and the margin; **Biggest win** and **Worst loss** among
+   the matchups already settled (every one once the week is final); the top 3 **MVPs** ("boomed 6 of 6", points) and
+   **LVPs** ("started 4 of 4", points); "19 Sleeper leagues · provisional until the last game is final ·
+   mydraftstrategist.com". 480px wide, like Export Trade. **Export** sits by Refresh in the Scoreboard's header (an icon on
+   phones), only once there are scores. The HTML comes from `js/mls/week/shareImage.js` (pure, unit-tested);
+   `scoreboardSummary` and `exportScoreboard` in week/thisWeek.js gather the data and draw it from html2canvas's clone of
+   `#thisWeekCard` with proportional digits; the page doesn't change. Saved as `Week_7_Recap_Lineup_Strategist.png`.
+   The "Wanted by the owner" line for it in docs/TESTING.md is removed; the Roster tab's Export stays there.
+
+Also: the Guide's line says what Started means, the new MVP rule and Export; CHANGELOG lines updated; `sw.js` precaches
+`shareImage.js` (CACHE_NAME stays v2.8.112, this branch's one bump, still above main's).
+
+**Tests.** `tests/unit/playerRecap.test.mjs` (15): bench-only booms out of MVPs onto their own line, Best Ball bench booms
+counting, started booms ranking first, slot-aware benchings (a WR over the FLEX RB; a QB never over a FLEX; slots that
+don't match fall back). `tests/unit/shareImage.test.mjs` (2): at most 3 swings and 3 MVPs / LVPs from many, names
+escaped, empty sections left out, Final. `tests/mls-mvp-lvp.spec.mjs`: Started as "100% (2)"; St. Brown's bench boom on
+its line and out of the MVPs; the benching naming the FLEX; `starterSlots` saved by the sync; **Export**: the download's
+name, the image's text (record, the swing with its chance, biggest win, MVPs, LVPs, no tiles), 480px, no tabular digits,
+the page's tiles unchanged; no Export before kickoff.
+
+**Checks (round 2).** check-precache OK; 441 unit tests pass; Playwright 527 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message. Screenshots vs. main: the same six as round 1 (the Guide PNGs taller with this
+round's sentence), the other 36 identical; the Scoreboard PNG is before kickoff, so it shows no Export. Still to take
+from CI.
+
+### S22, round 3: the owner's second review (week 7, 19 leagues)
+
+The owner's eight points, my answers, and what was built:
+1. **Did Started zeros include Best Ball?** Yes: a 0.0 in Sleeper's Best Ball lineup counted. Now it follows Best Ball's
+   own lineup (point 8), so a Best Ball 0.0 counts only if nobody on the bench who could fill that slot scored more.
+2. **Dead weight leaves out injured players**: any injury designation in the player map (`injury_status`, or a status
+   with "reserve"). `injured` on each player, from `recapInput`.
+3. **Bullets** (owner chose my suggestion): each extra line is a heading with its note, then one bullet per player, 3 of
+   them, then "and N more" (`extraItem`, `RECAP_NAMES` 3).
+4. **Export like the others**: Draft Strategist's Export Team, the Lineup tab's PNG and Export Trade are purple buttons
+   with a camera icon; Export Trade sits at the bottom of its card and saves `My_Trade_Lineup_Strategist.png`. So the
+   Scoreboard's is now **"Export Recap"**, a purple camera button at the bottom of the card, saving
+   **`My_Recap_Lineup_Strategist.png`** (round 2's icon by Refresh is gone).
+5. **Still in play folds** (open until you fold it, remembered: `mls_still_in_play_folded`).
+6. **Chevrons animate like the Dashboard's.** Both folds (`toggleWeekFold`, data-fold `swings` / `recap`) now fold in
+   place: the section's content is always drawn (hidden when folded), the same element toggles `is-open`, its chevron
+   turns over `--vt-ms` with `--vt-ease` (the league cards' values), and a "cards" view transition names the card, the
+   section and what follows it near the screen (`vt-card`), so the box grows or shrinks with the chevron, as S21 round 4
+   did for the old recap card. Round 1's redraw on every toggle (which skipped the CSS turn) is gone.
+7. **The image names no league** (owner: in a Discord server nobody has context for them): Still in play, Biggest win
+   and Worst loss are out; it's the record, the splits and the top 3 MVPs and LVPs. **Were Biggest win / Worst loss in
+   the Week Recap?** No: they were new in round 2's image only; the tab shows each league's margin on its tile.
+8. **Eli Raridon still an MVP.** Checked in the owner's leagues through Sleeper's API (week 7): he's on 6 benches; 2 are
+   Best Ball (Legacy Best Ball, BB Yang Dynasty), where Sleeper still listed Dalton Kincaid and Oronde Gadsden at TE with
+   0.0 while Raridon had 17.6 and 16.1 (the team scores, 80.12 and 83.8, are the sum of that set lineup: Sleeper settles
+   Best Ball after the games). Round 2's rule counted any Best Ball boom as started, and its tiebreak on booms anywhere
+   (6) lifted him to 5th. Owner's choice: **work out Best Ball's lineup**. `bestBallLineup` (week/playerRecap.js) fills
+   the league's saved slots, most specific first (QB, then W/T and W/R, then FLEX, then SUPER_FLEX), each with the
+   highest scorer left who can play it, ties to Sleeper's own starter; in Best Ball that lineup is "started" everywhere
+   (MVPs, Started %, LVPs, started zeros). Raridon now reads Started 33% (2), an MVP for the 2 Best Ball leagues where
+   he'll count, ranked by those 2. The tiebreak is now ownership, not booms anywhere. A Best Ball league synced before
+   round 2 (no slot order) uses Sleeper's lineup, with a "Sync again" line naming it. The Best Ball note says what
+   Started means there.
+
+`togglePlayerRecap` is now `toggleWeekFold`. CACHE_NAME stays v2.8.112 (this branch's bump, still above main's).
+
+**Tests.** Unit (444): `bestBallLineup` (flex after specific slots, ties), Raridon's case (Best Ball with slots: MVP,
+Started 1 of 2, Kincaid's 0.0 not a started zero; without slots: a bench boom and the "Sync again" name), dead weight
+without an injured player, the tiebreak; the image without league names. Spec: the bullets ("and 2 more"), Export
+Recap's button and file name and an image with no league name, and a new test that both folds keep the same chevron
+element, turn it with a CSS transition and are remembered after a reload. `mls-this-week.spec.mjs`'s last-heading check
+now looks at the card's own headings (the folded section's are in the page, hidden).
+
+Checked against the owner's real week-7 data (Sleeper's API, every game counted final): Raridon is 5th with Started
+33% (2), his 2 Best Ball booms; the first four started their booms in 3 to 6 leagues.
+
+**Checks (round 3).** check-precache OK; 444 unit tests pass; Playwright 529 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message. Screenshots vs. main: the same six as rounds 1 and 2, the other 36 identical. Still
+to take from CI.
+
+**Found while writing round 4:** round 3's Guide and CHANGELOG edits never applied (the edit script ran inside the
+background check command, failed on a sentence it expected in another order, and the command still exited 0). That's
+why the Guide PNGs' size didn't change in round 3. Applied in round 4, in the foreground.
+
+### S22, round 4: the file name, Biggest win / Worst loss on the Scoreboard, and a user-hat review
+
+1. **File name** (owner: combine both choices): `Week_7_Recap_My_Lineup_Strategist.png`. The other exports and the
+   backups each name their files differently; a cleanup item is under "Open follow-ups" in docs/TESTING.md ("One naming
+   pattern for exported files").
+2. **Biggest win and Worst loss on the Scoreboard** (owner suggested below the tiles, above MVPs & LVPs, open to my
+   opinion). I put them **under the record and splits, above Still in play**: with 19 leagues the tiles run about
+   1,700px on a phone, so below them is a long way down, and once the week is final the tiles go back to league order,
+   so the extremes are hard to spot anywhere else. Two compact rows (side by side from about 500px), a green or red edge
+   like the tiles, the league's name whole and the margin; each opens that league's lineup. Among matchups already
+   settled (decided or done; every one once the week is final), since a loss still in play could flip (`weekExtremes`,
+   `extremesHTML` in week/thisWeek.js). They stay out of the image (round 3: no league names there).
+3. **User-hat review** with the owner's 21 real leagues (Sunday night of week 7, MNF to come; the app served locally,
+   Sleeper and ESPN live, phone and desktop). What reads well: the record and splits at a glance; Biggest win (How I Met
+   Your Punter +115.6) and Worst loss right under them; Still in play naming who's left for MNF; Still open (Tanner
+   McKee QB in 8 leagues, CeeDee Lamb in 6) as the "who do I need tonight" list; the image (record, splits, three MVPs
+   and LVPs) is short and readable. Fixed at once: worst benchings printed "over Nico Collins (WR) 2.6", where "(WR)" was
+   the slot but read as his position; now "over Nico Collins WR 2.6", and the slot only for a flex ("over Malik Nabers WR
+   in FLEX 14.6"). Put to the owner (see the summary): LVPs counted 114 (every bench player under his Bust line whose
+   game is final); MVPs' Boomed column ("6 of 6" for Raridon, started 33%) reads against the ranking by started booms;
+   the five-line intro on phones; the image's split pills lose their outlines (html2canvas); a Best Ball league's
+   Sleeper score during the week is its set lineup's, so Worst loss read Legacy Best Ball −73.8 though Raridon's 17.6
+   will count there (the scoreboard's math, S21).
+
+**Tests.** Spec: the two rows (settled only: a loss still in play isn't the Worst loss; under the splits, above the
+tiles; a tap opens the league's lineup), the file name, the benching's wording.
+
+**Checks (round 4).** check-precache OK; 444 unit tests pass; Playwright 533 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message. Screenshots vs. main: the same six, the Guide PNGs now taller with rounds 3 and 4's
+lines (desktop 1280×8053, phone 390×18169); the other 36 identical. Still to take from CI.
+
+### S22, round 5: the review's five points, all built (owner: "Do 1-5")
+
+1. **LVPs are players you started.** An LVP busted (under his Bust line, game final) in at least one league where you
+   started him (Best Ball: in the lineup it would pick). Bench busts aren't LVPs: bench zeros are dead weight. The
+   owner's week 7 went from 114 LVPs to 30.
+2. **Boomed counts booms where you started him**, the number MVPs rank by ("3 of 4" for Luther Burden III, started 75%),
+   in the table and the image. Partial booms still compare booms in any league (that's about scoring, not lineups).
+3. **The intro moved into an (i) beside the MVPs heading** (`.mls-recap-info`), in short labelled lines: the leagues
+   counted, Own and Started (and Best Ball), MVPs / Boomed / LVPs, the Boom / Bust lines. The Best Ball line under the
+   tables went into the tip too; "Sync again" stays.
+4. **Best Ball scores during the week** (S21's Scoreboard math, the owner agreed to it here). `leagueResult` scores each
+   side of a Best Ball matchup by `bestBallLineup` over the league's `starterSlots` (saved at sync since round 2), and
+   uses that lineup as its starters for who's live; the median and a guillotine league's place use the same scores.
+   Without the slot order, Sleeper's points as before. Owner's week 7: Legacy Best Ball went from 80.1–153.9 to
+   116.2–184.4 (both sides re-scored), and one Best Ball matchup turned into a win (record 4–16 → 5–15). The Simulator's
+   win chance still isn't shown for Best Ball (it plays one fixed lineup; the open follow-up in TESTING.md stands).
+5. **The image's split pills** draw each part's own border and rounding (html2canvas dropped the outline of one bordered
+   box with `overflow: hidden`); **Biggest win / Worst loss** keep a 760px reading width on desktop, like the tables.
+
+**Tests.** Unit (444): bench busts aren't LVPs. Spec: no LVPs in the base fixture (its two were bench zeros) with the
+empty line; Boomed as started booms; the tip's text, and at 375px and 1280px that it opens on the screen in normal case;
+a new test with Second Fixture League as Best Ball (Sleeper's `settings.best_ball`): its tile reads 137.4–95.2, +42.2,
+where Sleeper's own total was 130.4, and St. Brown's 24.0 on the bench is an MVP there (started 50%), not a bench boom.
+Also checked again with the owner's 21 leagues (Sunday night of week 7, live): the five changes as above; the only console
+errors were requests this container's proxy blocks (photos, fonts), none from the app. With Best Ball re-scored, BB Yang
+Dynasty (−7.1 in Sleeper's numbers, still in play) and LRD Cucks read as wins.
+
+**Checks (round 5).** check-precache OK; 444 unit tests pass; Playwright 535 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message. Screenshots vs. main: the same six, the Guide PNGs taller again (desktop 1280×8076,
+phone 390×18284); the other 36 identical. Still to take from CI.
+
+### S22, round 6: a second user-hat pass (the owner's 21 leagues, Monday early hours of week 7, MNF to come)
+
+Walked through it as a user on phone and desktop: the Dashboard line, the Scoreboard top, Still in play, the tiles, MVPs &
+LVPs folded and open, its (i), the lines under the tables, Export Recap and its image, a Best Ball league's Lineup strip
+(opened from its tile), and MVP / LVP Lines in Advanced Settings. No console errors from the app.
+
+Fixed at once: **the Scoreboard's (i) didn't say why a Best Ball score can differ from the Sleeper app** (round 5 scores
+the lineup Best Ball would pick: Legacy Best Ball reads 116.2 here, 80.1 in Sleeper). A "Best Ball:" line in the header's
+tip now says so; the spec checks it.
+
+Checked and fine: the Lineup strip uses the re-scored Best Ball numbers (116.2–184.4, −68.2, "Effectively decided"), the
+same as the tile; the (i) beside MVPs closes on a second tap or a tap elsewhere (a capture mid-fade looked as if it
+hadn't); folds, rows and Started on phones as designed.
+
+Put to the owner (see the summary): the LVP table has no Busted count, so its order can look wrong (Sam LaPorta, busted
+in all 4 starts, sits above DK Metcalf, started 7, because Metcalf's 7.6 in four leagues is over the 7.5 line); the
+headings and the image read "MVPS" / "LVPS" (the subheadings' uppercase); worst benchings run three lines each on a phone.
+
+**Checks (round 6).** check-precache OK; 444 unit tests; Playwright: mls-this-week, tooltips-onscreen and mls-mvp-lvp,
+56 passed (only a tooltip string changed, so no full run; screenshots unaffected, the tip is closed in them).
+
+### S22, round 7: headings as written, shorter benchings; scoring formats put to the owner
+
+- **"MVPs" / "LVPs" as written** (owner agreed): in capitals the subheadings read "MVPS" / "LVPS". The two headings
+  (`.mls-recap-sub`) and the image's (`.mls-share-sub`) keep their case.
+- **Shorter worst benchings** (owner agreed): "Tee Higgins WR 26.8 over Nico Collins WR 2.6 (−24.2) · May the Receptions
+  Be With You", the league last and muted (`.mls-recap-league`); the heading already says they were benched.
+- **Not built: a Busted column for LVPs.** The owner raised the bigger question behind it: one Boom / Bust line is
+  easier to reach in full PPR than half PPR (RB/WR/TE), and in 6-point passing TD leagues for QBs. Options went to the
+  owner (see the summary); waiting on their choice before building it or the Busted column.
+
+**Checks (round 7).** 444 unit tests; Playwright `mls-mvp-lvp.spec.mjs` 26 passed (CSS and wording in this section only).
+
+### S22, round 8: one Boom / Bust verdict per player, on half-PPR points
+
+The owner's question after round 6: one line is easier to reach in full PPR than half PPR (RB/WR/TE), and in 6-point
+passing TD leagues for QBs. I offered (A) judge each player once on one scale, (B) move each league's line by its
+scoring (rules of thumb), (C) convert each league's points with the player's stat line. The owner asked for A and B in
+plain terms (same score for everyone with one line, versus each league's own score with a different estimated line),
+then chose **A, on half PPR** ("a more common format, and a good in-between of Standard and Full PPR").
+
+- **The verdict.** `buildPlayerRecap` takes `verdict: { points }`, each player's points on the chosen scale; Boom / Bust
+  is decided once from it, so `boomed` / `busted` are all his leagues or none, and `startedBoomed` / `startedBusted` are
+  his starts. MVPs: boomed and started somewhere, ranked by starts, then ownership, then the verdict's points; LVPs: busted,
+  started, game final, ranked by starts, then ownership, then the lower points. Dead weight is a verdict of 0; a bench
+  boom (and so a worst benching) is a verdict boom, the gap still in that league's points. Partial booms no longer arise
+  (they only came from scoring differences). A player missing from the stats scored 0 (he hasn't played).
+- **The numbers.** Sleeper's week stats (`/stats/nfl/regular/<season>/<week>`, the endpoint the Simulator's history uses)
+  carry `pts_half_ppr`, `pts_ppr` and `pts_std` (Sleeper's default 4-point passing TDs). `getLiveWeekStats`
+  (js/shared/api/sleeperStats.js) fetches the current week uncached (`getWeekStats` keeps a week for good once stored, fine
+  for finished weeks only), with the matchups on every load and Refresh. Owner's example: Eli Raridon was 15.35–17.6 in
+  his leagues (TE premium) and 13.1 in half PPR.
+- **Settings.** MVP / LVP Lines has "Judge on": Half PPR (default), Full PPR, Standard, saved as `scale` in the same
+  `mls_recap_lines` object (no new key); Reset returns to Half PPR.
+- **Tables.** MVPs and LVPs share one shape: Player | Own | Half PPR (the verdict's points) | Pts (each league's own
+  scoring, the range) | Started; on phones Started moves under the name in both. This is the round-6 "Busted" idea in the
+  form A gives it: LaPorta above Metcalf now shows why (Metcalf's 7.6s were his leagues' scoring).
+- **Fallback.** If the stats don't load, each league's own points decide as before round 8, the third column reads
+  Boomed / Busted counts, and a line says "Week stats didn't load".
+- **The (i), the image, the Guide.** The tip explains the scale column and Pts; the image's rows read "started 2 of 2 ·
+  25.0" with "Boom / Bust on Half PPR points" in the footer; the Guide's MVPs & LVPs item says how players are judged.
+- **Fixtures.** The generator writes `stats-2026-2.json` (half-PPR points set apart from the leagues' own: Lamb 25.0 in
+  Second Fixture League is 18.0) and `stats-2026-2-final.json` (Jefferson's 20.5).
+
+**Tests.** Unit (448): the verdict overrides each league's scoring (and without it, each league's own), LVP order by
+starts and lower points, a player missing from the stats, no partial booms, a verdict bench boom as a worst benching,
+the scale in normalize / validate; the image's "started X of N" and footer. Spec (28): the half-PPR column and numbers,
+Lamb not an MVP on his 25.0, Bowers an LVP on 4.0, the bench boom's line, Jefferson after the final, the Full PPR switch
+(Allen 25.0 → 26.0), the fallback when the stats fail, both tables' Started on a second line on phones.
+
+**A slip from round 6, found here.** Round 6 lengthened the Scoreboard header's (i) (the Best Ball line) and I said the
+screenshots were unaffected without rendering them. They weren't: a closed tooltip is hidden (`visibility`, `opacity`)
+but still absolutely positioned, so a long one hangs below a short page and adds empty scroll. Before kickoff the
+Scoreboard is short, so `mls-league-scoreboard.png` grew (phone 844 → 925, desktop 900 → 952). Fixed by tightening that
+tip's Best Ball and Still in play lines (same meaning); both PNGs match main again. Making every closed tooltip take no
+layout would be a site-wide CSS change, so I left it alone.
+
+**Real leagues (week 7, Monday early hours).** 9 MVPs (18 before: booms that came from full PPR or TE premium drop out,
+e.g. Eli Raridon at 13.1 half PPR), 36 LVPs led by DK Metcalf (6.6, started in all 7); Colston Loveland TE an MVP on 16.4
+half PPR (19.9–23.4 in his leagues). The image: "Drake Maye QB · started 6 of 6 · 28.4", footer "Boom / Bust on Half PPR
+points". MVP / LVP Lines shows "Judge on: Half PPR". No app errors.
+
+**Checks (round 8).** check-precache OK; 448 unit tests pass; Playwright 537 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message (then mls-mvp-lvp, mls-this-week and tooltips-onscreen again after the tip edit: 58
+passed). Screenshots vs. main: the same six as before (the Guide PNGs taller with this round's sentence: desktop
+1280×8099, phone 390×18400), the other 36 identical, the Scoreboard's included. Still to take from CI.
+
+### S22, round 9: a third user-hat pass (owner's 21 leagues, Monday of week 7; and a one-league user)
+
+Looked at the owner's leagues again (phone and desktop, live, no app errors) and, for the first time, at someone with a
+single Sleeper league (the fixture league alone, mid-Sunday). Nothing built this round; put to the owner:
+1. **Two lists name the same player.** Tony Pollard is under "Boomed on your bench" (35.0 half PPR, benched in 1 league)
+   and again under "Worst benchings" (35.0 over Malik Nabers WR in FLEX 14.6). Suggestion: one "Benched booms" list, each
+   with what it cost where that's known ("over Malik Nabers WR in FLEX 14.6 · League of Ordinary Gentlemen").
+2. **The (i) beside MVPs fills a phone screen** (five paragraphs since round 8). Suggestion: three short lines (what Half
+   PPR and Pts are, what Own and Started are, the lines), the Best Ball detail kept to a clause.
+3. **One league: Own and Started always read "100% (1)"**, two columns of noise. Suggestion: with one league counted,
+   drop both (MVPs need a start anyway).
+4. **One league: "Worst loss" repeats the only tile** right above it. Suggestion: Biggest win / Worst loss only with two
+   or more head-to-head matchups.
+5. Seen in passing, S21's area: the splits show "Dynasty 0–0" to someone with no dynasty league.
+
+### S22, round 10: the third pass's five points, all built (owner: "Do 1-5")
+
+1. **Benched booms, one list.** "Boomed on your bench" and "Worst benchings" named the same player (Tony Pollard on
+   both). `benchedBooms` (week/playerRecap.js): each costly benching with its cost, largest first ("Tony Pollard RB 35.0
+   over Malik Nabers WR in FLEX 14.6 (−20.4) · League of Ordinary Gentlemen"), then bench booms with no costly benching
+   ("Rhamondre Stevenson RB · 20.0 Half PPR · benched in 1 league"). Three bullets, then "and N more".
+2. **The (i) beside MVPs in three short lines**: Half PPR and Pts; Own and Started (with Best Ball in a clause); MVPs /
+   LVPs and the lines.
+3. **One league: no Own or Started columns** (`.is-single`: Player | Half PPR | Pts), no Own / Started line in the tip,
+   and no "started 1 of 1" in the image. Also applies when only one league's matchups loaded.
+4. **Biggest win / Worst loss only with two or more head-to-head matchups** that count (with one, it repeated the tile).
+5. **No empty split parts** (S21's area, owner agreed): `splitGroups` (week/thisWeek.js, used by the Scoreboard and the
+   image) leaves out Paid, Free, Redraft or Dynasty when you have no head-to-head league of that kind, and a group with
+   no parts. A kind you have that's too early to call keeps its "0–0" (S21's spec checks that case).
+
+**Tests.** Unit (450): `benchedBooms` (a cost, then a boom without one); the image without "started" for one league.
+Spec: the merged list (St. Brown once, with his cost), the three-line tip, and a one-league test (only "Redraft 0–1", no
+extremes, Player | Half PPR | Pts, no Own in the tip); the failed-league test now expects the one-league table.
+
+**Checked with the owner's 21 leagues** (Monday of week 7, live, no app errors): Benched booms lists Tee Higgins (−24.2),
+Tony Pollard (−20.4, once) and Luther Burden III (−15.4), "and 2 more"; the (i) fits well inside a phone screen.
+
+**Checks (round 10).** check-precache OK; 450 unit tests pass; Playwright 539 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message. Screenshots vs. main: the same six (Guide PNGs now desktop 1280×8122, phone
+390×18492), the other 36 identical. Still to take from CI.
+
+### S22, round 11: a fourth user-hat pass (a finished week, the scale switch, the keyboard)
+
+New angles, with the owner's 21 leagues on a phone: week 6 through `?week=6` (every game final), MVP / LVP Lines switched
+to Full PPR, and the folds from the keyboard. No app errors; nothing built.
+- **Week 6 as a final recap reads well**: Final pill, Record 14–6, Biggest win (Friday Night Beverages +68.7) and Worst
+  loss (Dynasty Bosses −53.8), 15 MVPs led by Bhayshul Tuten and Malik Nabers (started 6 of 6), 38 LVPs led by Charlie
+  Kolar (3.5), Benched booms (Tyler Shough QB 34.4 over Brock Purdy in SFLEX, −12.4), "Every game is final" at the foot;
+  the image has no "still live" and no "provisional".
+- **Best Ball scores checked against Sleeper**: once a week is over Sleeper's own scores are the settled best lineups.
+  All seven of the owner's Best Ball leagues match the Scoreboard's re-scoring (BB Ying Dynasty: 159.95 in Sleeper, shown
+  as 160.0 to one decimal like every score on the card).
+- **Full PPR** changes the column ("Full PPR"), the numbers and the lists as expected (20 MVPs, 30 LVPs; DK Metcalf an
+  MVP on 20.3).
+- **Keyboard**: Enter and Space both fold and unfold (`aria-expanded` follows).
+
+Put to the owner as optional: (1) in the image, the MVPs follow the table's order (starts first), so Tyler Shough's 27.0
+sits below two 22s, which may look unsorted to someone who doesn't know the rule; (2) a player with costly benchings in
+two leagues is listed twice under Benched booms (Jaylin Noel, Full PPR), as designed in round 10; grouping them per player
+is possible.
+
+### S22, round 12: one Benched booms line per player; the pull request
+
+The owner's answers to round 11: (1) not needed (the image's "started 6 of 6" explains the order); (2) yes. Benched
+booms now groups a player's costly benchings into one line, largest cost first among players, each league's benching
+after his name: "Jaylin Noel WR 25.4 over Brian Thomas Jr. WR 0.0 (−25.4) · Fantasy Leftovers; 22.2 over Jaleel
+McLaughlin RB in FLEX 7.5 (−14.7) · Apex Dynasty League". Bench booms with no costly benching follow, as before.
+`benchedBooms` entries of kind 'cost' carry `costs: [{ league, points, starter, gap }]` and the player's largest `gap`.
+Unit test: a player costly in two leagues is one entry with both, largest first, ahead of a plain bench boom.
+
+Then, at the owner's word ("this only turned up two small things"), the pull request, to let CI render the six
+screenshots.
+
+**Checks (round 12).** check-precache OK; 451 unit tests pass; Playwright 539 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message. Screenshots: the same six as round 10 (no layout or Guide change this round).
+
+**Screenshot baselines from CI** (pull request #207, run 40394147287 on e3189e4). CI failed on exactly the six PNGs listed
+above; everything else passed. Each `-expected.png` matched the committed baseline byte for byte. The renders grew by 70px
+for the MVP / LVP Lines row (both setup PNGs at both widths; the changed rows sit at that row, plus a 1-level colour
+rounding in the fixed tab bar's blur) and by the Guide's new lines (desktop 7577 → 7841, phone 16616 → 17549). CI's
+renders (desktop `mls-empty-setup` 1280×1941, `mls-league-setup` 1280×2538, `mls-league-guide` 1280×7841; phone 390×2038,
+390×2811, 390×17549) are now the baselines.

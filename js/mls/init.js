@@ -13,6 +13,7 @@ import { initManualAddForm } from './leagues/addPlayer.js';
 import { initTradePicker } from './trade/picker.js';
 import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
 import { applySimSettingsToUI, applyTradeSettingsToUI, applyMarketSettingsToUI } from './settings.js';
+import { applyRecapLinesToUI } from './week/recapLines.js';
 import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDisplay, renderSyncLogs, showTab, lookupSimPlayer } from './main.js';
 import { KEYS, RETIRED_KEYS } from '../shared/storage/keys.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
@@ -197,6 +198,7 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
         applyTradeSettingsToUI();
         applyLineupSettingsToUI();
         applySimSettingsToUI();
+        applyRecapLinesToUI();
         applyWaiverScanSettingsToUI();
         updatePulsePrompts();
         // The NFL week from Sleeper, then the week's kickoff times from ESPN (refreshCurrentNflWeek chains them),

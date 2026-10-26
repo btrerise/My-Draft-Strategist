@@ -41,6 +41,23 @@ async function getWeekStats(season, week) {
     }
 }
 
+/**
+ * The same endpoint for a week still being played (improvements S22, round 8: the Scoreboard's MVPs and LVPs judge Boom /
+ * Bust on it): fetched every time, never cached, since getWeekStats above keeps a week for good once it's stored. null
+ * when it fails (the caller falls back), with a warning rather than an error.
+ */
+export async function getLiveWeekStats(season, week) {
+    try {
+        const response = await mdsFetch(`${SLEEPER_BASE_URL}/stats/nfl/regular/${season}/${week}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        return data && typeof data === 'object' ? data : null;
+    } catch (e) {
+        console.warn(`Week ${week} stats didn't load; MVPs and LVPs use each league's own points.`, e);
+        return null;
+    }
+}
+
 // A completed prior NFL regular season runs 18 weeks (17 games + 1 bye per team since the
 // 2021 schedule expansion). Used as the upper bound when pulling supplemental history from
 // last season -- some of those weeks won't exist for a given player (bye weeks, IR stints),

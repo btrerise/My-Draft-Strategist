@@ -639,6 +639,11 @@ import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from
             let leagueObj = {
                 leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge, leagueType: leagueType,
                 irRules, rosterSize, picks,
+                // Sleeper's starting slots in order ('QB', 'RB', 'FLEX', 'SUPER_FLEX', ...), bench left out
+                // (improvements S22, round 2). A matchup's `starters` follow this order, so starters[i] fills
+                // starterSlots[i]: the Scoreboard's worst benchings compare a benched player with the starter in a slot
+                // he could have filled. null when Sleeper doesn't send them.
+                starterSlots: Array.isArray(leagueData.roster_positions) ? leagueData.roster_positions.filter(p => p !== 'BN') : null,
                 // For the Dashboard's This week card (improvements S21): each team's name by roster id, whether the
                 // league also plays the median, and whether it's a guillotine league (Sleeper type 3, which the
                 // format badge reads as Redraft: it is one, with no opponent). And for the Roster tab, your season

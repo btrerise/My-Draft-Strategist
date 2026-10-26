@@ -128,6 +128,18 @@ const pointsFor = (mine, theirs) => Object.fromEntries([
 const live1 = pointsFor([22, 18, 20, 0, 10, 16, 7, 5], [24, 19, 17, 14, 12, 13, 6, 5]);
 const live2 = pointsFor([28.4, 22, 25, 0, 12, 25, 10, 8], [20.2, 15, 14, 11, 10, 12, 7, 6]);
 
+// Sleeper's stats for week 2 as the Scoreboard's MVPs & LVPs read them (improvements S22, round 8: one Boom / Bust verdict
+// per player on half-PPR points, the same in every league). Set apart from the leagues' own points on purpose: Lamb's 25.0
+// in Second Fixture League is 18.0 in half PPR (no boom), Allen 25.0 and Chase 21.0 are booms. A player whose game hasn't
+// started has no entry (Jefferson until the MIN game; LAR, ARI, NYJ and SF aren't in the spec's scoreboard). "Final" adds
+// Jefferson's 20.5. [id, half PPR]; full PPR is a point more and standard a point less.
+const statsLine = (half) => ({ pts_half_ppr: half, pts_ppr: Math.round((half + 1) * 10) / 10, pts_std: Math.round(Math.max(half - 1, 0) * 10) / 10, gp: 1 });
+const week2Half = {
+    4984: 25, 3198: 18, 4866: 21, 11604: 11, 6786: 18, 17: 7, BAL: 5, 7547: 0.4, 5859: 0,
+    4881: 23, 9509: 18, 9221: 16, 11632: 13, 7569: 11, 4892: 12, 5095: 6, PHI: 5,
+};
+const week2Stats = (extra = {}) => Object.fromEntries(Object.entries({ ...week2Half, ...extra }).map(([id, half]) => [id, statsLine(half)]));
+
 const out = {
     'players-nfl.json': players,
     'league.json': league,
@@ -144,6 +156,8 @@ const out = {
     'trending-add.json': trendingAdd,
     'projections-2026-2.json': weekFile('2026-proj', 2),
     'stats-2026-1.json': weekFile('2026', 1),
+    'stats-2026-2.json': week2Stats(),
+    'stats-2026-2-final.json': week2Stats({ 6794: 20.5 }),
 };
 for (let w = 1; w <= 18; w++) out[`stats-2025-${w}.json`] = weekFile('2025', w);
 for (const [file, data] of Object.entries(out)) writeFileSync(new URL(file, import.meta.url), JSON.stringify(data, null, 1) + '\n');

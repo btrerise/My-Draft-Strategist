@@ -411,6 +411,42 @@
             </div>
         </details>
         
+        <!-- The Scoreboard's MVPs and LVPs (week/recapLines.js, improvements S22). -->
+        <details class="sos-details-accordion">
+            <summary class="sos-summary">MVP / LVP Lines</summary>
+            <div class="accordion-body">
+                <p class="card-desc">The points that make a player an MVP (Boom) or an LVP (under Bust) on the Scoreboard. Each player is judged once, on his points for the week in one scoring format from Sleeper's stats, the same in every league, so full PPR or TE premium doesn't make a line easier. K and DEF aren't covered. These are only for the Scoreboard's MVPs and LVPs; the Matchup Simulator's boom/bust chances are separate.</p>
+                <div class="recap-lines-scale">
+                    <label for="recapLineScale">Judge on</label>
+                    <select id="recapLineScale" class="form-input">
+                        <option value="half">Half PPR</option>
+                        <option value="ppr">Full PPR</option>
+                        <option value="std">Standard</option>
+                    </select>
+                </div>
+                <div class="recap-lines-grid" role="group" aria-label="Boom and Bust lines by position">
+                    <span></span><span class="recap-lines-head" id="recapLinesBoomHead">Boom at</span><span class="recap-lines-head" id="recapLinesBustHead">Bust under</span>
+                    <span class="recap-lines-pos" id="recapLinePosQB">QB</span>
+                    <input type="number" id="recapLineQBBoom" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosQB recapLinesBoomHead">
+                    <input type="number" id="recapLineQBBust" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosQB recapLinesBustHead">
+                    <span class="recap-lines-pos" id="recapLinePosRB">RB</span>
+                    <input type="number" id="recapLineRBBoom" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosRB recapLinesBoomHead">
+                    <input type="number" id="recapLineRBBust" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosRB recapLinesBustHead">
+                    <span class="recap-lines-pos" id="recapLinePosWR">WR</span>
+                    <input type="number" id="recapLineWRBoom" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosWR recapLinesBoomHead">
+                    <input type="number" id="recapLineWRBust" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosWR recapLinesBustHead">
+                    <span class="recap-lines-pos" id="recapLinePosTE">TE</span>
+                    <input type="number" id="recapLineTEBoom" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosTE recapLinesBoomHead">
+                    <input type="number" id="recapLineTEBust" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosTE recapLinesBustHead">
+                </div>
+                <div class="recap-lines-actions">
+                    <button class="btn btn-primary" data-action="saveRecapLines">Save Lines</button>
+                    <button class="btn btn-secondary" data-action="resetRecapLines">Reset to Defaults</button>
+                </div>
+                <div id="recapLinesMsg" class="recap-lines-msg" role="status" aria-live="polite"></div>
+            </div>
+        </details>
+
         <details class="sos-details-accordion">
             <summary class="sos-summary">Backup & Restore</summary>
             <div class="accordion-body flex-column gap-2">
@@ -1399,10 +1435,12 @@
                     <li><strong class="text-main">Week Recap:</strong> The line above your leagues ("Week 7 Recap · Record 9–6 · 4 still live") opens the <strong class="text-main">Scoreboard</strong> tab (the scoreboard icon in the tab bar). It loads when you open the Dashboard, the Scoreboard or the Lineup tab; tap Refresh for the latest (no background updates).</li>
                     <li><strong class="text-main">Scoreboard:</strong> Your matchup in every Sleeper league this week, from Sleeper's live scores.
                         <ul>
-                            <li><em>Record</em>: each head-to-head matchup as it stands, once at least 4 players a side have played (before that it's <em>too early to call</em>), grouped paid / free and redraft / dynasty (keeper counts as redraft), plus your record against the median in the leagues that play one.</li>
-                            <li><em>Still in play</em>: matchups the side that's behind can still turn around, with who's left on each side and your chance to win from the <strong class="text-main">Matchup Simulator</strong> (step 6). <em>Effectively decided</em>: the rest.</li>
-                            <li>A tile for every league, closest first, with both scores. Tap one to open that league's lineup, where the same matchup sits above the lineup. A guillotine league shows your score against the chop line instead of an opponent.</li>
+                            <li><em>Record</em>: each head-to-head matchup as it stands, once at least 4 players a side have played (before that it's <em>too early to call</em>), grouped paid / free and redraft / dynasty (keeper counts as redraft), plus your record against the median in the leagues that play one. Under it, with two or more leagues, your <em>biggest win</em> and <em>worst loss</em> among the matchups already settled; tap one to open that league's lineup.</li>
+                            <li><em>Still in play</em>: matchups the side that's behind can still turn around, with who's left on each side and your chance to win from the <strong class="text-main">Matchup Simulator</strong> (step 6); tap its heading to fold it. <em>Effectively decided</em>: the rest.</li>
+                            <li>A tile for every league, closest first, with both scores. Tap one to open that league's lineup, where the same matchup sits above the lineup. A guillotine league shows your score against the chop line instead of an opponent. In Best Ball, where Sleeper sets the lineup after the games, both scores are the lineup Best Ball would pick from the points so far.</li>
                             <li><em>Provisional</em> until the week's last game is final, then <em>Final</em>.</li>
+                            <li><em>MVPs &amp; LVPs</em> (tap to open; the (i) beside MVPs explains the columns): which of your players won and lost the week across your Sleeper leagues. <em>Own</em> is how many of them have him on your roster, bench included; points show as a range, since scoring differs by league. <em>Started</em> is how many of those you started him in. Each player is judged once, on his points for the week in half PPR (or the format you choose), the same in every league, so full PPR or TE premium doesn't make a line easier; <em>Pts</em> shows what he scored in each league's own scoring. MVPs reached their position's Boom line and you started them, most starts first (a boom on your bench gets its own line); LVPs finished under the Bust line in games you started them, most starts first. In Best Ball, where Sleeper sets the lineup after the games, Started is the lineup it would pick from the points so far. Then started zeros, dead weight (injured players left out), players still to play and your benched booms (with what each cost, where a starter you could have swapped scored far less). With one league there's no Own or Started column. Change the lines under <strong class="text-main">Advanced Settings</strong>, MVP / LVP Lines.</li>
+                            <li><strong class="text-main">Export Recap</strong>, at the bottom, saves a summary image to share: your record and splits and the top MVPs and LVPs, without your leagues' names.</li>
                         </ul>
                     </li>
                     <li><strong class="text-main">Paid leagues:</strong> Tap Edit, then "$ Paid" on each league you pay for. Paid leagues get a "$" badge and their own record in the Week Recap.</li>

@@ -247,7 +247,8 @@ shot and S10 took four runs for 14.)
   1280px and fails on any that crosses an edge; a new tooltip in a state it doesn't reach should get a line there.
 - **Image exports** (improvements S19, round 12): html2canvas draws text without the page's `tabular-nums`, so a new
   export calls `useProportionalDigits(clonedRoot)` (`js/shared/ui/exportImage.js`) in its `onclone`;
-  `export-numerals.spec.mjs` checks all three exports' clones.
+  `export-numerals.spec.mjs` checks three exports' clones; the Scoreboard's Export (improvements S22) is checked in
+  `mls-mvp-lvp.spec.mjs`, which needs the Scoreboard's live fixtures.
 - **User-visible changes** (8A): add a plain-language line under the app's **Unreleased** section in
   `CHANGELOG.md`. Bumping an app's footer version (the `APP VERSION` comment in `index.html` or
   `lineup/index.html`) turns those lines into that version's entry.
@@ -301,11 +302,16 @@ done or dropped, remove its line here in the same change. Background for each is
   time-to-interactive by about 0.7 s on slow 4G, if a build step is ever wanted.
 
 **Wanted by the owner, not scheduled yet** (improvements S21)
-- An image of the Dashboard's This week card for a group chat, like the lineup PNG (`js/mls/trade/export.js`;
-  call `useProportionalDigits` in its `onclone`). Fits with S22, once the MVPs and LVPs are in the same view.
 - An Export for the Roster tab: the roster as an image (and maybe as text), like the Lineup tab's.
 
 **Small polish, one session each**
+- One naming pattern for exported files (owner, improvements S22 round 4). The Scoreboard's is
+  `Week_7_Recap_My_Lineup_Strategist.png` (what, when, then the app's full name); the others predate it:
+  `My_Draft_Strategist_Team.png` (js/mds/export.js), `My_Lineup_Strategist.png` (Export Lineup) and
+  `My_Trade_Lineup_Strategist.png` (Export Trade, both js/mls/trade/export.js), and the backups'
+  `my-draft-strategist-backup-<date>.json` / `my-lineup-strategist-backup-<date>.json`. Pick one pattern (e.g. the league
+  or draft name, then the thing, then the app: `How_I_Met_Your_Punter_Lineup_My_Lineup_Strategist.png`) and update the
+  specs that check names (export-flex, export-numerals, mls-mvp-lvp, backup).
 - Draft Strategist's setup checklist doesn't say when rankings or ADP are stale; `getSetupState()` in
   `js/mds/setupGuide.js` would read `State.rankingsMeta.updatedAt` / `State.adpMeta.updatedAt` (8B).
 - After saving from Draft Strategist's upload preview, the unclosed-quote error toast still shows, though the
