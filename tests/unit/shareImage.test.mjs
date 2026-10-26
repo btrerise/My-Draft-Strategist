@@ -40,3 +40,9 @@ test('empty parts leave no heading; Final drops the provisional note', () => {
     assert.match(early, /5 too early to call/);
     assert.ok(!/Record/.test(early));
 });
+
+test('one league: no "started 1 of 1" on each row (round 10)', () => {
+    const html = scoreboardImageHTML({ ...base, single: true, leagueCount: 1 });
+    assert.ok(!/started \d+ of/.test(html));
+    assert.match(html, /MVP 1/);
+});

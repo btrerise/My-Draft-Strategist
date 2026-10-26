@@ -137,7 +137,7 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
     const byes = byeTeams instanceof Set ? byeTeams : new Set(byeTeams || []);
     const counted = leagues.filter(l => l && l.entry && Array.isArray(l.entry.players) && l.entry.players.length);
     const n = counted.length;
-    const empty = { leagueCount: n, mvps: [], lvps: [], partial: [], benchBooms: [], startedZeros: [], deadWeight: [], stillOpen: [], worstBenchings: [], unresolved: [], bestBallNote: false, bestBallUnslotted: [], scale: refPts ? lines.scale : null };
+    const empty = { leagueCount: n, mvps: [], lvps: [], partial: [], benchBooms: [], startedZeros: [], deadWeight: [], stillOpen: [], worstBenchings: [], unresolved: [], bestBallNote: false, bestBallUnslotted: [], scale: refPts ? lines.scale : null, benchedBooms: [] };
     if (!n) return empty;
 
     const stateOf = (team) => (team && games[team] && games[team].state) || null;
@@ -253,6 +253,14 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
         });
     });
     worstBenchings.sort((a, b) => b.gap - a.gap);
+    // Benched booms (round 10, owner: Tony Pollard was on both lists): one list, each benching with what it cost (most
+    // first), then any bench boom with no costly benching (no starter he could have replaced scored far less, or Best
+    // Ball). A player benched in two leagues with a cost in each appears for each.
+    const costed = new Set(worstBenchings.map(b => b.bench.id));
+    const benchedBooms = [
+        ...worstBenchings.map(b => ({ kind: 'cost', ...b })),
+        ...benchBooms.filter(r => !costed.has(r.id)).map(r => ({ kind: 'boom', row: r })),
+    ];
 
     // Best Ball (round 3): say that Started there is the lineup it would pick now, when a listed player has a Best Ball
     // league; and name any Best Ball league without its slot order (synced before round 2), read from Sleeper's starters.
@@ -264,7 +272,7 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
     const unresolvedList = [...unresolved.values()].map(u => ({ ...u, max: round1(u.max), boomLevel: u.max >= floor }))
         .sort((a, b) => b.max - a.max);
 
-    return { leagueCount: n, mvps, lvps, partial, benchBooms, startedZeros, deadWeight, stillOpen, worstBenchings, unresolved: unresolvedList, bestBallNote, bestBallUnslotted, scale: refPts ? lines.scale : null };
+    return { leagueCount: n, mvps, lvps, partial, benchBooms, startedZeros, deadWeight, stillOpen, worstBenchings, unresolved: unresolvedList, bestBallNote, bestBallUnslotted, scale: refPts ? lines.scale : null, benchedBooms };
 }
 
 // "26% (5)".

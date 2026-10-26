@@ -440,6 +440,24 @@ function tileHTML(r, started) {
     </li>`;
 }
 
+// The record's split groups, for the Scoreboard and the image: Paid | Free once a league is marked paid, Redraft |
+// Dynasty, and Median where it's played. A part with no league of that kind is left out (S22 round 10: "Dynasty 0–0" for
+// someone with no dynasty league), and a group with no parts. A kind you have but that's too early to call keeps its 0–0.
+function splitGroups(m) {
+    const { h2h, sum } = m;
+    const callable = h2h.filter(r => !r.res.early);
+    const isDynasty = (r) => r.league.leagueType === 'dynasty';
+    const has = { Paid: h2h.some(r => r.league.paid), Free: h2h.some(r => !r.league.paid), Redraft: h2h.some(r => !isDynasty(r)), Dynasty: h2h.some(isDynasty) };
+    const medians = callable.filter(r => r.res.median);
+    const medRec = { W: medians.filter(r => r.res.median.above).length, L: medians.filter(r => !r.res.median.above).length, T: 0 };
+    const anyPaid = m.sleeperLeagues.some(l => l.paid);
+    return [
+        ...(anyPaid ? [{ label: 'By stakes', parts: [['Paid', sum.paid], ['Free', sum.free]] }] : []),
+        { label: 'By format', parts: [['Redraft', sum.redraft], ['Dynasty', sum.dynasty]] },
+        ...(medians.length ? [{ label: 'Against the median', parts: [['Median', medRec]] }] : []),
+    ].map(g => ({ ...g, parts: g.parts.filter(([name]) => !(name in has) || has[name]) })).filter(g => g.parts.length);
+}
+
 // The week's biggest win and worst loss among head-to-head matchups already settled (every one once the week is final):
 // a matchup still in play could still flip. Each opens that league's lineup, like its tile. '' when there's neither.
 export function weekExtremes(callable, final) {
@@ -522,23 +540,20 @@ function renderScoreboard(m) {
         // games' own record in the leagues that play it (Sleeper's record counts them; the headline is head-to-head).
         const anyPaid = sleeperLeagues.some(l => l.paid);
         const medians = callable.filter(r => r.res.median);
-        const medRec = { W: medians.filter(r => r.res.median.above).length, L: medians.filter(r => !r.res.median.above).length, T: 0 };
         // Grouped (owner, round 10: five loose chips read as five kinds of league): each group is one segmented pill whose
         // parts add up to every league (Paid + Free, Redraft + Dynasty); Median stands apart, with how many leagues play it.
         const split = (label, rec) => `<span class="mls-week-split"><span class="mls-week-split-label">${label}</span> ${recordText(rec)}</span>`;
         const group = (name, chips, extra = '') => `<span class="mls-week-split-group" role="group" aria-label="${name}">${chips.join('')}${extra ? ' ' + extra : ''}</span>`;
-        const groups = [
-            ...(anyPaid ? [group('By stakes', [split('Paid', sum.paid), split('Free', sum.free)])] : []),
-            group('By format', [split('Redraft', sum.redraft), split('Dynasty', sum.dynasty)]),
-            ...(medians.length ? [group('Against the median', [split('Median', medRec)], `<span class="mls-week-split-of">${medians.length} of ${h2h.length} league${h2h.length === 1 ? '' : 's'}</span>`)] : []),
-        ];
+        const groups = splitGroups(m).map(g => group(g.label, g.parts.map(([name, rec]) => split(name, rec)),
+            g.label === 'Against the median' ? `<span class="mls-week-split-of">${medians.length} of ${h2h.length} league${h2h.length === 1 ? '' : 's'}</span>` : ''));
         parts.push(`<div class="mls-week-splits-row">${groups.join('')}</div>`);
         // What the groups mean (keeper with redraft, Median only where it's played) is in the header's info tip
         // (owner, round 11: four lines of helper text on a phone before the first tile).
         if (!anyPaid && !paidHintDismissed()) parts.push(`<p class="mls-week-splits mls-week-hint"><span class="text-helper">Mark the leagues you pay for (Dashboard, Edit, then $ Paid) to split paid and free.</span><button type="button" class="btn-bare mls-week-hint-close" data-action="dismissPaidHint" aria-label="Dismiss this hint">✕</button></p>`);
         // Biggest win and worst loss (owner, S22 round 4): under the record, where the week's headline is, rather than
         // below the tiles (19 of them run about 1,700px on a phone). Among matchups already settled (all, once final).
-        parts.push(extremesHTML(callable, final));
+        // Only with two or more to compare (S22 round 10): with one league, it repeated the only tile.
+        if (callable.length >= 2) parts.push(extremesHTML(callable, final));
         const swings = callable.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null, trailReach: trailReachOf(r.res) }))
             .sort(swingOrder);
         if (swings.length) {
@@ -607,14 +622,7 @@ export function scoreboardSummary() {
     const m = buildModel();
     if (!m.started || !m.listed.length) return null;
     const callable = m.h2h.filter(r => !r.res.early);
-    const anyPaid = m.sleeperLeagues.some(l => l.paid);
-    const medians = callable.filter(r => r.res.median);
-    const medRec = { W: medians.filter(r => r.res.median.above).length, L: medians.filter(r => !r.res.median.above).length, T: 0 };
-    const splits = [
-        ...(anyPaid ? [{ label: 'By stakes', groups: [['Paid', m.sum.paid], ['Free', m.sum.free]] }] : []),
-        { label: 'By format', groups: [['Redraft', m.sum.redraft], ['Dynasty', m.sum.dynasty]] },
-        ...(medians.length ? [{ label: 'Median', groups: [['Median', medRec]] }] : []),
-    ];
+    const splits = splitGroups(m).map(g => ({ label: g.label, groups: g.parts }));
     const rc = buildPlayerRecap(recapInput(m.ctx));
     return {
         week: m.ctx.week, final: m.final, statusHTML: weekStatusMarkup(m.final),
@@ -623,6 +631,7 @@ export function scoreboardSummary() {
         mvps: rc.mvps.map(r => ({ name: r.name, pos: r.pos, started: r.started, own: r.own, value: rc.scale ? fmt(r.ref) : pointsRange(r) })),
         lvps: rc.lvps.map(r => ({ name: r.name, pos: r.pos, started: r.started, own: r.own, value: rc.scale ? fmt(r.ref) : pointsRange(r) })),
         scaleLabel: rc.scale ? RECAP_SCALES[rc.scale].label : null,
+        single: rc.leagueCount === 1,
         leagueCount: m.listed.length,
     };
 }
@@ -784,22 +793,25 @@ function extraItem(title, note, items) {
 const playerItem = (r, detail) => `${escapeHtml(r.name)} <span class="mls-week-pos">${escapeHtml(r.pos)}</span>${detail ? ` · ${detail}` : ''}`;
 const leaguesText = (k) => `${k} league${k === 1 ? '' : 's'}`;
 
-function recapTable(kind, rows, week, scale) {
+function recapTable(kind, rows, week, scale, single = false) {
     // The third column (round 8): each player's points on the verdict's scale ("Half PPR"), the one number that made him
     // an MVP or LVP; without a verdict, how many of his leagues he boomed or busted in where you started him.
     const third = scale ? RECAP_SCALES[scale].label : (kind === 'mvp' ? 'Boomed' : 'Busted');
     const thirdValue = (r) => scale ? fmt(r.ref) : `${kind === 'mvp' ? r.startedBoomed : r.startedBusted} of ${r.own}`;
-    const cols = [['player', 'Player'], ['own', 'Own'], ['verdict', third], ['pts', 'Pts'], ['started', 'Started']];
+    // With one league counted, Own and Started would read "100% (1)" on every row (round 10): left out.
+    const keep = (cls) => !single || (cls !== 'own' && cls !== 'started');
+    const cols = [['player', 'Player'], ['own', 'Own'], ['verdict', third], ['pts', 'Pts'], ['started', 'Started']].filter(([cls]) => keep(cls));
     const all = recapView.allWeek[kind] === week;
     const shown = all ? rows : rows.slice(0, RECAP_ROWS);
     const cell = (cls, label, html) => `<span class="mls-recap-cell mls-recap-${cls}" role="cell"><span class="mls-recap-cell-label">${label} </span>${html}</span>`;
     const row = (r) => `<li class="mls-recap-row${r.partial ? ' is-partial' : ''}" role="row">${[
-        cell('player', '', recapName(r)), cell('own', 'Own', ownText(r)), cell('verdict', third, thirdValue(r)),
-        cell('pts', 'Pts', pointsRange(r)), cell('started', 'Started', startedText(r)),
-    ].join('')}</li>`;
+        ['player', () => cell('player', '', recapName(r))], ['own', () => cell('own', 'Own', ownText(r))],
+        ['verdict', () => cell('verdict', third, thirdValue(r))], ['pts', () => cell('pts', 'Pts', pointsRange(r))],
+        ['started', () => cell('started', 'Started', startedText(r))],
+    ].filter(([cls]) => keep(cls)).map(([, draw]) => draw()).join('')}</li>`;
     const head = `<li class="mls-recap-row mls-recap-headrow" role="row">${cols.map(([cls, label]) => `<span class="mls-recap-cell mls-recap-${cls}" role="columnheader">${label}</span>`).join('')}</li>`;
     const more = shown.length < rows.length ? `<button type="button" class="btn-bare mls-week-show-all" data-action="showAllRecap" data-list="${kind}">Show all ${rows.length}</button>` : '';
-    return `<ol class="mls-recap-table is-${kind}" role="table" aria-label="${kind === 'mvp' ? 'MVPs' : 'LVPs'}">${head}${shown.map(row).join('')}</ol>${more}`;
+    return `<ol class="mls-recap-table is-${kind}${single ? ' is-single' : ''}" role="table" aria-label="${kind === 'mvp' ? 'MVPs' : 'LVPs'}">${head}${shown.map(row).join('')}</ol>${more}`;
 }
 
 function recapHTML(m) {
@@ -815,33 +827,32 @@ function recapHTML(m) {
     // What the columns mean, in an (i) beside MVPs (owner, round 5: as a paragraph it took five lines on a phone before
     // the table; the Scoreboard's own helper text moved into its header's tip in S21 round 11).
     const scaleLabel = rc.scale ? RECAP_SCALES[rc.scale].label : null;
+    // Three short lines (round 10: five paragraphs filled a phone screen).
+    const single = rc.leagueCount === 1;
     const tip = [
-        `Your ${leaguesText(rc.leagueCount)} on Sleeper${offSleeper ? ' (manual leagues have no points, so they aren\'t counted)' : ''}.`,
         scaleLabel
-            ? `<strong>${scaleLabel}:</strong> his points for the week in ${scaleLabel} from Sleeper's stats (4-point passing TDs). Boom and Bust are judged on this one number, the same in every league, so full PPR, TE premium or 6-point TDs don't make a line easier to reach. <strong>Pts:</strong> what he scored in your leagues, each in its own scoring.`
-            : '<strong>Boomed / Busted:</strong> Sleeper\'s week stats didn\'t load, so each league\'s own points are judged against the lines, in the leagues where you started him. <strong>Pts:</strong> what he scored in your leagues, each in its own scoring.',
-        '<strong>Own:</strong> leagues with him on your roster, bench included. <strong>Started:</strong> of those, where you started him (in Best Ball, where Sleeper sets the lineup after the games, the lineup it would pick from the points so far).',
-        '<strong>MVPs:</strong> at or above his Boom line, and started in at least one league. <strong>LVPs:</strong> under his Bust line, started in at least one league, once his game is final.',
-        `<strong>Boom / Bust${scaleLabel ? ` (${scaleLabel})` : ''}:</strong> ${['QB', 'RB', 'WR', 'TE'].map(p => `${p} ${lines[p].boom} / ${lines[p].bust}`).join(', ')}. Change them, and the scale, in Advanced Settings on the Dashboard. No K or DEF.`,
+            ? `<strong>${scaleLabel}:</strong> his points this week from Sleeper's stats, the one number Boom and Bust are judged on, the same in every league. <strong>Pts:</strong> what he scored in ${single ? 'your league' : 'your leagues, each in its own scoring'}.`
+            : `<strong>Boomed / Busted:</strong> Sleeper's week stats didn't load, so ${single ? 'your league\'s' : 'each league\'s'} own points are judged. <strong>Pts:</strong> what he scored.`,
+        ...(single ? [] : [`<strong>Own:</strong> of your ${leaguesText(rc.leagueCount)} on Sleeper${offSleeper ? ' (manual ones aren\'t counted)' : ''}, those with him on your roster. <strong>Started:</strong> of those, where you started him (Best Ball: the lineup it would pick so far).`]),
+        `<strong>MVPs</strong> reached their Boom line, <strong>LVPs</strong> finished under Bust (games over), started either way. Lines${scaleLabel ? ` (${scaleLabel})` : ''}: ${['QB', 'RB', 'WR', 'TE'].map(p => `${p} ${lines[p].boom} / ${lines[p].bust}`).join(', ')}; change them in Advanced Settings. No K or DEF.`,
     ].join('<br><br>');
     parts.push(`<div class="mls-recap-subhead"><h4 class="mls-week-sub mls-recap-sub">MVPs</h4><span class="tooltip-container mls-week-info mls-recap-info"><span class="tooltip-icon">i</span><span class="tooltip-text">${tip}</span></span></div>`);
-    parts.push(rc.mvps.length ? recapTable('mvp', rc.mvps, ctx.week, rc.scale) : `<p class="text-helper">No MVPs${m.final ? '' : ' yet'}: nobody you started has reached his Boom line.</p>`);
+    parts.push(rc.mvps.length ? recapTable('mvp', rc.mvps, ctx.week, rc.scale, rc.leagueCount === 1) : `<p class="text-helper">No MVPs${m.final ? '' : ' yet'}: nobody you started has reached his Boom line.</p>`);
     if (rc.partial.length) {
         parts.push(`<p class="mls-recap-note"><strong>Partial boom:</strong> ${rc.partial.slice(0, RECAP_NAMES).map(r => `${escapeHtml(r.name)} <span class="mls-week-pos">${escapeHtml(r.pos)}</span> boomed in ${r.boomed} of ${r.own} (${pointsRange(r)}), likely that league's scoring`).join('; ')}.</p>`);
     }
     parts.push(`<h4 class="mls-week-sub mls-recap-sub">LVPs</h4>`);
-    parts.push(rc.lvps.length ? recapTable('lvp', rc.lvps, ctx.week, rc.scale) : `<p class="text-helper">No LVPs${m.final ? '' : ' yet'}: nobody you started, whose game is final, is under his Bust line.</p>`);
+    parts.push(rc.lvps.length ? recapTable('lvp', rc.lvps, ctx.week, rc.scale, rc.leagueCount === 1) : `<p class="text-helper">No LVPs${m.final ? '' : ' yet'}: nobody you started, whose game is final, is under his Bust line.</p>`);
 
     const extra = [];
-    if (rc.benchBooms.length) extra.push(extraItem('Boomed on your bench', 'Not MVPs: you didn\'t start them where they boomed.', rc.benchBooms.map(r => playerItem(r, rc.scale ? `${fmt(r.ref)} ${RECAP_SCALES[rc.scale].label} · benched in ${leaguesText(r.own)}` : `${pointsRange(r)} in ${leaguesText(r.boomed)}`))));
+    // Benched booms (round 10): one list. A benching that cost you, with the starter he could have replaced (round 7's
+    // short form: the league last, muted); then a boom on your bench with no such cost.
+    const costItem = (b) => `${escapeHtml(b.bench.name)} <span class="mls-week-pos">${escapeHtml(b.bench.pos)}</span> ${fmt(b.bench.points)} over ${escapeHtml(b.starter.name)} <span class="mls-week-pos">${escapeHtml(b.starter.pos)}</span>${b.starter.slot && b.starter.slot !== b.starter.pos ? ` in ${escapeHtml(slotLabel(b.starter.slot))}` : ''} ${fmt(b.starter.points)} (${signed(-b.gap)}) <span class="mls-recap-league">· ${escapeHtml(b.league.name)}</span>`;
+    const boomItem = (r) => playerItem(r, rc.scale ? `${fmt(r.ref)} ${RECAP_SCALES[rc.scale].label} · benched in ${leaguesText(r.own)}` : `${pointsRange(r)} in ${leaguesText(r.boomed)}`);
+    if (rc.benchedBooms.length) extra.push(extraItem('Benched booms', 'Booms you left on the bench; where a starter he could have replaced scored far less, by how much.', rc.benchedBooms.map(b => b.kind === 'cost' ? costItem(b) : boomItem(b.row))));
     if (rc.startedZeros.length) extra.push(extraItem('Started zeros', '0.0 usually means he didn\'t play; the app can\'t check that.', rc.startedZeros.map(r => playerItem(r, leaguesText(r.zeroIn)))));
     if (rc.deadWeight.length) extra.push(extraItem('Dead weight', '', rc.deadWeight.map(r => playerItem(r, `on ${r.own} benches, 0.0`))));
     if (rc.stillOpen.length) extra.push(extraItem('Still open', 'Their games aren\'t final, so they could land on either list.', rc.stillOpen.map(r => playerItem(r, leaguesText(r.own)))));
-    if (rc.worstBenchings.length) {
-        // Shorter (owner, round 7: three lines each on a phone): the heading already says he was benched, and the
-        // league goes last, muted. "Tee Higgins WR 26.8 over Nico Collins WR 2.6 (−24.2) · May the Receptions Be With You"
-        extra.push(extraItem('Worst benchings', '', rc.worstBenchings.map(b => `${escapeHtml(b.bench.name)} <span class="mls-week-pos">${escapeHtml(b.bench.pos)}</span> ${fmt(b.bench.points)} over ${escapeHtml(b.starter.name)} <span class="mls-week-pos">${escapeHtml(b.starter.pos)}</span>${b.starter.slot && b.starter.slot !== b.starter.pos ? ` in ${escapeHtml(slotLabel(b.starter.slot))}` : ''} ${fmt(b.starter.points)} (${signed(-b.gap)}) <span class="mls-recap-league">· ${escapeHtml(b.league.name)}</span>`)));
-    }
     if (rc.unresolved.length) {
         const big = rc.unresolved.filter(u => u.boomLevel);
         extra.push(`<li><strong>Not in Sleeper's player map:</strong> ${rc.unresolved.length} player${rc.unresolved.length === 1 ? '' : 's'}, left out${big.length ? `; ${big.map(u => `id ${escapeHtml(u.id)} scored ${fmt(u.max)} (a Boom-level number) in ${u.leagues.filter(x => x.points === u.max).map(x => escapeHtml(x.name)).slice(0, 1).join('')}`).join('; ')}` : ''}.</li>`);

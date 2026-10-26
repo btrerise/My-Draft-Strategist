@@ -6565,3 +6565,29 @@ single Sleeper league (the fixture league alone, mid-Sunday). Nothing built this
 4. **One league: "Worst loss" repeats the only tile** right above it. Suggestion: Biggest win / Worst loss only with two
    or more head-to-head matchups.
 5. Seen in passing, S21's area: the splits show "Dynasty 0–0" to someone with no dynasty league.
+
+### S22, round 10: the third pass's five points, all built (owner: "Do 1-5")
+
+1. **Benched booms, one list.** "Boomed on your bench" and "Worst benchings" named the same player (Tony Pollard on
+   both). `benchedBooms` (week/playerRecap.js): each costly benching with its cost, largest first ("Tony Pollard RB 35.0
+   over Malik Nabers WR in FLEX 14.6 (−20.4) · League of Ordinary Gentlemen"), then bench booms with no costly benching
+   ("Rhamondre Stevenson RB · 20.0 Half PPR · benched in 1 league"). Three bullets, then "and N more".
+2. **The (i) beside MVPs in three short lines**: Half PPR and Pts; Own and Started (with Best Ball in a clause); MVPs /
+   LVPs and the lines.
+3. **One league: no Own or Started columns** (`.is-single`: Player | Half PPR | Pts), no Own / Started line in the tip,
+   and no "started 1 of 1" in the image. Also applies when only one league's matchups loaded.
+4. **Biggest win / Worst loss only with two or more head-to-head matchups** that count (with one, it repeated the tile).
+5. **No empty split parts** (S21's area, owner agreed): `splitGroups` (week/thisWeek.js, used by the Scoreboard and the
+   image) leaves out Paid, Free, Redraft or Dynasty when you have no head-to-head league of that kind, and a group with
+   no parts. A kind you have that's too early to call keeps its "0–0" (S21's spec checks that case).
+
+**Tests.** Unit (450): `benchedBooms` (a cost, then a boom without one); the image without "started" for one league.
+Spec: the merged list (St. Brown once, with his cost), the three-line tip, and a one-league test (only "Redraft 0–1", no
+extremes, Player | Half PPR | Pts, no Own in the tip); the failed-league test now expects the one-league table.
+
+**Checked with the owner's 21 leagues** (Monday of week 7, live, no app errors): Benched booms lists Tee Higgins (−24.2),
+Tony Pollard (−20.4, once) and Luther Burden III (−15.4), "and 2 more"; the (i) fits well inside a phone screen.
+
+**Checks (round 10).** check-precache OK; 450 unit tests pass; Playwright 539 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message. Screenshots vs. main: the same six (Guide PNGs now desktop 1280×8122, phone
+390×18492), the other 36 identical. Still to take from CI.

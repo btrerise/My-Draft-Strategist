@@ -256,3 +256,14 @@ test('with a verdict: a bench boom by its points makes a worst benching', () => 
     const r = recap([lg('a', { lamb: 19, chase: 6 }, ['chase'])], { verdict: { points: { lamb: 20.5, chase: 5.5 } } });
     assert.deepEqual(r.worstBenchings.map(b => [b.bench.id, b.bench.points, b.starter.id, b.gap]), [['lamb', 19, 'chase', 13]]);
 });
+
+test('benched booms: one list, a costly benching with its cost, then bench booms without one (round 10)', () => {
+    // Lamb boomed on the bench in a (Chase started there with 6: a costly benching) and b (no WR starter: no cost);
+    // Pollard-style: Henry boomed on the bench in c, where no RB started, so he's listed without a cost.
+    const r = recap([
+        lg('a', { lamb: 25, chase: 6 }, ['chase']),
+        lg('b', { lamb: 22 }, []),
+        lg('c', { henry: 21 }, []),
+    ]);
+    assert.deepEqual(r.benchedBooms.map(b => b.kind === 'cost' ? `cost:${b.bench.id}:${b.league.id}` : `boom:${b.row.id}`), ['cost:lamb:a', 'boom:henry']);
+});

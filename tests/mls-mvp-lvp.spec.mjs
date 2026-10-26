@@ -102,8 +102,10 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
 
         await openRecap(page);
         // What the columns mean is in the (i) beside MVPs (round 5), not a paragraph above the table.
-        await expect(section(page).locator('.mls-recap-info .tooltip-text')).toContainText('Your 2 leagues on Sleeper.');
-        await expect(section(page).locator('.mls-recap-info .tooltip-text')).toContainText('Boom and Bust are judged on this one number, the same in every league');
+        await expect(section(page).locator('.mls-recap-info .tooltip-text')).toContainText('Own: of your 2 leagues on Sleeper');
+        await expect(section(page).locator('.mls-recap-info .tooltip-text')).toContainText('the one number Boom and Bust are judged on, the same in every league');
+        // Three short lines (round 10), not five paragraphs.
+        expect(await section(page).locator('.mls-recap-info .tooltip-text').evaluate(el => el.innerHTML.split('<br><br>').length)).toBe(3);
         await expect(section(page).locator('.mls-recap-intro')).toHaveCount(0);
         // MVPs (round 8): Allen 25.0 and Chase 21.0 in half PPR, both started in 2 of 2. Lamb scored 25.0 in Second Fixture
         // League's own scoring but 18.0 in half PPR, so he isn't one; nor is Henry (22.0 there, 18.0 in half PPR).
@@ -124,7 +126,7 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         // A bullet each, three of them, then "and N more" (owner, round 3).
         await expect(extra.filter({ hasText: 'Still open' }).locator('li')).toHaveText(['Justin Jefferson WR · 2 leagues', 'Garrett Wilson WR · 2 leagues', 'George Kittle TE · 2 leagues', 'and 2 more']);
         await expect(extra.filter({ hasText: 'Started zeros' })).toHaveCount(0);
-        await expect(extra.filter({ hasText: 'Worst benchings' })).toHaveCount(0);
+        await expect(extra.filter({ hasText: 'Benched booms' })).toHaveCount(0);
         await expect(section(page)).toContainText('Provisional until the week\'s last game is final.');
 
         // Open survives a reload.
@@ -150,10 +152,12 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         const extra = section(page).locator('.mls-recap-extra > li');
         await expect(extra.filter({ hasText: 'Started zeros' })).toContainText('Brock Bowers TE · 1 league');
         await expect(extra.filter({ hasText: 'Started zeros' })).toContainText("the app can't check that");
-        await expect(extra.filter({ hasText: 'Boomed on your bench' })).toContainText('Amon-Ra St. Brown WR · 21.0 Half PPR · benched in 2 leagues');
+        // One list since round 10 (St. Brown was on both "Boomed on your bench" and "Worst benchings"): his benching with
+        // what it cost, once.
         // The league's slot order is saved at sync (round 2), so the benching names the slot when it's a flex (round 4: "(WR)"
         // for a WR slot read as his position): Lamb was in the FLEX.
-        await expect(extra.filter({ hasText: 'Worst benchings' })).toContainText('Amon-Ra St. Brown WR 24.0 over CeeDee Lamb WR in FLEX 8.0 (−16.0) · Second Fixture League');
+        await expect(extra.filter({ hasText: 'Benched booms' }).locator('li')).toHaveText(['Amon-Ra St. Brown WR 24.0 over CeeDee Lamb WR in FLEX 8.0 (−16.0) · Second Fixture League']);
+        await expect(extra.filter({ hasText: /Boomed on your bench|Worst benchings/ })).toHaveCount(0);
         // Headings as written, not in capitals (round 7).
         expect(await section(page).locator('.mls-recap-sub').evaluateAll(hs => hs.map(h => h.innerText))).toEqual(['MVPs', 'LVPs']);
         const slots = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_leagues')).map(l => l.starterSlots));
@@ -182,8 +186,9 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
     test('a league that fails to load is left out of the ownership count', async ({ page }) => {
         const state = await setup(page, { league2: 'fail' });
         await openRecap(page);
-        await expect(section(page)).toContainText('Your 1 league on Sleeper');
-        expect(await cells(rowsOf(page, 'mvp').first())).toEqual(['Josh Allen QB', '100% (1)', '25.0', '22.0', '100% (1)']);
+        // One league counted, so the one-league table (round 10): no Own or Started.
+        expect(await cells(rowsOf(page, 'mvp').first())).toEqual(['Josh Allen QB', '25.0', '22.0']);
+        await expect(section(page).locator('.mls-recap-table.is-single')).toHaveCount(1);
         await expectClean(page, state);
     });
 
@@ -342,8 +347,8 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await openRecap(page);
         const asb = rowsOf(page, 'mvp').filter({ hasText: 'Amon-Ra St. Brown' });
         expect(await cells(asb)).toEqual(['Amon-Ra St. Brown WR', '100% (2)', '21.0', '0.0–24.0', '50% (1)']);
-        await expect(section(page).locator('.mls-recap-extra > li').filter({ hasText: 'Boomed on your bench' })).toHaveCount(0);
-        await expect(section(page).locator('.mls-recap-extra > li').filter({ hasText: 'Worst benchings' })).toHaveCount(0);
+        // Best Ball counted his 24.0 (started), and its benchings are never costly: nothing benched.
+        await expect(section(page).locator('.mls-recap-extra > li').filter({ hasText: 'Benched booms' })).toHaveCount(0);
         await expectClean(page, state);
     });
 
@@ -355,6 +360,25 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await expect(rowsOf(page, 'mvp').locator('.mls-recap-name')).toHaveText(["Ja'Marr Chase WR", 'Josh Allen QB', 'CeeDee Lamb WR', 'Derrick Henry RB']);
         expect(await cells(rowsOf(page, 'mvp').first())).toEqual(["Ja'Marr Chase WR", '100% (2)', '2 of 2', '20.0–25.0', '100% (2)']);
         await expect(section(page).locator('.mls-recap-extra > li').filter({ hasText: "Week stats didn't load" })).toHaveCount(1);
+        await expectClean(page, state);
+    });
+
+    // Round 10, from the one-league look: no Own or Started columns, no Biggest win / Worst loss (it repeated the only
+    // tile), no "Dynasty 0–0" for someone with no dynasty league, no "started 1 of 1" in the image.
+    test('one league: no Own or Started, no extremes, no empty Dynasty split', async ({ page }) => {
+        await page.clock.setFixedTime(SUNDAY);
+        const state = await openApp(page, '/lineup/');
+        await page.clock.setFixedTime(SUNDAY);
+        await routeWeek(page, {});
+        await seedMls(page);
+        await showTab(page, 'scoreboard');
+        await expect(page.locator('#thisWeekCard .mls-week-tile')).toHaveCount(1);
+        await expect(page.locator('#thisWeekCard .mls-week-split')).toHaveText(['Redraft 0–1']);
+        await expect(page.locator('#thisWeekCard .mls-week-extremes')).toHaveCount(0);
+        await openRecap(page);
+        await expect(section(page).locator('.mls-recap-table.is-mvp .mls-recap-headrow .mls-recap-cell')).toHaveText(['Player', 'Half PPR', 'Pts']);
+        expect(await cells(rowsOf(page, 'mvp').first())).toEqual(['Josh Allen QB', '25.0', '22.0']);
+        await expect(section(page).locator('.mls-recap-info .tooltip-text')).not.toContainText('Own:');
         await expectClean(page, state);
     });
 

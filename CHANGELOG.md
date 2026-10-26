@@ -95,7 +95,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   and lost your week across your Sleeper leagues, from your weekly recap: MVPs (at or above their position's Boom line
   in at least one league) and LVPs (under the Bust line once their game is final), each with how many of your leagues
   own him ("26% (5)"), his points as a range, and how often you started him. Then one line each for started zeros,
-  dead weight on your benches, players whose games aren't final yet, and your worst benchings (outside Best Ball).
+  dead weight on your benches, players whose games aren't final yet, and your benched booms, each with what it cost where a starter you could
+  have swapped in scored far less (outside Best Ball). With one league, the tables leave out Own and Started.
   Provisional until the week's last game is final. An MVP has to have boomed in a league where you started him, and
   Started shows the share of the leagues that own him where he started ("67% (4)"); a boom only on your bench gets its
   own line. An LVP has to have busted in a league where you started him (bench zeros are dead weight), and Boomed counts
@@ -109,8 +110,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Best Ball scores that count.** During the week Sleeper shows a Best Ball team's score as the lineup it was left
   with, though the best lineup is what will count. The Scoreboard now scores both sides of a Best Ball matchup by the
   lineup Best Ball would pick from the points so far (after the league's next sync).
-- **Biggest win and worst loss.** Under the Scoreboard's record, the week's biggest win and worst loss among the
-  matchups already settled, each opening that league's lineup.
+- **Biggest win and worst loss.** Under the Scoreboard's record, with two or more leagues, the week's biggest win and
+  worst loss among the matchups already settled, each opening that league's lineup.
+- **No empty splits.** The record's Paid / Free and Redraft / Dynasty groups leave out a kind you have no league of
+  (no more "Dynasty 0–0" without a dynasty league).
 - **Share your week.** Export Recap at the bottom of the Scoreboard saves one summary image for a group chat, however
   many leagues you're in: your record and splits and the top three MVPs and LVPs, without naming your leagues.
 - **Your own Boom / Bust lines.** Advanced Settings on the Dashboard has "MVP / LVP Lines" (QB 24 / 12, RB 20 / 7,
