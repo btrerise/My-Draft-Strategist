@@ -6611,3 +6611,18 @@ Put to the owner as optional: (1) in the image, the MVPs follow the table's orde
 sits below two 22s, which may look unsorted to someone who doesn't know the rule; (2) a player with costly benchings in
 two leagues is listed twice under Benched booms (Jaylin Noel, Full PPR), as designed in round 10; grouping them per player
 is possible.
+
+### S22, round 12: one Benched booms line per player; the pull request
+
+The owner's answers to round 11: (1) not needed (the image's "started 6 of 6" explains the order); (2) yes. Benched
+booms now groups a player's costly benchings into one line, largest cost first among players, each league's benching
+after his name: "Jaylin Noel WR 25.4 over Brian Thomas Jr. WR 0.0 (−25.4) · Fantasy Leftovers; 22.2 over Jaleel
+McLaughlin RB in FLEX 7.5 (−14.7) · Apex Dynasty League". Bench booms with no costly benching follow, as before.
+`benchedBooms` entries of kind 'cost' carry `costs: [{ league, points, starter, gap }]` and the player's largest `gap`.
+Unit test: a player costly in two leagues is one entry with both, largest first, ahead of a plain bench boom.
+
+Then, at the owner's word ("this only turned up two small things"), the pull request, to let CI render the six
+screenshots.
+
+**Checks (round 12).** check-precache OK; 451 unit tests pass; Playwright 539 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message. Screenshots: the same six as round 10 (no layout or Guide change this round).

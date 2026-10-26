@@ -253,13 +253,20 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
         });
     });
     worstBenchings.sort((a, b) => b.gap - a.gap);
-    // Benched booms (round 10, owner: Tony Pollard was on both lists): one list, each benching with what it cost (most
-    // first), then any bench boom with no costly benching (no starter he could have replaced scored far less, or Best
-    // Ball). A player benched in two leagues with a cost in each appears for each.
-    const costed = new Set(worstBenchings.map(b => b.bench.id));
+    // Benched booms (round 10, owner: Tony Pollard was on both lists): one list, each player with what his benchings cost
+    // (largest first; round 12: one line per player, each league's benching in it, where round 10 listed a player benched
+    // in two leagues twice), then any bench boom with no costly benching (no starter he could have replaced scored far
+    // less, or Best Ball).
+    const byPlayer = new Map();
+    worstBenchings.forEach(b => {
+        const g = byPlayer.get(b.bench.id) || { kind: 'cost', bench: { id: b.bench.id, name: b.bench.name, pos: b.bench.pos }, costs: [], gap: 0 };
+        g.costs.push({ league: b.league, points: b.bench.points, starter: b.starter, gap: b.gap });
+        g.gap = Math.max(g.gap, b.gap);
+        byPlayer.set(b.bench.id, g);
+    });
     const benchedBooms = [
-        ...worstBenchings.map(b => ({ kind: 'cost', ...b })),
-        ...benchBooms.filter(r => !costed.has(r.id)).map(r => ({ kind: 'boom', row: r })),
+        ...[...byPlayer.values()].sort((a, b) => b.gap - a.gap),
+        ...benchBooms.filter(r => !byPlayer.has(r.id)).map(r => ({ kind: 'boom', row: r })),
     ];
 
     // Best Ball (round 3): say that Started there is the lineup it would pick now, when a listed player has a Best Ball

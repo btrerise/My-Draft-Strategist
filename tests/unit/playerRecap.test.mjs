@@ -265,5 +265,20 @@ test('benched booms: one list, a costly benching with its cost, then bench booms
         lg('b', { lamb: 22 }, []),
         lg('c', { henry: 21 }, []),
     ]);
-    assert.deepEqual(r.benchedBooms.map(b => b.kind === 'cost' ? `cost:${b.bench.id}:${b.league.id}` : `boom:${b.row.id}`), ['cost:lamb:a', 'boom:henry']);
+    assert.deepEqual(r.benchedBooms.map(b => b.kind === 'cost' ? `cost:${b.bench.id}:${b.costs.map(c => c.league.id)}` : `boom:${b.row.id}`), ['cost:lamb:a', 'boom:henry']);
+});
+
+test('benched booms: one entry per player, his costly benchings in each league inside it, largest first (round 12)', () => {
+    // Lamb benched with a cost in a (19 over Chase's 6) and b (25 over Nacua's 2). Henry boomed on c's bench, but the
+    // only starter there is a QB, so no cost: he's a plain bench boom, after the costed ones.
+    const r = recap([
+        lg('a', { lamb: 19, chase: 6 }, ['chase']),
+        lg('b', { lamb: 25, nacua: 2 }, ['nacua']),
+        lg('c', { henry: 22, allen: 0 }, ['allen']),
+    ], { verdict: { points: { lamb: 21, chase: 5, nacua: 1, henry: 21 } } });
+    const lamb = r.benchedBooms.find(b => b.kind === 'cost' && b.bench.id === 'lamb');
+    assert.deepEqual(lamb.costs.map(c => [c.league.id, c.gap]), [['b', 23], ['a', 13]]);
+    assert.equal(r.benchedBooms.filter(b => b.kind === 'cost' && b.bench.id === 'lamb').length, 1);
+    assert.equal(r.benchedBooms[0].bench.id, 'lamb'); // his largest cost (23) leads
+    assert.deepEqual(r.benchedBooms.map(b => b.kind), ['cost', 'boom']);
 });

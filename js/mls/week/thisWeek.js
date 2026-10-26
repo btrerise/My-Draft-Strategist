@@ -847,7 +847,9 @@ function recapHTML(m) {
     const extra = [];
     // Benched booms (round 10): one list. A benching that cost you, with the starter he could have replaced (round 7's
     // short form: the league last, muted); then a boom on your bench with no such cost.
-    const costItem = (b) => `${escapeHtml(b.bench.name)} <span class="mls-week-pos">${escapeHtml(b.bench.pos)}</span> ${fmt(b.bench.points)} over ${escapeHtml(b.starter.name)} <span class="mls-week-pos">${escapeHtml(b.starter.pos)}</span>${b.starter.slot && b.starter.slot !== b.starter.pos ? ` in ${escapeHtml(slotLabel(b.starter.slot))}` : ''} ${fmt(b.starter.points)} (${signed(-b.gap)}) <span class="mls-recap-league">· ${escapeHtml(b.league.name)}</span>`;
+    // One line per player (round 12): each league's benching after his name, "; " between them.
+    const costPart = (c) => `${fmt(c.points)} over ${escapeHtml(c.starter.name)} <span class="mls-week-pos">${escapeHtml(c.starter.pos)}</span>${c.starter.slot && c.starter.slot !== c.starter.pos ? ` in ${escapeHtml(slotLabel(c.starter.slot))}` : ''} ${fmt(c.starter.points)} (${signed(-c.gap)}) <span class="mls-recap-league">· ${escapeHtml(c.league.name)}</span>`;
+    const costItem = (b) => `${escapeHtml(b.bench.name)} <span class="mls-week-pos">${escapeHtml(b.bench.pos)}</span> ${b.costs.map(costPart).join('; ')}`;
     const boomItem = (r) => playerItem(r, rc.scale ? `${fmt(r.ref)} ${RECAP_SCALES[rc.scale].label} · benched in ${leaguesText(r.own)}` : `${pointsRange(r)} in ${leaguesText(r.boomed)}`);
     if (rc.benchedBooms.length) extra.push(extraItem('Benched booms', 'Booms you left on the bench; where a starter he could have replaced scored far less, by how much.', rc.benchedBooms.map(b => b.kind === 'cost' ? costItem(b) : boomItem(b.row))));
     if (rc.startedZeros.length) extra.push(extraItem('Started zeros', '0.0 usually means he didn\'t play; the app can\'t check that.', rc.startedZeros.map(r => playerItem(r, leaguesText(r.zeroIn)))));
