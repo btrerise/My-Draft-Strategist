@@ -6591,3 +6591,23 @@ Tony Pollard (−20.4, once) and Luther Burden III (−15.4), "and 2 more"; the 
 **Checks (round 10).** check-precache OK; 450 unit tests pass; Playwright 539 passed, 5 skipped, only `visual.spec.mjs`
 stopping on the environment message. Screenshots vs. main: the same six (Guide PNGs now desktop 1280×8122, phone
 390×18492), the other 36 identical. Still to take from CI.
+
+### S22, round 11: a fourth user-hat pass (a finished week, the scale switch, the keyboard)
+
+New angles, with the owner's 21 leagues on a phone: week 6 through `?week=6` (every game final), MVP / LVP Lines switched
+to Full PPR, and the folds from the keyboard. No app errors; nothing built.
+- **Week 6 as a final recap reads well**: Final pill, Record 14–6, Biggest win (Friday Night Beverages +68.7) and Worst
+  loss (Dynasty Bosses −53.8), 15 MVPs led by Bhayshul Tuten and Malik Nabers (started 6 of 6), 38 LVPs led by Charlie
+  Kolar (3.5), Benched booms (Tyler Shough QB 34.4 over Brock Purdy in SFLEX, −12.4), "Every game is final" at the foot;
+  the image has no "still live" and no "provisional".
+- **Best Ball scores checked against Sleeper**: once a week is over Sleeper's own scores are the settled best lineups.
+  All seven of the owner's Best Ball leagues match the Scoreboard's re-scoring (BB Ying Dynasty: 159.95 in Sleeper, shown
+  as 160.0 to one decimal like every score on the card).
+- **Full PPR** changes the column ("Full PPR"), the numbers and the lists as expected (20 MVPs, 30 LVPs; DK Metcalf an
+  MVP on 20.3).
+- **Keyboard**: Enter and Space both fold and unfold (`aria-expanded` follows).
+
+Put to the owner as optional: (1) in the image, the MVPs follow the table's order (starts first), so Tyler Shough's 27.0
+sits below two 22s, which may look unsorted to someone who doesn't know the rule; (2) a player with costly benchings in
+two leagues is listed twice under Benched booms (Jaylin Noel, Full PPR), as designed in round 10; grouping them per player
+is possible.
