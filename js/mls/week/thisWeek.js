@@ -805,12 +805,12 @@ function recapHTML(m) {
         '<strong>MVPs:</strong> at or above his Boom line in a league where you started him; <strong>Boomed</strong> counts those leagues. <strong>LVPs:</strong> under his Bust line where you started him, once his game is final.',
         `<strong>Boom / Bust:</strong> ${['QB', 'RB', 'WR', 'TE'].map(p => `${p} ${lines[p].boom} / ${lines[p].bust}`).join(', ')}. Change them in Advanced Settings on the Dashboard. No K or DEF.`,
     ].join('<br><br>');
-    parts.push(`<div class="mls-recap-subhead"><h4 class="mls-week-sub">MVPs</h4><span class="tooltip-container mls-week-info mls-recap-info"><span class="tooltip-icon">i</span><span class="tooltip-text">${tip}</span></span></div>`);
+    parts.push(`<div class="mls-recap-subhead"><h4 class="mls-week-sub mls-recap-sub">MVPs</h4><span class="tooltip-container mls-week-info mls-recap-info"><span class="tooltip-icon">i</span><span class="tooltip-text">${tip}</span></span></div>`);
     parts.push(rc.mvps.length ? recapTable('mvp', rc.mvps, ctx.week) : `<p class="text-helper">No MVPs${m.final ? '' : ' yet'}: nobody you started has reached his Boom line.</p>`);
     if (rc.partial.length) {
         parts.push(`<p class="mls-recap-note"><strong>Partial boom:</strong> ${rc.partial.slice(0, RECAP_NAMES).map(r => `${escapeHtml(r.name)} <span class="mls-week-pos">${escapeHtml(r.pos)}</span> boomed in ${r.boomed} of ${r.own} (${pointsRange(r)}), likely that league's scoring`).join('; ')}.</p>`);
     }
-    parts.push(`<h4 class="mls-week-sub">LVPs</h4>`);
+    parts.push(`<h4 class="mls-week-sub mls-recap-sub">LVPs</h4>`);
     parts.push(rc.lvps.length ? recapTable('lvp', rc.lvps, ctx.week) : `<p class="text-helper">No LVPs${m.final ? '' : ' yet'}: nobody you started, whose game is final, is under his Bust line.</p>`);
 
     const extra = [];
@@ -819,7 +819,9 @@ function recapHTML(m) {
     if (rc.deadWeight.length) extra.push(extraItem('Dead weight', '', rc.deadWeight.map(r => playerItem(r, `on ${r.own} benches, 0.0`))));
     if (rc.stillOpen.length) extra.push(extraItem('Still open', 'Their games aren\'t final, so they could land on either list.', rc.stillOpen.map(r => playerItem(r, leaguesText(r.own)))));
     if (rc.worstBenchings.length) {
-        extra.push(extraItem('Worst benchings', '', rc.worstBenchings.map(b => `${escapeHtml(b.bench.name)} <span class="mls-week-pos">${escapeHtml(b.bench.pos)}</span> ${fmt(b.bench.points)} on your bench in ${escapeHtml(b.league.name)}, over ${escapeHtml(b.starter.name)} <span class="mls-week-pos">${escapeHtml(b.starter.pos)}</span>${b.starter.slot && b.starter.slot !== b.starter.pos ? ` in ${escapeHtml(slotLabel(b.starter.slot))}` : ''} ${fmt(b.starter.points)} (${signed(-b.gap)})`)));
+        // Shorter (owner, round 7: three lines each on a phone): the heading already says he was benched, and the
+        // league goes last, muted. "Tee Higgins WR 26.8 over Nico Collins WR 2.6 (−24.2) · May the Receptions Be With You"
+        extra.push(extraItem('Worst benchings', '', rc.worstBenchings.map(b => `${escapeHtml(b.bench.name)} <span class="mls-week-pos">${escapeHtml(b.bench.pos)}</span> ${fmt(b.bench.points)} over ${escapeHtml(b.starter.name)} <span class="mls-week-pos">${escapeHtml(b.starter.pos)}</span>${b.starter.slot && b.starter.slot !== b.starter.pos ? ` in ${escapeHtml(slotLabel(b.starter.slot))}` : ''} ${fmt(b.starter.points)} (${signed(-b.gap)}) <span class="mls-recap-league">· ${escapeHtml(b.league.name)}</span>`)));
     }
     if (rc.unresolved.length) {
         const big = rc.unresolved.filter(u => u.boomLevel);

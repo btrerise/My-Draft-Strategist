@@ -139,7 +139,9 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await expect(extra.filter({ hasText: 'Boomed on your bench' })).toContainText('Amon-Ra St. Brown WR · 0.0–24.0 in 1 league');
         // The league's slot order is saved at sync (round 2), so the benching names the slot when it's a flex (round 4: "(WR)"
         // for a WR slot read as his position): Lamb was in the FLEX.
-        await expect(extra.filter({ hasText: 'Worst benchings' })).toContainText('Amon-Ra St. Brown WR 24.0 on your bench in Second Fixture League, over CeeDee Lamb WR in FLEX 8.0 (−16.0)');
+        await expect(extra.filter({ hasText: 'Worst benchings' })).toContainText('Amon-Ra St. Brown WR 24.0 over CeeDee Lamb WR in FLEX 8.0 (−16.0) · Second Fixture League');
+        // Headings as written, not in capitals (round 7).
+        expect(await section(page).locator('.mls-recap-sub').evaluateAll(hs => hs.map(h => h.innerText))).toEqual(['MVPs', 'LVPs']);
         const slots = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_leagues')).map(l => l.starterSlots));
         expect(slots[0]).toEqual(['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'K', 'DEF']);
         await expectClean(page, state);
@@ -236,11 +238,11 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         expect((await download).suggestedFilename()).toBe('Week_2_Recap_My_Lineup_Strategist.png');
         const text = (await page.evaluate(() => window.__shareText)).replace(/\s+/g, ' ');
         for (const part of ['Week 2 Recap', 'Record 1–1 · 1 still live', 'Redraft 0–1', 'Dynasty 1–0',
-            "MVPS Ja'Marr Chase WR boomed 2 of 2 20.0–25.0", 'Josh Allen QB', '2 Sleeper leagues · provisional']) {
+            "MVPs Ja'Marr Chase WR boomed 2 of 2 20.0–25.0", 'Josh Allen QB', '2 Sleeper leagues · provisional']) {
             expect(text).toContain(part);
         }
         expect(text).not.toContain('Every league'); // no tiles
-        for (const gone of ['LVPS', 'Fixture League', 'STILL IN PLAY', 'to win', 'Biggest win', 'Worst loss']) expect(text).not.toContain(gone);
+        for (const gone of ['LVPs', 'Fixture League', 'STILL IN PLAY', 'to win', 'Biggest win', 'Worst loss']) expect(text).not.toContain(gone);
         expect(await page.evaluate(() => window.__shareWidth)).toBe(480);
         expect(await page.evaluate(() => window.__tabular)).toBe(false);
         await expect(page.locator('#thisWeekCard .mls-week-tile')).toHaveCount(2);

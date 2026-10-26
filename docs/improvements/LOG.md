@@ -6484,3 +6484,15 @@ headings and the image read "MVPS" / "LVPS" (the subheadings' uppercase); worst 
 
 **Checks (round 6).** check-precache OK; 444 unit tests; Playwright: mls-this-week, tooltips-onscreen and mls-mvp-lvp,
 56 passed (only a tooltip string changed, so no full run; screenshots unaffected, the tip is closed in them).
+
+### S22, round 7: headings as written, shorter benchings; scoring formats put to the owner
+
+- **"MVPs" / "LVPs" as written** (owner agreed): in capitals the subheadings read "MVPS" / "LVPS". The two headings
+  (`.mls-recap-sub`) and the image's (`.mls-share-sub`) keep their case.
+- **Shorter worst benchings** (owner agreed): "Tee Higgins WR 26.8 over Nico Collins WR 2.6 (−24.2) · May the Receptions
+  Be With You", the league last and muted (`.mls-recap-league`); the heading already says they were benched.
+- **Not built: a Busted column for LVPs.** The owner raised the bigger question behind it: one Boom / Bust line is
+  easier to reach in full PPR than half PPR (RB/WR/TE), and in 6-point passing TD leagues for QBs. Options went to the
+  owner (see the summary); waiting on their choice before building it or the Busted column.
+
+**Checks (round 7).** 444 unit tests; Playwright `mls-mvp-lvp.spec.mjs` 26 passed (CSS and wording in this section only).
