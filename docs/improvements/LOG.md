@@ -6626,3 +6626,10 @@ screenshots.
 
 **Checks (round 12).** check-precache OK; 451 unit tests pass; Playwright 539 passed, 5 skipped, only `visual.spec.mjs`
 stopping on the environment message. Screenshots: the same six as round 10 (no layout or Guide change this round).
+
+**Screenshot baselines from CI** (pull request #207, run 40394147287 on e3189e4). CI failed on exactly the six PNGs listed
+above; everything else passed. Each `-expected.png` matched the committed baseline byte for byte. The renders grew by 70px
+for the MVP / LVP Lines row (both setup PNGs at both widths; the changed rows sit at that row, plus a 1-level colour
+rounding in the fixed tab bar's blur) and by the Guide's new lines (desktop 7577 → 7841, phone 16616 → 17549). CI's
+renders (desktop `mls-empty-setup` 1280×1941, `mls-league-setup` 1280×2538, `mls-league-guide` 1280×7841; phone 390×2038,
+390×2811, 390×17549) are now the baselines.
