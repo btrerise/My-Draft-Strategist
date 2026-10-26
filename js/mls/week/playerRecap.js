@@ -12,14 +12,17 @@
 // - Ownership: the leagues where the player is on your roster (bench included) out of your Sleeper leagues this week
 //   (owner: Sleeper only, so every percent has points behind it). "26% (5)".
 // - MVP: at or above Boom in at least one league where you started him (round 2, owner: a player who boomed only on your
-//   bench "isn't really an MVP"; those get their own line). In Best Ball any boom counts, since its lineup picks itself.
-//   Ranked by those started booms, then ownership. A partial boom (boomed in under half the leagues that own him, like a
+//   bench "isn't really an MVP"; those get their own line). Ranked by those started booms, then ownership. A partial boom (boomed in under half the leagues that own him, like a
 //   TE on 15.7 in one TE-premium league and 12-13 in five others) goes below the full ones and is called out.
 // - Started: the share of the leagues that own him where he started (round 2: beside Own, "67% (4)").
+// - Best Ball (round 3): Sleeper sets its lineup after the games, so during the week its `starters` are the lineup as it
+//   was left (a TE on 17.6 can sit behind one on 0.0). With the league's slot order (saved at sync), "started" there is
+//   the lineup Best Ball would pick from the points so far (bestBallLineup), so started booms, started zeros and LVPs
+//   follow what will count. Without slot order (a league not synced since), Sleeper's starters as they stand.
 // - LVP: on a roster, below Bust in at least one league, and his game is final. Ranked by the leagues where he started
 //   and busted (what hurt), then ownership.
 // - The extra lines: started zeros (a starter on 0.0 whose game is final; usually inactive, which the app can't verify),
-//   dead weight (widely owned, nothing scored, on the bench everywhere), still open (game not final: could land on either
+//   dead weight (widely owned, nothing scored, on the bench everywhere, and no injury designation: round 3), still open (game not final: could land on either
 //   list), boomed on your bench (round 2) and worst benchings (outside Best Ball, a benched player who boomed while the
 //   starter in a slot he could have filled scored far less).
 // - Left out: players on a bye, players with no team, K and DEF. A player id the map can't resolve is listed as
@@ -80,29 +83,54 @@ export const SLEEPER_SLOT_POSITIONS = {
 const SLOT_LABELS = { SUPER_FLEX: 'SFLEX', REC_FLEX: 'W/T', WRRB_FLEX: 'W/R' };
 export const slotLabel = (slot) => SLOT_LABELS[slot] || slot;
 
+// Best Ball's lineup from the points so far: each slot, most specific first (QB, then W/T, then FLEX, then SUPER_FLEX),
+// takes the highest scorer left who can play it; on equal points, Sleeper's own starter first (so before games, the
+// lineup as it stands). Exact for nested slots (QB, RB, FLEX, SUPER_FLEX); W/R and W/T overlap, where it's nearly so.
+// Returns a Set of player ids.
+export function bestBallLineup(slots, playerIds, pointsOf, posOf, preferred = new Set()) {
+    const order = slots.map((s, i) => ({ i, elig: SLEEPER_SLOT_POSITIONS[s] || [] }))
+        .sort((a, b) => a.elig.length - b.elig.length || a.i - b.i);
+    const pool = playerIds.filter(id => id && id !== '0' && posOf(id))
+        .sort((a, b) => pointsOf(b) - pointsOf(a) || Number(preferred.has(b)) - Number(preferred.has(a)));
+    const lineup = new Set();
+    order.forEach(o => {
+        const id = pool.find(x => !lineup.has(x) && o.elig.includes(posOf(x)));
+        if (id) lineup.add(id);
+    });
+    return lineup;
+}
+
 // leagues: [{ id, name, bestBall, slots, entry: { players, starters, players_points } }] — your entry in each Sleeper
 //   league; slots: its starting slots in order (league.starterSlots, saved at sync since round 2), or null.
 //   A league with no entry, or an entry with no players (a chopped guillotine team), isn't counted.
-// players: { id: { name, pos, team } } from the player map (pos: the fantasy position).
+// players: { id: { name, pos, team, injured } } from the player map (pos: the fantasy position; injured: any injury
+//   designation, IR, Out, Questionable...). K and DEF entries too: Best Ball's lineup needs them.
 // games: { TEAM: { state: 'pre' | 'in' | 'post' } } (none: game states unknown, so nobody is final).
 // byeTeams: the teams on a bye this week (a Set or an array).
 // Returns { leagueCount, mvps, lvps, partial, benchBooms, startedZeros, deadWeight, stillOpen, worstBenchings, unresolved,
-// bestBallNote }. Each player row: { id, name, pos, team, own, ownPct, boomed, startedBoomed, busted, started, startedPct,
+// bestBallNote, bestBallUnslotted }. Each player row: { id, name, pos, team, own, ownPct, boomed, startedBoomed, busted, started, startedPct,
 // startedBusted, min, max, state, partial, leagues: [{ id, name, bestBall, points, started }] }.
 export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTeams = [], lines: rawLines } = {}) {
     const lines = normalizeLines(rawLines);
     const byes = byeTeams instanceof Set ? byeTeams : new Set(byeTeams || []);
     const counted = leagues.filter(l => l && l.entry && Array.isArray(l.entry.players) && l.entry.players.length);
     const n = counted.length;
-    const empty = { leagueCount: n, mvps: [], lvps: [], partial: [], benchBooms: [], startedZeros: [], deadWeight: [], stillOpen: [], worstBenchings: [], unresolved: [], bestBallNote: false };
+    const empty = { leagueCount: n, mvps: [], lvps: [], partial: [], benchBooms: [], startedZeros: [], deadWeight: [], stillOpen: [], worstBenchings: [], unresolved: [], bestBallNote: false, bestBallUnslotted: [] };
     if (!n) return empty;
 
     const stateOf = (team) => (team && games[team] && games[team].state) || null;
     const byId = new Map();
     const unresolved = new Map();
+    // Who started in each league: Sleeper's starters, or in Best Ball with the slot order, its own lineup (round 3).
+    const ptsIn = (l, id) => { const v = (l.entry.players_points || {})[id]; return typeof v === 'number' ? v : 0; };
+    const sleeperStarters = (l) => new Set((l.entry.starters || []).filter(id => id && id !== '0'));
+    const slotted = (l) => Array.isArray(l.slots) && l.slots.length === (l.entry.starters || []).length && l.slots.length > 0;
+    const startedIn = new Map(counted.map(l => [l.id, l.bestBall && slotted(l)
+        ? bestBallLineup(l.slots, l.entry.players, id => ptsIn(l, id), id => players[id] && players[id].pos, sleeperStarters(l))
+        : sleeperStarters(l)]));
     counted.forEach(l => {
         const pts = l.entry.players_points || {};
-        const starters = new Set((l.entry.starters || []).filter(id => id && id !== '0'));
+        const starters = startedIn.get(l.id);
         l.entry.players.forEach(id => {
             if (!id || id === '0') return;
             const points = typeof pts[id] === 'number' ? pts[id] : 0;
@@ -118,7 +146,7 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
             if (!RECAP_POSITIONS.includes(p.pos) || !p.team || byes.has(p.team)) return;
             let row = byId.get(id);
             if (!row) {
-                row = { id, name: p.name || id, pos: p.pos, team: p.team, state: stateOf(p.team), leagues: [] };
+                row = { id, name: p.name || id, pos: p.pos, team: p.team, injured: !!p.injured, state: stateOf(p.team), leagues: [] };
                 byId.set(id, row);
             }
             row.leagues.push({ id: l.id, name: l.name, bestBall: !!l.bestBall, points: round1(points), started: starters.has(id) });
@@ -137,7 +165,7 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
             ...r,
             own, ownPct: Math.round(own / n * 100),
             boomed: boomedIn.length, busted: bustedIn.length,
-            startedBoomed: boomedIn.filter(x => x.started || x.bestBall).length,
+            startedBoomed: boomedIn.filter(x => x.started).length,
             started, startedPct: Math.round(started / own * 100),
             startedBusted: bustedIn.filter(x => x.started).length,
             min: Math.min(...values), max: Math.max(...values),
@@ -147,7 +175,8 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
 
     const byOwn = (a, b) => b.own - a.own || b.max - a.max || a.name.localeCompare(b.name);
     const mvpAll = rows.filter(r => r.startedBoomed > 0);
-    const byBooms = (a, b) => b.startedBoomed - a.startedBoomed || b.boomed - a.boomed || byOwn(a, b);
+    // Booms where you started him, then ownership (round 3: a tiebreak on booms anywhere lifted bench booms).
+    const byBooms = (a, b) => b.startedBoomed - a.startedBoomed || byOwn(a, b);
     const full = mvpAll.filter(r => !r.partial).sort(byBooms);
     const partial = mvpAll.filter(r => r.partial).sort(byBooms);
     const mvps = [...full, ...partial];
@@ -164,7 +193,7 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
         .sort((a, b) => b.zeroIn - a.zeroIn || byOwn(a, b));
 
     const wide = Math.max(2, Math.ceil(n * WIDE_SHARE));
-    const deadWeight = rows.filter(r => final(r) && r.own >= wide && r.started === 0 && r.leagues.every(x => x.points === 0)).sort(byOwn);
+    const deadWeight = rows.filter(r => final(r) && r.own >= wide && !r.injured && r.started === 0 && r.leagues.every(x => x.points === 0)).sort(byOwn);
 
     const stillOpen = rows.filter(r => !final(r) && !mvpIds.has(r.id)).sort((a, b) => b.own - a.own || b.started - a.started || a.name.localeCompare(b.name));
 
@@ -199,16 +228,17 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
     });
     worstBenchings.sort((a, b) => b.gap - a.gap);
 
-    // Best Ball's lineup is set after the games, so "Started" there is Sleeper's lineup as it stands: worth saying when
-    // a listed player sat on a Best Ball bench.
-    const benchedInBestBall = (r) => r.leagues.some(x => x.bestBall && !x.started);
-    const bestBallNote = [...mvps, ...lvps].some(benchedInBestBall);
+    // Best Ball (round 3): say that Started there is the lineup it would pick now, when a listed player has a Best Ball
+    // league; and name any Best Ball league without its slot order (synced before round 2), read from Sleeper's starters.
+    const bbIds = new Set(counted.filter(l => l.bestBall).map(l => l.id));
+    const bestBallNote = [...mvps, ...lvps].some(r => r.leagues.some(x => bbIds.has(x.id)));
+    const bestBallUnslotted = counted.filter(l => l.bestBall && !slotted(l)).map(l => l.name);
 
     const floor = lowestBoom(lines);
     const unresolvedList = [...unresolved.values()].map(u => ({ ...u, max: round1(u.max), boomLevel: u.max >= floor }))
         .sort((a, b) => b.max - a.max);
 
-    return { leagueCount: n, mvps, lvps, partial, benchBooms, startedZeros, deadWeight, stillOpen, worstBenchings, unresolved: unresolvedList, bestBallNote };
+    return { leagueCount: n, mvps, lvps, partial, benchBooms, startedZeros, deadWeight, stillOpen, worstBenchings, unresolved: unresolvedList, bestBallNote, bestBallUnslotted };
 }
 
 // "26% (5)".

@@ -3,7 +3,7 @@
 // and the editable lines' validation.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPlayerRecap, normalizeLines, validateLines, DEFAULT_LINES, ownText, pointsRange, startedText } from '../../js/mls/week/playerRecap.js';
+import { buildPlayerRecap, bestBallLineup, normalizeLines, validateLines, DEFAULT_LINES, ownText, pointsRange, startedText } from '../../js/mls/week/playerRecap.js';
 
 const PLAYERS = {
     chase: { name: "Ja'Marr Chase", pos: 'WR', team: 'CIN' },
@@ -58,7 +58,7 @@ test('a partial boom (one TE-premium league of six) ranks below the full booms a
     assert.equal(r.mvps[0].partial, false);
 });
 
-test('a boom only on your bench isn\'t an MVP: it gets its own line (round 2); in Best Ball a bench boom counts', () => {
+test('a boom only on your bench isn\'t an MVP: it gets its own line (round 2)', () => {
     // Raridon boomed in all three leagues, benched in each; Chase boomed once, started.
     const raridon = { name: 'Eli Raridon', pos: 'TE', team: 'CIN' };
     const r = buildPlayerRecap({
@@ -69,11 +69,36 @@ test('a boom only on your bench isn\'t an MVP: it gets its own line (round 2); i
     assert.deepEqual(ids(r.benchBooms), ['er']);
     assert.deepEqual([r.benchBooms[0].boomed, r.benchBooms[0].started, startedText(r.benchBooms[0])], [3, 0, '0% (0)']);
     assert.ok(!ids(r.stillOpen).includes('er') && !ids(r.lvps).includes('er'));
-    const bb = buildPlayerRecap({ leagues: [lg('bb', { er: 16 }, [], { bestBall: true })], players: { ...PLAYERS, er: raridon }, games: GAMES });
-    assert.deepEqual([ids(bb.mvps), ids(bb.benchBooms)], [['er'], []]);
+    // Best Ball without its slot order (an old sync): Sleeper's starters as they stand, so still a bench boom.
+    const kincaid = { name: 'Dalton Kincaid', pos: 'TE', team: 'BUF' };
+    const pl = { ...PLAYERS, er: raridon, dk: kincaid };
+    const old = buildPlayerRecap({ leagues: [lg('bb', { er: 16, dk: 0 }, ['dk'], { bestBall: true })], players: pl, games: GAMES });
+    assert.deepEqual([ids(old.mvps), ids(old.benchBooms), old.bestBallUnslotted], [[], ['er'], ['League bb']]);
 });
 
-test('MVPs rank by booms where you started him, then all booms, then ownership', () => {
+test('Best Ball with its slot order: the lineup it would pick now counts as started (round 3: Raridon on 17.6 behind a 0.0 TE)', () => {
+    const raridon = { name: 'Eli Raridon', pos: 'TE', team: 'CIN' }, kincaid = { name: 'Dalton Kincaid', pos: 'TE', team: 'BUF' };
+    const pl = { ...PLAYERS, er: raridon, dk: kincaid };
+    const bb = { ...lg('bb', { er: 17.6, dk: 0, chase: 4 }, ['dk', 'chase'], { bestBall: true }), slots: ['TE', 'FLEX'] };
+    const r = buildPlayerRecap({ leagues: [bb, lg('a', { er: 16 }, [])], players: pl, games: GAMES });
+    assert.deepEqual(ids(r.mvps), ['er']);
+    assert.deepEqual([r.mvps[0].startedBoomed, r.mvps[0].started, r.mvps[0].own], [1, 1, 2]);
+    // Kincaid's 0.0 isn't a started zero: Best Ball's lineup drops him (Raridon takes TE, Chase the FLEX).
+    assert.deepEqual(ids(r.startedZeros), []);
+    assert.equal(r.bestBallNote, true);
+    assert.deepEqual(r.bestBallUnslotted, []);
+});
+
+test('bestBallLineup: specific slots first, then flex; ties keep Sleeper\'s starter', () => {
+    const pos = { q1: 'QB', q2: 'QB', r1: 'RB', r2: 'RB', w1: 'WR', t1: 'TE' };
+    const pts = { q1: 20, q2: 25, r1: 3, r2: 12, w1: 9, t1: 0 };
+    const lineup = bestBallLineup(['QB', 'RB', 'FLEX', 'SUPER_FLEX'], Object.keys(pos), id => pts[id], id => pos[id]);
+    assert.deepEqual([...lineup].sort(), ['q1', 'q2', 'r2', 'w1']);
+    const tie = bestBallLineup(['TE'], ['t1', 't2'], () => 0, () => 'TE', new Set(['t2']));
+    assert.deepEqual([...tie], ['t2']);
+});
+
+test('MVPs rank by booms where you started him, then ownership', () => {
     // Allen: boomed 2, started in 1 of them. Chase: boomed 1, started. Henry: boomed 2, started in both.
     const r = recap([
         lg('a', { allen: 30, chase: 22, henry: 21 }, ['allen', 'chase', 'henry']),
@@ -117,6 +142,14 @@ test('still open: any game not final, unless he has already boomed', () => {
     // Without game states nobody is final: no LVPs.
     const unknown = recap([lg('a', { lamb: 4 }, ['lamb'])], { games: {} });
     assert.deepEqual([ids(unknown.lvps), ids(unknown.stillOpen)], [[], ['lamb']]);
+});
+
+test('dead weight leaves out a player with an injury designation (round 3)', () => {
+    const r = buildPlayerRecap({
+        leagues: [lg('a', { nacua: 0, inj: 0 }, []), lg('b', { nacua: 0, inj: 0 }, [])],
+        players: { ...PLAYERS, inj: { name: 'Hurt Guy', pos: 'RB', team: 'LAR', injured: true } }, games: GAMES,
+    });
+    assert.deepEqual(ids(r.deadWeight), ['nacua']);
 });
 
 test('dead weight: widely owned, nothing scored, on the bench everywhere', () => {

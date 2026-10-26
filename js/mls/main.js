@@ -52,7 +52,7 @@ import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
 import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeaguePaid, toggleLeagueReorder, withCardsTransition } from './render/leagueCards.js';
-import { dismissPaidHint, exportScoreboard, refreshThisWeek, renderThisWeek, showAllRecap, showAllSwings, togglePlayerRecap } from './week/thisWeek.js';
+import { dismissPaidHint, exportScoreboard, refreshThisWeek, renderThisWeek, showAllRecap, showAllSwings, toggleWeekFold } from './week/thisWeek.js';
 import { resetRecapLines, saveRecapLines } from './week/recapLines.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
@@ -135,8 +135,9 @@ const clickActions = {
     refreshThisWeek() { refreshThisWeek({ force: true }); },
     dismissPaidHint() { dismissPaidHint(); },
     showAllSwings() { showAllSwings(); },
-    // The Scoreboard's MVPs & LVPs (week/thisWeek.js, improvements S22), and their lines in Advanced Settings
-    togglePlayerRecap() { togglePlayerRecap(); },
+    // The Scoreboard's folds (MVPs & LVPs, Still in play) and Show all (week/thisWeek.js, improvements S22), and the
+    // MVP / LVP lines in Advanced Settings
+    toggleWeekFold() { toggleWeekFold(this.dataset.fold); },
     // Export on the Scoreboard: a summary image to share (week/shareImage.js, S22 round 2)
     exportScoreboard() { exportScoreboard(); },
     showAllRecap() { showAllRecap(this.dataset.list); },

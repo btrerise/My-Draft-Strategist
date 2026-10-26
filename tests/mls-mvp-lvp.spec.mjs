@@ -66,20 +66,20 @@ const cells = (row) => row.locator('.mls-recap-cell').evaluateAll(cs => cs.map(c
     return (label ? c.textContent.slice(label.textContent.length) : c.textContent).replace(/\s+/g, ' ').trim();
 }));
 async function openRecap(page) {
-    const toggle = section(page).locator('.mls-recap-toggle');
+    const toggle = section(page).locator('.mls-week-fold-toggle');
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await toggle.click();
-    await expect(section(page).locator('.mls-recap-toggle')).toHaveAttribute('aria-expanded', 'true');
+    await expect(section(page).locator('.mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'true');
 }
 
 test.describe('Scoreboard: MVPs & LVPs', () => {
     test('folded until opened: the counts and Provisional on its line; both tables and the extra lines inside', async ({ page }) => {
         const state = await setup(page);
-        const toggle = section(page).locator('.mls-recap-toggle');
+        const toggle = section(page).locator('.mls-week-fold-toggle');
         await expect(toggle).toContainText('MVPs & LVPs');
         await expect(toggle).toContainText('4 MVPs · 2 LVPs');
         await expect(toggle.locator('.mls-week-status')).toHaveText('Provisional');
-        await expect(section(page).locator('#mlsRecapBody')).toBeHidden();
+        await expect(section(page).locator('#mlsWeekFold-recap')).toBeHidden();
 
         await openRecap(page);
         await expect(section(page)).toContainText('Your 2 leagues on Sleeper, each in its own scoring');
@@ -93,10 +93,12 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await expect(lvps.locator('.mls-recap-name')).toHaveText(['A.J. Brown WR', 'Amon-Ra St. Brown WR']);
         expect(await cells(lvps.first())).toEqual(['A.J. Brown WR', '100% (2)', '0% (0)', '0.0']);
 
-        const extra = section(page).locator('.mls-recap-extra li');
-        await expect(extra.filter({ hasText: 'Dead weight' })).toContainText('A.J. Brown WR (on 2 benches, 0.0), Amon-Ra St. Brown WR (on 2 benches, 0.0)');
+        const extra = section(page).locator('.mls-recap-extra > li');
+        await expect(extra.filter({ hasText: 'Dead weight' })).toContainText('A.J. Brown WR · on 2 benches, 0.0');
+        await expect(extra.filter({ hasText: 'Dead weight' }).locator('li')).toHaveText(['A.J. Brown WR · on 2 benches, 0.0', 'Amon-Ra St. Brown WR · on 2 benches, 0.0']);
         // Jefferson plays tonight; the four whose games aren't in the scoreboard aren't final either.
-        await expect(extra.filter({ hasText: 'Still open' })).toContainText('Justin Jefferson WR (2), Garrett Wilson WR (2), George Kittle TE (2), Puka Nacua WR (2), Trey McBride TE (2)');
+        // A bullet each, three of them, then "and N more" (owner, round 3).
+        await expect(extra.filter({ hasText: 'Still open' }).locator('li')).toHaveText(['Justin Jefferson WR · 2 leagues', 'Garrett Wilson WR · 2 leagues', 'George Kittle TE · 2 leagues', 'and 2 more']);
         await expect(extra.filter({ hasText: 'Started zeros' })).toHaveCount(0);
         await expect(extra.filter({ hasText: 'Worst benchings' })).toHaveCount(0);
         await expect(section(page)).toContainText('Provisional until the week\'s last game is final.');
@@ -105,7 +107,7 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await page.reload();
         await routeWeek(page);
         await showTab(page, 'scoreboard');
-        await expect(section(page).locator('.mls-recap-toggle')).toHaveAttribute('aria-expanded', 'true');
+        await expect(section(page).locator('.mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'true');
         await expect(rowsOf(page, 'mvp')).toHaveCount(4);
         await expectClean(page, state);
     });
@@ -121,10 +123,10 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         const lvps = rowsOf(page, 'lvp');
         await expect(lvps.locator('.mls-recap-name')).toHaveText(['Brock Bowers TE', 'A.J. Brown WR']);
         expect(await cells(lvps.first())).toEqual(['Brock Bowers TE', '100% (2)', '100% (2)', '0.0–10.0']);
-        const extra = section(page).locator('.mls-recap-extra li');
-        await expect(extra.filter({ hasText: 'Started zeros' })).toContainText('Brock Bowers TE (1 league)');
+        const extra = section(page).locator('.mls-recap-extra > li');
+        await expect(extra.filter({ hasText: 'Started zeros' })).toContainText('Brock Bowers TE · 1 league');
         await expect(extra.filter({ hasText: 'Started zeros' })).toContainText("the app can't check that");
-        await expect(extra.filter({ hasText: 'Boomed on your bench' })).toContainText('Amon-Ra St. Brown WR (0.0–24.0 in 1 league)');
+        await expect(extra.filter({ hasText: 'Boomed on your bench' })).toContainText('Amon-Ra St. Brown WR · 0.0–24.0 in 1 league');
         // The league's slot order is saved at sync (round 2), so the benching names the slot: Lamb was in the FLEX.
         await expect(extra.filter({ hasText: 'Worst benchings' })).toContainText('Amon-Ra St. Brown WR 24.0 on your bench in Second Fixture League, over CeeDee Lamb (FLEX) 8.0 (−16.0)');
         const slots = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_leagues')).map(l => l.starterSlots));
@@ -141,11 +143,11 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await routeWeek(page, { matchups: 'final', minFinal: true });
         await page.locator('#thisWeekCard [data-action="refreshThisWeek"]').click();
         await expect(page.locator('#thisWeekCard .mls-week-head .mls-week-status')).toHaveText('Final');
-        await expect(section(page).locator('.mls-recap-toggle .mls-week-status')).toHaveText('Final');
+        await expect(section(page).locator('.mls-week-fold-toggle .mls-week-status')).toHaveText('Final');
         await openRecap(page);
         // Jefferson: 20.0 in Fixture League (a Boom), 0.0 in the other, which still has him on 0.
         await expect(rowsOf(page, 'mvp').locator('.mls-recap-name')).toContainText(['Justin Jefferson WR']);
-        await expect(section(page).locator('.mls-recap-extra li').filter({ hasText: 'Still open' })).not.toContainText('Jefferson');
+        await expect(section(page).locator('.mls-recap-extra > li').filter({ hasText: 'Still open' })).not.toContainText('Jefferson');
         await expect(section(page)).not.toContainText('Provisional until');
         await expectClean(page, state);
     });
@@ -198,8 +200,9 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await expectClean(page, state);
     });
 
-    // Export (round 2): a summary image, not a tile per league (owner: "a TL;DR").
-    test('Export saves a summary image: record, the swing, best win, MVPs and LVPs; the page is unchanged', async ({ page }) => {
+    // Export Recap (rounds 2-3): a summary image, not a tile per league (owner: "a TL;DR"), with no league named in it,
+    // from a purple camera button at the bottom of the card like Export Trade, saved under a matching name.
+    test('Export Recap saves a summary image: record, splits, MVPs and LVPs, no league names; the page is unchanged', async ({ page }) => {
         const state = await setup(page, { jefferson: 12.5 });
         await expect(page.locator('#thisWeekCard .mls-week-swing .mls-week-chance')).toHaveText(/^\d+% to win$/, { timeout: 15000 });
         await page.route(/^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/html2canvas\/1\.4\.1\/html2canvas\.min\.js$/, (route) => route.fulfill({
@@ -214,19 +217,48 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         window.__tabular = [...root.querySelectorAll('*')].some(el => /\\d/.test([...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('')) && /tabular/.test(doc.defaultView.getComputedStyle(el).fontVariantNumeric));
     } });
 })();` }));
+        const btn = page.locator('#thisWeekCard .mls-week-export #exportScoreboardBtn');
+        await expect(btn).toHaveText('Export Recap');
+        await expect(btn).toHaveClass(/\bbtn-purple\b/);
         const download = page.waitForEvent('download');
-        await page.locator('#exportScoreboardBtn').click();
-        expect((await download).suggestedFilename()).toBe('Week_2_Recap_Lineup_Strategist.png');
+        await btn.click();
+        expect((await download).suggestedFilename()).toBe('My_Recap_Lineup_Strategist.png');
         const text = (await page.evaluate(() => window.__shareText)).replace(/\s+/g, ' ');
-        for (const part of ['Week 2 Recap', 'Record 1–1 · 1 still live', 'Redraft 0–1', 'Dynasty 1–0', 'STILL IN PLAY Fixture League', '% to win −12.0', 'Biggest win Second Fixture League +35.2',
+        for (const part of ['Week 2 Recap', 'Record 1–1 · 1 still live', 'Redraft 0–1', 'Dynasty 1–0',
             "MVPS Ja'Marr Chase WR boomed 2 of 2 20.0–25.0", 'Josh Allen QB', 'LVPS A.J. Brown WR started 0 of 2 0.0', '2 Sleeper leagues · provisional']) {
             expect(text).toContain(part);
         }
         expect(text).not.toContain('Every league'); // no tiles
-        expect(text).not.toContain('Worst loss'); // the only loss is still in play
+        for (const gone of ['Fixture League', 'STILL IN PLAY', 'to win', 'Biggest win', 'Worst loss']) expect(text).not.toContain(gone);
         expect(await page.evaluate(() => window.__shareWidth)).toBe(480);
         expect(await page.evaluate(() => window.__tabular)).toBe(false);
         await expect(page.locator('#thisWeekCard .mls-week-tile')).toHaveCount(2);
+        await expectClean(page, state);
+    });
+
+    // Round 3: Still in play folds too, and both folds turn their chevron in place, as a Dashboard league card does.
+    test('Still in play and MVPs & LVPs fold in place: the same chevron turns, remembered after a reload', async ({ page }) => {
+        const state = await setup(page, { jefferson: 12.5 });
+        const inplay = page.locator('#thisWeekCard .mls-week-fold[data-fold="swings"]');
+        const toggle = inplay.locator('.mls-week-fold-toggle');
+        await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        await expect(inplay.locator('.mls-week-swing')).toHaveCount(1);
+        const chevron = await inplay.locator('.mls-week-chevron').elementHandle();
+        // The chevron eases over the league cards' time (--vt-ms), not a jump.
+        expect(await chevron.evaluate(el => getComputedStyle(el).transitionProperty)).toContain('transform');
+        await toggle.click();
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        await expect(inplay.locator('.mls-week-fold-body')).toBeHidden();
+        // Folded in place: the same element, now turned.
+        expect(await chevron.evaluate(el => el.isConnected)).toBe(true);
+        await expect.poll(() => chevron.evaluate(el => getComputedStyle(el).transform)).not.toBe('none');
+        await openRecap(page);
+        expect(await page.evaluate(() => [localStorage.getItem('mls_still_in_play_folded'), localStorage.getItem('mls_player_recap_open')])).toEqual(['1', '1']);
+        await page.reload();
+        await routeWeek(page, { jefferson: 12.5 });
+        await showTab(page, 'scoreboard');
+        await expect(page.locator('#thisWeekCard .mls-week-fold[data-fold="swings"] .mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'false');
+        await expect(section(page).locator('.mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'true');
         await expectClean(page, state);
     });
 

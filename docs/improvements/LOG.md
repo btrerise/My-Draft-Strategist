@@ -6347,3 +6347,53 @@ the page's tiles unchanged; no Export before kickoff.
 stopping on the environment message. Screenshots vs. main: the same six as round 1 (the Guide PNGs taller with this
 round's sentence), the other 36 identical; the Scoreboard PNG is before kickoff, so it shows no Export. Still to take
 from CI.
+
+### S22, round 3: the owner's second review (week 7, 19 leagues)
+
+The owner's eight points, my answers, and what was built:
+1. **Did Started zeros include Best Ball?** Yes: a 0.0 in Sleeper's Best Ball lineup counted. Now it follows Best Ball's
+   own lineup (point 8), so a Best Ball 0.0 counts only if nobody on the bench who could fill that slot scored more.
+2. **Dead weight leaves out injured players**: any injury designation in the player map (`injury_status`, or a status
+   with "reserve"). `injured` on each player, from `recapInput`.
+3. **Bullets** (owner chose my suggestion): each extra line is a heading with its note, then one bullet per player, 3 of
+   them, then "and N more" (`extraItem`, `RECAP_NAMES` 3).
+4. **Export like the others**: Draft Strategist's Export Team, the Lineup tab's PNG and Export Trade are purple buttons
+   with a camera icon; Export Trade sits at the bottom of its card and saves `My_Trade_Lineup_Strategist.png`. So the
+   Scoreboard's is now **"Export Recap"**, a purple camera button at the bottom of the card, saving
+   **`My_Recap_Lineup_Strategist.png`** (round 2's icon by Refresh is gone).
+5. **Still in play folds** (open until you fold it, remembered: `mls_still_in_play_folded`).
+6. **Chevrons animate like the Dashboard's.** Both folds (`toggleWeekFold`, data-fold `swings` / `recap`) now fold in
+   place: the section's content is always drawn (hidden when folded), the same element toggles `is-open`, its chevron
+   turns over `--vt-ms` with `--vt-ease` (the league cards' values), and a "cards" view transition names the card, the
+   section and what follows it near the screen (`vt-card`), so the box grows or shrinks with the chevron, as S21 round 4
+   did for the old recap card. Round 1's redraw on every toggle (which skipped the CSS turn) is gone.
+7. **The image names no league** (owner: in a Discord server nobody has context for them): Still in play, Biggest win
+   and Worst loss are out; it's the record, the splits and the top 3 MVPs and LVPs. **Were Biggest win / Worst loss in
+   the Week Recap?** No: they were new in round 2's image only; the tab shows each league's margin on its tile.
+8. **Eli Raridon still an MVP.** Checked in the owner's leagues through Sleeper's API (week 7): he's on 6 benches; 2 are
+   Best Ball (Legacy Best Ball, BB Yang Dynasty), where Sleeper still listed Dalton Kincaid and Oronde Gadsden at TE with
+   0.0 while Raridon had 17.6 and 16.1 (the team scores, 80.12 and 83.8, are the sum of that set lineup: Sleeper settles
+   Best Ball after the games). Round 2's rule counted any Best Ball boom as started, and its tiebreak on booms anywhere
+   (6) lifted him to 5th. Owner's choice: **work out Best Ball's lineup**. `bestBallLineup` (week/playerRecap.js) fills
+   the league's saved slots, most specific first (QB, then W/T and W/R, then FLEX, then SUPER_FLEX), each with the
+   highest scorer left who can play it, ties to Sleeper's own starter; in Best Ball that lineup is "started" everywhere
+   (MVPs, Started %, LVPs, started zeros). Raridon now reads Started 33% (2), an MVP for the 2 Best Ball leagues where
+   he'll count, ranked by those 2. The tiebreak is now ownership, not booms anywhere. A Best Ball league synced before
+   round 2 (no slot order) uses Sleeper's lineup, with a "Sync again" line naming it. The Best Ball note says what
+   Started means there.
+
+`togglePlayerRecap` is now `toggleWeekFold`. CACHE_NAME stays v2.8.112 (this branch's bump, still above main's).
+
+**Tests.** Unit (444): `bestBallLineup` (flex after specific slots, ties), Raridon's case (Best Ball with slots: MVP,
+Started 1 of 2, Kincaid's 0.0 not a started zero; without slots: a bench boom and the "Sync again" name), dead weight
+without an injured player, the tiebreak; the image without league names. Spec: the bullets ("and 2 more"), Export
+Recap's button and file name and an image with no league name, and a new test that both folds keep the same chevron
+element, turn it with a CSS transition and are remembered after a reload. `mls-this-week.spec.mjs`'s last-heading check
+now looks at the card's own headings (the folded section's are in the page, hidden).
+
+Checked against the owner's real week-7 data (Sleeper's API, every game counted final): Raridon is 5th with Started
+33% (2), his 2 Best Ball booms; the first four started their booms in 3 to 6 leagues.
+
+**Checks (round 3).** check-precache OK; 444 unit tests pass; Playwright 529 passed, 5 skipped, only `visual.spec.mjs`
+stopping on the environment message. Screenshots vs. main: the same six as rounds 1 and 2, the other 36 identical. Still
+to take from CI.
