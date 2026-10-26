@@ -6211,3 +6211,92 @@ the screenshot league, a redraft one).
 **Guide baselines from CI.** The first CI run on the pull request (1af38ff) failed on exactly
 `desktop/` and `phone/mls-league-guide.png`; 517 other tests passed. Each `-expected.png` matched the committed baseline
 byte for byte, and CI's renders (desktop 1280×7577, phone 390×16616) were committed as the new baselines.
+
+## S22 — This week's MVPs and LVPs across your leagues
+
+**User-visible effect.** On the **Scoreboard** tab, under the league tiles (once a game has kicked off), a section
+**"MVPs & LVPs"**, folded to one line until you tap it ("4 MVPs · 2 LVPs" and Provisional / Final; open or folded is
+remembered). Opened:
+- A short line: how many Sleeper leagues count, what Own means, and the Boom / Bust lines in use.
+- **MVPs** (Player | Own | Boomed | Pts | Started): "Ja'Marr Chase WR · 100% (2) · 2 of 2 · 20.0–25.0 · 2 of 2". On
+  phones Started drops to a second line under the name ("Started 2 of 2") rather than the table scrolling sideways.
+- **LVPs** (Player | Own | Started | Pts).
+- Five rows each, then "Show all N" (until the week changes).
+- A **Partial boom** line when someone boomed in under half the leagues that own him; then one line each, when there is
+  something to say: **Started zeros** ("0.0 usually means he didn't play; the app can't check that"), **Dead weight**,
+  **Still open** (games not final: could land on either list), **Worst benchings**, players **not in Sleeper's player
+  map** (with any Boom-level score called out), and a **Best Ball** note when a listed player sat on a Best Ball bench.
+- "Provisional until the week's last game is final", gone once it is.
+- **Advanced Settings** on the Dashboard gains **"MVP / LVP Lines"**: Boom at / Bust under for QB, RB, WR and TE (your
+  lines as defaults), Save and Reset to Defaults, with a note that they're separate from the Simulator's boom/bust
+  chances. Errors show under the form and mark the field (both positive, Boom above Bust); nothing is saved then.
+- The Guide's Scoreboard item gains a line for MVPs & LVPs.
+
+**Owner's decisions (asked before building).**
+1. Where: **a section of the Scoreboard tab** (S21's view became a tab in its round 6), **folded until opened**.
+2. Lines: **editable in Advanced Settings**, the owner's as defaults, with the note about the Simulator; **no K / DEF**.
+3. Ownership: **Sleeper leagues only**, so every percent has points behind it. Manual leagues are mentioned in the
+   intro line, not counted.
+4. Rows before "Show all": **5 and 5**.
+
+**Rules as built** (`js/mls/week/playerRecap.js`, my readings where the card left room):
+- Leagues counted (N): every Sleeper league whose matchups loaded this week with your entry holding players. A league
+  whose fetch failed, or a chopped guillotine team, isn't in N.
+- Points: Sleeper's `players_points` in each league (its own scoring); a rostered player with none counts 0.
+- MVP: at or above Boom in at least one league, whatever his game's state (a Boom mid-game stays a Boom). Ranked by
+  leagues boomed, then ownership, then his best score. **Partial boom**: boomed in fewer than half the leagues that own
+  him (the card's TE: 1 of 6). Partial booms go after every full one (by boom count alone, a 1-of-6 TE would tie a
+  1-of-1 player and win on ownership, which the card says should rank low), and get the call-out line.
+- LVP: his team's game is `post`, he's under Bust in at least one league, and he isn't an MVP. Ranked by leagues where
+  he started and busted, then ownership. Without game states (ESPN didn't load) nobody is final, so no LVPs.
+- Started zeros: 0.0 as a starter in a league, game final. Dead weight: owned in at least max(2, 20% of N) leagues,
+  benched in all of them, 0.0 everywhere, game final. Still open: game not final, not already an MVP; by ownership.
+- Worst benchings: Sleeper's matchups don't say which slot each starter fills (the league object keeps only slot counts),
+  so "the starter in that slot" is **your lowest-scoring starter at the bench player's position** in that league: a
+  same-position swap is always legal. Counted when the bench player reached Boom and the starter, whose game is final
+  (or who was on a bye), scored at least 10 less. Never in Best Ball. Top 3 by the gap.
+- Left out: byes (`getByeWeek`), no team, K, DEF (team-code ids are skipped quietly, not "unresolved").
+
+**What changed, and where.**
+- `js/mls/week/playerRecap.js` (new, no app state): `buildPlayerRecap`, `DEFAULT_LINES`, `normalizeLines`,
+  `validateLines`, `ownText`, `pointsRange`.
+- `js/mls/week/recapLines.js` (new): the lines' storage and the Settings form (`getRecapLines`, `applyRecapLinesToUI`,
+  `saveRecapLines`, `resetRecapLines`). Called from `init.js` (fill the form) and `main.js` (data-actions).
+- `js/mls/week/thisWeek.js`: `recapInput` (each league's own entry from `State.lineupActualPoints`, S21's fetch; no
+  second request), `recapHTML` / `recapTable`, `togglePlayerRecap`, `showAllRecap`. Drawn by `renderScoreboard` after
+  the tiles once the week has started.
+- `lineup/index.html`: the "MVP / LVP Lines" accordion in Advanced Settings; the Guide's line. `css/mls.css`: the section
+  (each table is one grid with subgrid rows, so columns fit their numbers; 760px reading width) and the form.
+- `js/shared/storage/keys.js`: `mls_recap_lines` (only while different from the defaults; Reset removes it) and
+  `mls_player_recap_open` ('1' while open). Both `mls_`, so Backup / Restore and Factory Reset take them.
+- `sw.js`: the two modules in `PRECACHE_ASSETS`, `CACHE_NAME` v2.8.111 → v2.8.112. CHANGELOG: two lines under Lineup
+  Strategist.
+- No new badge: the section reuses S21's Provisional / Final pill (already in the legend).
+
+**Tests.** `tests/unit/playerRecap.test.mjs` (13): ownership, boom count then ownership, the partial-boom TE (1 of 6, a
+TE-premium 15.7), LVP order by started busts, bye / no team / K / DEF left out, a 0.0 starter on a final team as a
+started zero (and one still to play as still open), still open mid-game, dead weight, worst benchings (Best Ball
+skipped, small gaps and unfinished starters skipped), unresolved ids, custom lines, empty input, validation.
+`tests/mls-mvp-lvp.spec.mjs` (both widths) with S21's fixtures: folded line and counts, both tables' cells, dead weight
+and still open, the open state surviving a reload; a started zero, a starter LVP and a worst benching (Second Fixture
+League's points changed in the route); Final after Refresh; a failed league left out of N; the Settings form
+(validation, Save, "Show all 6", Reset); nothing before kickoff; at 375px and 1280px every cell inside the section,
+names whole, Started on a second line on phones only. `tests/mls-this-week.spec.mjs`: its three Provisional / Final
+checks now look in the header (the section has its own pill).
+
+**Screenshots.** Six change, by design (main and this branch rendered here and compared with `npm run pxdiff`; the other
+36 are identical). The Scoreboard PNG doesn't change: the screenshot league is before kickoff, so the section isn't drawn.
+- `desktop/` and `phone/mls-empty-setup.png`, `mls-league-setup.png`: the "MVP / LVP Lines" row in Advanced Settings.
+- `desktop/` and `phone/mls-league-guide.png`: the Guide's MVPs & LVPs line.
+This container can't reproduce CI's renders (its newer Chromium), so take the six from the pull request's CI run.
+
+**Checks run.** check-precache OK; 436 unit tests pass; Playwright 525 passed, 5 skipped, only `visual.spec.mjs` stopping
+on the environment message (as on main here).
+
+**Left over.**
+- Re-take the six PNGs from CI (above).
+- Open follow-up this touches: the **image of the Scoreboard for a group chat** (docs/TESTING.md, "Wanted by the owner")
+  noted "fits with S22"; not built here. MVPs & LVPs are in the same card now, so an export could include them.
+- Worst benchings by actual slot would need the league's `roster_positions` order saved at sync (the starters array
+  follows it); a small sync change if same-position comparisons ever miss one the owner cares about.
+- Best Ball's "Started" is Sleeper's lineup as it stands; the note says so rather than recomputing Best Ball's lineup.

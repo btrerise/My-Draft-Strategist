@@ -32,6 +32,8 @@ import { fantasyPosition } from '../constants.js';
 import { ensureLineupProjections, formatKickoffLabel, getLeagueScoringKey, storeLeagueMatchups } from '../lineup/gameInfo.js';
 import { paidBadgeMarkup, weekResultMarkup, weekStatusMarkup } from '../badges.js';
 import { matchupWinChances } from '../sim/winChance.js';
+import { buildPlayerRecap, ownText, pointsRange } from './playerRecap.js';
+import { getRecapLines } from './recapLines.js';
 import {
     MIN_PLAYED, classifyMatchup, guillotinePlace, isGuillotine, medianPlace, ordinal, playsMedian, recordText, resultOf,
     sideSummary, summarize, swingOrder, teamNamesFrom, tooEarlyToCall, weekFromSearch,
@@ -523,6 +525,9 @@ function renderScoreboard(m) {
         parts.push(`<h4 class="mls-week-sub">${!started ? 'Your matchups' : (final ? 'Every league' : 'Every league, closest first')}</h4><ul class="mls-week-tiles">${tileOrder(listed, started, final).map(r => tileHTML(r, started)).join('')}</ul>`);
     }
 
+    // MVPs & LVPs once a game has kicked off (S22).
+    if (started && listed.length) parts.push(recapHTML(m));
+
     // Leagues without a matchup to show, and any that didn't load.
     const notes = [];
     const nomatch = rows.filter(r => r.res.kind === 'nomatch');
@@ -542,6 +547,114 @@ function renderScoreboard(m) {
 
 const SCOREBOARD_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="12" rx="2"></rect><path d="M6.5 6.5h2.5v5H6.5z"></path><path d="M15 6.5h2.5v5H15z"></path><line x1="12" y1="8" x2="12" y2="8.01"></line><line x1="12" y1="10" x2="12" y2="10.01"></line><line x1="8" y1="15" x2="8" y2="21"></line><line x1="16" y1="15" x2="16" y2="21"></line></svg>`;
 const ARROW_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+
+// --- MVPs & LVPs (improvements S22) ---
+// A folded section under the tiles (owner's choice): which of your players won and lost the week across your Sleeper
+// leagues, from the same matchups (no second fetch). The rules are in week/playerRecap.js; the lines in Advanced Settings
+// (week/recapLines.js). Five rows a table, then "Show all" (owner), in memory until the week changes.
+const RECAP_ROWS = 5;
+const RECAP_NAMES = 6;
+const recapView = { allWeek: { mvp: null, lvp: null } };
+function recapOpen() {
+    try { return localStorage.getItem(KEYS.mls.playerRecapOpen) === '1'; } catch (e) { return false; }
+}
+export function togglePlayerRecap() {
+    try {
+        if (recapOpen()) localStorage.removeItem(KEYS.mls.playerRecapOpen);
+        else localStorage.setItem(KEYS.mls.playerRecapOpen, '1');
+    } catch (e) { /* stays as it is */ }
+    renderThisWeek();
+}
+export function showAllRecap(list) {
+    if (list === 'mvp' || list === 'lvp') recapView.allWeek[list] = weekCtx().week;
+    renderThisWeek();
+}
+
+// Your entry in every Sleeper league whose matchups are loaded, for buildPlayerRecap.
+function recapInput(ctx) {
+    const map = cachedPlayerMap || {};
+    const players = {};
+    const leagues = [];
+    (State.leagues || []).filter(isSleeperLeague).forEach(l => {
+        const cached = State.lineupActualPoints[l.leagueId];
+        if (!l.rosterId || !cached || cached.week !== ctx.week || !Array.isArray(cached.matchups)) return;
+        const entry = cached.matchups.find(e => e.roster_id === l.rosterId);
+        if (!entry) return;
+        (entry.players || []).forEach(id => {
+            const p = map[id];
+            if (!p || players[id]) return;
+            players[id] = { name: p.first_name ? `${p.first_name} ${p.last_name}`.trim() : (p.full_name || p.last_name || id), pos: fantasyPosition(p) || p.position || '', team: p.team || null };
+        });
+        leagues.push({ id: l.leagueId, name: l.name || 'Unnamed league', bestBall: isBestBallLeague(l), entry });
+    });
+    const byeTeams = Object.values(players).map(p => p.team).filter(t => t && ctx.week != null && getByeWeek(t, ctx.season) === ctx.week);
+    return { leagues, players, games: ctx.games, byeTeams, lines: getRecapLines() };
+}
+
+const recapName = (r) => `<span class="mls-recap-name">${escapeHtml(r.name)} <span class="mls-week-pos">${escapeHtml(r.pos)}</span></span>`;
+// A short list of names: "Puka Nacua WR (2), ..." and "and 3 more".
+function nameList(rows, count) {
+    const shown = rows.slice(0, RECAP_NAMES).map(r => `${escapeHtml(r.name)} <span class="mls-week-pos">${escapeHtml(r.pos)}</span>${count ? ` (${count(r)})` : ''}`);
+    return shown.join(', ') + (rows.length > RECAP_NAMES ? `, and ${rows.length - RECAP_NAMES} more` : '');
+}
+const leaguesText = (k) => `${k} league${k === 1 ? '' : 's'}`;
+
+function recapTable(kind, rows, week) {
+    const cols = kind === 'mvp' ? ['Player', 'Own', 'Boomed', 'Pts', 'Started'] : ['Player', 'Own', 'Started', 'Pts'];
+    const all = recapView.allWeek[kind] === week;
+    const shown = all ? rows : rows.slice(0, RECAP_ROWS);
+    const cell = (cls, label, html) => `<span class="mls-recap-cell mls-recap-${cls}" role="cell"><span class="mls-recap-cell-label">${label} </span>${html}</span>`;
+    const row = (r) => {
+        const cells = kind === 'mvp'
+            ? [cell('player', '', recapName(r)), cell('own', 'Own', ownText(r)), cell('boomed', 'Boomed', `${r.boomed} of ${r.own}`), cell('pts', 'Pts', pointsRange(r)), cell('started', 'Started', `${r.started} of ${r.own}`)]
+            : [cell('player', '', recapName(r)), cell('own', 'Own', ownText(r)), cell('started', 'Started', `${r.started} of ${r.own}`), cell('pts', 'Pts', pointsRange(r))];
+        return `<li class="mls-recap-row${r.partial ? ' is-partial' : ''}" role="row">${cells.join('')}</li>`;
+    };
+    const head = `<li class="mls-recap-row mls-recap-headrow" role="row">${cols.map((c, i) => `<span class="mls-recap-cell mls-recap-${['player', 'own', kind === 'mvp' ? 'boomed' : 'started', 'pts', 'started'][i]}" role="columnheader">${c}</span>`).join('')}</li>`;
+    const more = shown.length < rows.length ? `<button type="button" class="btn-bare mls-week-show-all" data-action="showAllRecap" data-list="${kind}">Show all ${rows.length}</button>` : '';
+    return `<ol class="mls-recap-table is-${kind}" role="table" aria-label="${kind === 'mvp' ? 'MVPs' : 'LVPs'}">${head}${shown.map(row).join('')}</ol>${more}`;
+}
+
+function recapHTML(m) {
+    const ctx = m.ctx;
+    const rc = buildPlayerRecap(recapInput(ctx));
+    if (!rc.leagueCount) return '';
+    const open = recapOpen();
+    const summary = `${rc.mvps.length} MVP${rc.mvps.length === 1 ? '' : 's'} · ${rc.lvps.length} LVP${rc.lvps.length === 1 ? '' : 's'}`;
+    const chevron = `<svg class="mls-recap-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+    const toggle = `<button type="button" class="btn-bare mls-recap-toggle" data-action="togglePlayerRecap" aria-expanded="${open}" aria-controls="mlsRecapBody">
+        ${chevron}<span class="mls-recap-title">MVPs &amp; LVPs</span><span class="mls-week-summary">${summary}</span>${weekStatusMarkup(m.final)}
+    </button>`;
+    if (!open) return `<section class="mls-recap" aria-label="MVPs and LVPs">${toggle}<div id="mlsRecapBody" class="mls-recap-body" hidden></div></section>`;
+
+    const lines = getRecapLines();
+    const offSleeper = (State.leagues || []).filter(l => !isSleeperLeague(l)).length;
+    const parts = [];
+    parts.push(`<p class="text-helper mls-recap-intro">Your ${leaguesText(rc.leagueCount)} on Sleeper, each in its own scoring. Own: leagues with him on your roster, bench included${offSleeper ? ' (manual leagues have no points, so they aren\'t counted)' : ''}. Boom / Bust: ${['QB', 'RB', 'WR', 'TE'].map(p => `${p} ${lines[p].boom} / ${lines[p].bust}`).join(', ')} (Advanced Settings on the Dashboard). No K or DEF.</p>`);
+    parts.push(`<h4 class="mls-week-sub">MVPs</h4>`);
+    parts.push(rc.mvps.length ? recapTable('mvp', rc.mvps, ctx.week) : `<p class="text-helper">No MVPs${m.final ? '' : ' yet'}: nobody on your rosters has reached his Boom line.</p>`);
+    if (rc.partial.length) {
+        parts.push(`<p class="mls-recap-note"><strong>Partial boom:</strong> ${rc.partial.slice(0, RECAP_NAMES).map(r => `${escapeHtml(r.name)} <span class="mls-week-pos">${escapeHtml(r.pos)}</span> boomed in ${r.boomed} of ${r.own} (${pointsRange(r)}), likely that league's scoring`).join('; ')}.</p>`);
+    }
+    parts.push(`<h4 class="mls-week-sub">LVPs</h4>`);
+    parts.push(rc.lvps.length ? recapTable('lvp', rc.lvps, ctx.week) : `<p class="text-helper">No LVPs${m.final ? '' : ' yet'}: nobody whose game is final is under his Bust line.</p>`);
+
+    const extra = [];
+    if (rc.startedZeros.length) extra.push(`<li><strong>Started zeros:</strong> ${nameList(rc.startedZeros, r => leaguesText(r.zeroIn))}. 0.0 usually means he didn't play; the app can't check that.</li>`);
+    if (rc.deadWeight.length) extra.push(`<li><strong>Dead weight:</strong> ${nameList(rc.deadWeight, r => `on ${r.own} benches, 0.0`)}.</li>`);
+    if (rc.stillOpen.length) extra.push(`<li><strong>Still open:</strong> ${nameList(rc.stillOpen, r => r.own)}. Their games aren't final, so they could land on either list.</li>`);
+    if (rc.worstBenchings.length) {
+        extra.push(`<li><strong>Worst benchings:</strong> ${rc.worstBenchings.slice(0, 3).map(b => `${escapeHtml(b.bench.name)} <span class="mls-week-pos">${escapeHtml(b.bench.pos)}</span> ${fmt(b.bench.points)} on your bench in ${escapeHtml(b.league.name)}, over ${escapeHtml(b.starter.name)} ${fmt(b.starter.points)} (${signed(-b.gap)})`).join('; ')}.</li>`);
+    }
+    if (rc.unresolved.length) {
+        const big = rc.unresolved.filter(u => u.boomLevel);
+        extra.push(`<li><strong>Not in Sleeper's player map:</strong> ${rc.unresolved.length} player${rc.unresolved.length === 1 ? '' : 's'}, left out${big.length ? `; ${big.map(u => `id ${escapeHtml(u.id)} scored ${fmt(u.max)} (a Boom-level number) in ${u.leagues.filter(x => x.points === u.max).map(x => escapeHtml(x.name)).slice(0, 1).join('')}`).join('; ')}` : ''}.</li>`);
+    }
+    if (rc.bestBallNote) extra.push(`<li><strong>Best Ball</strong> sets its lineup after the games, so a bench player there may still count; Started shows Sleeper's lineup as it stands.</li>`);
+    if (extra.length) parts.push(`<ul class="mls-recap-extra">${extra.join('')}</ul>`);
+    if (!m.final) parts.push(`<p class="text-helper mls-recap-foot">Provisional until the week's last game is final.</p>`);
+    return `<section class="mls-recap is-open" aria-label="MVPs and LVPs">${toggle}<div id="mlsRecapBody" class="mls-recap-body">${parts.join('')}</div></section>`;
+}
 
 // The Dashboard's one line: "Week 7 Recap · Record 9–6 · 4 still live", opening the Scoreboard.
 function renderSummaryLine(m) {

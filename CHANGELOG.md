@@ -91,6 +91,14 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **MVPs and LVPs on the Scoreboard.** Under the league tiles, a section that opens with a tap lists the players who won
+  and lost your week across your Sleeper leagues, from your weekly recap: MVPs (at or above their position's Boom line
+  in at least one league) and LVPs (under the Bust line once their game is final), each with how many of your leagues
+  own him ("26% (5)"), his points as a range, and how often you started him. Then one line each for started zeros,
+  dead weight on your benches, players whose games aren't final yet, and your worst benchings (outside Best Ball).
+  Provisional until the week's last game is final.
+- **Your own Boom / Bust lines.** Advanced Settings on the Dashboard has "MVP / LVP Lines" (QB 24 / 12, RB 20 / 7,
+  WR 20 / 7.5, TE 15 / 5.5 to start), with Reset. They're only for the Scoreboard's MVPs and LVPs.
 - **The Matchup Simulator during games.** A player whose game is still being played used to count as finished on the
   points he had so far (a receiver on 3 in the first quarter counted as 3), so win chances during games were badly
   off. He now counts as his points so far plus his usual output for the part of the game that's left (from the

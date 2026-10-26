@@ -263,14 +263,14 @@ test.describe('This week: every league\'s matchup', () => {
 
     test('once every game is final: Final, and the W-L with Jefferson\'s points', async ({ page }) => {
         const { state } = await setup(page);
-        await expect(card(page).locator('.mls-week-status')).toHaveText('Provisional');
+        await expect(card(page).locator('.mls-week-head .mls-week-status')).toHaveText('Provisional');
         // Sunday night's game ends; Refresh picks it up.
         await page.unroute(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/);
         await page.unroute(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`));
         await page.clock.setFixedTime(new Date('2026-09-21T04:00:00Z'));
         await routeWeek(page, { matchups: 'final', league2: 'ok', minFinal: true });
         await refresh(page);
-        await expect(card(page).locator('.mls-week-status')).toHaveText('Final');
+        await expect(card(page).locator('.mls-week-head .mls-week-status')).toHaveText('Final');
         await expect(card(page).locator('.mls-week-head')).toContainText('Record 2–0');
         await expect(card(page).locator('.mls-week-head')).not.toContainText('still live');
         await expect(card(page).locator('.mls-week-swing')).toHaveCount(0);
@@ -365,7 +365,7 @@ test.describe('This week: every league\'s matchup', () => {
         await showTab(page, 'scoreboard');
         await expect(card(page).locator('.mls-week-title')).toHaveText('Week 1 Recap');
         await expect(card(page).locator('.mls-week-override')).toContainText('Showing week 1 because the address has ?week=1');
-        await expect(card(page).locator('.mls-week-status')).toHaveText('Final');
+        await expect(card(page).locator('.mls-week-head .mls-week-status')).toHaveText('Final');
         expect(asked).toBe('1');
         // The rest of the app stays on Sleeper's week.
         expect(await page.evaluate(async () => (await import('/js/mls/state.js')).State.currentNflWeek)).toBe(2);

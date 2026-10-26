@@ -52,7 +52,8 @@ import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
 import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeaguePaid, toggleLeagueReorder, withCardsTransition } from './render/leagueCards.js';
-import { dismissPaidHint, refreshThisWeek, renderThisWeek, showAllSwings } from './week/thisWeek.js';
+import { dismissPaidHint, refreshThisWeek, renderThisWeek, showAllRecap, showAllSwings, togglePlayerRecap } from './week/thisWeek.js';
+import { resetRecapLines, saveRecapLines } from './week/recapLines.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
@@ -134,6 +135,11 @@ const clickActions = {
     refreshThisWeek() { refreshThisWeek({ force: true }); },
     dismissPaidHint() { dismissPaidHint(); },
     showAllSwings() { showAllSwings(); },
+    // The Scoreboard's MVPs & LVPs (week/thisWeek.js, improvements S22), and their lines in Advanced Settings
+    togglePlayerRecap() { togglePlayerRecap(); },
+    showAllRecap() { showAllRecap(this.dataset.list); },
+    saveRecapLines() { if (saveRecapLines()) renderThisWeek(); },
+    resetRecapLines() { resetRecapLines(); renderThisWeek(); },
     jumpToLeagueNeeds() { jumpToLeagueNeeds(); },
     // Best available in your leagues (scout/bestAvailable.js, improvements S5; a section of each league card since S12)
     viewLeagueTopAvailable() { viewLeagueTopAvailable(this.dataset.leagueId); },
