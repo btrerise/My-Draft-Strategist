@@ -6830,3 +6830,5 @@ in that line ("Use it here") sets the In-Season set and the rows show both ranks
 **Checks.** 461 unit tests; this spec 12/12 and the neighbouring specs (In-Season, make it fair, trade impact, roster
 counts, display ranks, legend, tooltips, Scout league switch, backup) 128/128. Screenshots: unchanged from round 1
 (the screenshot league is redraft); the Guide PNGs still come from CI.
+`CACHE_NAME` v2.8.115 → v2.8.116, so a browser that already opened the branch's first deploy gets this round's files on
+its next load rather than one load later.
