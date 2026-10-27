@@ -6798,12 +6798,17 @@ through the real Restore (file input and confirm), and Restore followed by a rea
 Setup tab's username import and Sync All). In every case each dynasty league with an In-Season set showed both ranks,
 the chips, the sort switch and two verdicts (34 rows on Managers of the Round Table and on Draft Scouts of America, at
 both widths). The data was intact: 14 dynasty leagues pointing at "ROS Redraft" as In-Season, and their dynasty sets.
-The difference: **the backup reopens on the active league it was saved with, League of Ordinary Gentlemen, the one
-keeper league with no In-Season set** (the "Also use it in…" dialog in S23 was answered before it was a keeper league
-treated as dynasty, or with Just this league). By design nothing changes in a league without one, so that league
-looked exactly like main, which read as "not working". After the Factory Reset every league got the set again.
-Current users with a dynasty or keeper league that has no In-Season set will see the same thing, so:
+My first guess was the league the backup reopens on (League of Ordinary Gentlemen, the one keeper league with no
+In-Season set). **The owner corrected me: the issue was in May the Receptions Be With You**, a dynasty league with both
+sets. I then reproduced their steps on that league exactly: Restore through the file input, a switch to it from the
+header drop-down, the Setup tab's username sync, Sync All, and a reload. At every step it showed 29 rows with both
+ranks, the source line, and the Trade Analyzer's two verdicts (`tradeSeasonSet()` set). So with this branch's files and
+this backup the feature works; **the cause is not found yet**. What's different in the owner's browser is still open
+(see the questions to the owner below). The likeliest cause is old files served after the deploy, since the S23 line
+"Ranks by your dynasty rankings (…)" would then still show; not confirmed.
 
+Still worth keeping from this round, since current users can have a dynasty or keeper league without an In-Season set
+and see nothing new there:
 - **A line where the features would be** (dynasty and keeper leagues with a dynasty set and no In-Season set):
   - Roster tab, above the list: "No In-Season rankings in this league, so these are your dynasty ranks alone. Your
     redraft leagues use **ROS Redraft**: **Use it here** to see this season's ranks beside them." (S23's own offer and
@@ -6812,8 +6817,12 @@ Current users with a dynasty or keeper league that has no In-Season set will see
     this-season verdict beside your dynasty one." On screen only (Export Trade leaves it out).
   - Redraft leagues: nothing. `render/roster.js`, `trade/verdict.js`, `css/mls.css` (`.mls-roster-season-hint`,
     `.mls-trade-season-hint`).
-- Not a code or cache problem: the same files and data work after a restore. (If it ever is, the service worker serves
-  scripts stale-while-revalidate, so a deploy shows from the second load; `CACHE_NAME` is bumped, which clears it then.)
+- The service worker serves scripts stale-while-revalidate: a page loaded while an older version was cached runs the
+  old scripts once, and the next load gets the new ones (`CACHE_NAME` bumped).
+
+**Questions to the owner (open):** what the Roster tab showed in that league (the S23 line "Ranks by your dynasty
+rankings (Dynasty SF TEP)." and one "Ovr | Pos" badge per row means old files ran; no line at all means something else),
+the footer's version / which URL, phone or computer, and whether a second reload changed anything.
 
 **The owner's choice on players one set leaves out:** "build a chip … or just use the same chips and count unranked
 as much lower". **Same chips:** a player missing from one set counts as far below it, so if the other set has him in
