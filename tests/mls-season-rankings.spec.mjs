@@ -151,7 +151,8 @@ test.describe('In-Season rankings in a dynasty league', () => {
         expect(after.notes).toContain('its value from your dynasty rankings, adjusted for player age');
         await expect(page.locator('#rosterPowerStrip')).toContainText('out of 2 teams · Start by In-Season');
         // The player rows say whose ranks they show.
-        await expect(page.locator('#rosterList .mls-roster-source')).toHaveText('Ranks by your dynasty rankings (Dynasty SF).');
+        // Since S24 the line names both sets (each row shows both ranks).
+        await expect(page.locator('#rosterList .mls-roster-source')).toHaveText('Ranks by your In-Season rankings (Redraft ROS) and your dynasty rankings (Dynasty SF).');
 
         // I'm competing: Ovr and the rooms by In-Season too, Future still dynasty. Saved on the league.
         await expect(page.locator('#powerCompetingWrap')).toBeVisible();
@@ -227,7 +228,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson']);
         await callApp(page, 'setTradePlayers', 'give', ["Ja'Marr Chase"]);
         await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
-        await expect(page.locator('.mls-trade-impact-via').first()).toHaveText('Start by In-Season; value, Ovr, position rooms and Future by dynasty');
+        await expect(page.locator('.mls-trade-impact-via').first()).toHaveText('Start and value by In-Season; Ovr, position rooms and Future by dynasty') // value by In-Season since S24;
 
         // The Dashboard's best available: two choices; ROS reads a dynasty league's In-Season set and says so.
         await showTab(page, 'setup'); // the Dashboard

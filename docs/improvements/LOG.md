@@ -6764,3 +6764,25 @@ it fair by dynasty, the Power Rankings line and headline, both banners' tooltips
 Trade's clone; the Roster tab's two badges, both chips and their toast, nothing past a row's edge at 375px, the sort
 switch (order, focus, saved, kept by a reload and a re-sync, back); a redraft league and a dynasty league with no
 In-Season set exactly as before.
+- S23's spec (`mls-season-rankings.spec.mjs`) had two lines S24 changes on purpose: the Roster tab's source line (now
+  names both sets) and the Trade Analyzer's Power Rankings source line ("Start and value by In-Season; …"). Updated.
+
+**Checks.** check-precache OK; 459 unit tests; Playwright 555 passed, 5 skipped, and only `visual.spec.mjs` failed, on
+the one environment message (this container's Chromium is 153, not the pinned 1194), plus the two S23 lines above,
+since updated (both specs then 34/34).
+
+**Screenshots.** Rendered all 42 on main (1541b1b) and on this branch here (`RENDER_ENV=any`) and compared with
+`npm run pxdiff`: only **`mls-league-guide.png`** changes, at both widths (`desktop/` 1280×8122 → 1280×8319, `phone/`
+390×18492 → 390×19144), from the legend's gap-chip line and the Guide sentences. The other 40 are pixel-identical (the
+screenshot league is redraft). Not re-taken here (this container can't render CI's); take both from the pull request's
+CI run, checking each `-expected.png` matches the committed baseline.
+
+**Left over.**
+- The two Guide PNGs, from CI once there's a pull request.
+- Trade Finder with In-Season as a basis (option 4): with S25, which can hold FantasyCalc's redraft market beside the
+  dynasty one.
+- A player unranked in one of the two sets gets no gap chip (nothing to compare). If dynasty sets often leave out
+  older veterans an In-Season set ranks, "unranked in dynasty, startable now" could be a third chip; not built.
+- A dynasty league whose only rankings are its In-Season set still gets one verdict by the market (S23, round 12):
+  two verdicts need both sets.
+- No open follow-up in docs/TESTING.md touches this area beyond the market-per-format one (S23), which S25 may cover.
