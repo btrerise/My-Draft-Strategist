@@ -6820,7 +6820,10 @@ and see nothing new there:
 - The service worker serves scripts stale-while-revalidate: a page loaded while an older version was cached runs the
   old scripts once, and the next load gets the new ones (`CACHE_NAME` bumped).
 
-**Questions to the owner (open):** what the Roster tab showed in that league (the S23 line "Ranks by your dynasty
+**Answered:** the rows showed one "Ovr | Pos" badge each, main's markup, so the browser ran cached older scripts; on
+the latest push (with `CACHE_NAME` v2.8.116) the owner can't reproduce it. Closed.
+
+**Questions to the owner (asked):** what the Roster tab showed in that league (the S23 line "Ranks by your dynasty
 rankings (Dynasty SF TEP)." and one "Ovr | Pos" badge per row means old files ran; no line at all means something else),
 the footer's version / which URL, phone or computer, and whether a second reload changed anything.
 
