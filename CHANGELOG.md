@@ -91,6 +91,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **The Scout tab follows a league switch made there.** Switching between a redraft and a dynasty league on the Scout
+  tab left the Waiver Wire's Rank By on the old league's choices (ROS Rank, or Dynasty and In-Season Rank) until you
+  left the tab and came back. Market Disconnect's report is also re-run for the new league, so who rosters each player
+  is that league's.
 - **The Week Recap lasts through Tuesday.** Sleeper moves to the next week as soon as Monday night's game ends, and the
   Scoreboard, the Dashboard's line and the Lineup tab's strip went with it, so last week's recap was gone within an hour.
   They now follow the week Sleeper's own app shows, which changes on Wednesday when waivers run. Lineups, projections

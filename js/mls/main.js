@@ -29,7 +29,7 @@ import { importAllSleeperLeagues } from './leagues/importAll.js';
 import { explainSoS, generateSoSGrid, saveManualSoS, setSosReversed } from './sos.js';
 import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
-import { autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
+import { applyWaiverScanSettingsToUI, autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
 import { onScoutTabShown, refreshTopAvailable, setTopAvailableView, setWaiverMode, setWaiverPos, showMoreTopAvailable } from './scout/topAvailable.js';
 import { bestAvailableUpload, dismissBestAvailable, renderBestAvailable, restoreBestAvailable, setBestAvailableBasis, viewLeagueTopAvailable } from './scout/bestAvailable.js';
 import './power/allLeagues.js';
@@ -72,7 +72,7 @@ import { dismissBannerAndReveal, dismissBanner } from '../shared/ui/banners.js';
 // out of mls.js order. main.js is the entry module, so it is always mid-evaluation while the
 // others evaluate, and importing from it never triggers an evaluation.
 export { activePowerRankings, activeSeasonRankings, getLeagueSeasonRankings };
-export { applyDefaultFolds, checkForDraftStrategistHandoff, clearLocksForNewWeek, computePositionalPower, generateSoSGrid, getLeagueRankings, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, onScoutTabShown, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, refreshTopAvailable, renderBestAvailable, renderLeagueCards, renderLineupUI, renderSyncLogs, reoptimizeProjectionlessLeagues, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
+export { applyDefaultFolds, applyWaiverScanSettingsToUI, checkForDraftStrategistHandoff, clearLocksForNewWeek, computePositionalPower, generateSoSGrid, getLeagueRankings, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, onScoutTabShown, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, refreshTopAvailable, renderBestAvailable, renderLeagueCards, renderLineupUI, renderSyncLogs, reoptimizeProjectionlessLeagues, runMarketDisconnectAnalysis, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
 // For the Playwright tests, which import this module (`import('/js/mls/main.js')` in the page returns
 // this same instance) instead of reading the functions off window.
 export { confirmRankingsPreview, createManualLeague, refreshThisWeek, renderThisWeek, openRankingSetLeagues, setWaiverCompare, setWaiverMode, setWaiverPos, setWaiverScope, toggleDrawer };

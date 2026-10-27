@@ -16,7 +16,7 @@ import { updatePulsePrompts } from '../init.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
-import { getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderLeagueCards } from '../main.js';
+import { applyWaiverScanSettingsToUI, getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderLeagueCards, runMarketDisconnectAnalysis } from '../main.js';
 import { updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { applyMarketSettingsToUI } from '../settings.js';
 import { KEYS } from '../../shared/storage/keys.js';
@@ -226,6 +226,11 @@ import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from
         if (activeTab === 'lineupTab') optimizeLineup(false);
         if (activeTab === 'rosterTab') loadRosterTab();
         
+        // Rank By's choices follow the league: Weekly / ROS in a redraft league, Weekly / Dynasty (and In-Season
+        // with an In-Season set) in a dynasty or keeper one (S23). Only the Scout tab's own showing redrew them, so a
+        // switch made on the Scout tab left the old league's choices up until you left the tab and came back.
+        applyWaiverScanSettingsToUI();
+
         // The Waiver Wire Assistant's results area follows its mode (improvements S1): Top
         // Available redraws for the new league, Check a List re-runs a pasted list, and anything
         // else (Auto-Find, an empty list) is cleared.
@@ -235,6 +240,11 @@ import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from
         if (waiverMode === 'top') refreshTopAvailable();
         else if (waiverMode === 'list' && waiverInput && waiverInput.value.trim() !== '') runScout('waiver');
         else if (waiverOutput) waiverOutput.innerHTML = '';
+
+        // Market Disconnect's targets name who rosters each player and read this league's ROS rankings, so a report
+        // on screen is re-run for the new league (no fetch: the market values are the ones already loaded).
+        const disconnectOutput = document.getElementById('marketDisconnectOutput');
+        if (disconnectOutput && disconnectOutput.innerHTML.trim() !== '') runMarketDisconnectAnalysis();
         
         // Trade Analyzer and Positional Power Rankings were already cleared by
         // loadActiveLeagueData above (see clearLeagueScopedResults). The trade used to be
