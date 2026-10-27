@@ -5,6 +5,7 @@ import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
 import { getFreshness } from '../../shared/freshness.js';
 import { verdictFromValues } from './makeFair.js';
+import { marketFormatWarning } from '../main.js';
 
     // --- TRADE FAIRNESS VERDICT(S) ---
     // Returns the verdict banner(s) runScout puts above the Trade Analyzer's player cards, for a trade
@@ -58,9 +59,12 @@ import { verdictFromValues } from './makeFair.js';
     function marketAgeHTML() {
         if (State.marketRankings.length === 0) return '';
         const fresh = getFreshness(State.marketUpdatedAt, 0);
-        return fresh
+        // Values fetched for another format than this league's (S23 follow-up): said under the age, in the same amber.
+        const warning = marketFormatWarning();
+        return (fresh
             ? `<div class="mls-trade-market-age${fresh.isStale ? ' is-stale' : ''}">Market values: ${fresh.label}${fresh.isStale ? '. Refresh them in Trade Finder (below) before you trade.' : '.'}</div>`
-            : '';
+            : '')
+            + (warning ? `<div class="mls-trade-market-age is-stale">${escapeHtml(warning)} Fetch again in Trade Finder (below).</div>` : '');
     }
 
     // The names in a trade that match no player at all (runScout's rows mark them known: false), as shown on their rows.

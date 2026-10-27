@@ -1143,6 +1143,8 @@ button.close-chip {
 /* The market values' age under the verdicts (improvements S14, round 6): amber after a day. */
 .mls-trade-market-age { font-size: 0.75rem; color: var(--text-muted); text-align: center; margin: -0.25rem 0 0.75rem; }
 .mls-trade-market-age.is-stale { color: #fbbf24; font-weight: 600; }
+/* Market Consensus line: the loaded values were fetched for another format than this league's (S23 follow-up). */
+.mls-market-format-warning { color: #fbbf24; font-weight: 600; margin-top: 0.25rem; }
 
 .verdict-fair { border-color: var(--dart-border); background: var(--dart-bg); }
 .verdict-fair .trade-verdict-result { color: #93c5fd; }

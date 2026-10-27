@@ -6656,3 +6656,50 @@ moves on when Monday night's game ends, `display_week` is the week Sleeper's own
   and the Dashboard, the Lineup strip on week 7, the app's week 8.
 - Open: whether `display_week` changes on Wednesday morning or with waivers (Sleeper doesn't document it); either is
   what the owner asked for.
+
+## S23 follow-up: the Scout tab after a league switch made on it (owner's bug report)
+
+Owner: on the Scout tab, switching from a redraft league to a dynasty one kept Rank By at "Weekly Rank / ROS Rank", with
+no Dynasty or In-Season choice, and the reverse kept the dynasty choices, until they went to another tab and back.
+"Please check that everything else on the Scout tab changes based on league correctly."
+
+- Cause: S23 made Rank By's choices depend on the league, but `applyWaiverScanSettingsToUI` (js/mls/scout/waivers.js)
+  ran only at start-up, on a setting change and when the Scout tab was shown (`onScoutTabShown`). `applyActiveLeague`
+  (js/mls/leagues/sync.js) redrew the Top Available list but not the controls. It calls
+  `applyWaiverScanSettingsToUI` now, before the results are redrawn (imported through main.js, as sync.js's other
+  calls are).
+- The check: a probe switched leagues on the Scout tab in each Waiver Wire mode (Top Available, Auto-Find, Check a
+  List), both ways, and compared everything visible on the tab (text, each select's value and choices, inputs,
+  classes) with what leaving the tab and coming back showed. Rank By (its choices, and the wide-group class) was the
+  only difference. Trade Analyzer is already cleared on a switch (`clearLeagueScopedResults`), and the Market Consensus
+  settings already follow the league (`applyLeagueDefaultsToMarketSettings`).
+- Market Disconnect: a tab switch doesn't redraw it either, so it was checked by hand. Its report stayed up after a
+  switch with the old league's "Rostered by" and Free Agent lines and the old league's ROS ranks. A report on screen is
+  now re-run for the new league (`runMarketDisconnectAnalysis`, local, no fetch); an empty one stays empty.
+- Not changed (a question for the owner): market values are one set, from the last fetch. Fetched in a redraft league
+  ("Market Data (REDRAFT (1QB, PPR: 1)) Pulled Successfully!") and then switched to a dynasty one, the settings switch
+  to Dynasty but the loaded values, the Trade Analyzer's and Market Disconnect's, stay redraft until the next fetch.
+- Test: `tests/mls-scout-league-switch.spec.mjs` (both widths): Rank By in each mode both ways; In-Season Rank picked
+  in the dynasty league, ROS shown in the redraft one, In-Season again on the way back; Market Disconnect's owner line
+  follows the league; no report, nothing drawn. The first two fail on main.
+
+### S23 follow-up, round 2: a warning when the market values don't match the league (owner: "a warning ... would be good")
+
+The owner chose a warning for now, and a note to look into keeping values for each format later (in "Open follow-ups"
+in docs/TESTING.md, under "Needs the owner's decision first").
+
+- `mls_market_format` (`KEYS.mls.marketFormat`, `State.marketFormat`): the settings a fetch used, `{ type, qbs, ppr,
+  tep }`. A file upload removes it: a file says nothing about its format, so nothing is warned about. In the backup
+  with the other `mls_` keys.
+- `leagueMarketFormat(league)` (js/mls/scout/marketDisconnect.js): the format a league plays, the rules
+  `applyLeagueDefaultsToMarketSettings` (leagues/sync.js) used, moved there so both read one copy; only what the
+  league knows (a manual league has no type or scoring from Sleeper).
+- `marketFormatWarning()`: the fields that differ, both ways, e.g. "Fetched for redraft; this league is dynasty." It
+  compares with the league, not the drop-downs, so a drop-down changed by hand doesn't hide it. Shown under the Market
+  Consensus line (`.mls-market-format-warning`, amber; redrawn on a league switch) and under the Trade Analyzer's
+  "Market values:" age line (`.mls-trade-market-age.is-stale`).
+- Test: `tests/mls-scout-league-switch.spec.mjs`, "market values fetched for another format…": none in the league
+  fetched for, the warning in the other (Market Consensus and Trade Analyzer), gone after fetching there, the other
+  way round back in the first league, and none after a file upload.
+- Owner's instruction: no full local run for these small changes; that spec file (8 runs) and the unit tests (451)
+  passed locally, and CI runs the rest.

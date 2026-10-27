@@ -16,7 +16,7 @@ import { updatePulsePrompts } from '../init.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
-import { getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderLeagueCards } from '../main.js';
+import { applyWaiverScanSettingsToUI, getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderLeagueCards, runMarketDisconnectAnalysis, updateMarketMetaDisplay, leagueMarketFormat } from '../main.js';
 import { updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { applyMarketSettingsToUI } from '../settings.js';
 import { KEYS } from '../../shared/storage/keys.js';
@@ -226,6 +226,11 @@ import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from
         if (activeTab === 'lineupTab') optimizeLineup(false);
         if (activeTab === 'rosterTab') loadRosterTab();
         
+        // Rank By's choices follow the league: Weekly / ROS in a redraft league, Weekly / Dynasty (and In-Season
+        // with an In-Season set) in a dynasty or keeper one (S23). Only the Scout tab's own showing redrew them, so a
+        // switch made on the Scout tab left the old league's choices up until you left the tab and came back.
+        applyWaiverScanSettingsToUI();
+
         // The Waiver Wire Assistant's results area follows its mode (improvements S1): Top
         // Available redraws for the new league, Check a List re-runs a pasted list, and anything
         // else (Auto-Find, an empty list) is cleared.
@@ -235,6 +240,12 @@ import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from
         if (waiverMode === 'top') refreshTopAvailable();
         else if (waiverMode === 'list' && waiverInput && waiverInput.value.trim() !== '') runScout('waiver');
         else if (waiverOutput) waiverOutput.innerHTML = '';
+
+        // Market Disconnect's targets name who rosters each player and read this league's ROS rankings, so a report
+        // on screen is re-run for the new league (no fetch: the market values are the ones already loaded).
+        updateMarketMetaDisplay(); // its warning when the loaded values were fetched for another format
+        const disconnectOutput = document.getElementById('marketDisconnectOutput');
+        if (disconnectOutput && disconnectOutput.innerHTML.trim() !== '') runMarketDisconnectAnalysis();
         
         // Trade Analyzer and Positional Power Rankings were already cleared by
         // loadActiveLeagueData above (see clearLeagueScopedResults). The trade used to be
@@ -322,18 +333,8 @@ import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from
     // preference, not a league setting, and is left alone (only FantasyCalc since refactor 7A).
     function applyLeagueDefaultsToMarketSettings(league) {
         if (!league) return;
-        const s = State.marketSettings;
-        const badge = league.formatBadge || '';
-
-        if (league.leagueType || badge) s.type = getPowerLeagueKind(league); // 'dynasty' (incl. keeper) or 'redraft'
-        if (league.reqs) s.qbs = ((league.reqs.SFLEX || 0) > 0 || (league.reqs.QB || 0) >= 2) ? '2' : '1';
-        if (typeof league.pprVal === 'number') {
-            // FantasyCalc only offers 1 / 0.5 / 0, so an unusual value (e.g. 0.25 PPR) rounds to the nearest.
-            s.ppr = league.pprVal >= 0.75 ? '1' : (league.pprVal >= 0.25 ? '0.5' : '0');
-        }
-        if (badge) s.tep = /\bTEP\b/.test(badge);
-
-        localStorage.setItem(KEYS.mls.marketSettings, JSON.stringify(s));
+        Object.assign(State.marketSettings, leagueMarketFormat(league)); // scout/marketDisconnect.js
+        localStorage.setItem(KEYS.mls.marketSettings, JSON.stringify(State.marketSettings));
         applyMarketSettingsToUI();
     }
 
