@@ -93,6 +93,11 @@ import { mdsFetch } from '../shared/net.js';
         // bye-week detection rather than guessing, so a slow/failed fetch degrades to the old
         // (bye-unaware) behavior instead of showing wrong information.
         currentNflWeek: null,
+        // The week whose results the Week Recap shows (the Scoreboard tab, the Dashboard's line, the Lineup strip):
+        // Sleeper's display_week, which stays on last week until Wednesday, when waivers run (owner: a recap should
+        // last through Tuesday). currentNflWeek moves on as soon as Monday night's game ends. Everything else (lineups,
+        // projections, kickoffs) follows currentNflWeek. Falls back to currentNflWeek.
+        recapNflWeek: null,
         // Not persisted -- team -> ISO kickoff timestamp for the current week, refreshed from
         // ESPN's scoreboard endpoint (see refreshGameTimes() below) once currentNflWeek is
         // known. Starts empty and stays empty if the fetch fails; every consumer treats a
@@ -240,6 +245,8 @@ export function applyLineupSettingsToUI() {
             .then(data => {
                 if (data && typeof data.week === 'number') {
                     State.currentNflWeek = data.week;
+                    const shown = data.display_week;
+                    State.recapNflWeek = typeof shown === 'number' && shown >= 1 && shown <= data.week ? shown : data.week;
                     State.currentNflSeason = data.league_season || data.season || null;
                     // A new NFL week clears last week's manual locks (improvements S11, round 5).
                     clearLocksForNewWeek(State.currentNflSeason, State.currentNflWeek);

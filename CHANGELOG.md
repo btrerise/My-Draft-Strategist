@@ -91,6 +91,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **The Week Recap lasts through Tuesday.** Sleeper moves to the next week as soon as Monday night's game ends, and the
+  Scoreboard, the Dashboard's line and the Lineup tab's strip went with it, so last week's recap was gone within an hour.
+  They now follow the week Sleeper's own app shows, which changes on Wednesday when waivers run. Lineups, projections
+  and kickoffs still move to the new week right away.
 - **MVPs and LVPs on the Scoreboard.** Under the league tiles, a section that opens with a tap lists the players who won
   and lost your week across your Sleeper leagues, from your weekly recap: MVPs (at or above their position's Boom line
   in at least one league) and LVPs (under the Bust line once their game is final), each with how many of your leagues

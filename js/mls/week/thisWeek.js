@@ -70,21 +70,27 @@ const view = { week: null, loadedAt: 0, loading: null, failed: new Map(), chance
 const weekStats = { week: null, data: null };
 // Leagues synced before S21: their names, median and guillotine flags, read from Sleeper once per visit.
 const metaCache = new Map();
-// The week asked for in the address (?week=), with its own scoreboard and projections once loaded.
-const other = { week: null, times: {}, games: {}, projections: null };
+// A week other than the app's current one (the recap week until Wednesday, or the address's ?week=), with its own
+// scoreboard, projections and matchups once loaded. Its matchups stay out of State.lineupActualPoints, the Lineup
+// tab's cache for the current week, so the two tabs don't keep replacing each other's.
+const other = { week: null, times: {}, games: {}, projections: null, matchups: new Map() };
 
-// The week this card shows and what it reads about it: Sleeper's current week from State, or the address's week.
+// The week this card shows and what it reads about it: the recap week (Sleeper's display_week, which stays on last
+// week through Tuesday; State.recapNflWeek), or the address's week. When that isn't the app's current week, it reads
+// its own (other) instead of the Lineup tab's.
 function weekCtx() {
     const asked = typeof location !== 'undefined' ? weekFromSearch(location.search) : null;
     const season = State.currentNflSeason;
-    if (asked != null && State.currentNflWeek != null && asked !== State.currentNflWeek) {
-        const mine = other.week === asked;
-        return { week: asked, season, times: mine ? other.times : {}, games: mine ? other.games : {}, projections: mine ? other.projections : null, asked: true };
+    const live = State.currentNflWeek;
+    const target = asked ?? State.recapNflWeek ?? live;
+    if (target != null && live != null && target !== live) {
+        const mine = other.week === target;
+        return { week: target, season, times: mine ? other.times : {}, games: mine ? other.games : {}, projections: mine ? other.projections : null, asked: asked != null, other: true };
     }
-    const week = State.currentNflWeek;
+    const week = live;
     return {
         week, season, times: State.gameTimesByTeam, games: State.gamesByTeam,
-        projections: State.lineupProjections.week === week ? State.lineupProjections.data : null, asked: false,
+        projections: State.lineupProjections.week === week ? State.lineupProjections.data : null, asked: false, other: false,
     };
 }
 const kickedOff = (ctx, team) => {
@@ -94,7 +100,7 @@ const kickedOff = (ctx, team) => {
 
 // The address's week: its ESPN scoreboard and Sleeper projections (the app's own are for the current week).
 async function loadOtherWeek(week, season) {
-    if (other.week !== week) Object.assign(other, { week, times: {}, games: {}, projections: null });
+    if (other.week !== week) Object.assign(other, { week, times: {}, games: {}, projections: null, matchups: new Map() });
     try {
         const res = await mdsFetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`);
         const parsed = parseEspnScoreboard(res.ok ? await res.json() : null);
@@ -191,13 +197,18 @@ function leagueResult(l, matchups, meta, base) {
 }
 
 // --- Loading ---
-const hasWeek = (l, week) => { const c = State.lineupActualPoints[l.leagueId]; return !!(c && c.week === week && Array.isArray(c.matchups)); };
+// A league's cached matchups for a week: the Lineup tab's cache for the current week, this card's own for any other.
+const cachedFor = (l, week) => {
+    const c = week === State.currentNflWeek ? State.lineupActualPoints[l.leagueId] : other.matchups.get(l.leagueId);
+    return c && c.week === week && Array.isArray(c.matchups) ? c : null;
+};
+const hasWeek = (l, week) => !!cachedFor(l, week);
 
 // Called when the Dashboard is shown (render/leagueCards.js) and by Refresh (force). Draws at once from what's
 // loaded, fetches what's older than FRESH_MS (everything, with force), draws again, then adds the win chances.
 export function refreshThisWeek({ force = false } = {}) {
     const leagues = (State.leagues || []).filter(isSleeperLeague);
-    const { week, season, asked } = weekCtx();
+    const { week, season, other: otherWeek } = weekCtx();
     if (!leagues.length || week == null) { renderThisWeek(); return Promise.resolve(); }
     if (view.loading) return view.loading;
     // Loaded in the last 2 minutes, and every league has this week's matchups (or failed then): just redraw. A league
@@ -211,18 +222,19 @@ export function refreshThisWeek({ force = false } = {}) {
             // A scoreboard that has a game under way and is a minute old is fetched again (gameStatusMayBeStale).
             if (force) State.gameTimesFetchedAt = 0;
             await Promise.all([
-                asked ? loadOtherWeek(week, season) : Promise.all([refreshGameTimes(), ensureLineupProjections()]),
+                otherWeek ? loadOtherWeek(week, season) : Promise.all([refreshGameTimes(), ensureLineupProjections()]),
                 getSleeperPlayerMap().catch(() => null),
                 getLiveWeekStats(season, week).then(data => { weekStats.week = week; weekStats.data = data; }),
             ]);
             const failed = new Map();
             await eachLimited(leagues, PARALLEL, async (l) => {
-                const cached = State.lineupActualPoints[l.leagueId];
-                const fresh = cached && cached.week === week && Array.isArray(cached.matchups) && cached.matchups.length
-                    && Date.now() - cached.fetchedAt < FRESH_MS;
+                const cached = cachedFor(l, week);
+                const fresh = cached && cached.matchups.length && Date.now() - cached.fetchedAt < FRESH_MS;
                 if (force || !fresh) {
                     try {
-                        storeLeagueMatchups(l, week, await getSleeperMatchups(l.leagueId, week));
+                        const got = await getSleeperMatchups(l.leagueId, week);
+                        if (otherWeek) other.matchups.set(l.leagueId, { week, matchups: Array.isArray(got) ? got : [], fetchedAt: Date.now() });
+                        else storeLeagueMatchups(l, week, got);
                     } catch (e) {
                         failed.set(l.leagueId, true);
                     }
@@ -275,8 +287,8 @@ function buildRows(ctx) {
     const base = { week, season: ctx.season, playerMap: cachedPlayerMap || {}, projections: ctx.projections, games: ctx.games, times: ctx.times };
     const rows = [];
     (State.leagues || []).filter(isSleeperLeague).forEach(l => {
-        const cached = State.lineupActualPoints[l.leagueId];
-        const matchups = cached && cached.week === week && Array.isArray(cached.matchups) ? cached.matchups : null;
+        const cached = cachedFor(l, week);
+        const matchups = cached ? cached.matchups : null;
         // A league whose last fetch failed keeps any scores it had (the note under the list names it).
         if (view.failed.get(l.leagueId) && !matchups) { rows.push({ league: l, res: { kind: 'failed' } }); return; }
         if (!matchups) { rows.push({ league: l, res: { kind: 'pending' } }); return; }
@@ -533,7 +545,7 @@ function renderScoreboard(m) {
     </header>`;
 
     const parts = [];
-    if (ctx.asked) parts.push(`<p class="mls-week-override">Showing week ${ctx.week} because the address has <code>?week=${ctx.week}</code>. Remove it to go back to this week (${State.currentNflWeek}).</p>`);
+    if (ctx.asked) parts.push(`<p class="mls-week-override">Showing week ${ctx.week} because the address has <code>?week=${ctx.week}</code>. Remove it to go back to this week (${State.recapNflWeek ?? State.currentNflWeek}).</p>`);
     const callable = h2h.filter(r => !r.res.early);
     if (started && callable.length) {
         // The splits as one row of small stat chips (owner, round 9: the stacked lines looked plain), plus the median
@@ -758,8 +770,8 @@ function recapInput(ctx) {
     const players = {};
     const leagues = [];
     (State.leagues || []).filter(isSleeperLeague).forEach(l => {
-        const cached = State.lineupActualPoints[l.leagueId];
-        if (!l.rosterId || !cached || cached.week !== ctx.week || !Array.isArray(cached.matchups)) return;
+        const cached = cachedFor(l, ctx.week);
+        if (!l.rosterId || !cached) return;
         const entry = cached.matchups.find(e => e.roster_id === l.rosterId);
         if (!entry) return;
         (entry.players || []).forEach(id => {

@@ -6633,3 +6633,26 @@ for the MVP / LVP Lines row (both setup PNGs at both widths; the changed rows si
 rounding in the fixed tab bar's blur) and by the Guide's new lines (desktop 7577 → 7841, phone 16616 → 17549). CI's
 renders (desktop `mls-empty-setup` 1280×1941, `mls-league-setup` 1280×2538, `mls-league-guide` 1280×7841; phone 390×2038,
 390×2811, 390×17549) are now the baselines.
+
+## S21 follow-up: the Week Recap lasts through Tuesday (owner's bug report, Tuesday after week 7)
+
+Owner: "MNF finished less than an hour ago, and already Week 7 Recap is gone, and now week 8 projections are showing.
+Users should see a Week's Recap at least through Tuesday. Most apps transition to the next week on Wednesday, when
+waivers typically run." Sleeper's state endpoint answered `"week": 8, "display_week": 7` at 04:13 UTC Tuesday: `week`
+moves on when Monday night's game ends, `display_week` is the week Sleeper's own app shows.
+
+- `State.recapNflWeek` (js/mls/state.js): `display_week` when it's a number from 1 to `week`, else `week`. Only the
+  Week Recap (`weekCtx` in js/mls/week/thisWeek.js: the Scoreboard tab, the Dashboard's line, the Lineup strip, S22's
+  MVPs and LVPs) reads it. Lineups, projections, kickoffs, locks and the Simulator stay on `currentNflWeek`, so Tuesday
+  shows the new week's lineups beside last week's recap.
+- When the recap week isn't the current week, the card loads that week the way `?week=` did (its own ESPN scoreboard
+  and projections) and keeps its matchups in its own cache (`other.matchups`). Before, the address's week wrote into
+  `State.lineupActualPoints`, the Lineup tab's cache for the current week, and with the recap a week behind every
+  Tuesday the two tabs would have kept replacing each other's entries.
+- Test: `mls-this-week.spec.mjs`, "Tuesday: the recap stays on last week…" (state week 3, display_week 2): Week 2
+  Recap, Final, no ?week= notice, week 2's scoreboard asked for, the Lineup tab's cache never holds week 2. It fails
+  on main ("Week 3 Recap").
+- Checked with the owner's real leagues at 04:30 UTC Tuesday: "Week 7 Recap · Record 7–13 · Final" on the Scoreboard
+  and the Dashboard, the Lineup strip on week 7, the app's week 8.
+- Open: whether `display_week` changes on Wednesday morning or with waivers (Sleeper doesn't document it); either is
+  what the owner asked for.
