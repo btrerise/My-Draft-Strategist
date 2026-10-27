@@ -6682,3 +6682,24 @@ no Dynasty or In-Season choice, and the reverse kept the dynasty choices, until 
 - Test: `tests/mls-scout-league-switch.spec.mjs` (both widths): Rank By in each mode both ways; In-Season Rank picked
   in the dynasty league, ROS shown in the redraft one, In-Season again on the way back; Market Disconnect's owner line
   follows the league; no report, nothing drawn. The first two fail on main.
+
+### S23 follow-up, round 2: a warning when the market values don't match the league (owner: "a warning ... would be good")
+
+The owner chose a warning for now, and a note to look into keeping values for each format later (in "Open follow-ups"
+in docs/TESTING.md, under "Needs the owner's decision first").
+
+- `mls_market_format` (`KEYS.mls.marketFormat`, `State.marketFormat`): the settings a fetch used, `{ type, qbs, ppr,
+  tep }`. A file upload removes it: a file says nothing about its format, so nothing is warned about. In the backup
+  with the other `mls_` keys.
+- `leagueMarketFormat(league)` (js/mls/scout/marketDisconnect.js): the format a league plays, the rules
+  `applyLeagueDefaultsToMarketSettings` (leagues/sync.js) used, moved there so both read one copy; only what the
+  league knows (a manual league has no type or scoring from Sleeper).
+- `marketFormatWarning()`: the fields that differ, both ways, e.g. "Fetched for redraft; this league is dynasty." It
+  compares with the league, not the drop-downs, so a drop-down changed by hand doesn't hide it. Shown under the Market
+  Consensus line (`.mls-market-format-warning`, amber; redrawn on a league switch) and under the Trade Analyzer's
+  "Market values:" age line (`.mls-trade-market-age.is-stale`).
+- Test: `tests/mls-scout-league-switch.spec.mjs`, "market values fetched for another format…": none in the league
+  fetched for, the warning in the other (Market Consensus and Trade Analyzer), gone after fetching there, the other
+  way round back in the first league, and none after a file upload.
+- Owner's instruction: no full local run for these small changes; that spec file (8 runs) and the unit tests (451)
+  passed locally, and CI runs the rest.

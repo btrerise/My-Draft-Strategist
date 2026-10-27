@@ -15,6 +15,7 @@ import { mdsFetch } from '../shared/net.js';
     // --- STATE MANAGEMENT ---
     export const State = {
         leagues: readJSON(KEYS.mls.leagues, []),
+        marketFormat: readJSON(KEYS.mls.marketFormat, null),
         activeLeagueId: localStorage.getItem(KEYS.mls.activeLeague) || null,
         earlyTeams: readJSON(KEYS.mls.earlyTeams, []),
         rosRankings: readJSON(KEYS.mls.ros, []),

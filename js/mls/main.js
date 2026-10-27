@@ -39,7 +39,7 @@ import { deleteRankingSet, onRankingSetSelectChange, onSeasonSetChange, openRank
 import { cancelRankingsPreview, confirmRankingsPreview, processMultiRankings } from './rankings/uploadPreview.js';
 import { dismissRankingsChange } from './rankings/changeSummary.js';
 import { explainRankMove } from './rankings/moveChips.js';
-import { fetchMarketValue, runMarketDisconnectAnalysis, toggleDisconnectMode, toggleDisconnectRankBasis, updateMarketMetaDisplay } from './scout/marketDisconnect.js';
+import { fetchMarketValue, leagueMarketFormat, marketFormatWarning, runMarketDisconnectAnalysis, toggleDisconnectMode, toggleDisconnectRankBasis, updateMarketMetaDisplay } from './scout/marketDisconnect.js';
 import { autoFetchRosRankings } from './rankings/rosFetch.js';
 import { updateMarketSetting, updateSimSetting, updateTradeSetting } from './settings.js';
 import './trade/valueCurve.js';
@@ -78,6 +78,7 @@ export { applyDefaultFolds, applyWaiverScanSettingsToUI, checkForDraftStrategist
 export { confirmRankingsPreview, createManualLeague, refreshThisWeek, renderThisWeek, openRankingSetLeagues, setWaiverCompare, setWaiverMode, setWaiverPos, setWaiverScope, toggleDrawer };
 // The Trade Analyzer's picker, for tests (callApp) to set a whole trade at once.
 export { setTradePlayers };
+export { leagueMarketFormat, marketFormatWarning };
 
 // The only window.* names left. Until refactor chunk 5D this block held every name something read
 // through window (originally the inline on*="..." handlers); 5B and 5C replaced the handlers with

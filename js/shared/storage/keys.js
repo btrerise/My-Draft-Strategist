@@ -65,6 +65,7 @@ export const KEYS = {
         manualStarters: 'mls_manual_starters',
         market: 'mls_market',
         marketUpdated: 'mls_market_updated',
+        marketFormat: 'mls_market_format', // what the loaded market values were fetched for, { type, qbs, ppr, tep }; gone after a file upload (S23 follow-up)
         ros: 'mls_ros',
         rosUpdated: 'mls_ros_updated',
         sos: 'mls_sos',

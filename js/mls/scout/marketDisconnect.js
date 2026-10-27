@@ -17,6 +17,7 @@ import { showToast } from '../../shared/ui/toast.js';
 import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { edgeBadgeMarkup } from '../badges.js';
+import { getPowerLeagueKind } from '../power/directionLabels.js';
 // --- MARKET DISCONNECT ENGINE ---
     const marketFileEl = document.getElementById('marketFileInput');
     if (marketFileEl) {
@@ -128,6 +129,8 @@ import { edgeBadgeMarkup } from '../badges.js';
         localStorage.setItem(KEYS.mls.market, JSON.stringify(State.marketRankings)); // was 'mls_season_market' -- State.marketRankings is always read back from KEYS.mls.market on load (see State init above), so this key must match or fetched data silently disappears on reload
         State.marketUpdatedAt = Date.now();
         localStorage.setItem(KEYS.mls.marketUpdated, State.marketUpdatedAt);
+        State.marketFormat = { type: s.type, qbs: s.qbs, ppr: s.ppr, tep: !!s.tep };
+        localStorage.setItem(KEYS.mls.marketFormat, JSON.stringify(State.marketFormat));
 
         // Update UI
         updateMarketMetaDisplay(); 
@@ -181,6 +184,9 @@ import { edgeBadgeMarkup } from '../badges.js';
         // reads as "today". Same trade-off ROS/Weekly uploads already make.
         State.marketUpdatedAt = Date.now();
         localStorage.setItem(KEYS.mls.marketUpdated, State.marketUpdatedAt);
+        // A file says nothing about its format, so there's nothing to warn about.
+        State.marketFormat = null;
+        localStorage.removeItem(KEYS.mls.marketFormat);
         updateMarketMetaDisplay();
 
         showStatusFeedback(document.getElementById(successMsgId), null, 2500);
@@ -208,6 +214,40 @@ import { edgeBadgeMarkup } from '../badges.js';
         return posRankMap;
     }
 
+    // The market format a league plays: only what the league knows (a manual league has no scoring or type from
+    // Sleeper). leagues/sync.js points the Market Consensus controls at it on every league switch.
+    export function leagueMarketFormat(league) {
+        const f = {};
+        if (!league) return f;
+        const badge = league.formatBadge || '';
+        if (league.leagueType || badge) f.type = getPowerLeagueKind(league); // 'dynasty' (incl. keeper) or 'redraft'
+        if (league.reqs) f.qbs = ((league.reqs.SFLEX || 0) > 0 || (league.reqs.QB || 0) >= 2) ? '2' : '1';
+        // FantasyCalc only offers 1 / 0.5 / 0, so an unusual value (e.g. 0.25 PPR) rounds to the nearest.
+        if (typeof league.pprVal === 'number') f.ppr = league.pprVal >= 0.75 ? '1' : (league.pprVal >= 0.25 ? '0.5' : '0');
+        if (badge) f.tep = /\bTEP\b/.test(badge);
+        return f;
+    }
+
+    // Market values are one set, from the last fetch (owner, S23 follow-up: a warning for now; keeping a set per
+    // format is an open follow-up in docs/improvements/LOG.md). When the active league plays a different format than
+    // the loaded values were fetched for, one line saying both, e.g. "Fetched for redraft, 1QB; this league is
+    // dynasty, Superflex." '' when they match, when there are no values, or after a file upload (format unknown).
+    export function marketFormatWarning() {
+        const got = State.marketFormat;
+        if (!got || State.marketRankings.length === 0) return '';
+        const want = leagueMarketFormat(getActiveLeague());
+        const label = {
+            type: (v) => v,
+            qbs: (v) => (String(v) === '2' ? 'Superflex' : '1QB'),
+            ppr: (v) => ({ '1': 'PPR', '0.5': 'half PPR', '0': 'no PPR' }[String(v)] || `${v} PPR`),
+            tep: (v) => (v ? 'TE premium' : 'no TE premium'),
+        };
+        const diff = Object.keys(label).filter(k => k in want && got[k] !== undefined && String(got[k]) !== String(want[k]));
+        if (diff.length === 0) return '';
+        const list = (f) => diff.map(k => label[k](f[k])).join(', ');
+        return `Fetched for ${list(got)}; this league is ${list(want)}.`;
+    }
+
     export function updateMarketMetaDisplay() {
         const metaEl = document.getElementById('marketMetaDisplay');
         if (metaEl) {
@@ -222,6 +262,8 @@ import { edgeBadgeMarkup } from '../badges.js';
                 } else {
                     metaEl.innerText = countText;
                 }
+                const warning = marketFormatWarning();
+                if (warning) metaEl.insertAdjacentHTML('beforeend', `<div class="mls-market-format-warning">${escapeHtml(warning)} Fetch again for this league's values.</div>`);
             } else {
                 metaEl.style.display = 'none';
             }

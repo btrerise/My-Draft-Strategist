@@ -269,6 +269,10 @@ done or dropped, remove its line here in the same change. Background for each is
   Trade Analyzer, "To make it fair" and the Future column. Not needed in season (improvements S19, round 4).
 
 **Needs the owner's decision first**
+- Keep market values for each format (S23 follow-up, the Scout tab after a league switch). Market values are one set
+  from the last fetch; a league that plays another format (redraft vs. dynasty, 1QB vs. Superflex, PPR, TE premium)
+  only gets a warning saying so. Keeping one set per format, fetched as each league needs it, would give every
+  league's Trade Analyzer and Market Disconnect its own values. Owner: "look into a bigger change in the future".
 - Manual leagues can't be dynasty (improvements S23, round 12). They have no league type, so they always count as
   redraft: no In-Season rankings, no Future column, no draft picks in trades. A "League type" choice for manual leagues
   (beside League style on the Setup tab) would fix that, but the owner noted the payoff is small: Power Rankings need a
