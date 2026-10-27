@@ -6844,3 +6844,34 @@ counts, display ranks, legend, tooltips, Scout league switch, backup) 128/128. S
 (the screenshot league is redraft); the Guide PNGs still come from CI.
 `CACHE_NAME` v2.8.115 → v2.8.116, so a browser that already opened the branch's first deploy gets this round's files on
 its next load rather than one load later.
+
+### S24, round 3: my review as a user on the owner's league, (a)–(d) and a switch for (e) (owner: "Do a through d; add the switch for e")
+
+I looked at May the Receptions Be With You from the owner's backup at 375px and 1280px (Swift and Evans for Loveland),
+plus the owner's Export Trade image. Found: Roster rows three or four lines tall, with tiers repeated and overall ranks
+that don't compare across a 1QB redraft set and a superflex dynasty one; three tall banners filling a phone's first
+screen (and two-thirds of the export image), the Market one full width on desktop; a plain white headline; an unlabeled
+dynasty value on each trade row; and "To make it fair" asking for more on a deliberate win-now trade.
+- **(a) Roster:** one badge, "In-Season WR16 (T8) | Dyn WR20 (T6)", position ranks only, each tier once; the overall
+  ranks in its title ("Overall: In-Season #36, dynasty #51"); F6's `rankBadgeParts`, split at the bar on a narrow row
+  (`fitRankBadges`, exported from render/lineup.js through main.js; a ResizeObserver refits the roster list). Every row
+  has the same shape: on phones team, change chips and SoS, then the badge and the gap chip on a line of their own
+  (`.mls-meta-break`); on desktop one line. A legend line for the badge (`mls-rank-dual`).
+- **(b) Trade verdicts:** one **By Your Rankings** card with two rows, "IN-SEASON Favors You (+7,721 pts, 68%) /
+  Receive 11,370 vs Give 3,649" and the same for Dynasty, each tinted by its verdict, beside the market's banner from
+  768px (stacked on phones, as before). About 150px tall on a phone where the two banners took about 330px.
+  `dualVerdictCard` in trade/verdict.js; `renderTradeVerdict(..., asParts)` hands it the same numbers and notes. The
+  export copies it (its children are taken out of the pair, as before).
+- **(c) Headline:** each half in its verdict's color (`dualHeadlineHTML`: green wins, red costs, blue fair).
+- **(d) Trade rows:** "Dyn" before the dynasty value.
+- **(e) "To make it fair": Value by: Dynasty | In-Season** at the top of the box in a league with both sets (Dynasty
+  by default; in memory, so a reload goes back to it). In-Season values the gap and the candidates by the In-Season
+  set. When the picked value already calls it fair but the other doesn't, the box stays with the switch and "Fair by
+  your In-Season rankings as it stands." (`setFairBasis`, trade/fairSection.js; the action re-runs the trade and keeps
+  focus on the switch).
+- Guide (steps 3 and 9) and the CHANGELOG line updated. `CACHE_NAME` v2.8.116 → v2.8.117.
+
+**Tests.** Spec: the headline's colored halves; the card's two rows (class, set, verdict, totals) and its height under
+200px; "Dyn" on the rows; the switch (Dynasty pressed, In-Season gives "you'd add" by your In-Season rankings, focus
+kept, back); the export's text; the roster badge's text and title; every row's shape at both widths (the badge under
+the team on phones, beside it on desktop); no switch, label or card in the other leagues. 12/12; unit 461.

@@ -2559,9 +2559,8 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .mls-gap-chip:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
 .mls-gap-chip.is-now { color: var(--pos-te-border); border-color: rgba(245, 158, 11, 0.5); }
 .mls-gap-chip.is-later { color: #93c5fd; border-color: rgba(59, 130, 246, 0.55); }
-/* Roster tab: both ranks on a line of their own under the team, so two badges never squeeze the first line. */
-.mls-player-row-meta.mls-roster-dual { margin-top: 3px; flex-wrap: wrap; row-gap: 3px; }
-.mls-roster-dual .mls-rank-badge { white-space: nowrap; }
+/* Roster tab: both sets' ranks in one badge (render/roster.js dualRankBadge), split at the bar on a narrow row. */
+.mls-player-row-meta:has(.mls-rank-dual) { row-gap: 3px; }
 .mls-roster-sort { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; font-size: 0.8rem; color: var(--text-muted); }
 .mls-roster-sort .mls-segmented { flex: 0 1 14rem; }
 .mls-roster-sort .mls-segmented-btn { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
@@ -2571,3 +2570,29 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 /* A dynasty or keeper league with no In-Season set: how to get both (Roster tab, Trade Analyzer). */
 .mls-roster-season-hint, .mls-trade-season-hint { margin-bottom: 0.6rem; font-size: 0.8rem; color: var(--text-muted); text-align: left; }
 .mls-roster-season-hint strong { color: var(--text-main); font-weight: 600; }
+/* Round 3 (owner's review): In-Season and Dynasty in one card of two rows, each tinted by its verdict, beside the market's
+   banner from tablet width up; the headline's halves in their verdicts' colors. */
+.mls-trade-verdict-dual { padding: 0.75rem; }
+.mls-trade-verdict-dual .trade-verdict-source-label { margin-bottom: 0.5rem; }
+.mls-trade-dual-row { border: 1px solid var(--border); border-radius: 6px; padding: 0.45rem 0.6rem; }
+.mls-trade-dual-row + .mls-trade-dual-row { margin-top: 0.4rem; }
+.mls-trade-dual-verdict { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.5rem; font-weight: 800; font-size: 0.95rem; }
+.mls-trade-dual-set { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); min-width: 4.8rem; }
+.mls-trade-dual-totals { font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; margin-top: 1px; }
+.mls-trade-dual-totals strong { color: var(--text-main); font-weight: 700; }
+.mls-trade-dual-row.verdict-favor-you .mls-trade-dual-result { color: var(--primary-green); }
+.mls-trade-dual-row.verdict-favor-them .mls-trade-dual-result { color: #fca5a5; }
+.mls-trade-dual-row.verdict-fair .mls-trade-dual-result { color: #93c5fd; }
+.mls-trade-dual-result .trade-verdict-diff { font-size: 0.75rem; }
+.mls-trade-verdict-dual .trade-verdict-note { margin-top: 0.4rem; }
+.mls-trade-dual-headline .is-win { color: var(--primary-green); }
+.mls-trade-dual-headline .is-cost { color: #fca5a5; }
+.mls-trade-dual-headline .is-fair { color: #93c5fd; }
+.mls-trade-row-dyn { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); margin-right: 3px; }
+/* "To make it fair": Value by: Dynasty | In-Season (S24, round 3). */
+.mls-trade-fair-basis { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.78rem; color: var(--text-muted); }
+.mls-trade-fair-basis .mls-segmented { flex: 0 1 13rem; }
+.mls-trade-fair-basis .mls-segmented-btn { padding: 0.25rem 0.5rem; font-size: 0.78rem; }
+/* Roster tab, both sets (round 3): on phones the two-set badge starts a line of its own under team, chips and SoS. */
+.mls-meta-break { display: none; }
+@media (max-width: 600px) { .mls-meta-break { display: block; flex-basis: 100%; height: 0; } }

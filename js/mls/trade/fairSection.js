@@ -34,10 +34,17 @@ let _focusNext = null;
 export function rememberFairChange(label, before) { _undo = { label, before, after: null }; _focusNext = 'undo'; }
 export function takeFairUndo() { const u = _undo; _undo = null; _focusNext = u ? 'box' : null; return u ? u.before : null; }
 // Called by runScout once the trade's results are on the page. Without scrolling: the page stays where it is.
+// Which value decides the gap in a league with both sets (S24): the dynasty value by default (owner's first choice), or
+// In-Season (round 3, the owner's choice after a review: on a deliberate win-now trade the dynasty gap nags). In memory:
+// back to Dynasty on a reload, so the default never changes quietly.
+let _fairBasis = 'dynasty';
+export function setFairBasis(basis) { _fairBasis = basis === 'season' ? 'season' : 'dynasty'; _focusNext = 'basis'; }
+
 export function placeFairFocus(outputEl) {
     if (!_focusNext || !outputEl) return;
     const target = _focusNext === 'undo'
         ? outputEl.querySelector('[data-action="undoFairChange"]')
+        : _focusNext === 'basis' ? outputEl.querySelector('[data-action="setFairBasis"].active')
         : outputEl.querySelector('[data-action="addFairSuggestion"], [data-action="removeFairPiece"]');
     _focusNext = null;
     if (target) target.focus({ preventScroll: true });
@@ -84,8 +91,12 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
     if (!league || getNames.length === 0 || giveNames.length === 0) return '';
     // Your Rankings decide (owner's choice); Market Consensus only when no ROS rankings are loaded.
     let valueKey, label;
-    // With an In-Season set too (improvements S24, owner's choice) the dynasty value still decides, and the line says so.
-    if (State.rosRankings.length > 0) { valueKey = 'userValue'; label = tradeSeasonSet() ? 'your dynasty rankings' : 'Your Rankings'; }
+    // With an In-Season set too (improvements S24) the dynasty value decides by default, the In-Season one when the box's
+    // switch says so (round 3), and the line says which.
+    const seasonSet = State.rosRankings.length > 0 ? tradeSeasonSet() : null;
+    const bySeason = !!seasonSet && _fairBasis === 'season';
+    if (bySeason) { valueKey = 'seasonValue'; label = 'your In-Season rankings'; }
+    else if (State.rosRankings.length > 0) { valueKey = 'userValue'; label = seasonSet ? 'your dynasty rankings' : 'Your Rankings'; }
     else if (State.marketRankings.length > 0) { valueKey = 'marketValue'; label = 'Market Consensus'; }
     else return '';
     // Nothing to suggest while the verdict waits (round 11): a name that matches no player, or, when the market is
@@ -97,7 +108,18 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
     const getValues = getResults.map(r => r[valueKey]);
     const giveValues = giveResults.map(r => r[valueKey]);
     const gap = gapToClose(getValues, giveValues, waiver);
-    if (!gap) return '';
+    // The switch (S24, round 3). It stays when the picked value says the trade is already fair, so you can switch back.
+    const basisSwitch = seasonSet ? fairBasisSwitch(bySeason) : '';
+    if (!gap) {
+        if (!seasonSet) return '';
+        const other = bySeason ? 'userValue' : 'seasonValue';
+        if (!gapToClose(getResults.map(r => r[other]), giveResults.map(r => r[other]), waiver)) return '';
+        return `
+    <section class="mls-trade-fair" data-trade-fair>
+        ${basisSwitch}
+        <div class="mls-trade-fair-note">Fair by ${label} as it stands.</div>
+    </section>`;
+    }
     const adder = gap.adder;
     // Pieces on the side with too much whose removal alone makes it fair: needs no other roster, so it shows in
     // every case below, a manual league included.
@@ -116,11 +138,11 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
         else if (!team) blocked = 'Choose their team under From to see what they could add.';
     }
 
-    if (blocked) return section(adder, gap, `<div class="mls-trade-fair-note">${blocked}</div>${removals}`, market);
+    if (blocked) return section(adder, gap, `<div class="mls-trade-fair-note">${blocked}</div>${removals}`, market, basisSwitch);
 
     // The candidates: that roster's ranked players (and its picks in dynasty and keeper leagues), valued
     // as the trade's rows are (rankToTradeValue of the ROS rank, or the market's; a pick borrows the market's).
-    const rosIndex = rankingIndex(State.rosRankings);
+    const rosIndex = rankingIndex(bySeason ? seasonSet.data : State.rosRankings);
     const marketIndex = rankingIndex(State.marketRankings);
     const roster = new Map();
     Object.entries(rosterMap).forEach(([clean, owner]) => { if (owner === team) roster.set(clean, null); });
@@ -174,7 +196,7 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
             ? `<div class="mls-trade-fair-note">* Market value. Assumes ${team === 'You' ? 'you still have your' : `${escapeHtml(team)} still has its`} own picks (sync the league to check).</div>`
             : `<div class="mls-trade-fair-note">* Market value. Picks as of the last sync.</div>`;
     }
-    return section(adder, gap, body + removals, market);
+    return section(adder, gap, body + removals, market, basisSwitch);
 }
 
 // The head gives the fair range (round 9): every value one more piece could have and leave the trade within 10%,
@@ -185,7 +207,13 @@ const rangeLow = (gap) => (gap.range ? gap.range.low : gap.gap);
 const rangeText = (gap) => !gap.range ? `about ${fmt(gap.gap)}`
     : gap.range.low <= 0 ? `up to ${fmt(gap.range.high)}` : `${fmt(gap.range.low)}&ndash;${fmt(gap.range.high)}`;
 
-function section(adder, gap, body, market = '') {
+// "By: Dynasty | In-Season" (S24, round 3), at the top of the box in a league with both sets.
+function fairBasisSwitch(bySeason) {
+    const btn = (basis, text, on) => `<button type="button" class="mls-segmented-btn${on ? ' active' : ''}" data-action="setFairBasis" data-basis="${basis}" aria-pressed="${on}">${text}</button>`;
+    return `<div class="mls-trade-fair-basis"><span>Value by</span><div class="mls-segmented" role="group" aria-label="Make it fair by">${btn('dynasty', 'Dynasty', !bySeason)}${btn('season', '<span class="mls-nowrap">In-Season</span>', bySeason)}</div></div>`;
+}
+
+function section(adder, gap, body, market = '', basisSwitch = '') {
     const who = adder === 'them' ? "they'd" : "you'd";
     const r = gap.range;
     const amount = !r ? `about <strong>${fmt(gap.gap)}</strong>`
@@ -193,6 +221,7 @@ function section(adder, gap, body, market = '') {
         : `<strong>${fmt(r.low)}&ndash;${fmt(r.high)}</strong>`;
     return `
     <section class="mls-trade-fair" data-trade-fair>
+        ${basisSwitch}
         <div class="mls-trade-fair-head">To make it fair, ${who} add ${amount}</div>
         ${market ? `<div class="mls-trade-fair-market" data-trade-market-note>${market}</div>` : ''}
         ${body}

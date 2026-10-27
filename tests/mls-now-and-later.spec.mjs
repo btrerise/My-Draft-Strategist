@@ -118,17 +118,29 @@ test.describe('Now and long-term side by side', () => {
         await expect(out.locator('[data-trade-dual-headline]')).toHaveText(
             `Wins now (+${fmt(nowDiff)}), costs long-term (−${fmt(-laterDiff)})`);
 
-        const banners = out.locator('.mls-trade-verdict-dual > .trade-verdict-banner');
-        await expect(banners).toHaveCount(2);
-        await expect(banners.nth(0)).toContainText(/By Your In-\u2060?Season Rankings/);
-        await expect(banners.nth(0)).toContainText('Favors You');
-        await expect(banners.nth(0)).toContainText(fmt(value(6)));
-        await expect(banners.nth(1)).toContainText('By Your Dynasty Rankings');
-        await expect(banners.nth(1)).toContainText('Favors Them');
-        await expect(banners.nth(1)).toContainText(fmt(value(12)));
+        // Each half of the headline in its verdict's color (round 3).
+        await expect(out.locator('[data-trade-dual-headline] .is-win')).toHaveText(`Wins now (+${fmt(nowDiff)})`);
+        await expect(out.locator('[data-trade-dual-headline] .is-cost')).toHaveText(`costs long-term (\u2212${fmt(-laterDiff)})`);
+
+        // One card, two rows (round 3): In-Season then Dynasty, each with its verdict and totals.
+        const card = out.locator('[data-trade-verdict-dual]');
+        await expect(card).toHaveCount(1);
+        await expect(card.locator('.trade-verdict-source-label')).toContainText('By Your Rankings');
+        const dualRows = card.locator('.mls-trade-dual-row');
+        await expect(dualRows).toHaveCount(2);
+        await expect(dualRows.nth(0)).toHaveClass(/verdict-favor-you/);
+        await expect(dualRows.nth(0)).toContainText('In-Season');
+        await expect(dualRows.nth(0)).toContainText('Favors You');
+        await expect(dualRows.nth(0)).toContainText(`Receive ${fmt(value(6))} vs Give ${fmt(value(14))}`);
+        await expect(dualRows.nth(1)).toHaveClass(/verdict-favor-them/);
+        await expect(dualRows.nth(1)).toContainText('Dynasty');
+        await expect(dualRows.nth(1)).toContainText('Favors Them');
+        await expect(dualRows.nth(1)).toContainText(`Receive ${fmt(value(12))} vs Give ${fmt(value(1))}`);
+        // Compact: the card is far shorter than the two banners it replaced (about 330px together on a phone).
+        expect((await card.boundingBox()).height).toBeLessThan(200);
         // The headline sits above the verdicts.
         expect(await out.evaluate(o => {
-            const h = o.querySelector('[data-trade-dual-headline]'), pair = o.querySelector('.mls-trade-verdict-dual');
+            const h = o.querySelector('[data-trade-dual-headline]'), pair = o.querySelector('[data-trade-verdict-dual]');
             return !!(h.compareDocumentPosition(pair) & Node.DOCUMENT_POSITION_FOLLOWING);
         })).toBe(true);
 
@@ -136,7 +148,8 @@ test.describe('Now and long-term side by side', () => {
         const collins = out.locator('.mls-trade-row').filter({ hasText: 'Nico Collins' });
         await expect(collins.locator('.mls-trade-row-meta')).toContainText('Dyn 12');
         await expect(collins.locator('.mls-trade-row-meta')).toContainText('Now 6');
-        await expect(collins.locator('.mls-trade-row-value .mls-stat-value')).toHaveText(fmt(value(12)));
+        await expect(collins.locator('.mls-trade-row-value .mls-stat-value')).toHaveText(`Dyn${fmt(value(12))}`);
+        await expect(collins.locator('.mls-trade-row-dyn')).toHaveText('Dyn');
         await expect(collins.locator('.mls-trade-row-now')).toHaveText(`Now ${fmt(value(6))}`);
 
         // "To make it fair" goes by the dynasty value, and says so.
@@ -144,6 +157,17 @@ test.describe('Now and long-term side by side', () => {
         await expect(fair).toHaveCount(1);
         await expect(fair).toContainText("they'd add");
         await expect(fair).toContainText(/by your dynasty rankings/);
+        // Its switch (round 3): by In-Season this trade favors you, so you'd add; then back.
+        const basis = fair.locator('[data-action="setFairBasis"]');
+        await expect(basis).toHaveText(['Dynasty', 'In-Season']);
+        await expect(basis.nth(0)).toHaveAttribute('aria-pressed', 'true');
+        await basis.nth(1).click();
+        await expect(fair.locator('[data-basis="season"]')).toHaveAttribute('aria-pressed', 'true');
+        await expect(fair).toContainText("you'd add");
+        await expect(fair).toContainText(/by your In-Season rankings/);
+        await expect(fair.locator('[data-basis="season"]')).toBeFocused();
+        await fair.locator('[data-basis="dynasty"]').click();
+        await expect(fair).toContainText("they'd add");
 
         // Power Rankings after the trade: the headline's value is the In-Season one, and the source line says so.
         const impact = out.locator('[data-trade-impact]');
@@ -153,7 +177,7 @@ test.describe('Now and long-term side by side', () => {
         // Phones: the rows and the verdicts fit 375px, and both banners' (i) tooltips open on screen (as
         // tooltips-onscreen.spec.mjs checks the others).
         expect(await noSideScroll(page)).toBe(true);
-        for (const icon of await banners.locator('.tooltip-icon').all()) {
+        for (const icon of await card.locator('.tooltip-icon').all()) {
             await icon.click();
             const tip = icon.locator('xpath=following-sibling::*[contains(@class,"tooltip-text")]');
             await expect(tip).toBeVisible();
@@ -174,8 +198,9 @@ test.describe('Now and long-term side by side', () => {
         await download;
         const text = await page.evaluate(() => window.__tradeCloneText);
         expect(text).toContain('Wins now');
-        expect(text).toMatch(/By Your In-\u2060?Season Rankings/i);
-        expect(text).toMatch(/By Your Dynasty Rankings/i);
+        expect(text).toMatch(/By Your Rankings/i);
+        expect(text).toMatch(/In-Season\s*Favors You/i);
+        expect(text).toMatch(/Dynasty\s*Favors Them/i);
         expect(text).toContain('Dyn: estimated from my dynasty rankings, Now: from my In-Season rankings');
         expect(text).toContain(fmt(value(6)));
         expect(text).toContain(fmt(value(12)));
@@ -190,7 +215,9 @@ test.describe('Now and long-term side by side', () => {
             'Ranks by your In-Season rankings (Redraft ROS) and your dynasty rankings (Dynasty SF).');
 
         const chase = rowFor(page, "Ja'Marr Chase");
-        await expect(chase.locator('.mls-roster-dual .mls-rank-badge')).toHaveText(['In-Season WR20 · #14', 'Dyn WR1 · #1']);
+        // One badge, position ranks only (round 3); the overall ranks in its title.
+        await expect(chase.locator('.mls-rank-dual')).toHaveText('In-Season WR20 | Dyn WR1');
+        await expect(chase.locator('.mls-rank-dual')).toHaveAttribute('title', 'Overall: In-Season #14, dynasty #1');
         await expect(chase.locator('.mls-gap-chip')).toHaveText('Long-term > now');
         await expect(chase.locator('.mls-gap-chip')).toHaveClass(/is-later/);
         const wilson = rowFor(page, 'Garrett Wilson');
@@ -199,26 +226,34 @@ test.describe('Now and long-term side by side', () => {
         await expect(rowFor(page, 'Justin Jefferson').locator('.mls-gap-chip')).toHaveCount(0);
         // Missing from one set counts as far below it: Henry, dynasty RB5, isn't in the In-Season set.
         const henry = rowFor(page, 'Derrick Henry');
-        await expect(henry.locator('.mls-roster-dual .mls-rank-badge')).toHaveText(['In-Season UR', 'Dyn RB5 · #15']);
+        await expect(henry.locator('.mls-rank-dual')).toHaveText('In-Season UR | Dyn RB5');
         await expect(henry.locator('.mls-gap-chip')).toHaveText('Long-term > now');
         await expect(henry.locator('.mls-gap-chip')).toHaveAttribute('data-tip', /have him at RB5 and your In-Season rankings leave him out/);
         await expect(page.locator('#rosterList .mls-gap-chip')).toHaveCount(3);
         await expect(page.locator('#rosterList [data-season-hint]')).toHaveCount(0);
-        // No single "Ovr | Pos" badge any more: the two replace it.
-        await expect(page.locator('#rosterList .roster-item .mls-player-row-meta:not(.mls-roster-dual) .mls-rank-badge')).toHaveCount(0);
+        // No "Ovr | Pos" badge any more: the two-set one replaces it.
+        await expect(page.locator('#rosterList .mls-rank-badge:not(.mls-rank-dual)')).toHaveCount(0);
 
         // The chip explains itself on tap.
         await wilson.locator('.mls-gap-chip').click();
         await expect(page.locator('.toast-message').filter({ hasText: 'In-Season WR3, dynasty WR30' })).toBeVisible();
 
-        // Phones: the two ranks fit a 375px row, on a line of their own.
+        // Phones: the ranks fit a 375px row, and rows are at most two lines under the name (round 3: they were four).
         expect(await noSideScroll(page)).toBe(true);
         const overflow = await page.locator('#rosterList .roster-item').evaluateAll(items => items.flatMap(it => {
             const r = it.getBoundingClientRect();
-            return [...it.querySelectorAll('.mls-roster-dual > *')].filter(b => b.getBoundingClientRect().right > r.right + 0.5)
+            return [...it.querySelectorAll('.mls-player-row-meta > *')].filter(b => b.getBoundingClientRect().right > r.right + 0.5)
                 .map(b => `${it.querySelector('.player-name-wrap').textContent.trim()}: ${b.textContent.trim()}`);
         }));
         expect(overflow).toEqual([]);
+        // Every row the same shape: on phones team / chips / SoS, then the badge on a line of its own; on desktop one line.
+        // A gap chip that doesn't fit beside the badge may take a third line on a phone.
+        const shapes = await page.locator('#rosterList .roster-item .mls-player-row-meta').evaluateAll(els => els.map(e => {
+            const team = e.querySelector(':scope > .badge').getBoundingClientRect(), badge = e.querySelector('.mls-rank-dual').getBoundingClientRect();
+            return { below: badge.top >= team.bottom - 1, oneLine: e.querySelector('.mls-rank-parts.is-stacked') === null };
+        }));
+        const phone = test.info().project.name === 'phone';
+        expect(shapes.every(sh => sh.below === phone), JSON.stringify(shapes)).toBe(true);
 
         // Sort: Dynasty by default (Chase, your dynasty #1, first); In-Season puts George Kittle (your In-Season best) first.
         const sortBtns = page.locator('#rosterSort [data-action="setRosterSort"]');
@@ -262,7 +297,8 @@ test.describe('Now and long-term side by side', () => {
             await runTrade(page, ['Nico Collins'], ["Ja'Marr Chase"]);
             const out = page.locator('#tradeOutput');
             await expect(out.locator('[data-trade-dual-headline]')).toHaveCount(0);
-            await expect(out.locator('.mls-trade-verdict-dual')).toHaveCount(0);
+            await expect(out.locator('[data-trade-verdict-dual]')).toHaveCount(0);
+            await expect(out.locator('.mls-trade-row-dyn, [data-action="setFairBasis"]')).toHaveCount(0);
             await expect(out.locator('.trade-verdict-banner')).toHaveCount(1);
             await expect(out.locator('.trade-verdict-banner')).toContainText('By Your Rankings');
             await expect(out.locator('.mls-trade-row-now')).toHaveCount(0);
@@ -276,7 +312,7 @@ test.describe('Now and long-term side by side', () => {
 
             await showTab(page, 'roster');
             await expect(page.locator('#rosterSort')).toHaveCount(0);
-            await expect(page.locator('#rosterList .mls-roster-dual')).toHaveCount(0);
+            await expect(page.locator('#rosterList .mls-rank-dual')).toHaveCount(0);
             await expect(page.locator('#rosterList .mls-gap-chip')).toHaveCount(0);
             await expect(page.locator('#rosterList .mls-roster-source')).toHaveCount(0);
             await expect(page.locator('#rosterList [data-season-hint]')).toHaveCount(hint);
@@ -300,7 +336,7 @@ test('a dynasty league with no In-Season set offers the set your redraft leagues
     const hint = page.locator('#rosterList [data-season-hint]');
     await expect(hint).toContainText('Your redraft leagues use Redraft ROS: Use it here to see this season\'s ranks beside them.');
     await hint.locator('[data-action="useSeasonOffer"]').click();
-    await expect(page.locator('#rosterList .mls-roster-dual').first()).toBeVisible();
+    await expect(page.locator('#rosterList .mls-rank-dual').first()).toBeVisible();
     await expect(page.locator('#rosterList [data-season-hint]')).toHaveCount(0);
     expect((await fixture(page)).seasonRankingSetId).toBe(ids.season);
     await expectClean(page, state);

@@ -10,9 +10,9 @@ import { getByeBadgeHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML } from '../line
 import { renderManualAddLog } from '../leagues/addPlayer.js';
 import { getSoSBadgeHTML } from '../sos.js';
 import { _rookieIndex, getRookieIndex, isRookiePlayer } from './rookies.js';
-import { refreshPowerRankings } from '../main.js';
+import { fitRankBadges, refreshPowerRankings } from '../main.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
-import { posCountChipMarkup, rankGapChipMarkup } from '../badges.js';
+import { posCountChipMarkup, rankBadgeParts, rankGapChipMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { ordinal } from '../week/scoreboard.js';
 import { hasSeasonSlot, seasonOffer, seasonSetFor } from '../rankings/season.js';
@@ -95,11 +95,31 @@ import { KEYS } from '../../shared/storage/keys.js';
         if (hadFocus) document.querySelector(`#rosterSort button[data-sort="${sort === 'season' ? 'season' : 'dynasty'}"]`)?.focus();
     }
 
-    // One set's ranks on a row: "In-Season WR22 (T4) · #61 (T6)", or "In-Season UR".
-    function dualRankBadge(label, pos, r) {
-        const text = r.rank === 999 && r.posRank === 999 ? `${label} UR`
-            : `${label} ${r.posRank !== 999 ? `${escapeHtml(pos)}${r.posRank}${tierTag(r.posTier)}` : '-'} &middot; ${r.rank !== 999 ? `#${r.rank}${tierTag(r.tier)}` : '-'}`;
-        return `<span class="badge mls-rank-badge">${text}</span>`;
+    // Both sets' ranks in one badge (round 3, after the owner's review: two badges with overall ranks and repeated tiers
+    // made rows three or four lines tall): "In-Season WR16 (T8) | Dyn WR20 (T6)", position ranks only, each tier once.
+    // Overall ranks don't compare across a 1QB redraft set and a superflex dynasty one, so they're in the title. The
+    // halves are rankBadgeParts' (F6), so a narrow row splits the badge at the bar (fitRankBadges).
+    function dualRankBadge(pos, now, later) {
+        const half = (label, r) => r.posRank !== 999 ? `${label} ${escapeHtml(pos)}${r.posRank}${tierTag(r.posTier)}`
+            : r.rank !== 999 ? `${label} #${r.rank}${tierTag(r.tier)}` : `${label} UR`;
+        const ovr = (r) => r.rank !== 999 ? `#${r.rank}` : 'unranked';
+        const title = `Overall: In-Season ${ovr(now)}, dynasty ${ovr(later)}`;
+        return `<span class="badge mls-rank-badge mls-rank-dual" title="${title}">${rankBadgeParts(half('<span class="mls-nowrap">In-Season</span>', now), half('Dyn', later))}</span>`;
+    }
+
+    // A two-part badge whose halves landed on two lines gets .is-stacked, so its box fits its text (the Lineup tab's
+    // fitRankBadges, render/lineup.js, through main.js). Refit when the list's width changes (rotation, the tab shown).
+    let _rosterBadgeObserver = null;
+    function fitRosterRankBadges(listEl) {
+        fitRankBadges([listEl]);
+        if (_rosterBadgeObserver || typeof ResizeObserver === 'undefined') return;
+        let width = null;
+        _rosterBadgeObserver = new ResizeObserver(([entry]) => {
+            if (entry.contentRect.width === width) return;
+            width = entry.contentRect.width;
+            requestAnimationFrame(() => fitRankBadges([listEl]));
+        });
+        _rosterBadgeObserver.observe(listEl);
     }
 
     // A player's overall and position ranks (with tiers) in one set, as the rows show them (F6's display ranks).
@@ -239,19 +259,20 @@ import { KEYS } from '../../shared/storage/keys.js';
             let ovrStr = p.rosRank !== 999 ? `#${p.rosRank}${tierTag(p.rosTier)}` : "-";
             let posStr = p.posRank !== 999 ? `#${p.posRank}${tierTag(p.posTier)}` : "-";
             let rankBadge = (p.rosRank !== 999 || p.posRank !== 999) ? `Ovr: ${ovrStr} | Pos: ${posStr}` : "Unranked";
-            // Both sets (S24): their ranks on a line of their own, In-Season first, each with its rank-change chip, and
-            // the gap chip when they're far apart.
-            let dualLine = '';
+            // Both sets (S24): one badge with both ranks (In-Season first), each set's rank-change chip before it, and the
+            // gap chip after it when they're far apart.
+            let ranksHTML = `${rankMoveChip('ros', p.cleanName)}
+                            <span class="badge mls-rank-badge">${rankBadge}</span>`, dualHTML = '';
             if (p.now) {
                 // Not in a set at all (overall 999) counts as far below it (rankings/nowAndLater.js).
                 const nowPos = p.now.rank === 999 ? null : p.now.posRank, laterPos = p.rosRank === 999 ? null : p.posRank;
                 const gap = rankGap(p.pos, nowPos, laterPos);
-                dualLine = `
-                        <div class="mls-player-row-meta mls-roster-dual">
-                            ${rankMoveChip('season', p.cleanName)}${dualRankBadge('<span class="mls-nowrap">In-Season</span>', p.pos, p.now)}
-                            ${rankMoveChip('ros', p.cleanName)}${dualRankBadge('Dyn', p.pos, { rank: p.rosRank, tier: p.rosTier, posRank: p.posRank, posTier: p.posTier })}
-                            ${gap ? rankGapChipMarkup(gap, rankGapTip(gap, p.pos, nowPos, laterPos)) : ''}
-                        </div>`;
+                // Team, change chips and SoS first; the badge (and gap chip) after them, on a line of its own on phones
+                // (.mls-meta-break), so every row has the same shape (round 3).
+                ranksHTML = `${rankMoveChip('season', p.cleanName)}${rankMoveChip('ros', p.cleanName)}`;
+                dualHTML = `<span class="mls-meta-break" aria-hidden="true"></span>
+                            ${dualRankBadge(p.pos, p.now, { rank: p.rosRank, tier: p.rosTier, posRank: p.posRank, posTier: p.posTier })}
+                            ${gap ? rankGapChipMarkup(gap, rankGapTip(gap, p.pos, nowPos, laterPos)) : ''}`;
             }
             const byeWeek = getByeWeek(p.team, State.currentNflSeason);
             let byeStr = byeWeek ? ` (${byeWeek})` : "";
@@ -282,10 +303,9 @@ import { KEYS } from '../../shared/storage/keys.js';
                     <div class="mls-player-row-text">
                         <div class="player-name-wrap">${escapeHtml(p.name)}${byeStr}${statusBadges ? ` <span class="mls-name-badges">${statusBadges}</span>` : ''}</div>
                         <div class="mls-player-row-meta">
-                            <span class="badge">${escapeHtml(p.team)}</span>${p.now ? '' : `${rankMoveChip('ros', p.cleanName)}
-                            <span class="badge mls-rank-badge">${rankBadge}</span>`}
-                            ${sosBadge}
-                        </div>${dualLine}
+                            <span class="badge">${escapeHtml(p.team)}</span>${ranksHTML}
+                            ${sosBadge}${dualHTML}
+                        </div>
                     </div>
                 </div>
                 <div class="mls-row-actions">
@@ -294,6 +314,7 @@ import { KEYS } from '../../shared/storage/keys.js';
             </div>`;
         });
         rosterListEl.innerHTML = html;
+        if (seasonSet) fitRosterRankBadges(rosterListEl);
     }
 
 // Your season record under the Roster tab's league name (improvements S21, the owner's ask): W-L, and where your

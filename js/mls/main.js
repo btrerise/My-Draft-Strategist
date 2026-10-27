@@ -46,7 +46,7 @@ import './trade/valueCurve.js';
 import './trade/waiverValue.js';
 import { copyLineupAsText, exportLineup, exportTrade } from './trade/export.js';
 import { addTradeNames, addTradePick, clearTradeSide, removeTradeNames, removeTradeToken, restoreTrade, setTradePlayers, tradeNames, tradeTeamChanged } from './trade/picker.js';
-import { rememberFairChange, takeFairUndo } from './trade/fairSection.js';
+import { rememberFairChange, setFairBasis, takeFairUndo } from './trade/fairSection.js';
 import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter, setRosterSort } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
@@ -78,6 +78,7 @@ export { applyDefaultFolds, applyWaiverScanSettingsToUI, checkForDraftStrategist
 export { confirmRankingsPreview, createManualLeague, refreshThisWeek, renderThisWeek, openRankingSetLeagues, setWaiverCompare, setWaiverMode, setWaiverPos, setWaiverScope, toggleDrawer };
 // The Trade Analyzer's picker, for tests (callApp) to set a whole trade at once.
 export { setTradePlayers };
+export { fitRankBadges } from './render/lineup.js'; // the Roster tab's two-set badge (render/roster.js, S24)
 export { leagueMarketFormat, marketFormatWarning };
 
 // The only window.* names left. Until refactor chunk 5D this block held every name something read
@@ -240,6 +241,8 @@ const clickActions = {
         rememberFairChange(`Took off ${name}`, tradeNames());
         removeTradeNames(this.dataset.side, [name]);
     },
+    // Its Value by: Dynasty | In-Season in a league with both sets (S24, round 3); the trade re-runs in place.
+    setFairBasis() { setFairBasis(this.dataset.basis); runScout('trade'); },
     undoFairChange() { const before = takeFairUndo(); if (before) restoreTrade(before); },
     goToPowerRankings() { goToPowerRankings(); },
     goToLeagueStyle() { goToLeagueStyle(); },

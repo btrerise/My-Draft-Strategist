@@ -292,8 +292,9 @@ import { normalizeName } from '../../shared/names.js';
                     `ROS ${rRank}${tierTag(rosObj?.tier)}`,
                     `Wk ${wRank}`
                 ];
+                // "Dyn" before the dynasty value in a league with both sets (round 3: unlabeled, it read as the only value).
                 const valueText = userValueObj
-                    ? `${userValueObj.value.toLocaleString()}${userValueObj.fromMarket ? '<sup title="Market value: your ROS rankings have no draft picks">*</sup>' : ''}`
+                    ? `${seasonIndex ? '<span class="mls-trade-row-dyn">Dyn</span>' : ''}${userValueObj.value.toLocaleString()}${userValueObj.fromMarket ? '<sup title="Market value: your ROS rankings have no draft picks">*</sup>' : ''}`
                     : `<span class="mls-trade-row-ur">${isPick ? '&ndash;' : 'UR'}</span>`;
                 // A pick's value comes from market data only (round 6): say so where the dash is.
                 if (isPick && !userValueObj) rankBits.push(State.marketRankings.length > 0 ? 'Not in market data' : 'Needs market data');

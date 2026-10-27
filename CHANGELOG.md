@@ -92,10 +92,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **Dynasty leagues: now and long-term side by side.** In a dynasty or keeper league with In-Season rankings, the
-  Trade Analyzer gives each player two values (dynasty, with "Now" for In-Season under it) and two verdicts, By Your
-  In-Season Rankings and By Your Dynasty Rankings, with a line joining them ("Wins now (+1,235), costs long-term
-  (−1,811)"). To make it fair goes by the dynasty value, Power Rankings after the trade pairs the In-Season value with
-  your lineup, and Export Trade shows both. On the Roster tab each player shows both ranks, a **Sort by: Dynasty |
+  Trade Analyzer gives each player two values ("Dyn", with "Now" for In-Season under it) and one By Your Rankings card
+  with two verdicts, In-Season and Dynasty, under a line joining them in their colors ("Wins now (+1,235), costs
+  long-term (−1,811)"). To make it fair goes by the dynasty value, or the In-Season one with its **Value by** switch;
+  Power Rankings after the trade pairs the In-Season value with your lineup, and Export Trade shows both. On the Roster
+  tab each player shows both position ranks in one badge ("In-Season WR22 | Dyn WR40"), a **Sort by: Dynasty |
   In-Season** switch picks the order (remembered per league), and a chip marks players your two sets rank 12 or more
   spots apart: **Now > long-term** (sell-high) or **Long-term > now** (buy-low or hold). A player one set leaves out
   counts as far below it, so a startable player missing from the other set gets the chip too. A dynasty or keeper
