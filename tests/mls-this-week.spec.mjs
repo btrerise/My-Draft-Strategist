@@ -372,6 +372,40 @@ test.describe('This week: every league\'s matchup', () => {
         await expectClean(page, state);
     });
 
+    // Sleeper's week moves on when Monday night's game ends, but its display_week stays on last week until Wednesday;
+    // the recap follows display_week (owner: it should last through Tuesday), the rest of the app follows week.
+    test('Tuesday: the recap stays on last week (display_week) while the app moves on, each with its own matchups', async ({ page }) => {
+        const { state } = await setup(page);
+        await page.route(/sleeper\.app\/v1\/state\/nfl$/, route =>
+            route.fulfill({ json: { ...JSON.parse(fixture('state-nfl.json')), week: 3, leg: 3, display_week: 2 } }));
+        let asked = null;
+        await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, route => {
+            const w = new URL(route.request().url()).searchParams.get('week');
+            if (w === '2') asked = w;
+            return route.fulfill({ json: scoreboard({ minFinal: true }) });
+        });
+        await page.route(/sleeper\.app\/v1\/projections\/nfl\/regular\/2026\/3$/, route =>
+            route.fulfill({ contentType: 'application/json', body: fixture('projections-2026-2.json') }));
+        await page.goto('/lineup/');
+        await page.waitForLoadState('networkidle');
+        await showTab(page, 'scoreboard');
+        await expect(card(page).locator('.mls-week-title')).toHaveText('Week 2 Recap');
+        await expect(card(page).locator('.mls-week-head .mls-week-status')).toHaveText('Final');
+        await expect(card(page).locator('.mls-week-override')).toHaveCount(0);
+        expect(asked).toBe('2');
+        const weeks = await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            return { live: State.currentNflWeek, recap: State.recapNflWeek, lineupCache: Object.values(State.lineupActualPoints).map(c => c.week) };
+        });
+        expect(weeks.live).toBe(3);
+        expect(weeks.recap).toBe(2);
+        // Week 2's matchups stayed out of the Lineup tab's cache, which is for week 3.
+        expect(weeks.lineupCache).not.toContain(2);
+        await showTab(page, 'setup');
+        await expect(page.locator('#weekSummaryLine')).toContainText('Week 2 Recap');
+        await expectClean(page, state);
+    });
+
     test('the Roster tab shows your season record and points for / against ranks', async ({ page }) => {
         const { state } = await setup(page);
         await page.selectOption('#headerLeagueSelect', FIXTURE_LEAGUE_ID);
