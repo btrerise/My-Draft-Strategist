@@ -15,7 +15,7 @@ import { rankMoveChip } from '../rankings/moveChips.js';
 import { posCountChipMarkup, rankGapChipMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { ordinal } from '../week/scoreboard.js';
-import { seasonSetFor } from '../rankings/season.js';
+import { hasSeasonSlot, seasonOffer, seasonSetFor } from '../rankings/season.js';
 import { rankGap, rankGapTip } from '../rankings/nowAndLater.js';
 import { KEYS } from '../../shared/storage/keys.js';
 
@@ -224,6 +224,16 @@ import { KEYS } from '../../shared/storage/keys.js';
                 return `<button type="button" class="mls-segmented-btn${on ? ' active' : ''}" data-action="setRosterSort" data-sort="${sort}" aria-pressed="${on}">${label}</button>`;
             };
             html += `<div class="mls-roster-sort" id="rosterSort"><span>Sort by</span><div class="mls-segmented" role="group" aria-label="Sort your roster by">${btn('dynasty', 'Dynasty')}${btn('season', '<span class="mls-nowrap">In-Season</span>')}</div></div>`;
+        } else if (hasSeasonSlot(league) && State.rosRankings.length > 0) {
+            // A dynasty or keeper league with no In-Season set shows only its dynasty ranks, as before S24. Say so, and how
+            // to get both (owner's report: after restoring a backup the app opened on such a league, and both ranks, the
+            // chips and the Trade Analyzer's two verdicts looked broken). The offer is the ROS card's own (S23).
+            const offer = seasonOffer(league, State.leagues, State.rankingSets.ros);
+            html += `<div class="mls-roster-season-hint" data-season-hint>No <span class="mls-nowrap">In-Season</span> rankings in this league, so these are your dynasty ranks alone. `
+                + (offer
+                    ? `Your redraft leagues use <strong>${escapeHtml(offer.name)}</strong>: <button type="button" class="mls-btn-sm btn-link-inline" data-action="useSeasonOffer" data-set-id="${escapeHtml(offer.id)}">Use it here</button> to see this season's ranks beside them.`
+                    : `Choose <span class="mls-nowrap">In-Season</span> rankings in the card above to see this season's ranks beside them.`)
+                + `</div>`;
         }
         displayRoster.forEach(p => {
             let ovrStr = p.rosRank !== 999 ? `#${p.rosRank}${tierTag(p.rosTier)}` : "-";
@@ -233,12 +243,14 @@ import { KEYS } from '../../shared/storage/keys.js';
             // the gap chip when they're far apart.
             let dualLine = '';
             if (p.now) {
-                const gap = rankGap(p.pos, p.now.posRank, p.posRank);
+                // Not in a set at all (overall 999) counts as far below it (rankings/nowAndLater.js).
+                const nowPos = p.now.rank === 999 ? null : p.now.posRank, laterPos = p.rosRank === 999 ? null : p.posRank;
+                const gap = rankGap(p.pos, nowPos, laterPos);
                 dualLine = `
                         <div class="mls-player-row-meta mls-roster-dual">
                             ${rankMoveChip('season', p.cleanName)}${dualRankBadge('<span class="mls-nowrap">In-Season</span>', p.pos, p.now)}
                             ${rankMoveChip('ros', p.cleanName)}${dualRankBadge('Dyn', p.pos, { rank: p.rosRank, tier: p.rosTier, posRank: p.posRank, posTier: p.posTier })}
-                            ${gap ? rankGapChipMarkup(gap, rankGapTip(gap, p.pos, p.now.posRank, p.posRank)) : ''}
+                            ${gap ? rankGapChipMarkup(gap, rankGapTip(gap, p.pos, nowPos, laterPos)) : ''}
                         </div>`;
             }
             const byeWeek = getByeWeek(p.team, State.currentNflSeason);

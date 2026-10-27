@@ -30,27 +30,37 @@ export function dualHeadline(now, later) {
 
 // --- THE GAP CHIP ON ROSTER ROWS ---
 // Owner's threshold: the two position ranks 12 or more spots apart, with at least one of them inside the startable
-// range (top 36 at RB and WR, top 24 at QB and TE), so deep-bench shuffles (WR80 vs WR95) don't light up. K, DEF
-// and anyone unranked in either set get no chip: there's nothing to compare.
+// range (top 36 at RB and WR, top 24 at QB and TE), so deep-bench shuffles (WR80 vs WR95) don't light up. K and DEF get
+// no chip.
+// A player missing from one set entirely (null) counts as far below it (owner, after S24's first review: "count
+// unranked as much lower"), so a startable player in the other set gets the same chip: an In-Season WR20 your dynasty
+// rankings leave out reads Now > long-term, a dynasty-ranked rookie your In-Season set leaves out Long-term > now.
+// Missing from both, or in a set without a position rank (999), there's nothing to compare.
 export const GAP_SPOTS = 12;
 export const STARTABLE = { QB: 24, RB: 36, WR: 36, TE: 24 };
 
 const ranked = (r) => Number.isFinite(r) && r > 0 && r < 999;
 
+// nowPosRank / laterPosRank: his position rank in the In-Season / dynasty set, or null when he isn't in that set.
 // 'now' (In-Season ranks him well ahead: helps now, a sell-high candidate), 'later' (the dynasty set does: a buy-low
 // or hold candidate), or null.
 export function rankGap(pos, nowPosRank, laterPosRank) {
     const cap = STARTABLE[pos];
-    if (!cap || !ranked(nowPosRank) || !ranked(laterPosRank)) return null;
-    if (Math.abs(nowPosRank - laterPosRank) < GAP_SPOTS) return null;
-    if (Math.min(nowPosRank, laterPosRank) > cap) return null;
-    return nowPosRank < laterPosRank ? 'now' : 'later';
+    if (!cap) return null;
+    const now = nowPosRank === null ? Infinity : nowPosRank;
+    const later = laterPosRank === null ? Infinity : laterPosRank;
+    if (!(ranked(now) || now === Infinity) || !(ranked(later) || later === Infinity)) return null;
+    if (now === Infinity && later === Infinity) return null;
+    if (Math.abs(now - later) < GAP_SPOTS) return null;
+    if (Math.min(now, later) > cap) return null;
+    return now < later ? 'now' : 'later';
 }
 
-// The chip's tap text.
+// The chip's tap text. A null rank is "not in that set".
 export function rankGapTip(kind, pos, nowPosRank, laterPosRank) {
-    const ranks = `In-Season ${pos}${nowPosRank}, dynasty ${pos}${laterPosRank}`;
-    return kind === 'now'
-        ? `Your In-Season rankings have him well ahead of your dynasty rankings (${ranks}): he helps now more than later. A sell-high candidate.`
-        : `Your dynasty rankings have him well ahead of your In-Season rankings (${ranks}): worth more later than now. A buy-low or hold candidate.`;
+    const tail = kind === 'now' ? 'he helps now more than later. A sell-high candidate.' : 'worth more later than now. A buy-low or hold candidate.';
+    if (nowPosRank === null) return `Your dynasty rankings have him at ${pos}${laterPosRank} and your In-Season rankings leave him out: ${tail}`;
+    if (laterPosRank === null) return `Your In-Season rankings have him at ${pos}${nowPosRank} and your dynasty rankings leave him out: ${tail}`;
+    const lead = kind === 'now' ? 'Your In-Season rankings have him well ahead of your dynasty rankings' : 'Your dynasty rankings have him well ahead of your In-Season rankings';
+    return `${lead} (In-Season ${pos}${nowPosRank}, dynasty ${pos}${laterPosRank}): ${tail}`;
 }

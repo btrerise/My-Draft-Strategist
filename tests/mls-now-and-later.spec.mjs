@@ -30,7 +30,8 @@ const csvOf = (names, override = {}) => {
     }).join('\n') + '\n';
 };
 const DYNASTY_CSV = csvOf(rows.map(r => r[1]), { 'Garrett Wilson': 30 });
-const SEASON_CSV = csvOf([...THEIRS, ...MINE], { "Ja'Marr Chase": 20, 'Garrett Wilson': 3 });
+// Derrick Henry (dynasty RB5) is left out of the In-Season set: he counts as far below it (Long-term > now).
+const SEASON_CSV = csvOf([...THEIRS, ...MINE.filter(n => n !== 'Derrick Henry')], { "Ja'Marr Chase": 20, 'Garrett Wilson': 3 });
 
 const storedLeagues = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('mls_leagues') || '[]'));
 const fixture = async (page) => (await storedLeagues(page)).find(l => l.leagueId === FIXTURE_LEAGUE_ID);
@@ -44,13 +45,13 @@ async function openRosCard(page) {
     await expect(page.locator('#rosRankingSetSelect')).toBeVisible();
 }
 
-async function uploadRos(page, name, csv) {
+async function uploadRos(page, name, csv, count = 24) {
     await openRosCard(page);
     await page.locator('#rosRankingSetSelect').selectOption('__new__');
     await page.fill('#rosNewSetName', name);
     await page.setInputFiles('#rosFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
     await expect(page.locator('#rankingsPreviewOverlay')).toBeVisible();
-    await expect(page.locator('#rankingsPreviewOverlay')).toContainText('24 players parsed');
+    await expect(page.locator('#rankingsPreviewOverlay')).toContainText(`${count} players parsed`);
     await callApp(page, 'confirmRankingsPreview');
     await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
 }
@@ -79,7 +80,7 @@ async function setUp(page, kind = 'both', { html2canvas = false } = {}) {
             (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body }));
     }
     await seedMls(page);
-    await uploadRos(page, 'Redraft ROS', SEASON_CSV);
+    await uploadRos(page, 'Redraft ROS', SEASON_CSV, 23);
     // Set ids are 'rset_' + Date.now(), and the test clock is fixed: move it so the two differ.
     await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + 1000));
     await uploadRos(page, 'Dynasty SF', DYNASTY_CSV);
@@ -196,7 +197,13 @@ test.describe('Now and long-term side by side', () => {
         await expect(wilson.locator('.mls-gap-chip')).toHaveText('Now > long-term');
         // Players whose two ranks are close get none.
         await expect(rowFor(page, 'Justin Jefferson').locator('.mls-gap-chip')).toHaveCount(0);
-        await expect(page.locator('#rosterList .mls-gap-chip')).toHaveCount(2);
+        // Missing from one set counts as far below it: Henry, dynasty RB5, isn't in the In-Season set.
+        const henry = rowFor(page, 'Derrick Henry');
+        await expect(henry.locator('.mls-roster-dual .mls-rank-badge')).toHaveText(['In-Season UR', 'Dyn RB5 · #15']);
+        await expect(henry.locator('.mls-gap-chip')).toHaveText('Long-term > now');
+        await expect(henry.locator('.mls-gap-chip')).toHaveAttribute('data-tip', /have him at RB5 and your In-Season rankings leave him out/);
+        await expect(page.locator('#rosterList .mls-gap-chip')).toHaveCount(3);
+        await expect(page.locator('#rosterList [data-season-hint]')).toHaveCount(0);
         // No single "Ovr | Pos" badge any more: the two replace it.
         await expect(page.locator('#rosterList .roster-item .mls-player-row-meta:not(.mls-roster-dual) .mls-rank-badge')).toHaveCount(0);
 
@@ -261,14 +268,40 @@ test.describe('Now and long-term side by side', () => {
             await expect(out.locator('.mls-trade-row-now')).toHaveCount(0);
             await expect(out.locator('.mls-trade-row').filter({ hasText: 'Nico Collins' }).locator('.mls-trade-row-meta')).toContainText('ROS 12');
             await expect(out.locator('[data-trade-fair]')).toContainText(/by Your Rankings/);
+            // A dynasty league with no In-Season set says how to get the second verdict and both ranks (owner's report:
+            // a restored backup opened on such a league, and S24 looked broken). A redraft league doesn't.
+            const hint = kind === 'dynasty' ? 1 : 0;
+            await expect(out.locator('[data-season-hint]')).toHaveCount(hint);
+            if (hint) await expect(out.locator('[data-season-hint]')).toHaveText('Choose In-Season rankings for this league on the Roster tab to get a this-season verdict beside your dynasty one.');
 
             await showTab(page, 'roster');
             await expect(page.locator('#rosterSort')).toHaveCount(0);
             await expect(page.locator('#rosterList .mls-roster-dual')).toHaveCount(0);
             await expect(page.locator('#rosterList .mls-gap-chip')).toHaveCount(0);
             await expect(page.locator('#rosterList .mls-roster-source')).toHaveCount(0);
+            await expect(page.locator('#rosterList [data-season-hint]')).toHaveCount(hint);
+            if (hint) await expect(page.locator('#rosterList [data-season-hint]')).toHaveText("No In-Season rankings in this league, so these are your dynasty ranks alone. Choose In-Season rankings in the card above to see this season's ranks beside them.");
             await expect(rowFor(page, "Ja'Marr Chase").locator('.mls-rank-badge')).toHaveText('Ovr: #1 | Pos: #1');
             await expectClean(page, state);
         });
     }
+});
+
+test('a dynasty league with no In-Season set offers the set your redraft leagues use, and one tap shows both ranks', async ({ page }) => {
+    const { state, ids } = await setUp(page, 'dynasty');
+    // A redraft league on "Redraft ROS", so the offer has a set to name.
+    await page.evaluate(async (id) => {
+        const { State } = await import('/js/mls/state.js');
+        State.leagues.push({ leagueId: 'manual_redraft', name: 'Redraft Pals', roster: [], rosRankingSetId: id, leagueType: 'redraft' });
+        localStorage.setItem('mls_leagues', JSON.stringify(State.leagues));
+    }, ids.season);
+    await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
+    await showTab(page, 'roster');
+    const hint = page.locator('#rosterList [data-season-hint]');
+    await expect(hint).toContainText('Your redraft leagues use Redraft ROS: Use it here to see this season\'s ranks beside them.');
+    await hint.locator('[data-action="useSeasonOffer"]').click();
+    await expect(page.locator('#rosterList .mls-roster-dual').first()).toBeVisible();
+    await expect(page.locator('#rosterList [data-season-hint]')).toHaveCount(0);
+    expect((await fixture(page)).seasonRankingSetId).toBe(ids.season);
+    await expectClean(page, state);
 });

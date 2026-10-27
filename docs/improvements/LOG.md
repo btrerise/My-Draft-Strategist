@@ -6786,3 +6786,47 @@ CI run, checking each `-expected.png` matches the committed baseline.
 - A dynasty league whose only rankings are its In-Season set still gets one verdict by the market (S23, round 12):
   two verdicts need both sets.
 - No open follow-up in docs/TESTING.md touches this area beyond the market-per-format one (S23), which S25 may cover.
+
+### S24, round 2: "nothing works after restoring a backup" (owner's report), and a chip for players one set leaves out
+
+**The report.** Testing the branch in an Incognito window: restore a backup, re-sync, open the Trade Analyzer and the
+Roster tab: no S24 at all. After a Factory Reset, importing the leagues by username and setting the In-Season, dynasty
+and Weekly rankings again, everything showed.
+
+**What I found.** I loaded the owner's backup (Oct 27) into this branch three ways: written straight into storage,
+through the real Restore (file input and confirm), and Restore followed by a real re-sync against Sleeper (both the
+Setup tab's username import and Sync All). In every case each dynasty league with an In-Season set showed both ranks,
+the chips, the sort switch and two verdicts (34 rows on Managers of the Round Table and on Draft Scouts of America, at
+both widths). The data was intact: 14 dynasty leagues pointing at "ROS Redraft" as In-Season, and their dynasty sets.
+The difference: **the backup reopens on the active league it was saved with, League of Ordinary Gentlemen, the one
+keeper league with no In-Season set** (the "Also use it in…" dialog in S23 was answered before it was a keeper league
+treated as dynasty, or with Just this league). By design nothing changes in a league without one, so that league
+looked exactly like main, which read as "not working". After the Factory Reset every league got the set again.
+Current users with a dynasty or keeper league that has no In-Season set will see the same thing, so:
+
+- **A line where the features would be** (dynasty and keeper leagues with a dynasty set and no In-Season set):
+  - Roster tab, above the list: "No In-Season rankings in this league, so these are your dynasty ranks alone. Your
+    redraft leagues use **ROS Redraft**: **Use it here** to see this season's ranks beside them." (S23's own offer and
+    its "Also use it in…" question; without a redraft set to offer: "Choose In-Season rankings in the card above…").
+  - Trade Analyzer, under the verdict: "Choose In-Season rankings for this league on the Roster tab to get a
+    this-season verdict beside your dynasty one." On screen only (Export Trade leaves it out).
+  - Redraft leagues: nothing. `render/roster.js`, `trade/verdict.js`, `css/mls.css` (`.mls-roster-season-hint`,
+    `.mls-trade-season-hint`).
+- Not a code or cache problem: the same files and data work after a restore. (If it ever is, the service worker serves
+  scripts stale-while-revalidate, so a deploy shows from the second load; `CACHE_NAME` is bumped, which clears it then.)
+
+**The owner's choice on players one set leaves out:** "build a chip … or just use the same chips and count unranked
+as much lower". **Same chips:** a player missing from one set counts as far below it, so if the other set has him in
+the startable range he gets the chip: In-Season WR20 left out of the dynasty set reads Now > long-term, a dynasty-ranked
+stash the In-Season set leaves out reads Long-term > now. The tip says so ("Your dynasty rankings have him at RB5 and
+your In-Season rankings leave him out: …"). Missing from both, past the startable range, K and DEF, or in a set without
+a position rank: no chip. `rankGap` takes null for "not in this set"; the legend line and the Guide say it.
+
+**Tests.** Unit: the unranked rule (both directions, the range's edge, both missing, K) and the tips (16 in the file).
+Spec: Derrick Henry left out of the In-Season set gets "In-Season UR", "Long-term > now" and the tip; the dynasty
+league with no In-Season set shows both lines with their wording, the redraft league neither; a new case, the offer
+in that line ("Use it here") sets the In-Season set and the rows show both ranks (12 runs).
+
+**Checks.** 461 unit tests; this spec 12/12 and the neighbouring specs (In-Season, make it fair, trade impact, roster
+counts, display ranks, legend, tooltips, Scout league switch, backup) 128/128. Screenshots: unchanged from round 1
+(the screenshot league is redraft); the Guide PNGs still come from CI.

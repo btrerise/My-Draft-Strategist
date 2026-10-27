@@ -2568,3 +2568,6 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 /* Trade Analyzer: the headline that joins the two verdicts, and each row's In-Season value under its dynasty one. */
 .mls-trade-dual-headline { margin-bottom: 0.6rem; font-weight: 700; font-size: 0.95rem; color: var(--text-main); }
 .mls-trade-row-now { display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+/* A dynasty or keeper league with no In-Season set: how to get both (Roster tab, Trade Analyzer). */
+.mls-roster-season-hint, .mls-trade-season-hint { margin-bottom: 0.6rem; font-size: 0.8rem; color: var(--text-muted); text-align: left; }
+.mls-roster-season-hint strong { color: var(--text-main); font-weight: 600; }

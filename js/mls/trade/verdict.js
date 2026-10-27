@@ -7,7 +7,7 @@ import { getFreshness } from '../../shared/freshness.js';
 import { verdictFromValues } from './makeFair.js';
 import { marketFormatWarning } from '../main.js';
 import { getActiveLeague } from '../helpers.js';
-import { IN_SEASON, seasonSetFor } from '../rankings/season.js';
+import { IN_SEASON, hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 import { dualHeadline, dualVerdictNumbers } from '../rankings/nowAndLater.js';
 
     // The active league's In-Season set when the Trade Analyzer shows two values and two verdicts (improvements
@@ -82,6 +82,11 @@ import { dualHeadline, dualVerdictNumbers } from '../rankings/nowAndLater.js';
             : yours && market ? `<div class="trade-verdict-pair">${yours}${market}</div>` : yours + market;
 
         verdictHTML += marketAgeHTML();
+        // A dynasty or keeper league with no In-Season set (S24, owner's report): one verdict by your rankings, as before,
+        // and a line saying how to get the this-season one beside it. On screen only (Export Trade doesn't pick it up).
+        if (!seasonSet && yours && hasSeasonSlot(getActiveLeague())) {
+            verdictHTML += `<div class="mls-trade-season-hint" data-season-hint>Choose <span class="mls-nowrap">In-Season</span> rankings for this league on the Roster tab to get a this-season verdict beside your dynasty one.</div>`;
+        }
 
         if (!verdictHTML) {
             verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;

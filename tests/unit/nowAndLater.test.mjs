@@ -71,14 +71,30 @@ test('rankGap: 12 or more spots apart, one rank inside the startable range', () 
     assert.equal(rankGap('RB', 36, 48), 'now');
 });
 
-test('rankGap: no chip for K, DEF, unknown positions or an unranked side', () => {
+test('rankGap: no chip for K, DEF, unknown positions or a rank that can\'t be compared', () => {
     assert.equal(rankGap('K', 1, 30), null);
     assert.equal(rankGap('DEF', 1, 30), null);
     assert.equal(rankGap('UNK', 1, 30), null);
+    assert.equal(rankGap('K', 1, null), null);
+    // In a set but without a position rank (999), or no number at all: nothing to compare.
     assert.equal(rankGap('WR', 999, 5), null);
     assert.equal(rankGap('WR', 5, 999), null);
     assert.equal(rankGap('WR', undefined, 5), null);
     assert.equal(rankGap('WR', 0, 30), null);
+});
+
+test('rankGap: a player missing from one set counts as far below it (owner\'s choice after the first review)', () => {
+    assert.equal(rankGap('WR', 20, null), 'now');     // In-Season WR20, left out of the dynasty set
+    assert.equal(rankGap('RB', null, 30), 'later');   // a dynasty-ranked stash the In-Season set leaves out
+    assert.equal(rankGap('WR', 36, null), 'now');     // on the edge of the range
+    assert.equal(rankGap('WR', 37, null), null);      // past it: no chip, like any deep-bench pair
+    assert.equal(rankGap('TE', null, 25), null);
+    assert.equal(rankGap('WR', null, null), null);    // in neither
+});
+
+test('rankGapTip: a player one set leaves out', () => {
+    assert.equal(rankGapTip('now', 'WR', 20, null), 'Your In-Season rankings have him at WR20 and your dynasty rankings leave him out: he helps now more than later. A sell-high candidate.');
+    assert.equal(rankGapTip('later', 'RB', null, 30), 'Your dynasty rankings have him at RB30 and your In-Season rankings leave him out: worth more later than now. A buy-low or hold candidate.');
 });
 
 test('rankGapTip names both ranks and what the gap suggests', () => {
