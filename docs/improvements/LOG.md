@@ -6703,3 +6703,64 @@ in docs/TESTING.md, under "Needs the owner's decision first").
   way round back in the first league, and none after a file upload.
 - Owner's instruction: no full local run for these small changes; that spec file (8 runs) and the unit tests (451)
   passed locally, and CI runs the rest.
+
+## S24 — Dynasty leagues: now and long-term side by side
+
+**User-visible effect.** Only in a dynasty or keeper league with an In-Season set (S23) and its dynasty set loaded;
+redraft leagues, and dynasty leagues without an In-Season set, look exactly as before (spec).
+- **Trade Analyzer.** Each row shows "Dyn 12 · Now 6 · Wk …" and, on the right, the dynasty value with **"Now 9,132"**
+  (the In-Season value) under it, the market's under both. The "Your Rankings" banner becomes two, **By Your In-Season
+  Rankings** and **By Your Dynasty Rankings**, side by side from tablet width (stacked on phones), each with its own
+  Fair / Favors You / Favors Them; Market Consensus goes full width under them. Above them one line joins the two:
+  **"Wins now (+1,235), costs long-term (−1,811)"** ("Costs now …, wins long-term …", "Wins now (…) and long-term (…)",
+  "Fair now, costs long-term (…)", "Fair now and long-term"). **To make it fair** goes by the dynasty value ("by your
+  dynasty rankings"). **Power Rankings after the trade**: its headline's value is now the In-Season one, paired with
+  the lineup; the source line reads "Start and value by In-Season; Ovr, position rooms and Future by dynasty" ("Start,
+  value, Ovr and position rooms by In-Season; Future by dynasty" with I'm competing). **Export Trade** shows the
+  headline, both your verdicts (and the market's), and Dyn / Now columns, with "Dyn: estimated from my dynasty rankings,
+  Now: from my In-Season rankings" in its footnote.
+- **Roster tab.** Each row's "Ovr | Pos" badge becomes two on a line of their own under the team: **"In-Season WR20 ·
+  #14"** and **"Dyn WR1 · #1"** (position rank first, F6's display ranks, tiers when the file has them), each with its
+  rank-change chip. A **gap chip** (new, in the Guide's legend): **Now > long-term** (amber) or **Long-term > now**
+  (blue), explaining itself on tap. The line above the list names both sets, and under it **Sort by: Dynasty |
+  In-Season** (Dynasty by default) orders the list.
+- Guide: step 3's dynasty item and step 9 (Trade Analyzer) describe both.
+
+**Owner's decisions (asked before building, "Build your recommendation: 1, 2, 3 and 5. Save 4 for S25").**
+1. Trade Analyzer: two values and two verdicts with the joining headline; **make it fair by the dynasty value**;
+   **Export shows both** verdicts and values; Power Rankings after the trade's value by In-Season.
+2. Roster rows: both ranks.
+3. Gap chip with my threshold: **12 or more position spots apart, and at least one rank inside the startable range**
+   (top 36 RB / WR, top 24 QB / TE). No chip for K, DEF, or a player unranked in either set.
+4. Trade Finder with In-Season as a basis: **not built, saved for S25** (comparing In-Season ranks with a dynasty market
+   mixes "now" with "later"; the honest version needs FantasyCalc's redraft market beside the dynasty one).
+5. Roster sort switch: yes, **remembered per league on the league object** (`league.rosterSortSeason`, carried over by
+   a sync), so no storage key.
+- Wording: I used S23's "In-Season" for the set and the card's "now / long-term" for the headline and chip; compact
+  rows say "Dyn" and "Now".
+
+**What changed and where.**
+- `js/mls/rankings/nowAndLater.js` (new, pure, in `PRECACHE_ASSETS`): `dualVerdictNumbers` (both verdicts through
+  `verdictFromValues`, each from its own value), `dualHeadline`, `rankGap` / `rankGapTip`, `GAP_SPOTS`, `STARTABLE`.
+- `js/mls/scout/engine.js`: `buildCard` adds `seasonValue` / `seasonMatched` (the In-Season rank through
+  `rankToTradeValue`; a pick borrows the market's, as the dynasty value does), the rows' Dyn / Now ranks and Now value,
+  `exportRow.now`, `dual` for the export.
+- `js/mls/trade/verdict.js`: `tradeSeasonSet()` (the one test every part uses: `seasonSetFor` on the active league and a
+  loaded dynasty set); the two banners, the headline (`long-term` kept whole), "isn't in your In-Season / dynasty
+  rankings" notes. `trade/fairSection.js` (label), `trade/lineupSection.js` (headline value, source line),
+  `trade/export.js` (columns, footnote, the headline picked up with the banners).
+- `js/mls/render/roster.js`: both ranks (`ranksIn`, `dualRankBadge`), the chip, `setRosterSort` and the switch;
+  `js/mls/main.js` (`setRosterSort` action), `js/mls/leagues/sync.js` (carry-over), `js/mls/badges.js`
+  (`rankGapChipMarkup`), `js/mls/legend.js` (its line), `css/mls.css` (`.mls-gap-chip`, `.mls-roster-dual`,
+  `.mls-roster-sort`, `.mls-trade-dual-headline`, `.mls-trade-row-now`), `lineup/index.html` (Guide).
+- S23's resolver and slots are unchanged (only read). No storage key. `sw.js`: the new file; `CACHE_NAME` v2.8.114 →
+  v2.8.115. CHANGELOG line under Lineup Strategist.
+
+**Tests.** Unit `tests/unit/nowAndLater.test.mjs` (8): each verdict from its own value and never blended, the waiver
+adjustment on both, a set valuing nothing, every headline form, the threshold's edges, K / DEF / unranked. Spec
+`tests/mls-now-and-later.spec.mjs` (both widths, phone at 375px, 10 runs) on the fixture league as dynasty with two
+sets carrying Pos Rank columns: the headline and both banners with the curve's numbers, the rows' ranks and values, make
+it fair by dynasty, the Power Rankings line and headline, both banners' tooltips on screen, no sideways scroll; Export
+Trade's clone; the Roster tab's two badges, both chips and their toast, nothing past a row's edge at 375px, the sort
+switch (order, focus, saved, kept by a reload and a re-sync, back); a redraft league and a dynasty league with no
+In-Season set exactly as before.

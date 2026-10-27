@@ -2552,3 +2552,19 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .recap-lines-scale { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.6rem; }
 .recap-lines-scale label { font-weight: 600; color: var(--text-main); }
 .recap-lines-scale .form-input { width: auto; min-width: 9rem; }
+
+/* --- Now and long-term side by side (improvements S24): dynasty and keeper leagues with an In-Season set --- */
+/* Roster tab: the gap chip (rankings/nowAndLater.js rankGap), a button that explains itself on tap. */
+.mls-gap-chip { display: inline-flex; align-items: center; flex-shrink: 0; border: 1px solid transparent; font-family: inherit; font-weight: 700; line-height: inherit; white-space: nowrap; cursor: pointer; background: transparent; }
+.mls-gap-chip:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
+.mls-gap-chip.is-now { color: var(--pos-te-border); border-color: rgba(245, 158, 11, 0.5); }
+.mls-gap-chip.is-later { color: #93c5fd; border-color: rgba(59, 130, 246, 0.55); }
+/* Roster tab: both ranks on a line of their own under the team, so two badges never squeeze the first line. */
+.mls-player-row-meta.mls-roster-dual { margin-top: 3px; flex-wrap: wrap; row-gap: 3px; }
+.mls-roster-dual .mls-rank-badge { white-space: nowrap; }
+.mls-roster-sort { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; font-size: 0.8rem; color: var(--text-muted); }
+.mls-roster-sort .mls-segmented { flex: 0 1 14rem; }
+.mls-roster-sort .mls-segmented-btn { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+/* Trade Analyzer: the headline that joins the two verdicts, and each row's In-Season value under its dynasty one. */
+.mls-trade-dual-headline { margin-bottom: 0.6rem; font-weight: 700; font-size: 0.95rem; color: var(--text-main); }
+.mls-trade-row-now { display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 600; white-space: nowrap; }

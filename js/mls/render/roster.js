@@ -12,10 +12,12 @@ import { getSoSBadgeHTML } from '../sos.js';
 import { _rookieIndex, getRookieIndex, isRookiePlayer } from './rookies.js';
 import { refreshPowerRankings } from '../main.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
-import { posCountChipMarkup } from '../badges.js';
+import { posCountChipMarkup, rankGapChipMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { ordinal } from '../week/scoreboard.js';
 import { seasonSetFor } from '../rankings/season.js';
+import { rankGap, rankGapTip } from '../rankings/nowAndLater.js';
+import { KEYS } from '../../shared/storage/keys.js';
 
     // --- POSITION COUNTS (improvements S9) ---
     // The strip of chips above the roster list: one per position with how many you roster, a
@@ -77,6 +79,38 @@ import { seasonSetFor } from '../rankings/season.js';
                 POS_COUNT_ORDER.includes(c.pos) ? `pos-badge ${c.pos}` : '',
                 c.count === 0 ? ' disabled' : '')).join('');
         el.hidden = false;
+    }
+
+    // --- SORT: DYNASTY | IN-SEASON (improvements S24) ---
+    // In a dynasty or keeper league with an In-Season set the rows show both sets' ranks, but a list sorts by one. The
+    // choice is saved on the league (league.rosterSortSeason, carried over by a sync), so no storage key; Dynasty, as
+    // before, by default.
+    export function setRosterSort(sort) {
+        const league = getActiveLeague();
+        if (!league) return;
+        league.rosterSortSeason = sort === 'season';
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+        const hadFocus = !!(document.activeElement && document.activeElement.closest && document.activeElement.closest('#rosterSort'));
+        loadRosterTab();
+        if (hadFocus) document.querySelector(`#rosterSort button[data-sort="${sort === 'season' ? 'season' : 'dynasty'}"]`)?.focus();
+    }
+
+    // One set's ranks on a row: "In-Season WR22 (T4) · #61 (T6)", or "In-Season UR".
+    function dualRankBadge(label, pos, r) {
+        const text = r.rank === 999 && r.posRank === 999 ? `${label} UR`
+            : `${label} ${r.posRank !== 999 ? `${escapeHtml(pos)}${r.posRank}${tierTag(r.posTier)}` : '-'} &middot; ${r.rank !== 999 ? `#${r.rank}${tierTag(r.tier)}` : '-'}`;
+        return `<span class="badge mls-rank-badge">${text}</span>`;
+    }
+
+    // A player's overall and position ranks (with tiers) in one set, as the rows show them (F6's display ranks).
+    function ranksIn(index, display, cleanName) {
+        const o = index.get(cleanName);
+        const shown = displayRanksFor(display, cleanName, {
+            posRank: o ? o.posRank : 999,
+            // No position tier of its own: the file's overall tier stands in (improvements S8, round 3).
+            posTier: o ? (o.posTier ?? o.tier ?? null) : null
+        });
+        return { rank: o ? o.rank : 999, tier: o ? o.tier : null, posRank: shown.posRank ?? 999, posTier: shown.posTier };
     }
 
     // --- RENDERERS ---
@@ -144,25 +178,28 @@ import { seasonSetFor } from '../rankings/season.js';
         // Position ranks as the Waiver Wire shows them: a single file's are re-derived per position
         // (improvements F6); null keeps a file's own. Built once per render.
         const rosDisplay = leagueRankDisplayIndex(league, State.rosRankings, loadRosterTab);
+        // A dynasty or keeper league with an In-Season set and its dynasty set loaded (improvements S24): each row shows
+        // both sets' ranks, a chip when they're far apart, and the list sorts by the one picked above it.
+        const seasonSet = State.rosRankings.length > 0 ? seasonSetFor(league, State.rankingSets.ros) : null;
+        const seasonIndex = seasonSet ? rankingIndex(seasonSet.data) : null;
+        const seasonDisplay = seasonSet ? leagueRankDisplayIndex(league, seasonSet.data, loadRosterTab) : null;
+        const sortSeason = !!(seasonSet && league.rosterSortSeason);
         let displayRoster = league.roster.map(p => {
-            let rObj = rosIndex.get(p.cleanName);
-            const shown = displayRanksFor(rosDisplay, p.cleanName, {
-                posRank: rObj ? rObj.posRank : 999,
-                // No position tier of its own: the file's overall tier stands in (improvements S8, round 3).
-                posTier: rObj ? (rObj.posTier ?? rObj.tier ?? null) : null
-            });
+            const ros = ranksIn(rosIndex, rosDisplay, p.cleanName);
             return {
                 ...p, 
-                rosRank: rObj ? rObj.rank : 999,
-                posRank: shown.posRank,
-                rosTier: rObj ? rObj.tier : null,
-                posTier: shown.posTier
+                rosRank: ros.rank,
+                posRank: ros.posRank,
+                rosTier: ros.tier,
+                posTier: ros.posTier,
+                now: seasonIndex ? ranksIn(seasonIndex, seasonDisplay, p.cleanName) : null
             };
         });
 
         const posOrder = { "QB": 1, "RB": 2, "WR": 3, "TE": 4, "K": 5, "DEF": 6 };
+        const sortRank = (p) => sortSeason ? p.now.rank : p.rosRank;
         displayRoster.sort((a, b) => {
-            if (a.rosRank !== 999 || b.rosRank !== 999) return a.rosRank - b.rosRank;
+            if (sortRank(a) !== 999 || sortRank(b) !== 999) return sortRank(a) - sortRank(b);
             return (posOrder[a.pos] || 99) - (posOrder[b.pos] || 99);
         });
 
@@ -178,14 +215,32 @@ import { seasonSetFor } from '../rankings/season.js';
         let html = "";
         // A dynasty or keeper league with an In-Season set (improvements S23, round 13): these rows show the dynasty set's
         // ranks while the Lineup tab and Power Rankings' Start read In-Season, so say which. Both ranks per row are S24.
-        if (seasonSetFor(league, State.rankingSets.ros) && State.rosRankings.length > 0) {
+        // Since S24 each row shows both, so the line names both sets, with the sort switch under it.
+        if (seasonSet) {
             const dyn = league.rosRankingSetId ? State.rankingSets.ros.find(s => s.id === league.rosRankingSetId) : null;
-            html += `<div class="mls-roster-source">Ranks by your dynasty rankings${dyn ? ` (<strong>${escapeHtml(dyn.name)}</strong>)` : ''}.</div>`;
+            html += `<div class="mls-roster-source">Ranks by your <span class="mls-nowrap">In-Season</span> rankings (<strong>${escapeHtml(seasonSet.name || '')}</strong>) and your dynasty rankings${dyn ? ` (<strong>${escapeHtml(dyn.name)}</strong>)` : ''}.</div>`;
+            const btn = (sort, label) => {
+                const on = (sort === 'season') === sortSeason;
+                return `<button type="button" class="mls-segmented-btn${on ? ' active' : ''}" data-action="setRosterSort" data-sort="${sort}" aria-pressed="${on}">${label}</button>`;
+            };
+            html += `<div class="mls-roster-sort" id="rosterSort"><span>Sort by</span><div class="mls-segmented" role="group" aria-label="Sort your roster by">${btn('dynasty', 'Dynasty')}${btn('season', '<span class="mls-nowrap">In-Season</span>')}</div></div>`;
         }
         displayRoster.forEach(p => {
             let ovrStr = p.rosRank !== 999 ? `#${p.rosRank}${tierTag(p.rosTier)}` : "-";
             let posStr = p.posRank !== 999 ? `#${p.posRank}${tierTag(p.posTier)}` : "-";
             let rankBadge = (p.rosRank !== 999 || p.posRank !== 999) ? `Ovr: ${ovrStr} | Pos: ${posStr}` : "Unranked";
+            // Both sets (S24): their ranks on a line of their own, In-Season first, each with its rank-change chip, and
+            // the gap chip when they're far apart.
+            let dualLine = '';
+            if (p.now) {
+                const gap = rankGap(p.pos, p.now.posRank, p.posRank);
+                dualLine = `
+                        <div class="mls-player-row-meta mls-roster-dual">
+                            ${rankMoveChip('season', p.cleanName)}${dualRankBadge('<span class="mls-nowrap">In-Season</span>', p.pos, p.now)}
+                            ${rankMoveChip('ros', p.cleanName)}${dualRankBadge('Dyn', p.pos, { rank: p.rosRank, tier: p.rosTier, posRank: p.posRank, posTier: p.posTier })}
+                            ${gap ? rankGapChipMarkup(gap, rankGapTip(gap, p.pos, p.now.posRank, p.posRank)) : ''}
+                        </div>`;
+            }
             const byeWeek = getByeWeek(p.team, State.currentNflSeason);
             let byeStr = byeWeek ? ` (${byeWeek})` : "";
             let byeBadge = getByeBadgeHTML(p.team);
@@ -215,10 +270,10 @@ import { seasonSetFor } from '../rankings/season.js';
                     <div class="mls-player-row-text">
                         <div class="player-name-wrap">${escapeHtml(p.name)}${byeStr}${statusBadges ? ` <span class="mls-name-badges">${statusBadges}</span>` : ''}</div>
                         <div class="mls-player-row-meta">
-                            <span class="badge">${escapeHtml(p.team)}</span>${rankMoveChip('ros', p.cleanName)}
-                            <span class="badge mls-rank-badge">${rankBadge}</span>
+                            <span class="badge">${escapeHtml(p.team)}</span>${p.now ? '' : `${rankMoveChip('ros', p.cleanName)}
+                            <span class="badge mls-rank-badge">${rankBadge}</span>`}
                             ${sosBadge}
-                        </div>
+                        </div>${dualLine}
                     </div>
                 </div>
                 <div class="mls-row-actions">

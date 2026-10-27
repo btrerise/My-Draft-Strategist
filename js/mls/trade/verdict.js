@@ -6,6 +6,19 @@ import { State } from '../state.js';
 import { getFreshness } from '../../shared/freshness.js';
 import { verdictFromValues } from './makeFair.js';
 import { marketFormatWarning } from '../main.js';
+import { getActiveLeague } from '../helpers.js';
+import { IN_SEASON, seasonSetFor } from '../rankings/season.js';
+import { dualHeadline, dualVerdictNumbers } from '../rankings/nowAndLater.js';
+
+    // The active league's In-Season set when the Trade Analyzer shows two values and two verdicts (improvements
+    // S24): a dynasty or keeper league with an In-Season set (S23) and its dynasty set loaded. null everywhere else,
+    // and the Trade Analyzer looks exactly as before.
+    export function tradeSeasonSet() {
+        if (State.rosRankings.length === 0) return null;
+        return seasonSetFor(getActiveLeague(), State.rankingSets.ros);
+    }
+
+    const YOUR_METHOD = "This value isn't something you entered; it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.";
 
     // --- TRADE FAIRNESS VERDICT(S) ---
     // Returns the verdict banner(s) runScout puts above the Trade Analyzer's player cards, for a trade
@@ -31,11 +44,32 @@ import { marketFormatWarning } from '../main.js';
         // Roster tab), and one from market consensus if Market Value data has been loaded
         // (Trade Finder section below). Showing both side-by-side is deliberate: it lets a
         // user see "the market" and "how I personally value this" can disagree.
-        const yours = renderTradeVerdict(
-            "Your Rankings",
-            "This value isn't something you entered; it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.",
-            getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0
-        );
+        // A dynasty league with an In-Season set (improvements S24, owner's choice): two verdicts by your rankings, In-Season
+        // (this season) and Dynasty (the long run), side by side, with one line above joining them ("Wins now (+2,100),
+        // costs long-term (−3,400)"). Each from its own set through the same curve; never one blended number.
+        const seasonSet = tradeSeasonSet();
+        let yours, headline = '';
+        if (seasonSet) {
+            // IN_SEASON keeps the word whole without a span, which the label's flex box would set apart.
+            const now = renderTradeVerdict(`Your ${IN_SEASON} Rankings`,
+                `Your In-Season rankings (${escapeHtml(seasonSet.name || '')}): this season's value. ${YOUR_METHOD}`,
+                getResults, giveResults, "seasonValue", "seasonMatched", true, 'your In-Season rankings');
+            const later = renderTradeVerdict("Your Dynasty Rankings",
+                `Your dynasty rankings: the long-term value. ${YOUR_METHOD}`,
+                getResults, giveResults, "userValue", "userMatched", true, 'your dynasty rankings');
+            yours = now && later ? `<div class="trade-verdict-pair mls-trade-verdict-dual">${now}${later}</div>` : now + later;
+            const waiver = { on: !!State.tradeSettings.waiverAdjustment, perSpot: State.tradeSettings.waiverAdjustmentValue };
+            const both = dualVerdictNumbers(getResults, giveResults, waiver);
+            const line = dualHeadline(both.now, both.later);
+            // "long-term" kept whole (it broke at its hyphen on a phone), and each "(+2,100)" with its word.
+            if (line) headline = `<div class="mls-trade-dual-headline" data-trade-dual-headline>${escapeHtml(line)
+                .replace(/long-term( \([^)]*\))?/g, m => `<span class="mls-nowrap">${m}</span>`)}</div>`;
+        } else {
+            yours = renderTradeVerdict(
+                "Your Rankings", YOUR_METHOD,
+                getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0
+            );
+        }
         const market = renderTradeVerdict(
             "Market Consensus",
             "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). This only stores that source's overall rank, not its own internal value points, so this is an estimate of market value - not the source's official number.",
@@ -43,7 +77,9 @@ import { marketFormatWarning } from '../main.js';
         );
         // Both lenses side by side from tablet width up (improvements S19, round 9: stacked, they filled the first
         // screen on desktop); stacked on phones (css/mls.css .trade-verdict-pair).
-        verdictHTML = yours && market ? `<div class="trade-verdict-pair">${yours}${market}</div>` : yours + market;
+        // With two of your own (S24) the pair is yours, and the market's banner goes full width under it.
+        verdictHTML = seasonSet ? headline + yours + market
+            : yours && market ? `<div class="trade-verdict-pair">${yours}${market}</div>` : yours + market;
 
         verdictHTML += marketAgeHTML();
 
@@ -89,7 +125,8 @@ import { marketFormatWarning } from '../main.js';
     // matched flag the caller wants. Returns "" when the underlying data source isn't loaded at
     // all, or when nothing on either side matched it, so callers can concatenate freely and fall
     // back to a single prompt only when BOTH sources come back empty.
-    function renderTradeVerdict(label, methodologyText, getResults, giveResults, valueKey, matchedKey, sourceLoaded) {
+    // setWord: how the "isn't in your …" note names the rankings (S24: In-Season or dynasty).
+    function renderTradeVerdict(label, methodologyText, getResults, giveResults, valueKey, matchedKey, sourceLoaded, setWord = 'your ROS rankings') {
         if (!sourceLoaded) return "";
 
         const unmatched = getResults.concat(giveResults).filter(r => !r[matchedKey]);
@@ -119,7 +156,7 @@ import { marketFormatWarning } from '../main.js';
         let unmatchedNote = !missing.length ? ""
             : incomplete
                 ? `<div class="trade-verdict-note">${missing.join(', ')} ${plural ? "aren't" : "isn't"} in the Market Consensus data, so this total is missing ${plural ? 'them' : 'him'}.</div>`
-                : `<div class="trade-verdict-note">${missing.join(', ')} ${plural ? "aren't" : "isn't"} in your ROS rankings, so ${plural ? 'they count' : 'he counts'} as 0.</div>`;
+                : `<div class="trade-verdict-note">${missing.join(', ')} ${plural ? "aren't" : "isn't"} in ${setWord}, so ${plural ? 'they count' : 'he counts'} as 0.</div>`;
         if (picks.length) {
             const names = picks.map(n => escapeHtml(n)).join(', ');
             unmatchedNote += State.marketRankings.length > 0

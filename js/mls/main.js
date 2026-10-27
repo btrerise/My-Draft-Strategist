@@ -48,7 +48,7 @@ import { copyLineupAsText, exportLineup, exportTrade } from './trade/export.js';
 import { addTradeNames, addTradePick, clearTradeSide, removeTradeNames, removeTradeToken, restoreTrade, setTradePlayers, tradeNames, tradeTeamChanged } from './trade/picker.js';
 import { rememberFairChange, takeFairUndo } from './trade/fairSection.js';
 import './render/rookies.js';
-import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
+import { loadRosterTab, setRosterPosFilter, setRosterSort } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
 import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeaguePaid, toggleLeagueReorder, withCardsTransition } from './render/leagueCards.js';
@@ -175,6 +175,8 @@ const clickActions = {
     deletePlayer() { deletePlayer(this.dataset.id); },
     // Position counts above the roster list (improvements S9): filter to a position, or All.
     setRosterPos() { setRosterPosFilter(this.dataset.pos); },
+    // The Roster tab's Sort by: Dynasty | In-Season (improvements S24)
+    setRosterSort() { setRosterSort(this.dataset.sort); },
     // A Roster or Lineup row's IR badge (Sleeper IR slot, lineup/gameInfo.js): what it means, for phones.
     explainIrSlot() { explainIrSlot(this); },
     saveManualSoS() { saveManualSoS(this); },

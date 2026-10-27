@@ -15,7 +15,7 @@
 import {
     BYE_BADGE_HTML, DISMISS_ICON, PICK_BADGE_HTML, STARTS_ICON, UPGRADE_ICON,
     WARNING_ICON, bestBallBadgeMarkup, edgeBadgeMarkup, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup, leagueStatusChipMarkup,
-    moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, scoutPillMarkup,
+    moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, rankGapChipMarkup, scoutPillMarkup,
     sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, weekResultMarkup, weekStatusMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
@@ -72,6 +72,8 @@ const GROUPS = [
             'On the Dashboard\'s Best Available: an upgrade over one of your players at his position.'],
         [`<span class="btn-bare mls-ba-dismiss">${DISMISS_ICON}</span>`,
             'On Best Available: hides him in that league for the rest of the week.'],
+        [rankGapChipMarkup('now', '', SAMPLE) + rankGapChipMarkup('later', '', SAMPLE),
+            'On the Roster tab, in dynasty and keeper leagues with In-Season rankings: your two sets rank him 12 or more spots apart at his position (one of them inside the top 36 at RB and WR, top 24 at QB and TE). Now &gt; long-term: he helps this season more, a sell-high candidate. Long-term &gt; now: worth more later, a buy-low or hold candidate. Tap for more.'],
         [edgeBadgeMarkup(12, true) + edgeBadgeMarkup(-9, false),
             'In the Trade Finder: how far the market\'s rank is from yours. Green is a buy-low target, red a sell-high one.'],
     ]],

@@ -674,6 +674,8 @@ import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from
                 // Dynasty and keeper leagues' In-Season set and "I'm competing" (improvements S23).
                 seasonRankingSetId: existingLeague ? (existingLeague.seasonRankingSetId || null) : null,
                 powerCompeting: existingLeague ? !!existingLeague.powerCompeting : false,
+                // The Roster tab's Sort by In-Season (improvements S24).
+                rosterSortSeason: existingLeague && existingLeague.rosterSortSeason ? true : undefined,
                 // Keeper leagues (S23, round 10): how many players Sleeper lets each team keep (its max_keepers is 1 in
                 // every other league type, so only kept here), and your League style, carried over like the sets.
                 maxKeepers: leagueType === 'keeper' ? (Number(leagueData.settings?.max_keepers) || null) : null,

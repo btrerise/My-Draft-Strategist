@@ -161,12 +161,13 @@ function tradeExportHTML(data, verdictHTML, powerHTML) {
             <span class="badge pos-badge ${escapeHtml(r.badge)} mls-pos-badge-sizing">${escapeHtml(r.pos)}</span>
             <span class="mls-trade-export-name">${escapeHtml(r.name)}</span>
             <span class="mls-trade-export-val">${fmtValue(r.value, r.pos === 'Pick')}${r.valueFromMarket ? '<sup>*</sup>' : ''}</span>
+            ${data.dual ? `<span class="mls-trade-export-val mls-trade-export-mkt">${fmtValue(r.now, r.pos === 'Pick')}</span>` : ''}
             ${data.market ? `<span class="mls-trade-export-val mls-trade-export-mkt">${r.market == null ? '&ndash;' : r.market.toLocaleString('en-US')}</span>` : ''}
         </div>`).join('');
     const side = (title, cls, list) => `
         <div class="mls-trade-export-sidebox">
             <div class="mls-trade-export-sidehead ${cls}">
-                <span>${title}</span><span class="mls-trade-export-val">Value</span>${data.market ? '<span class="mls-trade-export-val mls-trade-export-mkt">Mkt</span>' : ''}
+                <span>${title}</span><span class="mls-trade-export-val">${data.dual ? 'Dyn' : 'Value'}</span>${data.dual ? '<span class="mls-trade-export-val mls-trade-export-mkt">Now</span>' : ''}${data.market ? '<span class="mls-trade-export-val mls-trade-export-mkt">Mkt</span>' : ''}
             </div>
             ${rows(list)}
         </div>`;
@@ -175,7 +176,7 @@ function tradeExportHTML(data, verdictHTML, powerHTML) {
         <div class="mls-trade-export-title">Trade${data.league ? ` &middot; ${escapeHtml(data.league)}` : ''}</div>
         ${side('You get', 'mls-trade-export-get', data.get)}
         ${side('You give', 'mls-trade-export-give', data.give)}
-        <div class="mls-trade-export-foot">Value: estimated from my ROS rankings (0-10,000).${data.market ? ' Mkt: market consensus.' : ''}${marketPick ? ' * Draft pick: market value.' : ''} UR: unranked.${data.get.concat(data.give).some(r => r.pos === 'Pick' && r.value == null) ? ' &ndash;: no market value loaded for the pick.' : ''}</div>
+        <div class="mls-trade-export-foot">${data.dual ? 'Dyn: estimated from my dynasty rankings, Now: from my In-Season rankings (0-10,000).' : 'Value: estimated from my ROS rankings (0-10,000).'}${data.market ? ' Mkt: market consensus.' : ''}${marketPick ? ' * Draft pick: market value.' : ''} UR: unranked.${data.get.concat(data.give).some(r => r.pos === 'Pick' && r.value == null) ? ' &ndash;: no market value loaded for the pick.' : ''}</div>
         ${verdictHTML}
         ${powerHTML}`;
 }
@@ -189,7 +190,9 @@ export const exportTrade = async function() {
         return;
     }
     const pick = (sel) => [...out.querySelectorAll(sel)].map(el => el.outerHTML).join('');
-    const verdictHTML = pick(':scope > .trade-verdict-banner, :scope > .trade-verdict-note, :scope > .trade-verdict-pair > *');
+    // In a dynasty league with an In-Season set (improvements S24) the image shows both of your verdicts and the line
+    // joining them, as on screen.
+    const verdictHTML = pick(':scope > .mls-trade-dual-headline, :scope > .trade-verdict-banner, :scope > .trade-verdict-note, :scope > .trade-verdict-pair > *');
     const powerHTML = State.tradeSettings.exportPower ? pick(':scope > [data-trade-impact]') : '';
     const imageHTML = tradeExportHTML(_tradeExport, verdictHTML, powerHTML);
 

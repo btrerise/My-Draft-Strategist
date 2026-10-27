@@ -15,7 +15,7 @@ import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { getSleeperMetaByName, makeLeagueGetPos } from '../scout/waivers.js';
 import { buildRankDisplayIndex } from '../scout/waiverScanner.js';
 import { isDraftPickName } from './valueCurve.js';
-import { tradeVerdictNumbers, unknownNames } from './verdict.js';
+import { tradeSeasonSet, tradeVerdictNumbers, unknownNames } from './verdict.js';
 import {
     FUTURE_COLUMN, lineupSlotCount, lineupSummaryText, lineupTradeChanges, POWER_COLUMNS,
     powerSummaryText, powerTradeImpact, tradeHeadline, tradePartner
@@ -115,9 +115,12 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     let rankings = own ? own.rooms : State.rosRankings, via = 'by your ROS rankings';
     if (own && State.rosRankings.length === 0) via = 'by your In-Season rankings (no dynasty rankings loaded)';
     const powerOpts = own ? { startRankings: own.start, futureRankings: own.future } : {};
-    // Which set gave what (round 5): the trade's values ("Your rankings") are always the dynasty set's, until S24.
+    // Which set gave what (round 5). Since S24 the headline's value is the In-Season one, beside the lineup it's
+    // paired with, whenever the Trade Analyzer shows both values (the dynasty verdict is above, with the market's).
+    const seasonValues = !!tradeSeasonSet();
     if (own && own.start !== own.future) via = own.rooms === own.start
-        ? 'Start, Ovr and position rooms by In-Season; value and Future by dynasty'
+        ? (seasonValues ? 'Start, value, Ovr and position rooms by In-Season; Future by dynasty' : 'Start, Ovr and position rooms by In-Season; value and Future by dynasty')
+        : seasonValues ? 'Start and value by In-Season; Ovr, position rooms and Future by dynasty'
         : 'Start by In-Season; value, Ovr, position rooms and Future by dynasty';
     if (rankings.length === 0) {
         if (State.marketRankings.length === 0) {
@@ -175,9 +178,9 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     // No headline while a name matches no player, or while the market (when it's what's used) lacks a piece: the
     // banner above has no verdict then either (round 11).
     // The trade's values ("Your rankings") come from the dynasty set; without one, the market's (S23, round 12).
-    const valueKey = own && State.rosRankings.length > 0 ? 'userValue' : 'marketValue';
+    const valueKey = own && State.rosRankings.length > 0 ? (seasonValues ? 'seasonValue' : 'userValue') : 'marketValue';
     const settled = cards.getResults && cards.giveResults && !unknownNames(cards.getResults, cards.giveResults).length
-        && (valueKey === 'userValue' || cards.getResults.concat(cards.giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick')));
+        && (valueKey !== 'marketValue' || cards.getResults.concat(cards.giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick')));
     const value = settled ? tradeVerdictNumbers(cards.getResults, cards.giveResults, valueKey) : null;
     const headline = tradeHeadline(value, impact.you);
     let body = `

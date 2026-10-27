@@ -91,6 +91,13 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Dynasty leagues: now and long-term side by side.** In a dynasty or keeper league with In-Season rankings, the
+  Trade Analyzer gives each player two values (dynasty, with "Now" for In-Season under it) and two verdicts, By Your
+  In-Season Rankings and By Your Dynasty Rankings, with a line joining them ("Wins now (+1,235), costs long-term
+  (−1,811)"). To make it fair goes by the dynasty value, Power Rankings after the trade pairs the In-Season value with
+  your lineup, and Export Trade shows both. On the Roster tab each player shows both ranks, a **Sort by: Dynasty |
+  In-Season** switch picks the order (remembered per league), and a chip marks players your two sets rank 12 or more
+  spots apart: **Now > long-term** (sell-high) or **Long-term > now** (buy-low or hold). Other leagues are unchanged.
 - **The Scout tab follows a league switch made there.** Switching between a redraft and a dynasty league on the Scout
   tab left the Waiver Wire's Rank By on the old league's choices (ROS Rank, or Dynasty and In-Season Rank) until you
   left the tab and came back. Market Disconnect's report is also re-run for the new league, so who rosters each player

@@ -12,7 +12,7 @@ import { getSoSBadgeHTML } from '../sos.js';
 import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js';
 import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
 import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
-import { buildTradeVerdictHTML } from '../trade/verdict.js';
+import { buildTradeVerdictHTML, tradeSeasonSet } from '../trade/verdict.js';
 import { buildTradeImpactHTML } from '../trade/lineupSection.js';
 import { buildMakeFairHTML, placeFairFocus } from '../trade/fairSection.js';
 import { pickHolders } from '../leagues/picks.js';
@@ -116,6 +116,10 @@ import { normalizeName } from '../../shared/names.js';
         const marketIndex = rankingIndex(State.marketRankings);
         const rosIndex = rankingIndex(State.rosRankings);
         const weeklyIndex = rankingIndex(State.weeklyRankings);
+        // A dynasty league with an In-Season set (improvements S24): each trade row also gets its In-Season value, by
+        // the same curve, beside the dynasty one ("Your rankings"). null everywhere else: rows as before.
+        const tradeSeason = type === 'trade' ? tradeSeasonSet() : null;
+        const seasonIndex = tradeSeason ? rankingIndex(tradeSeason.data) : null;
 
         const getPos = (cleanName) => {
             if (league && league.globalPosMap && league.globalPosMap[cleanName]) return league.globalPosMap[cleanName];
@@ -152,9 +156,16 @@ import { normalizeName } from '../../shared/names.js';
                     userValueObj = { rank: marketValueObj.rank, value: marketValueObj.value, fromMarket: true };
                 }
             }
+            // The In-Season value (S24): the same rule, the In-Season set's rank in place of the dynasty one.
+            let seasonObj = seasonIndex ? seasonIndex.get(clean) : null;
+            let seasonValueObj = null;
+            if (seasonIndex) {
+                if (seasonObj) seasonValueObj = { rank: seasonObj.rank, value: rankToTradeValue(seasonObj.rank) };
+                else if (isDraftPickName(name) && marketValueObj) seasonValueObj = { rank: marketValueObj.rank, value: marketValueObj.value, fromMarket: true };
+            }
 
             let suggestHTML = "";
-            if (!rosObj && !weekObj && type) {
+            if (!rosObj && !weekObj && !seasonObj && type) {
                 // Bug fix: this used to always point at a nonexistent 'tradeInput' element for
                 // trade cards, silently no-op'ing the "Did you mean" fix-it link on both sides.
                 // Route back to whichever textarea (buyInput/sellInput) this name actually came from.
@@ -166,7 +177,7 @@ import { normalizeName } from '../../shared/names.js';
                 }
             }
             
-            let displayName = rosObj?.name || weekObj?.name || name;
+            let displayName = rosObj?.name || seasonObj?.name || weekObj?.name || name;
             let wRank = weekObj ? weekObj.rank : "UR";
             let rRank = rosObj ? rosObj.rank : "UR";
             let owner = rosterMap[clean];
@@ -272,7 +283,12 @@ import { normalizeName } from '../../shared/names.js';
                         : isPick ? { text: 'Pick', cls: '' }
                         : { text: knowsWholeLeague ? 'Free agent' : 'Not yours', cls: '' };
                 }
-                const rankBits = isPick ? [] : [
+                // Dynasty and In-Season ranks side by side in a league with both (S24): "Dyn 48 · Now 22 · Wk 30".
+                const rankBits = isPick ? [] : seasonIndex ? [
+                    `Dyn ${rRank}${tierTag(rosObj?.tier)}`,
+                    `Now ${seasonObj ? seasonObj.rank : 'UR'}${tierTag(seasonObj?.tier)}`,
+                    `Wk ${wRank}`
+                ] : [
                     `ROS ${rRank}${tierTag(rosObj?.tier)}`,
                     `Wk ${wRank}`
                 ];
@@ -281,6 +297,9 @@ import { normalizeName } from '../../shared/names.js';
                     : `<span class="mls-trade-row-ur">${isPick ? '&ndash;' : 'UR'}</span>`;
                 // A pick's value comes from market data only (round 6): say so where the dash is.
                 if (isPick && !userValueObj) rankBits.push(State.marketRankings.length > 0 ? 'Not in market data' : 'Needs market data');
+                // The In-Season value under the dynasty one (S24), the market's under both.
+                const now = seasonIndex
+                    ? `<span class="mls-trade-row-now">Now ${seasonValueObj ? `${seasonValueObj.value.toLocaleString()}${seasonValueObj.fromMarket ? '*' : ''}` : (isPick ? '&ndash;' : 'UR')}</span>` : '';
                 const mkt = State.marketRankings.length > 0
                     ? `<span class="mls-trade-row-mkt">Mkt ${marketValueObj ? marketValueObj.value.toLocaleString() : '&ndash;'}</span>` : '';
                 return {
@@ -292,17 +311,21 @@ import { normalizeName } from '../../shared/names.js';
                         <div class="mls-trade-row-meta">${rankBits.map(b => `<span>${b}</span>`).join('')}<span class="${owns.cls}">${escapeHtml(owns.text)}</span></div>
                         ${suggestHTML}
                     </div>
-                    <div class="mls-trade-row-value"><span class="mls-stat-value">${valueText}</span>${mkt}</div>
+                    <div class="mls-trade-row-value"><span class="mls-stat-value">${valueText}</span>${now}${mkt}</div>
                 </div>`,
                     // One line of Export Trade's image (trade/export.js): who, his position, and his value by
                     // your rankings and the market (null = not in that source).
                     exportRow: {
                         name: displayName, pos: isPick ? 'Pick' : displayPos, badge: isPick ? 'FLEX' : badgeClass,
                         value: userValueObj ? userValueObj.value : null, valueFromMarket: !!(userValueObj && userValueObj.fromMarket),
-                        market: marketValueObj ? marketValueObj.value : null
+                        market: marketValueObj ? marketValueObj.value : null,
+                        // The In-Season value (S24); undefined outside a league with both sets.
+                        now: seasonIndex ? (seasonValueObj ? seasonValueObj.value : null) : undefined
                     },
                     userValue: userValueObj ? userValueObj.value : 0,
                     userMatched: !!userValueObj,
+                    seasonValue: seasonValueObj ? seasonValueObj.value : 0,
+                    seasonMatched: !!seasonValueObj,
                     marketValue: marketValueObj ? marketValueObj.value : 0,
                     marketMatched: !!marketValueObj,
                     // A name that matches no player at all (a typo), as opposed to a real player one source doesn't
@@ -400,7 +423,8 @@ import { normalizeName } from '../../shared/names.js';
                 league: league && league.name ? league.name : '',
                 get: getResults.map(r => r.exportRow),
                 give: giveResults.map(r => r.exportRow),
-                market: State.marketRankings.length > 0
+                market: State.marketRankings.length > 0,
+                dual: !!tradeSeason
             });
             if (!isOneSided) {
                 html += `
