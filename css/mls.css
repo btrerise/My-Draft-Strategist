@@ -518,6 +518,12 @@ button.close-chip {
         /* Bumps the SVG size up slightly for better touch targets */
         transform: scale(1.1); 
     }
+
+    /* Points, swap and lock stacked in a narrow column on the right (improvements S24, round 14, owner's idea): side by
+       side they took about 100px, which split names like "Rhamondre Stevenson (11)" onto two lines with room to spare.
+       Rows with a game-time or status badge keep their height; a bare two-line row grows to the column's height. */
+    .lineup-slot .mls-row-actions { flex-direction: column; align-items: flex-end; gap: 0.25rem; }
+    .lineup-slot .mls-pts { margin-right: 0; }
 }
 /* Scout Tab Specific Styles */
 .scout-textarea { 
@@ -2593,7 +2599,7 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
         column-gap: 0.75rem; align-items: baseline; text-align: right; padding: 0.6rem 0.8rem; }
     .mls-trade-tile-label { grid-area: label; justify-content: flex-start; }
     .mls-trade-tile-set { grid-area: set; text-align: left; margin-top: 0; }
-    .mls-trade-tile .mls-trade-tile-result { grid-area: result; margin: 0; font-size: 1.1rem; }
+    .mls-trade-tile .mls-trade-tile-result { grid-area: result; margin: 0; font-size: 1.1rem; text-align: right; }
     .mls-trade-tile-diff { grid-area: diff; }
     .mls-trade-tile-totals { grid-area: totals; margin-top: 0.1rem; }
 }

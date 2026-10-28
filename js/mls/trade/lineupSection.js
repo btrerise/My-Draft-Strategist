@@ -157,15 +157,19 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     if (hasFuture) {
         notes.push(about(futureInfo.label === 'market'
             ? "<strong>Future</strong> is each roster's dynasty Market Consensus value (player ages from Sleeper couldn't be loaded), as on the Roster tab."
-            : "<strong>Future</strong> is each roster's value from these rankings, adjusted for player age (from Sleeper), as on the Roster tab: younger players count a bit more, older players less."));
+            : `<strong>Future</strong> is each roster's value from ${own && own.start !== own.future ? 'your dynasty rankings' : 'these rankings'}, adjusted for player age (from Sleeper), as on the Roster tab: younger players count a bit more, older players less.`));
         const picksNote = powerPicksNote(league, futureInfo.picks);
         if (picksNote) notes.push(about(picksNote));
     } else if (dynasty) {
         notes.push(about("Couldn't load player ages from Sleeper, so there's no Future column. Dynasty Market Consensus data (Trade Finder below) gives a fallback."));
     }
 
+    // Which set the rooms read, by name (round 14: "these rankings" sat under a tile note naming the In-Season set).
+    const roomsSet = rankings === State.marketRankings ? 'Market Consensus'
+        : own && (State.rosRankings.length === 0 || (own.start !== own.future && own.rooms === own.start)) ? 'your In-Season rankings'
+        : own && own.start !== own.future ? 'your dynasty rankings' : 'your ROS rankings';
     const unranked = give.concat(get).filter(p => !idx.get(p.cleanName)).map(p => p.name);
-    if (unranked.length) notes.push(`${listNames(unranked)} ${unranked.length > 1 ? "aren't" : "isn't"} in these rankings, so ${unranked.length > 1 ? 'they count' : 'he counts'} as unranked (almost no value).`);
+    if (unranked.length) notes.push(`${listNames(unranked)} ${unranked.length > 1 ? "aren't" : "isn't"} in ${roomsSet}, so ${unranked.length > 1 ? 'they count' : 'he counts'} as unranked (almost no value).`);
     const holes = (side, whose) => side.newHoles.length
         ? [`Leaves ${whose} ${[...new Set(side.newHoles)].map(s => slotDisplayName(s)).join(' and ')} empty.`] : [];
     notes.unshift(...holes(impact.you, 'your'));

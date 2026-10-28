@@ -122,11 +122,12 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
 
     const SEASON_PICKER_BTN = `<button type="button" class="mls-btn-sm btn-link-inline" data-action="goToSeasonPicker">Choose on the Roster tab</button>`;
 
-    // Superflex QB prices in use (round 7; round 6 warned instead): a quiet note under the tiles, only when a QB is in the
-    // trade, where it changes the numbers. On screen only.
+    // Superflex QB prices in use (round 7; round 6 warned instead): a quiet note under the tiles, only when a QB in the
+    // trade is in the In-Season set, where it changes the numbers (round 14). On screen only.
     function sfQbNote(seasonSet, getResults, giveResults) {
         if (!seasonSet.sfQbPrices) return '';
-        if (!getResults.concat(giveResults).some(r => r.exportRow && r.exportRow.pos === 'QB')) return '';
+        // Only a QB the In-Season set ranks takes those prices (a QB it leaves out counts as 0 Now either way).
+        if (!getResults.concat(giveResults).some(r => r.exportRow && r.exportRow.pos === 'QB' && r.seasonMatched)) return '';
         return `<div class="trade-verdict-note" data-sf-qb-note>${SF_QB_NOTE.replaceAll('In-Season', '<span class="mls-nowrap">In-Season</span>')}</div>`;
     }
 

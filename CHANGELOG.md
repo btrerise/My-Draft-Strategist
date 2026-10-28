@@ -91,6 +91,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Lineup rows on phones give names more room**: the projection, swap and lock buttons stack in a narrow column on the
+  right, so names like "Rhamondre Stevenson (11)" stay on one line.
 - **Leagues that start two QBs read "2QB"** in their format label (it said "1QB"; only a superflex slot counted).
   Re-sync a league to update its label.
 - **Power Rankings after the trade reads shorter** in every league: Lineup, Rooms and Future as short labeled lines

@@ -7120,3 +7120,30 @@ two-QB fixture league's label reads 2QB.
 
 `CACHE_NAME` v2.8.125 → v2.8.126. Tests: the sort note on In-Season only, a QB's "Counts as" line, the tooltip wider
 than 260px and at most 360px on desktop.
+
+### S24, round 14: my sixth review as a user; the owner took 1 and 2, and added 3 and 4
+
+Checked on the owner's Oct 28 backup in May the Receptions Be With You: the Roster tab and the Trade Analyzer on a phone,
+and the Lineup tab without a Weekly set (the 1QB In-Season list there doesn't cost a superflex QB his slot: SFLEX takes a
+ranked QB first).
+1. **The superflex QB note showed for a QB the In-Season set leaves out** (Jalen Hurts, Sam Darnold): he counts as 0 Now,
+   so the prices change nothing. The note needs a QB in the trade that the In-Season set ranks (`sfQbNote`, `seasonMatched`).
+2. **Two wordings for "not in the rankings"**: the tile notes said "isn't in your In-Season rankings, so he counts as 0";
+   Power Rankings after the trade said "isn't in these rankings, so he counts as unranked (almost no value)". Both are
+   right (0 trade value; last in a room), so the second keeps its words and names its set: your In-Season rankings (rooms
+   with "I'm competing", or a league with only an In-Season set), your dynasty rankings, your ROS rankings or Market
+   Consensus. The Future line names "your dynasty rankings" too where there's an In-Season set.
+3. **The phone tiles' verdict sat centred** (owner's screenshot: "Favors You" not on the right): `.trade-verdict-result`'s
+   `text-align: center` beat the tile's right alignment. CSS only.
+4. **Lineup rows on phones** (owner's idea): names like "Rhamondre Stevenson (11)" split onto two lines with room to the
+   right, because the projection, swap and lock took about 100px side by side. Under 480px they stack in a column (about
+   35px wide, about 80px tall). Rows with a game-time or status badge (the owner's: three or four lines) keep their height
+   or get shorter, since the Pos | Flex badge now has room for one line; rows with only a name and one meta line (no
+   badge, as in the test fixture) grow from about 58px to about 95px. Asked the owner whether to keep that. Predates S24;
+   CHANGELOG line. **Visible change**: `phone/mls-league-lineup.png` (390x3027 → 390x3415; the only PNG this round
+   changes, by pxdiff against round 13 in this container). `mls-display-ranks.spec.mjs`'s split-badge check now runs
+   at 320px on phones (390px fits the badge on one line now).
+
+`CACHE_NAME` v2.8.127 → v2.8.128. Tests: no superflex note for a QB missing from the In-Season set, the Power Rankings
+note naming the dynasty set, the phone tiles' verdict on the right; `tests/mls-lineup-row-actions.spec.mjs` (stacked on a
+phone, in a row on desktop; fails on the old CSS).

@@ -397,6 +397,13 @@ test('a superflex league with a 1QB-looking In-Season set prices QBs at the dyna
     const lamar = page.locator('#tradeOutput .mls-trade-row').filter({ hasText: 'Lamar Jackson' });
     await expect(lamar.locator('.mls-trade-row-now')).toHaveText(`Now ${fmt(value(13))}`);
     await expect(lamar.locator('.mls-trade-row-meta')).toContainText('Now 13');
+    // Round 14: on a phone each tile's verdict sits on the right, over its points (it was centred).
+    if (test.info().project.name === 'phone') {
+        for (const tile of await page.locator('#tradeOutput .mls-trade-tile').all()) {
+            const right = async (sel) => tile.locator(sel).evaluate(el => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().right; });
+            expect(Math.abs(await right('.mls-trade-tile-result') - await right('.mls-trade-tile-diff'))).toBeLessThan(2);
+        }
+    }
     await expect(page.locator("#tradeOutput .mls-trade-row").filter({ hasText: "Ja'Marr Chase" }).locator('.mls-trade-row-now')).toHaveText(`Now ${fmt(value(14))}`);
     await expect(note).toHaveText(NOTE);
     await expect(note.locator('.mls-nowrap')).toHaveCount(2); // both "In-Season"s kept whole (round 8)
@@ -407,6 +414,10 @@ test('a superflex league with a 1QB-looking In-Season set prices QBs at the dyna
     await expect(page.locator('#tradeOutput [data-trade-market-strip] .mls-trade-market-strip-head .tooltip-icon')).toHaveCount(1);
     // No QB in the trade: no note (nothing it changes).
     await runTrade(page, ['Nico Collins'], ["Ja'Marr Chase"]);
+    await expect(note).toHaveCount(0);
+    // Round 14: a QB the In-Season set leaves out (Hurts) takes no superflex price, so no note either.
+    await runTrade(page, ['Jalen Hurts'], ["Ja'Marr Chase"]);
+    await expect(page.locator('#tradeOutput .mls-trade-row').filter({ hasText: 'Jalen Hurts' }).locator('.mls-trade-row-now')).toHaveText('Now UR');
     await expect(note).toHaveCount(0);
 
     // The Roster tab's Power Rankings table says so under the line naming the sets.
@@ -492,6 +503,8 @@ test('players missing from the dynasty set: no Long-term tile, one notes box say
     // Nothing loose between the tiles and the market line.
     await expect(out.locator(':scope > .trade-verdict-note')).toHaveCount(0);
     await expect(out.locator('[data-trade-fair] .mls-trade-fair-note')).toHaveText('None of these players are in your dynasty rankings.');
+    // Power Rankings after the trade names the set its rooms read too (round 14; it said "these rankings").
+    await expect(out.locator('[data-trade-impact]')).toContainText("Ja'Marr Chase, Nico Collins aren't in your dynasty rankings, so they count as unranked (almost no value).");
     await expectClean(page, state);
 });
 
