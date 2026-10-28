@@ -2564,30 +2564,28 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .mls-roster-sort { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; font-size: 0.8rem; color: var(--text-muted); }
 .mls-roster-sort .mls-segmented { flex: 0 1 14rem; }
 .mls-roster-sort .mls-segmented-btn { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
-/* Trade Analyzer: the headline that joins the two verdicts, and each row's In-Season value under its dynasty one. */
-.mls-trade-dual-headline { margin-bottom: 0.6rem; font-weight: 700; font-size: 0.95rem; color: var(--text-main); }
+/* Trade Analyzer: each row's In-Season value under its dynasty one. */
 .mls-trade-row-now { display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 600; white-space: nowrap; }
 /* A dynasty or keeper league with no In-Season set: how to get both (Roster tab, Trade Analyzer). */
 .mls-roster-season-hint, .mls-trade-season-hint { margin-bottom: 0.6rem; font-size: 0.8rem; color: var(--text-muted); text-align: left; }
 .mls-roster-season-hint strong { color: var(--text-main); font-weight: 600; }
-/* Round 3 (owner's review): In-Season and Dynasty in one card of two rows, each tinted by its verdict, beside the market's
-   banner from tablet width up; the headline's halves in their verdicts' colors. */
-.mls-trade-verdict-dual { padding: 0.75rem; }
-.mls-trade-verdict-dual .trade-verdict-source-label { margin-bottom: 0.5rem; }
-.mls-trade-dual-row { border: 1px solid var(--border); border-radius: 6px; padding: 0.45rem 0.6rem; }
-.mls-trade-dual-row + .mls-trade-dual-row { margin-top: 0.4rem; }
-.mls-trade-dual-verdict { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.5rem; font-weight: 800; font-size: 0.95rem; }
-.mls-trade-dual-set { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); min-width: 4.8rem; }
-.mls-trade-dual-totals { font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; margin-top: 1px; }
-.mls-trade-dual-totals strong { color: var(--text-main); font-weight: 700; }
-.mls-trade-dual-row.verdict-favor-you .mls-trade-dual-result { color: var(--primary-green); }
-.mls-trade-dual-row.verdict-favor-them .mls-trade-dual-result { color: #fca5a5; }
-.mls-trade-dual-row.verdict-fair .mls-trade-dual-result { color: #93c5fd; }
-.mls-trade-dual-result .trade-verdict-diff { font-size: 0.75rem; }
-.mls-trade-verdict-dual .trade-verdict-note { margin-top: 0.4rem; }
-.mls-trade-dual-headline .is-win { color: var(--primary-green); }
-.mls-trade-dual-headline .is-cost { color: #fca5a5; }
-.mls-trade-dual-headline .is-fair { color: #93c5fd; }
+/* Round 4 (owner's review): In-Season and Dynasty as two matching tiles, side by side at every width, tinted by their
+   verdicts like the banners; Market Consensus as one muted line under them. */
+.mls-trade-tiles { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.6rem; margin-bottom: 0.6rem; }
+.mls-trade-tile { border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 0.8rem; text-align: center; min-width: 0; }
+.mls-trade-tile-label { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-main); }
+.mls-trade-tile-label .tooltip-container { text-transform: none; letter-spacing: normal; font-weight: 400; }
+.mls-trade-tile-set { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
+.mls-trade-tile .mls-trade-tile-result { font-size: 1.2rem; font-weight: 800; margin: 0.4rem 0 0.1rem; line-height: 1.2; }
+.mls-trade-tile-diff { font-size: 0.85rem; font-weight: 700; color: var(--text-main); font-variant-numeric: tabular-nums; }
+.mls-trade-tile-totals { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; font-variant-numeric: tabular-nums; }
+.mls-trade-market-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.15rem 0.6rem; margin-bottom: 0.6rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: transparent; font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.mls-trade-market-strip.verdict-fair, .mls-trade-market-strip.verdict-favor-you, .mls-trade-market-strip.verdict-favor-them, .mls-trade-market-strip.verdict-incomplete { border-color: var(--border); background: transparent; }
+.mls-trade-market-strip-label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; }
+.mls-trade-market-strip-result { font-weight: 700; }
+.mls-trade-market-strip.verdict-favor-you .mls-trade-market-strip-result { color: var(--primary-green); }
+.mls-trade-market-strip.verdict-favor-them .mls-trade-market-strip-result { color: #fca5a5; }
+.mls-trade-market-strip.verdict-fair .mls-trade-market-strip-result { color: #93c5fd; }
 .mls-trade-row-dyn { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); margin-right: 3px; }
 /* "To make it fair": Value by: Dynasty | In-Season (S24, round 3). */
 .mls-trade-fair-basis { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.78rem; color: var(--text-muted); }
@@ -2596,3 +2594,12 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 /* Roster tab, both sets (round 3): on phones the two-set badge starts a line of its own under team, chips and SoS. */
 .mls-meta-break { display: none; }
 @media (max-width: 600px) { .mls-meta-break { display: block; flex-basis: 100%; height: 0; } }
+/* Power Rankings after the trade in a league with both sets (S24, round 4): the summary as short labeled lines. */
+.mls-trade-impact-lines { margin: 0.5rem 0 0.6rem; display: grid; gap: 2px; font-size: 0.85rem; }
+.mls-trade-impact-lines > div { display: flex; gap: 0.6rem; }
+.mls-trade-impact-lines dt { flex: 0 0 3.6rem; color: var(--text-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding-top: 2px; }
+.mls-trade-impact-lines dd { margin: 0; color: var(--text-main); font-weight: 600; }
+/* The two-set badge's tooltip (S24, round 4): the row's info box clips (overflow: hidden), which hid the tooltip, so rows
+   with that badge don't clip. Always, not only while it's open: switching overflow on hover reflowed the row under the
+   pointer, which ended the hover and flickered. min-width: 0 keeps the row's width as it was. */
+.mls-player-row-info:has(.mls-rank-dual-tip) { overflow: visible; min-width: 0; }

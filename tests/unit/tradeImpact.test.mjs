@@ -4,7 +4,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPower } from './helpers/powerEnv.mjs';
 import {
-    leagueAfterTrade, lineupSummaryText, lineupTradeChanges, openPowerSlots, powerSummaryText,
+    leagueAfterTrade, lineupSummaryText, lineupTradeChanges, openPowerSlots, powerSummaryLines, powerSummaryText,
     powerTradeImpact, startPct, tradeHeadline, tradePartner
 } from '../../js/mls/trade/lineupImpact.js';
 
@@ -265,4 +265,20 @@ describe('dynasty: draft picks in future value (improvements S19, round 3)', () 
         assert.deepEqual(moved, ['2027 2nd']);
         assert.equal(league.picks.You.length, 2); // the original is untouched
     });
+});
+
+// Improvements S24, round 4: the same summary as short labeled lines, for a league with both sets.
+test('powerSummaryLines: Lineup, Rooms and Future in short lines', () => {
+    const team = (o) => ({ starterRank: 3, starterScore: 1.07, overallRank: 2, qbRank: 2, rbRank: 7, wrRank: 3, teRank: 2, ...o });
+    const side = { before: team({ futureRank: 3 }), after: team({ starterScore: 1.08, rbRank: 5, teRank: 4, futureRank: 4 }) };
+    assert.deepEqual(powerSummaryLines(side, 12), [
+        { label: 'Lineup', text: '3rd of 12, stronger (107% \u2192 108% of avg)' },
+        { label: 'Rooms', text: 'RB 7th \u2192 5th \u00b7 TE 2nd \u2192 4th' },
+        { label: 'Future', text: '3rd \u2192 4th' }
+    ]);
+    const same = { before: team(), after: team({ starterRank: 2 }) };
+    assert.deepEqual(powerSummaryLines(same, 12), [
+        { label: 'Lineup', text: '3rd \u2192 2nd of 12 (107% of avg)' },
+        { label: 'Rooms', text: 'no change' }
+    ]);
 });

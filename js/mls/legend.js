@@ -51,7 +51,7 @@ const GROUPS = [
         [`<span class="badge mls-rank-badge">${rankBadgeParts(`Pos: #5${tierTag(3)}`, `Flex: #13${tierTag(3)}`)}</span>`,
             'On the Lineup and Roster tabs: his rank at his position, then his FLEX rank (Overall on the Roster tab), each with its tier in parentheses.'],
         [`<span class="badge mls-rank-badge mls-rank-dual">${rankBadgeParts(`<span class="mls-nowrap">In-Season</span> WR16${tierTag(8)}`, `Dyn WR20${tierTag(6)}`)}</span>`,
-            'On the Roster tab, in dynasty and keeper leagues with In-Season rankings: his position rank in each set, this season\'s first, each with its tier. On a computer, hover over it for the overall ranks.'],
+            'On the Roster tab, in dynasty and keeper leagues with In-Season rankings: his position rank in each set, this season\'s first, each with its tier. Tap it (or hover on a computer) for his overall ranks.'],
         [`${tierGapMarkup('is-up', '1 tier up')} ${tierGapMarkup('is-same', 'same tier')} ${tierGapMarkup('is-down', '1 tier down')}`,
             'In the Waiver Wire Assistant: the free agent\'s tier against the player he\'s compared with.'],
         [`<span class="mls-power-chip mls-power-chip-rec">Consider</span><span class="mls-power-chip">Hold</span>`,

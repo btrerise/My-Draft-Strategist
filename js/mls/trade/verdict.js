@@ -48,18 +48,19 @@ import { dualHeadline, dualVerdictNumbers } from '../rankings/nowAndLater.js';
         // (this season) and Dynasty (the long run), side by side, with one line above joining them ("Wins now (+2,100),
         // costs long-term (−3,400)"). Each from its own set through the same curve; never one blended number.
         const seasonSet = tradeSeasonSet();
-        let yours, headline = '';
+        let yours;
         if (seasonSet) {
-            // One card, two short rows (round 3, after the owner's review: two full banners and the market's filled a phone's
-            // first screen): each row names the set, its verdict and its totals. Plain-text "In-Season" keeps the word whole.
+            // Two matching tiles, Now (In-Season) and Long-term (Dynasty), side by side at every width, with the market as a
+            // slim muted strip under them (round 4, owner's review of round 3: the card's small, tight text looked busy, the
+            // market's full banner drew the eye, and the one-sentence headline didn't appeal; the tiles are the headline).
             const now = renderTradeVerdict(`Your ${IN_SEASON} Rankings`, '', getResults, giveResults, "seasonValue", "seasonMatched", true, 'your In-Season rankings', true);
             const later = renderTradeVerdict("Your Dynasty Rankings", '', getResults, giveResults, "userValue", "userMatched", true, 'your dynasty rankings', true);
-            yours = dualVerdictCard(seasonSet, now, later);
             const waiver = { on: !!State.tradeSettings.waiverAdjustment, perSpot: State.tradeSettings.waiverAdjustmentValue };
             const both = dualVerdictNumbers(getResults, giveResults, waiver);
-            const line = dualHeadline(both.now, both.later);
-            // "long-term" kept whole (it broke at its hyphen on a phone), and each "(+2,100)" with its word.
-            if (line) headline = `<div class="mls-trade-dual-headline" data-trade-dual-headline>${dualHeadlineHTML(line, both)}</div>`;
+            const market = State.marketRankings.length > 0
+                ? renderTradeVerdict("Market Consensus", '', getResults, giveResults, "marketValue", "marketMatched", true, '', true) : null;
+            verdictHTML = dualVerdictTiles(seasonSet, now, later, dualHeadline(both.now, both.later)) + marketStrip(market) + marketAgeHTML();
+            return verdictHTML || `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
         } else {
             yours = renderTradeVerdict(
                 "Your Rankings", YOUR_METHOD,
@@ -73,8 +74,7 @@ import { dualHeadline, dualVerdictNumbers } from '../rankings/nowAndLater.js';
         );
         // Both lenses side by side from tablet width up (improvements S19, round 9: stacked, they filled the first
         // screen on desktop); stacked on phones (css/mls.css .trade-verdict-pair).
-        // With two of your own (S24) the card holds both, beside the market's banner as before (round 3).
-        verdictHTML = headline + (yours && market ? `<div class="trade-verdict-pair">${yours}${market}</div>` : yours + market);
+        verdictHTML = yours && market ? `<div class="trade-verdict-pair">${yours}${market}</div>` : yours + market;
 
         verdictHTML += marketAgeHTML();
         // A dynasty or keeper league with no In-Season set (S24, owner's report): one verdict by your rankings, as before,
@@ -108,48 +108,49 @@ import { dualHeadline, dualVerdictNumbers } from '../rankings/nowAndLater.js';
         return getResults.concat(giveResults).filter(r => r.known === false).map(r => (r.exportRow && r.exportRow.name) || '?');
     }
 
-    // The headline (S24), each half colored by its verdict (round 3: plain white text didn't read as the summary), and
-    // "long-term (−3,222)" kept whole (it broke at its hyphen on a phone). line: dualHeadline's; both: { now, later }.
-    function dualHeadlineHTML(line, both) {
-        const tone = (v) => v.verdict === 'you' ? 'is-win' : v.verdict === 'them' ? 'is-cost' : 'is-fair';
-        const [a, b] = line.includes(', ') ? line.split(', ') : [line, null];
-        if (!b) {
-            // "Wins now (+900) and long-term (+1,200)", "Fair now and long-term": one verdict in both, one color.
-            return `<span class="${tone(both.now)}">${escapeHtml(a).replace(/long-term( \([^)]*\))?/, m => `<span class="mls-nowrap">${m}</span>`)}</span>`;
-        }
-        return `<span class="${tone(both.now)}">${escapeHtml(a)}</span>, <span class="${tone(both.later)} mls-nowrap">${escapeHtml(b)}</span>`;
-    }
+    const signedPts = (n) => `${n >= 0 ? '+' : '\u2212'}${Math.abs(n).toLocaleString()}`;
+    const totalsWaiver = (nums) => nums.bonusGet ? ` Includes a +${nums.bonusGet.toLocaleString()} waiver adjustment on what you get.`
+        : nums.bonusGive ? ` Includes a +${nums.bonusGive.toLocaleString()} waiver adjustment on what you give.` : '';
 
-    // The In-Season and Dynasty verdicts as one card (S24, round 3): two rows, "In-Season · Favors You (+7,721, 68%)" over
-    // "Receive 11,370 vs Give 3,649", each colored by its verdict, and the notes under both. parts: renderTradeVerdict's.
-    function dualVerdictCard(seasonSet, now, later) {
-        const row = (name, p) => {
+    // The In-Season and Dynasty verdicts as two tiles (S24, round 4): "NOW" / "LONG-TERM", the verdict, the points and
+    // swing, and the totals; each tinted by its verdict like the banners, its (i) naming the set. headline: dualHeadline's
+    // sentence, for screen readers. parts: renderTradeVerdict's.
+    function dualVerdictTiles(seasonSet, now, later, headline) {
+        const tile = (cls, label, set, setTip, p) => {
             if (!p || !p.nums) return '';
             const { nums } = p;
-            const diff = p.incomplete ? '' : ` <span class="trade-verdict-diff">(${nums.diff >= 0 ? '+' : ''}${nums.diff.toLocaleString()} pts, ${nums.swingPct.toFixed(0)}%)</span>`;
-            const waiver = nums.bonusGet ? ` <span class="trade-verdict-subnote">incl. +${nums.bonusGet.toLocaleString()} waiver adj. on what you get</span>`
-                : nums.bonusGive ? ` <span class="trade-verdict-subnote">incl. +${nums.bonusGive.toLocaleString()} waiver adj. on what you give</span>` : '';
             return `
-            <div class="mls-trade-dual-row ${p.verdictClass}">
-                <div class="mls-trade-dual-verdict"><span class="mls-trade-dual-set">${name}</span><span class="mls-trade-dual-result">${p.verdictText}${diff}</span></div>
-                <div class="mls-trade-dual-totals">Receive <strong>${nums.getTotal.toLocaleString()}</strong> vs Give <strong>${nums.giveTotal.toLocaleString()}</strong>${waiver}</div>
+            <div class="mls-trade-tile ${p.verdictClass} ${cls}">
+                <div class="mls-trade-tile-label">${label}
+                    <div class="tooltip-container"><div class="tooltip-icon">i</div><span class="tooltip-text">${setTip}${totalsWaiver(nums)} ${YOUR_METHOD}</span></div>
+                </div>
+                <div class="mls-trade-tile-set">by ${set}</div>
+                <div class="trade-verdict-result mls-trade-tile-result">${p.verdictText}</div>
+                <div class="mls-trade-tile-diff">${signedPts(nums.diff)} pts &middot; ${nums.swingPct.toFixed(0)}%</div>
+                <div class="mls-trade-tile-totals">Get ${nums.getTotal.toLocaleString()} &middot; Give ${nums.giveTotal.toLocaleString()}</div>
             </div>`;
         };
-        const rows = row('<span class="mls-nowrap">In-Season</span>', now) + row('Dynasty', later);
+        const tiles = tile('is-now', 'Now', '<span class="mls-nowrap">In-Season</span>', `This season, by your In-Season rankings (${escapeHtml(seasonSet.name || '')}).`, now)
+            + tile('is-later', '<span class="mls-nowrap">Long-term</span>', 'dynasty', 'The long run, by your dynasty rankings.', later);
         const notes = [now, later].map(p => (p && (p.unmatchedNote || p.note)) || '').join('');
-        if (!rows) return notes;
+        if (!tiles) return notes;
+        return `<div class="mls-trade-tiles" data-trade-verdict-dual role="group"${headline ? ` aria-label="${escapeHtml(headline)}"` : ''}>${tiles}</div>${notes}`;
+    }
+
+    // Market Consensus beside your two verdicts (S24, round 4): one muted line, there for comparison, so it doesn't draw
+    // the eye from your own. parts: renderTradeVerdict's, or null without market values.
+    function marketStrip(p) {
+        if (!p) return '';
+        if (!p.nums) return p.note || '';
+        const { nums } = p;
         return `
-        <div class="trade-verdict-banner mls-trade-verdict-dual" data-trade-verdict-dual>
-            <div class="trade-verdict-source-label">
-                By Your Rankings
-                <div class="tooltip-container">
-                    <div class="tooltip-icon">i</div>
-                    <span class="tooltip-text">In-Season: your In-Season rankings (${escapeHtml(seasonSet.name || '')}), this season's value. Dynasty: your dynasty rankings, the long-term value. ${YOUR_METHOD}</span>
-                </div>
-            </div>
-            ${rows}
-            ${notes}
-        </div>`;
+        <div class="mls-trade-market-strip ${p.verdictClass}" data-trade-market-strip>
+            <span class="mls-trade-market-strip-label">Market</span>
+            <span class="mls-trade-market-strip-result">${p.verdictText}</span>
+            ${p.incomplete ? '' : `<span>${signedPts(nums.diff)} &middot; ${nums.swingPct.toFixed(0)}%</span>`}
+            <span>Get ${nums.getTotal.toLocaleString()} &middot; Give ${nums.giveTotal.toLocaleString()}</span>
+            <div class="tooltip-container"><div class="tooltip-icon">i</div><span class="tooltip-text">By Market Consensus: the same estimate applied to the market's ranks (Trade Finder below), for comparison.${totalsWaiver(nums)}</span></div>
+        </div>${p.unmatchedNote || ''}`;
     }
 
     // The verdict's numbers, for the banner below and for the Trade Analyzer's headline under it (improvements

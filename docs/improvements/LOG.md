@@ -6875,3 +6875,36 @@ dynasty value on each trade row; and "To make it fair" asking for more on a deli
 200px; "Dyn" on the rows; the switch (Dynasty pressed, In-Season gives "you'd add" by your In-Season rankings, focus
 kept, back); the export's text; the roster badge's text and title; every row's shape at both widths (the badge under
 the team on phones, beside it on desktop); no switch, label or card in the other leagues. 12/12; unit 461.
+
+### S24, round 4: the owner's review of round 3
+
+**(a) Roster badge.** The overall ranks moved from a `title` (hover only, the browser's own box) into the site's
+tooltip (`.tooltip-container` around the badge, js/shared/ui/tooltips.js): tap on a phone, hover on a computer,
+keyboard too, kept on screen. It reads "In-Season: WR16 (T8), #36 overall (T8)" over "Dynasty: …". The line above the
+list says where they went: "Position ranks by your In-Season rankings (…) and your dynasty rankings (…). Tap or hover
+over a player's ranks for his overall ranks." Legend line and Guide updated.
+
+**(b), (c) Trade verdicts** (owner: the round 3 card's small, tight text looked busy; the market banner, now the odd
+one out, drew the eye; the one-sentence headline didn't appeal, "maybe two lines or cards"). Now two matching tiles
+side by side at every width are the headline: **NOW** "by In-Season" and **LONG-TERM** "by dynasty", each with the
+verdict in large type ("Favors You"), the points and swing ("+7,721 pts · 68%") and "Get 11,370 · Give 3,649", tinted
+by its verdict like the banners, its (i) naming the set and the waiver adjustment. Market Consensus is one muted line
+under them ("MARKET Fair Trade +280 · 6% Get 4,587 · Give 4,307 (i)"), colored only in its verdict word. The sentence
+("Wins now (+7,721), costs long-term (−3,222)") stays as the tiles' group label for screen readers. Export Trade copies
+the tiles and the line. `dualVerdictTiles`, `marketStrip` (trade/verdict.js); round 3's card and headline are gone.
+
+**Power Rankings after the trade** (owner: busy on a phone), in a league with both sets: no headline (the tiles carry
+the value), the summary as three short labeled lines (`powerSummaryLines`, trade/lineupImpact.js: "LINEUP 3rd of 12,
+stronger (107% → 108% of avg)", "ROOMS RB 7th → 5th · TE 2nd → 4th", "FUTURE 3rd → 4th"), the source line moved into
+"How this is worked out" ("Which rankings: …"), and a shorter key ("1 = strongest of 12. Green better, red worse.").
+Other leagues keep today's section.
+
+`CACHE_NAME` v2.8.117 → v2.8.118. Tests: unit `powerSummaryLines`; spec: the tiles (side by side, verdicts, points,
+totals, the group's label), no headline, the Power Rankings lines and the moved source line, the roster tooltip
+opening on tap inside the window and closing again, the new source line; S23's spec follows both moved lines.
+
+A trap found on the way (round 4): the Roster row's info box (`.mls-player-row-info`) has `overflow: hidden`, which
+clipped the badge's tooltip. Letting it out only while open (`:has(:hover)`) reflowed the row under the pointer, which
+ended the hover, so it flickered and a tap landed beside the badge. Rows with the two-set badge now never clip
+(`overflow: visible; min-width: 0`, the same width as before). The spec checks the open tooltip is the topmost element
+at its centre (it fails with that rule removed).

@@ -97,14 +97,16 @@ import { KEYS } from '../../shared/storage/keys.js';
 
     // Both sets' ranks in one badge (round 3, after the owner's review: two badges with overall ranks and repeated tiers
     // made rows three or four lines tall): "In-Season WR16 (T8) | Dyn WR20 (T6)", position ranks only, each tier once.
-    // Overall ranks don't compare across a 1QB redraft set and a superflex dynasty one, so they're in the title. The
-    // halves are rankBadgeParts' (F6), so a narrow row splits the badge at the bar (fitRankBadges).
+    // The halves are rankBadgeParts' (F6), so a narrow row splits the badge at the bar (fitRankBadges).
+    // Overall ranks don't compare across a 1QB redraft set and a superflex dynasty one, so they're in the badge's tooltip,
+    // the site's own (round 4, owner: hover on a computer, tap on a phone, keyboard too; js/shared/ui/tooltips.js).
     function dualRankBadge(pos, now, later) {
         const half = (label, r) => r.posRank !== 999 ? `${label} ${escapeHtml(pos)}${r.posRank}${tierTag(r.posTier)}`
             : r.rank !== 999 ? `${label} #${r.rank}${tierTag(r.tier)}` : `${label} UR`;
-        const ovr = (r) => r.rank !== 999 ? `#${r.rank}` : 'unranked';
-        const title = `Overall: In-Season ${ovr(now)}, dynasty ${ovr(later)}`;
-        return `<span class="badge mls-rank-badge mls-rank-dual" title="${title}">${rankBadgeParts(half('<span class="mls-nowrap">In-Season</span>', now), half('Dyn', later))}</span>`;
+        const line = (label, r) => r.rank === 999 && r.posRank === 999 ? `<strong>${label}:</strong> unranked`
+            : `<strong>${label}:</strong> ${r.posRank !== 999 ? `${escapeHtml(pos)}${r.posRank}${tierTag(r.posTier)}, ` : ''}${r.rank !== 999 ? `#${r.rank} overall${tierTag(r.tier)}` : 'no overall rank'}`;
+        return `<span class="tooltip-container mls-rank-dual-tip"><span class="badge mls-rank-badge mls-rank-dual">${rankBadgeParts(half('<span class="mls-nowrap">In-Season</span>', now), half('Dyn', later))}</span>`
+            + `<span class="tooltip-text">${line('In-Season', now)}<br>${line('Dynasty', later)}</span></span>`;
     }
 
     // A two-part badge whose halves landed on two lines gets .is-stacked, so its box fits its text (the Lineup tab's
@@ -238,7 +240,8 @@ import { KEYS } from '../../shared/storage/keys.js';
         // Since S24 each row shows both, so the line names both sets, with the sort switch under it.
         if (seasonSet) {
             const dyn = league.rosRankingSetId ? State.rankingSets.ros.find(s => s.id === league.rosRankingSetId) : null;
-            html += `<div class="mls-roster-source">Ranks by your <span class="mls-nowrap">In-Season</span> rankings (<strong>${escapeHtml(seasonSet.name || '')}</strong>) and your dynasty rankings${dyn ? ` (<strong>${escapeHtml(dyn.name)}</strong>)` : ''}.</div>`;
+            // Says where the overall rank went (round 4, owner: most users expect one).
+            html += `<div class="mls-roster-source">Position ranks by your <span class="mls-nowrap">In-Season</span> rankings (<strong>${escapeHtml(seasonSet.name || '')}</strong>) and your dynasty rankings${dyn ? ` (<strong>${escapeHtml(dyn.name)}</strong>)` : ''}. Tap or hover over a player's ranks for his overall ranks.</div>`;
             const btn = (sort, label) => {
                 const on = (sort === 'season') === sortSeason;
                 return `<button type="button" class="mls-segmented-btn${on ? ' active' : ''}" data-action="setRosterSort" data-sort="${sort}" aria-pressed="${on}">${label}</button>`;

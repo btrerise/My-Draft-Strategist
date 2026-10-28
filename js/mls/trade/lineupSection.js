@@ -18,7 +18,7 @@ import { isDraftPickName } from './valueCurve.js';
 import { tradeSeasonSet, tradeVerdictNumbers, unknownNames } from './verdict.js';
 import {
     FUTURE_COLUMN, lineupSlotCount, lineupSummaryText, lineupTradeChanges, POWER_COLUMNS,
-    powerSummaryText, powerTradeImpact, tradeHeadline, tradePartner
+    powerSummaryLines, powerSummaryText, powerTradeImpact, tradeHeadline, tradePartner
 } from './lineupImpact.js';
 
 // Notes that explain the screen to you, not the trade to your league: Export Trade (trade/export.js) leaves
@@ -182,13 +182,23 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     const settled = cards.getResults && cards.giveResults && !unknownNames(cards.getResults, cards.giveResults).length
         && (valueKey !== 'marketValue' || cards.getResults.concat(cards.giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick')));
     const value = settled ? tradeVerdictNumbers(cards.getResults, cards.giveResults, valueKey) : null;
-    const headline = tradeHeadline(value, impact.you);
+    // A league with both sets (S24, round 4, owner: busy on a phone): the value is in the Now / Long-term tiles above, so
+    // no headline; the summary is short labeled lines; the source line moves into "How this is worked out"; a shorter key.
+    const short = seasonValues && own;
+    const headline = short ? null : tradeHeadline(value, impact.you);
+    if (short) notes.unshift(about(`Which rankings: ${via}.`));
+    const summary = short
+        ? `<dl class="mls-trade-impact-lines">${powerSummaryLines(impact.you, impact.teams).map(l => `<div><dt>${l.label}</dt><dd>${escapeHtml(l.text)}</dd></div>`).join('')}</dl>`
+        : `<div class="mls-trade-impact-summary">${escapeHtml(powerSummaryText(impact.you, impact.teams, { pct: !headline }))}</div>`;
+    const key = short
+        ? `1 = strongest of ${impact.teams}. <span class="mls-trade-rank-up">Green</span> better, <span class="mls-trade-rank-down">red</span> worse.`
+        : `Ranks of ${impact.teams} teams: 1 = strongest. <span class="mls-trade-rank-up">Green</span> = better after the trade, <span class="mls-trade-rank-down">red</span> = worse.`;
     let body = `
-        <div class="mls-trade-impact-via">${via}</div>
+        ${short ? '' : `<div class="mls-trade-impact-via">${via}</div>`}
         ${headline ? `<div class="mls-trade-impact-headline">${escapeHtml(headline)}</div>` : ''}
-        <div class="mls-trade-impact-summary">${escapeHtml(powerSummaryText(impact.you, impact.teams, { pct: !headline }))}</div>
+        ${summary}
         ${powerTable([impact.you], impact.teams, youIn, youOut, columns)}
-        <div class="mls-trade-impact-key">Ranks of ${impact.teams} teams: 1 = strongest. <span class="mls-trade-rank-up">Green</span> = better after the trade, <span class="mls-trade-rank-down">red</span> = worse.</div>`;
+        <div class="mls-trade-impact-key">${key}</div>`;
     if (impact.partner) {
         const pIn = new Set(give.map(p => p.cleanName));
         const pOut = get.filter(p => rosterMap[p.cleanName] === partner).concat(pickRows(tradedPicks ? tradedPicks.get : []));

@@ -190,9 +190,9 @@ export const exportTrade = async function() {
         return;
     }
     const pick = (sel) => [...out.querySelectorAll(sel)].map(el => el.outerHTML).join('');
-    // In a dynasty league with an In-Season set (improvements S24) the image shows both of your verdicts and the line
-    // joining them, as on screen.
-    const verdictHTML = pick(':scope > .mls-trade-dual-headline, :scope > .trade-verdict-banner, :scope > .trade-verdict-note, :scope > .trade-verdict-pair > *');
+    // In a dynasty league with an In-Season set (improvements S24) the image shows both of your verdicts' tiles and the
+    // market's strip, as on screen.
+    const verdictHTML = pick(':scope > .mls-trade-tiles, :scope > .mls-trade-market-strip, :scope > .trade-verdict-banner, :scope > .trade-verdict-note, :scope > .trade-verdict-pair > *');
     const powerHTML = State.tradeSettings.exportPower ? pick(':scope > [data-trade-impact]') : '';
     const imageHTML = tradeExportHTML(_tradeExport, verdictHTML, powerHTML);
 

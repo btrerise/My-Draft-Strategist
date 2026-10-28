@@ -115,34 +115,28 @@ test.describe('Now and long-term side by side', () => {
         await runTrade(page, ['Nico Collins'], ["Ja'Marr Chase"]);
         const out = page.locator('#tradeOutput');
         const nowDiff = value(6) - value(14), laterDiff = value(12) - value(1);
-        await expect(out.locator('[data-trade-dual-headline]')).toHaveText(
-            `Wins now (+${fmt(nowDiff)}), costs long-term (−${fmt(-laterDiff)})`);
-
-        // Each half of the headline in its verdict's color (round 3).
-        await expect(out.locator('[data-trade-dual-headline] .is-win')).toHaveText(`Wins now (+${fmt(nowDiff)})`);
-        await expect(out.locator('[data-trade-dual-headline] .is-cost')).toHaveText(`costs long-term (\u2212${fmt(-laterDiff)})`);
-
-        // One card, two rows (round 3): In-Season then Dynasty, each with its verdict and totals.
+        // Two tiles, Now (In-Season) and Long-term (Dynasty), side by side at every width (round 4); they replace the
+        // one-sentence headline, which stays as the group's label for screen readers.
         const card = out.locator('[data-trade-verdict-dual]');
         await expect(card).toHaveCount(1);
-        await expect(card.locator('.trade-verdict-source-label')).toContainText('By Your Rankings');
-        const dualRows = card.locator('.mls-trade-dual-row');
-        await expect(dualRows).toHaveCount(2);
-        await expect(dualRows.nth(0)).toHaveClass(/verdict-favor-you/);
-        await expect(dualRows.nth(0)).toContainText('In-Season');
-        await expect(dualRows.nth(0)).toContainText('Favors You');
-        await expect(dualRows.nth(0)).toContainText(`Receive ${fmt(value(6))} vs Give ${fmt(value(14))}`);
-        await expect(dualRows.nth(1)).toHaveClass(/verdict-favor-them/);
-        await expect(dualRows.nth(1)).toContainText('Dynasty');
-        await expect(dualRows.nth(1)).toContainText('Favors Them');
-        await expect(dualRows.nth(1)).toContainText(`Receive ${fmt(value(12))} vs Give ${fmt(value(1))}`);
-        // Compact: the card is far shorter than the two banners it replaced (about 330px together on a phone).
-        expect((await card.boundingBox()).height).toBeLessThan(200);
-        // The headline sits above the verdicts.
-        expect(await out.evaluate(o => {
-            const h = o.querySelector('[data-trade-dual-headline]'), pair = o.querySelector('[data-trade-verdict-dual]');
-            return !!(h.compareDocumentPosition(pair) & Node.DOCUMENT_POSITION_FOLLOWING);
-        })).toBe(true);
+        await expect(card).toHaveAttribute('aria-label', `Wins now (+${fmt(nowDiff)}), costs long-term (\u2212${fmt(-laterDiff)})`);
+        await expect(out.locator('[data-trade-dual-headline]')).toHaveCount(0);
+        const tiles = card.locator('.mls-trade-tile');
+        await expect(tiles).toHaveCount(2);
+        await expect(tiles.nth(0)).toHaveClass(/verdict-favor-you/);
+        await expect(tiles.nth(0).locator('.mls-trade-tile-label')).toContainText('Now');
+        await expect(tiles.nth(0).locator('.mls-trade-tile-result')).toHaveText('Favors You');
+        await expect(tiles.nth(0).locator('.mls-trade-tile-diff')).toContainText(`+${fmt(nowDiff)} pts`);
+        await expect(tiles.nth(0).locator('.mls-trade-tile-totals')).toHaveText(`Get ${fmt(value(6))} · Give ${fmt(value(14))}`);
+        await expect(tiles.nth(1)).toHaveClass(/verdict-favor-them/);
+        await expect(tiles.nth(1).locator('.mls-trade-tile-label')).toContainText('Long-term');
+        await expect(tiles.nth(1).locator('.mls-trade-tile-result')).toHaveText('Favors Them');
+        await expect(tiles.nth(1).locator('.mls-trade-tile-diff')).toContainText(`\u2212${fmt(-laterDiff)} pts`);
+        await expect(tiles.nth(1).locator('.mls-trade-tile-totals')).toHaveText(`Get ${fmt(value(12))} · Give ${fmt(value(1))}`);
+        // Side by side, even on a phone.
+        const [t0, t1] = [await tiles.nth(0).boundingBox(), await tiles.nth(1).boundingBox()];
+        expect(Math.abs(t0.y - t1.y)).toBeLessThan(1);
+        expect(t1.x).toBeGreaterThan(t0.x + t0.width - 1);
 
         // Each row: dynasty and In-Season ranks, the dynasty value with the In-Season one under it.
         const collins = out.locator('.mls-trade-row').filter({ hasText: 'Nico Collins' });
@@ -169,10 +163,14 @@ test.describe('Now and long-term side by side', () => {
         await fair.locator('[data-basis="dynasty"]').click();
         await expect(fair).toContainText("they'd add");
 
-        // Power Rankings after the trade: the headline's value is the In-Season one, and the source line says so.
+        // Power Rankings after the trade (round 4): no headline (the tiles have the value), short labeled lines, and the
+        // source line in "How this is worked out".
         const impact = out.locator('[data-trade-impact]');
-        await expect(impact.locator('.mls-trade-impact-via')).toHaveText('Start and value by In-Season; Ovr, position rooms and Future by dynasty');
-        await expect(impact.locator('.mls-trade-impact-headline')).toContainText(`+${fmt(nowDiff)} pts`);
+        await expect(impact.locator('.mls-trade-impact-headline, .mls-trade-impact-via')).toHaveCount(0);
+        await expect(impact.locator('.mls-trade-impact-summary:not(details *)')).toHaveCount(0); // their team's fold keeps its own
+        await expect(impact.locator('.mls-trade-impact-lines dt')).toHaveText(['Lineup', 'Rooms', 'Future']);
+        await expect(impact.locator('.mls-trade-impact-lines dd').first()).toContainText(' of 2');
+        await expect(impact.locator('[data-about]').first()).toHaveText('Which rankings: Start and value by In-Season; Ovr, position rooms and Future by dynasty.');
 
         // Phones: the rows and the verdicts fit 375px, and both banners' (i) tooltips open on screen (as
         // tooltips-onscreen.spec.mjs checks the others).
@@ -197,10 +195,8 @@ test.describe('Now and long-term side by side', () => {
         await page.locator('#exportTradeBtn').click();
         await download;
         const text = await page.evaluate(() => window.__tradeCloneText);
-        expect(text).toContain('Wins now');
-        expect(text).toMatch(/By Your Rankings/i);
-        expect(text).toMatch(/In-Season\s*Favors You/i);
-        expect(text).toMatch(/Dynasty\s*Favors Them/i);
+        // The two tiles (round 4), as on screen.
+        expect(text).toMatch(/Now[\s\S]*Favors You[\s\S]*Long-term[\s\S]*Favors Them/i);
         expect(text).toContain('Dyn: estimated from my dynasty rankings, Now: from my In-Season rankings');
         expect(text).toContain(fmt(value(6)));
         expect(text).toContain(fmt(value(12)));
@@ -212,12 +208,31 @@ test.describe('Now and long-term side by side', () => {
         const { state } = await setUp(page);
         await showTab(page, 'roster');
         await expect(page.locator('#rosterList .mls-roster-source')).toHaveText(
-            'Ranks by your In-Season rankings (Redraft ROS) and your dynasty rankings (Dynasty SF).');
+            "Position ranks by your In-Season rankings (Redraft ROS) and your dynasty rankings (Dynasty SF). Tap or hover over a player's ranks for his overall ranks.");
 
         const chase = rowFor(page, "Ja'Marr Chase");
         // One badge, position ranks only (round 3); the overall ranks in its title.
         await expect(chase.locator('.mls-rank-dual')).toHaveText('In-Season WR20 | Dyn WR1');
-        await expect(chase.locator('.mls-rank-dual')).toHaveAttribute('title', 'Overall: In-Season #14, dynasty #1');
+        // The overall ranks are in the badge's tooltip, the site's own (round 4): tap on a phone, hover on a computer.
+        await expect(chase.locator('.mls-rank-dual-tip')).toHaveAttribute('data-tt', '');
+        await chase.locator('.mls-rank-dual-tip').evaluate(el => el.scrollIntoView({ block: 'center' })); // clear of the tab bar
+        await chase.locator('.mls-rank-dual-tip').click();
+        const tip = chase.locator('.mls-rank-dual-tip .tooltip-text');
+        await expect(tip).toBeVisible();
+        await expect(tip).toHaveText('In-Season: WR20, #14 overallDynasty: WR1, #1 overall');
+        // Nothing clips or covers it (the row's info box clips; it lets the open tooltip out).
+        // (Tooltips ignore the pointer, so it's switched on just to ask what's on top at its centre.)
+        expect(await tip.evaluate(t => {
+            t.style.pointerEvents = 'auto';
+            const r = t.getBoundingClientRect(), at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            t.style.pointerEvents = '';
+            return !!at && t.contains(at);
+        })).toBe(true);
+        const tipBox = await tip.boundingBox();
+        expect(tipBox.x).toBeGreaterThanOrEqual(-0.5);
+        expect(tipBox.x + tipBox.width).toBeLessThanOrEqual(await page.evaluate(() => document.documentElement.clientWidth) + 0.5);
+        await chase.locator('.mls-rank-dual-tip').click();
+        await expect(tip).toBeHidden();
         await expect(chase.locator('.mls-gap-chip')).toHaveText('Long-term > now');
         await expect(chase.locator('.mls-gap-chip')).toHaveClass(/is-later/);
         const wilson = rowFor(page, 'Garrett Wilson');

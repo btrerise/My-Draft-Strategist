@@ -132,6 +132,25 @@ export function powerSummaryText(side, teams, { pct = true } = {}) {
     return parts.join(' ');
 }
 
+// The same as powerSummaryText in short labeled lines (improvements S24, round 4: in a dynasty league with In-Season
+// rankings the section read as a wall of text on a phone). [{ label, text }]: "Lineup" ("3rd of 12, stronger (107% →
+// 108% of avg)"), "Rooms" ("RB 7th → 5th · TE 2nd → 4th", or "no change"), and "Future" when scored.
+export function powerSummaryLines(side, teams) {
+    const { before: b, after: a } = side;
+    const pb = startPct(b), pa = startPct(a);
+    const pct = pb === pa ? `${pa}% of avg` : `${pb}% → ${pa}% of avg`;
+    const rank = b.starterRank === a.starterRank ? `${ordinalOf(a.starterRank)} of ${teams}` : `${ordinalOf(b.starterRank)} → ${ordinalOf(a.starterRank)} of ${teams}`;
+    const how = pa > pb ? ', stronger' : pa < pb ? ', weaker' : '';
+    const lines = [{ label: 'Lineup', text: `${rank}${how} (${pct})` }];
+    const moved = POWER_COLUMNS.filter(c => c[2]).filter(([, key]) => a[key] !== b[key])
+        .map(([label, key]) => `${POWER_ROOM_NAMES[label]} ${ordinalOf(b[key])} → ${ordinalOf(a[key])}`);
+    lines.push({ label: 'Rooms', text: moved.length ? moved.join(' · ') : 'no change' });
+    if (Number.isFinite(b.futureRank) && Number.isFinite(a.futureRank)) {
+        lines.push({ label: 'Future', text: b.futureRank === a.futureRank ? `stays ${ordinalOf(a.futureRank)}` : `${ordinalOf(b.futureRank)} → ${ordinalOf(a.futureRank)}` });
+    }
+    return lines;
+}
+
 // The headline over the section: the value verdict and the lineup change in one sentence, so a trade that
 // costs value to get better now (or the reverse) says so. value: tradeVerdictNumbers (trade/verdict.js) for
 // the rankings the section uses, or null; side: powerTradeImpact's you. Lineup "stronger" / "weaker" means the
