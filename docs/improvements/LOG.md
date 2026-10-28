@@ -7220,3 +7220,10 @@ pick "*" too, and its footnote reads "Draft picks: market value." (the image als
 fair keeps its own "2027 1st*", explained in its box right under it. Predates S24 (picks from the market, S13).
 `CACHE_NAME` v2.8.131 → v2.8.132. Test: in mls-trade-impact.spec.mjs, a pick the market prices shows its value without
 "*" and the line (fails on round 17's code: "5,905*"); no line while the pick has no value.
+
+### S24: screenshot baselines from CI (PR #210)
+
+CI's first run failed on exactly the three screenshots the LOG lists: `desktop/mls-league-guide.png` (1280x7841 →
+1280x8332), `phone/mls-league-guide.png` (390x17549 → 390x18954; the Guide's new text) and `phone/mls-league-lineup.png`
+(390x2936 → 390x3338; the stacked, centred row column). Each `-expected.png` was byte-identical to the committed
+baseline; the `-actual.png` files from the run's `playwright-results` artifact are the new baselines.
