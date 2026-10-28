@@ -2598,9 +2598,15 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
     .mls-trade-tile-totals { grid-area: totals; margin-top: 0.1rem; }
 }
 .mls-trade-market-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.15rem 0.6rem; margin-bottom: 0.6rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: transparent; font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.mls-trade-market-strip.verdict-fair, .mls-trade-market-strip.verdict-favor-you, .mls-trade-market-strip.verdict-favor-them, .mls-trade-market-strip.verdict-incomplete { border-color: var(--border); background: transparent; }
+/* Round 13 (owner: round 4 over-corrected, the line read as a footnote): a slim bar with its verdict's color on the left
+   edge and a faint tint, the verdict word larger. Still one line and below your two tiles in weight. */
+.mls-trade-market-strip { border-left-width: 3px; }
+.mls-trade-market-strip.verdict-fair { border-color: var(--border); border-left-color: var(--dart-border); background: rgba(59, 130, 246, 0.05); }
+.mls-trade-market-strip.verdict-favor-you { border-color: var(--border); border-left-color: var(--target-border); background: rgba(16, 185, 129, 0.05); }
+.mls-trade-market-strip.verdict-favor-them { border-color: var(--border); border-left-color: var(--avoid-border); background: rgba(239, 68, 68, 0.05); }
+.mls-trade-market-strip.verdict-incomplete { border-color: var(--border); background: transparent; }
 .mls-trade-market-strip-label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; }
-.mls-trade-market-strip-result { font-weight: 700; }
+.mls-trade-market-strip-result { font-weight: 800; font-size: 0.95rem; }
 .mls-trade-market-strip.verdict-favor-you .mls-trade-market-strip-result { color: var(--primary-green); }
 .mls-trade-market-strip.verdict-favor-them .mls-trade-market-strip-result { color: #fca5a5; }
 .mls-trade-market-strip.verdict-fair .mls-trade-market-strip-result { color: #93c5fd; }

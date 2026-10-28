@@ -7110,7 +7110,13 @@ two-QB fixture league's label reads 2QB.
    prices apply ("Your In-Season rankings look 1QB, so QBs sort at your dynasty rankings' superflex prices. Tap a QB's
    ranks for what he counts as."), and a priced QB's tooltip adds "Counts as #5 in this superflex league (superflex QB
    prices)." The pricing now reads `activeOwnRankings()` as the trade does.
-3. and 4.: answered in chat; see below once decided.
+3. **No "Price QBs by Market Consensus" switch in Managers of the Round Table**: by design. The switch shows only where
+   there's no superflex list of yours to borrow from; Managers' dynasty set is superflex, so round 7's prices apply
+   automatically (its note). I offered a "Price QBs by: your dynasty rankings | Market Consensus" choice there; owner:
+   **leave it as is**.
+4. **The market line was over-corrected** in round 4 (a footnote; only its verdict word in color). Owner's choice (a):
+   a slim bar, its verdict's color on the left edge and a faint tint (5%), the verdict word larger (0.95rem, 800). Still
+   one line, under your two tiles. CSS only (`.mls-trade-market-strip`); `CACHE_NAME` v2.8.126 → v2.8.127.
 
 `CACHE_NAME` v2.8.125 → v2.8.126. Tests: the sort note on In-Season only, a QB's "Counts as" line, the tooltip wider
 than 260px and at most 360px on desktop.
