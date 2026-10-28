@@ -21,7 +21,7 @@ import { toggleMlsHeadshots } from './lineup/headshots.js';
 import './players.js';
 import { addEarlyTeam, removeEarlyTeam } from './lineup/earlyGames.js';
 import { explainIrSlot, toggleLineupNeeds, toggleLockCountdown } from './lineup/gameInfo.js';
-import { activePowerRankings, activeSeasonRankings, addAndSyncLeague, createManualLeague, cycleLeague, deleteLeagueManager, getLeagueRankings, getLeagueSeasonRankings, moveLeague, saveRequirements, setLeagueStyle, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
+import { activeOwnRankings, activePowerRankings, activeSeasonRankings, addAndSyncLeague, leagueQbMarketPricing, setQbMarketPrices, createManualLeague, cycleLeague, deleteLeagueManager, getLeagueRankings, getLeagueSeasonRankings, moveLeague, saveRequirements, setLeagueStyle, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
 import './leagues/scoutResults.js';
 import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDraftStrategistRoster } from './leagues/handoff.js';
 import { addManualPlayer, deletePlayer } from './leagues/addPlayer.js';
@@ -46,9 +46,9 @@ import './trade/valueCurve.js';
 import './trade/waiverValue.js';
 import { copyLineupAsText, exportLineup, exportTrade } from './trade/export.js';
 import { addTradeNames, addTradePick, clearTradeSide, removeTradeNames, removeTradeToken, restoreTrade, setTradePlayers, tradeNames, tradeTeamChanged } from './trade/picker.js';
-import { rememberFairChange, takeFairUndo } from './trade/fairSection.js';
+import { rememberFairChange, setFairBasis, takeFairUndo } from './trade/fairSection.js';
 import './render/rookies.js';
-import { loadRosterTab, setRosterPosFilter } from './render/roster.js';
+import { loadRosterTab, setRosterPosFilter, setRosterSort } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
 import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeaguePaid, toggleLeagueReorder, withCardsTransition } from './render/leagueCards.js';
@@ -58,7 +58,7 @@ import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
 import { getPowerLeagueKind } from './power/directionLabels.js';
-import { goToLeagueStyle, goToPowerRankings, refreshPowerRankings, setPowerCompeting, updatePowerSetting } from './power/rosterCard.js';
+import { goToLeagueStyle, goToPowerRankings, goToSeasonPicker, refreshPowerRankings, setPowerCompeting, updatePowerSetting } from './power/rosterCard.js';
 import { scrollToPowerRankings } from './power/snapshot.js';
 import './scout/waiverInsights.js';
 import { lookupSimPlayer, runMatchupSim } from './sim/matchup.js';
@@ -71,13 +71,14 @@ import { dismissBannerAndReveal, dismissBanner } from '../shared/ui/banners.js';
 // state.js would then read State in its TDZ, and the headshot/SoS/market load-time code would run
 // out of mls.js order. main.js is the entry module, so it is always mid-evaluation while the
 // others evaluate, and importing from it never triggers an evaluation.
-export { activePowerRankings, activeSeasonRankings, getLeagueSeasonRankings };
+export { activeOwnRankings, activePowerRankings, activeSeasonRankings, getLeagueSeasonRankings, leagueQbMarketPricing };
 export { applyDefaultFolds, applyWaiverScanSettingsToUI, checkForDraftStrategistHandoff, clearLocksForNewWeek, computePositionalPower, generateSoSGrid, getLeagueRankings, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, onScoutTabShown, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, refreshTopAvailable, renderBestAvailable, renderLeagueCards, renderLineupUI, renderSyncLogs, reoptimizeProjectionlessLeagues, runMarketDisconnectAnalysis, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
 // For the Playwright tests, which import this module (`import('/js/mls/main.js')` in the page returns
 // this same instance) instead of reading the functions off window.
 export { confirmRankingsPreview, createManualLeague, refreshThisWeek, renderThisWeek, openRankingSetLeagues, setWaiverCompare, setWaiverMode, setWaiverPos, setWaiverScope, toggleDrawer };
 // The Trade Analyzer's picker, for tests (callApp) to set a whole trade at once.
 export { setTradePlayers };
+export { fitRankBadges } from './render/lineup.js'; // the Roster tab's two-set badge (render/roster.js, S24)
 export { leagueMarketFormat, marketFormatWarning };
 
 // The only window.* names left. Until refactor chunk 5D this block held every name something read
@@ -175,6 +176,8 @@ const clickActions = {
     deletePlayer() { deletePlayer(this.dataset.id); },
     // Position counts above the roster list (improvements S9): filter to a position, or All.
     setRosterPos() { setRosterPosFilter(this.dataset.pos); },
+    // The Roster tab's Sort by: Dynasty | In-Season (improvements S24)
+    setRosterSort() { setRosterSort(this.dataset.sort); },
     // A Roster or Lineup row's IR badge (Sleeper IR slot, lineup/gameInfo.js): what it means, for phones.
     explainIrSlot() { explainIrSlot(this); },
     saveManualSoS() { saveManualSoS(this); },
@@ -238,9 +241,14 @@ const clickActions = {
         rememberFairChange(`Took off ${name}`, tradeNames());
         removeTradeNames(this.dataset.side, [name]);
     },
+    // Its Value by: Dynasty | In-Season in a league with both sets (S24, round 3); the trade re-runs in place.
+    setFairBasis() { setFairBasis(this.dataset.basis); runScout('trade'); },
     undoFairChange() { const before = takeFairUndo(); if (before) restoreTrade(before); },
     goToPowerRankings() { goToPowerRankings(); },
     goToLeagueStyle() { goToLeagueStyle(); },
+    goToSeasonPicker() { goToSeasonPicker(); },
+    // Price QBs by Market Consensus (superflex), per league (S24, round 9)
+    setQbMarketPrices() { setQbMarketPrices(this.checked); },
     fetchMarketValue() { fetchMarketValue(this); },
     runMarketDisconnectAnalysis() { runMarketDisconnectAnalysis(); },
     // Rankings upload preview modal

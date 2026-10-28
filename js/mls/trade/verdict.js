@@ -5,7 +5,27 @@ import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
 import { getFreshness } from '../../shared/freshness.js';
 import { verdictFromValues } from './makeFair.js';
-import { marketFormatWarning } from '../main.js';
+import { activeOwnRankings, leagueQbMarketPricing, marketFormatWarning } from '../main.js';
+import { getActiveLeague } from '../helpers.js';
+import { IN_SEASON, hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
+import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superflexQbPrices } from '../rankings/nowAndLater.js';
+
+    // The active league's In-Season set when the Trade Analyzer shows two values and two verdicts (improvements
+    // S24): a dynasty or keeper league with an In-Season set (S23) and its dynasty set loaded. null everywhere else,
+    // and the Trade Analyzer looks exactly as before.
+    // In a superflex league whose In-Season set looks 1QB (round 7), its data comes back with superflex QB prices
+    // (rankings/nowAndLater.js superflexQbPrices) and sfQbPrices set, so every Now value, verdict and suggestion reads them.
+    export function tradeSeasonSet() {
+        if (State.rosRankings.length === 0) return null;
+        const league = getActiveLeague();
+        const set = seasonSetFor(league, State.rankingSets.ros);
+        if (!set) return null;
+        const posMap = league.globalPosMap || {};
+        const priced = superflexQbPrices(league.reqs, set.data, activeOwnRankings(), (c) => posMap[c]);
+        return priced ? { ...set, data: priced, sfQbPrices: true } : set;
+    }
+
+    const YOUR_METHOD = "This value isn't something you entered; it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.";
 
     // --- TRADE FAIRNESS VERDICT(S) ---
     // Returns the verdict banner(s) runScout puts above the Trade Analyzer's player cards, for a trade
@@ -31,11 +51,39 @@ import { marketFormatWarning } from '../main.js';
         // Roster tab), and one from market consensus if Market Value data has been loaded
         // (Trade Finder section below). Showing both side-by-side is deliberate: it lets a
         // user see "the market" and "how I personally value this" can disagree.
-        const yours = renderTradeVerdict(
-            "Your Rankings",
-            "This value isn't something you entered; it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.",
-            getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0
-        );
+        // A dynasty league with an In-Season set (improvements S24, owner's choice): two verdicts by your rankings, In-Season
+        // (this season) and Dynasty (the long run), side by side, with one line above joining them ("Wins now (+2,100),
+        // costs long-term (−3,400)"). Each from its own set through the same curve; never one blended number.
+        const seasonSet = tradeSeasonSet();
+        let yours;
+        if (seasonSet) {
+            // Two matching tiles, Now (In-Season) and Long-term (Dynasty), side by side at every width, with the market as a
+            // slim muted strip under them (round 4, owner's review of round 3: the card's small, tight text looked busy, the
+            // market's full banner drew the eye, and the one-sentence headline didn't appeal; the tiles are the headline).
+            const now = renderTradeVerdict(`Your ${IN_SEASON} Rankings`, '', getResults, giveResults, "seasonValue", "seasonMatched", true, 'your In-Season rankings', true);
+            const later = renderTradeVerdict("Your Dynasty Rankings", '', getResults, giveResults, "userValue", "userMatched", true, 'your dynasty rankings', true);
+            const waiver = { on: !!State.tradeSettings.waiverAdjustment, perSpot: State.tradeSettings.waiverAdjustmentValue };
+            const both = dualVerdictNumbers(getResults, giveResults, waiver);
+            const market = State.marketRankings.length > 0
+                ? renderTradeVerdict("Market Consensus", '', getResults, giveResults, "marketValue", "marketMatched", true, '', true) : null;
+            // Every note about the totals in one box under the tiles, each said once (round 10: a pick missing from the
+            // market was said three times, in four boxes): the tiles', the superflex prices', the market's. Each starts
+            // with the mark of the card(s) it's about, and those cards carry it (round 17).
+            const box = markedNoteBox([
+                { key: 'now', shown: !!(now && now.nums), notes: [(now && now.nums && now.unmatchedNote) || '', sfQbNote(seasonSet, getResults, giveResults)] },
+                { key: 'later', shown: !!(later && later.nums), notes: [(later && later.nums && later.unmatchedNote) || ''] },
+                { key: 'market', shown: !!(market && market.nums), notes: [market ? (market.nums ? market.unmatchedNote : market.note) : ''] },
+                { key: 'none', shown: false, notes: [missingTileNotes(now, later)] }
+            ]);
+            const tiles = dualVerdictTiles(seasonSet, now, later, dualHeadline(both.now, both.later), box.marks);
+            verdictHTML = tiles + box.html + oneQbNote(getResults, giveResults, seasonSet) + marketStrip(market, box.marks.market) + marketAgeHTML();
+            return verdictHTML || `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
+        } else {
+            yours = renderTradeVerdict(
+                "Your Rankings", YOUR_METHOD,
+                getResults, giveResults, "userValue", "userMatched", State.rosRankings.length > 0
+            );
+        }
         const market = renderTradeVerdict(
             "Market Consensus",
             "Same estimation method, applied to the market-consensus rank you loaded (Trade Finder section below). This only stores that source's overall rank, not its own internal value points, so this is an estimate of market value - not the source's official number.",
@@ -45,7 +93,13 @@ import { marketFormatWarning } from '../main.js';
         // screen on desktop); stacked on phones (css/mls.css .trade-verdict-pair).
         verdictHTML = yours && market ? `<div class="trade-verdict-pair">${yours}${market}</div>` : yours + market;
 
-        verdictHTML += marketAgeHTML();
+        verdictHTML += oneQbNote(getResults, giveResults, null) + marketAgeHTML();
+        // A dynasty or keeper league with no In-Season set (S24, owner's report): one verdict by your rankings, as before,
+        // and a line saying how to get the this-season one beside it. On screen only (Export Trade doesn't pick it up).
+        if (!seasonSet && yours && hasSeasonSlot(getActiveLeague())) {
+            // A note in a box with a way there (round 6: as plain text it read like a stray line).
+            verdictHTML += `<div class="mls-trade-season-hint" data-season-hint><span>Choose <span class="mls-nowrap">In-Season</span> rankings for this league to get a this-season verdict beside your dynasty one.</span> ${SEASON_PICKER_BTN}</div>`;
+        }
 
         if (!verdictHTML) {
             verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
@@ -72,6 +126,112 @@ import { marketFormatWarning } from '../main.js';
         return getResults.concat(giveResults).filter(r => r.known === false).map(r => (r.exportRow && r.exportRow.name) || '?');
     }
 
+    const SEASON_PICKER_BTN = `<button type="button" class="mls-btn-sm btn-link-inline" data-action="goToSeasonPicker">Choose on the Roster tab</button>`;
+
+    // Superflex QB prices in use (round 7; round 6 warned instead): a quiet note under the tiles, only when a QB in the
+    // trade is in the In-Season set, where it changes the numbers (round 14). On screen only.
+    function sfQbNote(seasonSet, getResults, giveResults) {
+        if (!seasonSet.sfQbPrices) return '';
+        // Only a QB the In-Season set ranks takes those prices (a QB it leaves out counts as 0 Now either way).
+        if (!getResults.concat(giveResults).some(r => r.exportRow && r.exportRow.pos === 'QB' && r.seasonMatched)) return '';
+        return `<div class="trade-verdict-note" data-sf-qb-note>${SF_QB_NOTE.replaceAll('In-Season', '<span class="mls-nowrap">In-Season</span>')}</div>`;
+    }
+
+    // A superflex league whose own rankings (the ROS slot: a redraft league's ROS set, a dynasty league's dynasty set) look
+    // 1QB, where no superflex prices are borrowed (round 8, the owner's choice (a)): a note with the way there, when a QB
+    // is in the trade. Not when round 7's prices are in use (they cover the In-Season side). On screen only.
+    function oneQbNote(getResults, giveResults, seasonSet) {
+        if (seasonSet && seasonSet.sfQbPrices) return '';
+        const league = getActiveLeague();
+        if (!league || State.rosRankings.length === 0) return '';
+        if (!getResults.concat(giveResults).some(r => r.exportRow && r.exportRow.pos === 'QB')) return '';
+        // With its switch (round 9): price QBs by Market Consensus (superflex) instead.
+        const q = leagueQbMarketPricing(league, State.rosRankings);
+        if (!q.applies) return '';
+        const word = hasSeasonSlot(league) ? 'dynasty' : 'ROS';
+        return qbMarketNoteHTML(q, word, SEASON_PICKER_BTN.replace('Choose on the Roster tab', 'Change on the Roster tab'));
+    }
+
+    const signedPts = (n) => `${n >= 0 ? '+' : '\u2212'}${Math.abs(n).toLocaleString()}`;
+    const totalsWaiver = (nums) => nums.bonusGet ? ` Includes a +${nums.bonusGet.toLocaleString()} waiver adjustment on what you get.`
+        : nums.bonusGive ? ` Includes a +${nums.bonusGive.toLocaleString()} waiver adjustment on what you give.` : '';
+
+    // The In-Season and Dynasty verdicts as two tiles (S24, round 4): "NOW" / "LONG-TERM", the verdict, the points and
+    // swing, and the totals; each tinted by its verdict like the banners, its (i) naming the set. headline: dualHeadline's
+    // sentence, for screen readers. parts: renderTradeVerdict's. marks: markedNoteBox's, for each tile's totals.
+    function dualVerdictTiles(seasonSet, now, later, headline, marks = {}) {
+        const tile = (cls, label, set, setTip, p, mark) => {
+            if (!p || !p.nums) return '';
+            const { nums } = p;
+            return `
+            <div class="mls-trade-tile ${p.verdictClass} ${cls}">
+                <div class="mls-trade-tile-label">${label}
+                    <div class="tooltip-container"><div class="tooltip-icon">i</div><span class="tooltip-text">${setTip}${totalsWaiver(nums)} ${YOUR_METHOD}</span></div>
+                </div>
+                <div class="mls-trade-tile-set">by ${set}</div>
+                <div class="trade-verdict-result mls-trade-tile-result">${p.verdictText}</div>
+                <div class="mls-trade-tile-diff">${signedPts(nums.diff)} pts &middot; ${nums.swingPct.toFixed(0)}%</div>
+                <div class="mls-trade-tile-totals">Get ${nums.getTotal.toLocaleString()} &middot; Give ${nums.giveTotal.toLocaleString()}${cardMark(mark)}</div>
+            </div>`;
+        };
+        const tiles = tile('is-now', 'Now', '<span class="mls-nowrap">In-Season</span>', `This season, by your In-Season rankings (${escapeHtml(seasonSet.name || '')}).`, now, marks.now)
+            + tile('is-later', '<span class="mls-nowrap">Long-term</span>', 'dynasty', 'The long run, by your dynasty rankings.', later, marks.later);
+        if (!tiles) return '';
+        return `<div class="mls-trade-tiles" data-trade-verdict-dual role="group"${headline ? ` aria-label="${escapeHtml(headline)}"` : ''}>${tiles}</div>`;
+    }
+
+    // A set that values nothing in the trade has no tile: a note says which is missing and why (round 8).
+    function missingTileNotes(now, later) {
+        const missing = (p, set, tileName) => p && !p.nums && p.note
+            ? `<div class="trade-verdict-note">None of these players are in your ${set} rankings, so there's no ${tileName} verdict.</div>` : '';
+        return missing(now, '<span class="mls-nowrap">In-Season</span>', 'Now') + missing(later, 'dynasty', '<span class="mls-nowrap">Long-term</span>');
+    }
+
+    // A card's mark (round 17), after its totals: the same mark starts each note about that card. Read aloud as nothing
+    // (the notes say what they're about).
+    const cardMark = (mark) => mark ? `<span class="mls-note-mark" data-card-mark aria-hidden="true">${mark}</span>` : '';
+
+    // Market Consensus beside your two verdicts (S24, round 4): one muted line, there for comparison, so it doesn't draw
+    // the eye from your own. parts: renderTradeVerdict's, or null without market values.
+    function marketStrip(p, mark = '') {
+        if (!p) return '';
+        if (!p.nums) return ''; // its note is in the tiles' notes box
+        const { nums } = p;
+        return `
+        <div class="mls-trade-market-strip ${p.verdictClass}" data-trade-market-strip>
+            <span class="mls-trade-market-strip-head"><span class="mls-trade-market-strip-label">Market</span>
+                <span class="tooltip-container"><span class="tooltip-icon">i</span><span class="tooltip-text">By Market Consensus: the same estimate applied to the market's ranks (Trade Finder below), for comparison.${totalsWaiver(nums)}</span></span></span>
+            <span class="mls-trade-market-strip-result">${p.verdictText}</span>
+            ${p.incomplete ? '' : `<span class="mls-nowrap">${signedPts(nums.diff)} &middot; ${nums.swingPct.toFixed(0)}%</span>`}
+            <span class="mls-nowrap">Get ${nums.getTotal.toLocaleString()} &middot; Give ${nums.giveTotal.toLocaleString()}${cardMark(mark)}</span>
+        </div>`;
+    }
+
+    // The tiles' notes box (round 10): each note once, in order. Round 17 (owner: "Herbert isn't in your In-Season
+    // rankings" sat right under the Long-term tile, which it isn't about): each card with a note gets a mark, *, then
+    // † and ‡, in the order Now, Long-term, Market; a note starts with the mark of every card it's about (a pick missing
+    // from the market is about all three: "*†‡"). Notes about no card (a missing tile) get none.
+    // groups: [{ key, shown (the card is on screen), notes: HTML strings, each holding .trade-verdict-note divs or '' }].
+    // { html, marks: { now, later, market } }.
+    const MARKS = ['*', '\u2020', '\u2021'];
+    function markedNoteBox(groups) {
+        const entries = new Map(); // text -> { div, keys }
+        groups.forEach(g => g.notes.join('').replace(/<div class="trade-verdict-note"[^>]*>[\s\S]*?<\/div>/g, (div) => {
+            const text = div.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+            if (!entries.has(text)) entries.set(text, { div, keys: new Set() });
+            if (g.shown) entries.get(text).keys.add(g.key);
+            return div;
+        }));
+        const marks = {};
+        let next = 0;
+        groups.forEach(g => { if (g.shown && [...entries.values()].some(e => e.keys.has(g.key))) marks[g.key] = MARKS[next++]; });
+        const notes = [...entries.values()].map(({ div, keys }) => {
+            const mark = groups.filter(g => keys.has(g.key)).map(g => marks[g.key]).join('');
+            return mark ? div.replace(/^(<div[^>]*>)/, `$1<span class="mls-note-mark" aria-hidden="true">${mark}</span> `) : div;
+        });
+        return { marks, html: notes.length ? `<div class="mls-trade-tile-notes" data-tile-notes>${notes.join('')}</div>` : '' };
+    }
+
     // The verdict's numbers, for the banner below and for the Trade Analyzer's headline under it (improvements
     // S14, js/mls/trade/lineupSection.js), so the two never disagree. getTotal/giveTotal include the waiver
     // adjustment (bonusGet/bonusGive). verdict: 'fair' | 'you' | 'them'. Returns null when nothing on either side
@@ -89,7 +249,9 @@ import { marketFormatWarning } from '../main.js';
     // matched flag the caller wants. Returns "" when the underlying data source isn't loaded at
     // all, or when nothing on either side matched it, so callers can concatenate freely and fall
     // back to a single prompt only when BOTH sources come back empty.
-    function renderTradeVerdict(label, methodologyText, getResults, giveResults, valueKey, matchedKey, sourceLoaded) {
+    // setWord: how the "isn't in your …" note names the rankings (S24: In-Season or dynasty).
+    // asParts (S24, round 3): the pieces instead of the banner, for the In-Season / Dynasty card ({ note } with no total).
+    function renderTradeVerdict(label, methodologyText, getResults, giveResults, valueKey, matchedKey, sourceLoaded, setWord = 'your ROS rankings', asParts = false) {
         if (!sourceLoaded) return "";
 
         const unmatched = getResults.concat(giveResults).filter(r => !r[matchedKey]);
@@ -97,6 +259,7 @@ import { marketFormatWarning } from '../main.js';
         const nums = tradeVerdictNumbers(getResults, giveResults, valueKey);
 
         if (!nums) {
+            if (asParts) return { note: unmatchedCount > 0 ? `<div class="trade-verdict-note">${label}: none of the players entered were found, so no value total could be calculated.</div>` : '' };
             return unmatchedCount > 0
                 ? `<div class="trade-verdict-note" style="margin-bottom:1rem;">${label}: none of the players entered were found, so no value total could be calculated.</div>`
                 : "";
@@ -119,7 +282,7 @@ import { marketFormatWarning } from '../main.js';
         let unmatchedNote = !missing.length ? ""
             : incomplete
                 ? `<div class="trade-verdict-note">${missing.join(', ')} ${plural ? "aren't" : "isn't"} in the Market Consensus data, so this total is missing ${plural ? 'them' : 'him'}.</div>`
-                : `<div class="trade-verdict-note">${missing.join(', ')} ${plural ? "aren't" : "isn't"} in your ROS rankings, so ${plural ? 'they count' : 'he counts'} as 0.</div>`;
+                : `<div class="trade-verdict-note">${missing.join(', ')} ${plural ? "aren't" : "isn't"} in ${setWord}, so ${plural ? 'they count' : 'he counts'} as 0.</div>`;
         if (picks.length) {
             const names = picks.map(n => escapeHtml(n)).join(', ');
             unmatchedNote += State.marketRankings.length > 0
@@ -141,6 +304,8 @@ import { marketFormatWarning } from '../main.js';
             verdictClass = "verdict-favor-them";
             verdictText = "Favors Them";
         }
+
+        if (asParts) return { nums, verdictClass, verdictText, unmatchedNote, incomplete };
 
         return `
         <div class="trade-verdict-banner ${verdictClass}">

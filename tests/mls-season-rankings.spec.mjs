@@ -151,7 +151,8 @@ test.describe('In-Season rankings in a dynasty league', () => {
         expect(after.notes).toContain('its value from your dynasty rankings, adjusted for player age');
         await expect(page.locator('#rosterPowerStrip')).toContainText('out of 2 teams · Start by In-Season');
         // The player rows say whose ranks they show.
-        await expect(page.locator('#rosterList .mls-roster-source')).toHaveText('Ranks by your dynasty rankings (Dynasty SF).');
+        // Since S24 the line names both sets (each row shows both ranks).
+        await expect(page.locator('#rosterList .mls-roster-source')).toHaveText("Position ranks by your In-Season rankings (Redraft ROS) and your dynasty rankings (Dynasty SF). Tap or hover over a player's ranks for his overall ranks.");
 
         // I'm competing: Ovr and the rooms by In-Season too, Future still dynasty. Saved on the league.
         await expect(page.locator('#powerCompetingWrap')).toBeVisible();
@@ -227,7 +228,8 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson']);
         await callApp(page, 'setTradePlayers', 'give', ["Ja'Marr Chase"]);
         await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
-        await expect(page.locator('.mls-trade-impact-via').first()).toHaveText('Start by In-Season; value, Ovr, position rooms and Future by dynasty');
+        // Since S24 (round 4) the source line is in "How this is worked out" when the trade shows both values.
+        await expect(page.locator('[data-trade-impact] [data-about]').first()).toHaveText('Which rankings: Start by In-Season; Ovr, position rooms and Future by dynasty.');
 
         // The Dashboard's best available: two choices; ROS reads a dynasty league's In-Season set and says so.
         await showTab(page, 'setup'); // the Dashboard
@@ -503,7 +505,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson']);
         await callApp(page, 'setTradePlayers', 'give', ["Ja'Marr Chase"]);
         await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
-        await expect(page.locator('.mls-trade-impact-via').first()).toHaveText('by your In-Season rankings (no dynasty rankings loaded)');
+        await expect(page.locator('[data-trade-impact] [data-about]').first()).toHaveText('Ranked by your In-Season rankings (no dynasty rankings loaded).');
 
         // Plays like redraft: the In-Season set becomes the ROS set, so the league still has rankings.
         await showTab(page, 'setup');

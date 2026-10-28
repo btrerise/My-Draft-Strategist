@@ -518,6 +518,13 @@ button.close-chip {
         /* Bumps the SVG size up slightly for better touch targets */
         transform: scale(1.1); 
     }
+
+    /* Points, swap and lock stacked in a narrow column on the right (improvements S24, round 14, owner's idea): side by
+       side they took about 100px, which split names like "Rhamondre Stevenson (11)" onto two lines with room to spare.
+       Rows with a game-time or status badge keep their height; a bare two-line row grows to the column's height.
+       Centred on one line (round 15, owner): right-aligned, the caption, the bordered swap and the borderless lock looked ragged. */
+    .lineup-slot .mls-row-actions { flex-direction: column; align-items: center; gap: 0.25rem; }
+    .lineup-slot .mls-pts { margin-right: 0; align-items: center; min-width: 0; }
 }
 /* Scout Tab Specific Styles */
 .scout-textarea { 
@@ -1063,6 +1070,7 @@ button.close-chip {
    analysis lists each player in (js/mls/scout/engine.js). */
 /* Receive and Give side by side from tablet width up, in the form and in the results (round 8); stacked on phones. */
 .mls-trade-sides { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1.5rem; }
+.mls-trade-pick-note { margin-top: 0.4rem; font-size: 0.75rem; color: var(--text-muted); }
 .mls-trade-side-title { font-weight: 700; margin: 1rem 0 0.5rem; }
 .mls-trade-side-get { color: #4ade80; }
 .mls-trade-side-give { color: #fca5a5; }
@@ -2552,3 +2560,112 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .recap-lines-scale { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.6rem; }
 .recap-lines-scale label { font-weight: 600; color: var(--text-main); }
 .recap-lines-scale .form-input { width: auto; min-width: 9rem; }
+
+/* --- Now and long-term side by side (improvements S24): dynasty and keeper leagues with an In-Season set --- */
+/* Roster tab: the gap chip (rankings/nowAndLater.js rankGap), a button that explains itself on tap. */
+.mls-gap-chip { display: inline-flex; align-items: center; flex-shrink: 0; border: 1px solid transparent; font-family: inherit; font-weight: 700; line-height: inherit; white-space: nowrap; cursor: pointer; background: transparent; }
+.mls-gap-chip:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
+.mls-gap-chip.is-now { color: var(--pos-te-border); border-color: rgba(245, 158, 11, 0.5); }
+.mls-gap-chip.is-later { color: #93c5fd; border-color: rgba(59, 130, 246, 0.55); }
+/* Roster tab: both sets' ranks in one badge (render/roster.js dualRankBadge), split at the bar on a narrow row. */
+.mls-player-row-meta:has(.mls-rank-dual) { row-gap: 3px; }
+.mls-roster-sort { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; font-size: 0.8rem; color: var(--text-muted); }
+.mls-roster-sort .mls-segmented { flex: 0 1 14rem; }
+.mls-roster-sort .mls-segmented-btn { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+/* Trade Analyzer: each row's In-Season value under its dynasty one. */
+.mls-trade-row-now { display: block; font-size: 0.75rem; color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+/* A dynasty or keeper league with no In-Season set: how to get both (Roster tab, Trade Analyzer). */
+.mls-roster-season-hint { margin-bottom: 0.6rem; font-size: 0.8rem; color: var(--text-muted); text-align: left; }
+/* The Trade Analyzer's notes about In-Season rankings (round 6): a quiet box with its button, like the other notes; amber
+   for the 1QB-set warning. */
+.mls-trade-season-hint { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.5rem; margin-bottom: 0.6rem; padding: 0.5rem 0.7rem;
+    border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); font-size: 0.8rem; color: var(--text-muted); text-align: left; }
+.mls-trade-season-hint.is-warning { border-color: rgba(251, 191, 36, 0.45); color: #fcd34d; }
+.mls-trade-market-strip-head { display: inline-flex; align-items: center; gap: 5px; }
+.mls-roster-season-hint strong { color: var(--text-main); font-weight: 600; }
+/* Round 4 (owner's review): In-Season and Dynasty as two matching tiles, side by side at every width, tinted by their
+   verdicts like the banners; Market Consensus as one muted line under them. */
+.mls-trade-tiles { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.6rem; margin-bottom: 0.6rem; }
+.mls-trade-tile { border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem 0.8rem; text-align: center; min-width: 0; }
+.mls-trade-tile-label { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-main); }
+.mls-trade-tile-label .tooltip-container { text-transform: none; letter-spacing: normal; font-weight: 400; }
+.mls-trade-tile-set { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
+.mls-trade-tile .mls-trade-tile-result { font-size: 1.2rem; font-weight: 800; margin: 0.4rem 0 0.1rem; line-height: 1.2; }
+.mls-trade-tile-diff { font-size: 0.85rem; font-weight: 700; color: var(--text-main); font-variant-numeric: tabular-nums; }
+.mls-trade-tile-totals { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; font-variant-numeric: tabular-nums; }
+/* Phones (round 5, owner: "more vertical space, less horizontal"): one tile over the other, each laid out sideways (the label
+   and its set on the left, the verdict, points and totals on the right), so the two stay short without being cramped. */
+@media (max-width: 767px) {
+    .mls-trade-tiles { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+    .mls-trade-tile { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "label result" "set diff" ". totals";
+        column-gap: 0.75rem; align-items: baseline; text-align: right; padding: 0.6rem 0.8rem; }
+    .mls-trade-tile-label { grid-area: label; justify-content: flex-start; }
+    .mls-trade-tile-set { grid-area: set; text-align: left; margin-top: 0; }
+    .mls-trade-tile .mls-trade-tile-result { grid-area: result; margin: 0; font-size: 1.1rem; text-align: right; }
+    .mls-trade-tile-diff { grid-area: diff; }
+    .mls-trade-tile-totals { grid-area: totals; margin-top: 0.1rem; }
+}
+.mls-trade-market-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.15rem 0.6rem; margin-bottom: 0.6rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: transparent; font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* Round 13 (owner: round 4 over-corrected, the line read as a footnote): a slim bar with its verdict's color on the left
+   edge and a faint tint, the verdict word larger. Still one line and below your two tiles in weight. */
+.mls-trade-market-strip { border-left-width: 3px; }
+.mls-trade-market-strip.verdict-fair { border-color: var(--border); border-left-color: var(--dart-border); background: rgba(59, 130, 246, 0.05); }
+.mls-trade-market-strip.verdict-favor-you { border-color: var(--border); border-left-color: var(--target-border); background: rgba(16, 185, 129, 0.05); }
+.mls-trade-market-strip.verdict-favor-them { border-color: var(--border); border-left-color: var(--avoid-border); background: rgba(239, 68, 68, 0.05); }
+.mls-trade-market-strip.verdict-incomplete { border-color: var(--border); background: transparent; }
+.mls-trade-market-strip-label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; }
+.mls-trade-market-strip-result { font-weight: 800; font-size: 0.95rem; }
+.mls-trade-market-strip.verdict-favor-you .mls-trade-market-strip-result { color: var(--primary-green); }
+.mls-trade-market-strip.verdict-favor-them .mls-trade-market-strip-result { color: #fca5a5; }
+.mls-trade-market-strip.verdict-fair .mls-trade-market-strip-result { color: #93c5fd; }
+.mls-trade-row-dyn { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); margin-right: 3px; }
+/* "To make it fair": Value by: Dynasty | In-Season (S24, round 3). */
+.mls-trade-fair-basis { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.78rem; color: var(--text-muted); }
+.mls-trade-fair-basis .mls-segmented { flex: 0 1 13rem; }
+.mls-trade-fair-basis .mls-segmented-btn { padding: 0.25rem 0.5rem; font-size: 0.78rem; }
+/* "More analysis" (S24, round 16): a quiet divider between the two sides and the extras under them (To make it fair,
+   Power Rankings after the trade), with the Value by switch on the same line where it fits. */
+.mls-trade-more { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem 0.75rem; margin: 1.25rem 0 0.75rem; padding-top: 0.85rem; border-top: 1px solid var(--border); }
+.mls-trade-more-title { margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+.mls-trade-more .mls-trade-fair-basis { margin-bottom: 0; }
+.mls-trade-more-caption { flex-basis: 100%; text-align: right; font-size: 0.75rem; color: var(--text-muted); }
+.mls-trade-more .mls-trade-fair-basis > span { white-space: nowrap; }
+/* Phones: the title, then the switch, then the caption, each on its own line and left-aligned (side by side, "Value by"
+   wrapped beside a squeezed switch). */
+@media (max-width: 520px) {
+    .mls-trade-more { flex-direction: column; align-items: flex-start; }
+    .mls-trade-more .mls-trade-fair-basis { align-self: stretch; }
+    .mls-trade-more-caption { text-align: left; }
+}
+/* Roster tab, both sets (round 3): on phones the two-set badge starts a line of its own under team, chips and SoS. */
+.mls-meta-break { display: none; }
+@media (max-width: 600px) { .mls-meta-break { display: block; flex-basis: 100%; height: 0; } }
+/* Power Rankings after the trade in a league with both sets (S24, round 4): the summary as short labeled lines. */
+.mls-trade-impact-lines { margin: 0.5rem 0 0.6rem; display: grid; gap: 2px; font-size: 0.85rem; }
+.mls-trade-impact-lines > div { display: flex; gap: 0.6rem; }
+.mls-trade-impact-lines dt { flex: 0 0 3.6rem; color: var(--text-muted); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding-top: 2px; }
+.mls-trade-impact-lines dd { margin: 0; color: var(--text-main); font-weight: 600; }
+/* The two-set badge's tooltip (S24, round 4): the row's info box clips (overflow: hidden), which hid the tooltip, so rows
+   with that badge don't clip. Always, not only while it's open: switching overflow on hover reflowed the row under the
+   pointer, which ended the hover and flickered. min-width: 0 keeps the row's width as it was. */
+.mls-player-row-info:has(.mls-rank-dual-tip) { overflow: visible; min-width: 0; }
+/* The notes under the Now / Long-term tiles, in one quiet box (S24, round 8). */
+.mls-trade-tile-notes { margin-bottom: 0.6rem; padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); }
+.mls-trade-tile-notes .trade-verdict-note { margin: 0; font-size: 0.8rem; text-align: left; }
+.mls-trade-tile-notes .trade-verdict-note + .trade-verdict-note { margin-top: 0.3rem; }
+/* Which card a note is about (round 17): the card's totals and the note's start carry the same mark (*, †, ‡). */
+.mls-note-mark { font-weight: 800; color: var(--text-main); }
+[data-card-mark] { margin-left: 2px; }
+/* Power Rankings: the 1QB-rankings note in a superflex league (S24, round 8), amber like the Trade Analyzer's. */
+.mls-power-source-key.is-warning { color: #fcd34d; }
+/* The 1QB-rankings note with its switch (S24, rounds 8 and 9): Trade Analyzer and Power Rankings. Amber while QBs read
+   low (off) or wait for superflex market values; quiet once the market prices them. */
+.mls-qb-market-note { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; margin: 0 0 0.6rem; padding: 0.5rem 0.7rem;
+    border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); font-size: 0.8rem; color: var(--text-muted); text-align: left; }
+.mls-qb-market-note.is-warning { border-color: rgba(251, 191, 36, 0.45); color: #fcd34d; }
+.mls-qb-market-toggle { display: flex; align-items: center; gap: 0.5rem; flex-basis: 100%; color: var(--text-main); font-weight: 600; cursor: pointer; }
+/* The Roster tab's two-set badge tooltip (S24, round 12): sized to its lines up to 360px instead of the site's fixed 260px,
+   which wrapped "In-Season: QB3 (T11), #57 overall (T11)" with room to spare on a computer. The window cap still applies. */
+.mls-rank-dual-tip .tooltip-text.mls-rank-dual-text { width: max-content; max-width: min(360px, calc(100vw - 16px)); }
+.mls-rank-dual-priced { display: inline-block; margin-top: 4px; color: var(--text-muted); }
+.mls-roster-sort-note { margin: -0.3rem 0 0.6rem; font-size: 0.78rem; color: var(--text-muted); }

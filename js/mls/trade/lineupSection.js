@@ -11,14 +11,16 @@ import { computePositionalPower, POWER_DEFAULT_REQS, POWER_POSITIONS } from '../
 import { futureRankText, futureMoreHTML, powerPicksNote, resolvePowerFuture, whenPowerAgesLoaded } from '../power/futureValue.js';
 import { getPowerLeagueKind } from '../power/directionLabels.js';
 import { activePowerRankings } from '../main.js';
+import { SF_QB_NOTE } from '../rankings/nowAndLater.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { getSleeperMetaByName, makeLeagueGetPos } from '../scout/waivers.js';
 import { buildRankDisplayIndex } from '../scout/waiverScanner.js';
 import { isDraftPickName } from './valueCurve.js';
-import { tradeVerdictNumbers, unknownNames } from './verdict.js';
+import { tradeSeasonSet, tradeVerdictNumbers, unknownNames } from './verdict.js';
+import { tradeAnalysisBasis } from './fairSection.js';
 import {
     FUTURE_COLUMN, lineupSlotCount, lineupSummaryText, lineupTradeChanges, POWER_COLUMNS,
-    powerSummaryText, powerTradeImpact, tradeHeadline, tradePartner
+    powerSummaryLines, powerTradeImpact, tradeHeadline, tradePartner
 } from './lineupImpact.js';
 
 // Notes that explain the screen to you, not the trade to your league: Export Trade (trade/export.js) leaves
@@ -111,12 +113,21 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     // Roster tab's table; Future stays on the dynasty set. All three are State.rosRankings without an In-Season set.
     // A league whose only rankings are its In-Season set (round 12) is scored by it, as the Roster tab's table is.
     const powered = activePowerRankings();
-    const own = powered.rooms.length > 0 ? powered : null;
+    const own = powered.rooms.length > 0 ? { ...powered } : null;
+    // Which set gave what (round 5). Since S24 the headline's value is the In-Season one, beside the lineup it's
+    // paired with, whenever the Trade Analyzer shows both values (the dynasty verdict is above, with the market's).
+    const seasonValues = !!tradeSeasonSet();
+    // With both values on screen (round 16, owner: "rely on the switch the user sees"), Ovr and the rooms follow "More
+    // analysis"'s Value by switch, whose default is the Roster tab's choice ("I'm competing"); Start stays In-Season and
+    // Future dynasty. There's no headline then, so no value to name.
+    const dualSets = own && seasonValues && own.start !== own.future;
+    if (dualSets) own.rooms = tradeAnalysisBasis(league) === 'season' ? own.start : own.future;
     let rankings = own ? own.rooms : State.rosRankings, via = 'by your ROS rankings';
     if (own && State.rosRankings.length === 0) via = 'by your In-Season rankings (no dynasty rankings loaded)';
     const powerOpts = own ? { startRankings: own.start, futureRankings: own.future } : {};
-    // Which set gave what (round 5): the trade's values ("Your rankings") are always the dynasty set's, until S24.
-    if (own && own.start !== own.future) via = own.rooms === own.start
+    if (dualSets) via = own.rooms === own.start ? 'Start, Ovr and position rooms by In-Season; Future by dynasty'
+        : 'Start by In-Season; Ovr, position rooms and Future by dynasty';
+    else if (own && own.start !== own.future) via = own.rooms === own.start
         ? 'Start, Ovr and position rooms by In-Season; value and Future by dynasty'
         : 'Start by In-Season; value, Ovr, position rooms and Future by dynasty';
     if (rankings.length === 0) {
@@ -153,15 +164,19 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     if (hasFuture) {
         notes.push(about(futureInfo.label === 'market'
             ? "<strong>Future</strong> is each roster's dynasty Market Consensus value (player ages from Sleeper couldn't be loaded), as on the Roster tab."
-            : "<strong>Future</strong> is each roster's value from these rankings, adjusted for player age (from Sleeper), as on the Roster tab: younger players count a bit more, older players less."));
+            : `<strong>Future</strong> is each roster's value from ${own && own.start !== own.future ? 'your dynasty rankings' : 'these rankings'}, adjusted for player age (from Sleeper), as on the Roster tab: younger players count a bit more, older players less.`));
         const picksNote = powerPicksNote(league, futureInfo.picks);
         if (picksNote) notes.push(about(picksNote));
     } else if (dynasty) {
         notes.push(about("Couldn't load player ages from Sleeper, so there's no Future column. Dynasty Market Consensus data (Trade Finder below) gives a fallback."));
     }
 
+    // Which set the rooms read, by name (round 14: "these rankings" sat under a tile note naming the In-Season set).
+    const roomsSet = rankings === State.marketRankings ? 'Market Consensus'
+        : own && (State.rosRankings.length === 0 || (own.start !== own.future && own.rooms === own.start)) ? 'your In-Season rankings'
+        : own && own.start !== own.future ? 'your dynasty rankings' : 'your ROS rankings';
     const unranked = give.concat(get).filter(p => !idx.get(p.cleanName)).map(p => p.name);
-    if (unranked.length) notes.push(`${listNames(unranked)} ${unranked.length > 1 ? "aren't" : "isn't"} in these rankings, so ${unranked.length > 1 ? 'they count' : 'he counts'} as unranked (almost no value).`);
+    if (unranked.length) notes.push(`${listNames(unranked)} ${unranked.length > 1 ? "aren't" : "isn't"} in ${roomsSet}, so ${unranked.length > 1 ? 'they count' : 'he counts'} as unranked (almost no value).`);
     const holes = (side, whose) => side.newHoles.length
         ? [`Leaves ${whose} ${[...new Set(side.newHoles)].map(s => slotDisplayName(s)).join(' and ')} empty.`] : [];
     notes.unshift(...holes(impact.you, 'your'));
@@ -175,17 +190,26 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     // No headline while a name matches no player, or while the market (when it's what's used) lacks a piece: the
     // banner above has no verdict then either (round 11).
     // The trade's values ("Your rankings") come from the dynasty set; without one, the market's (S23, round 12).
-    const valueKey = own && State.rosRankings.length > 0 ? 'userValue' : 'marketValue';
+    const valueKey = own && State.rosRankings.length > 0 ? (seasonValues ? 'seasonValue' : 'userValue') : 'marketValue';
     const settled = cards.getResults && cards.giveResults && !unknownNames(cards.getResults, cards.giveResults).length
-        && (valueKey === 'userValue' || cards.getResults.concat(cards.giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick')));
+        && (valueKey !== 'marketValue' || cards.getResults.concat(cards.giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick')));
     const value = settled ? tradeVerdictNumbers(cards.getResults, cards.giveResults, valueKey) : null;
-    const headline = tradeHeadline(value, impact.you);
+    // Short and the same in every Sleeper league (S24, rounds 4 and 5, owner: busy on a phone; "have Redraft leagues match"):
+    // the summary as labeled lines, the source line in "How this is worked out", a shorter key. A league with both sets
+    // has no headline either (the Now / Long-term tiles above carry the value); the others keep it, the only line there
+    // that joins value and lineup.
+    const dual = seasonValues && own;
+    const headline = dual ? null : tradeHeadline(value, impact.you);
+    notes.unshift(about(via.startsWith('by ') ? `Ranked ${via}.` : `Which rankings: ${via}.`));
+    // Superflex QB prices for a 1QB-looking In-Season set (round 7).
+    if (own && own.sfQbPrices) notes.splice(1, 0, about(SF_QB_NOTE.replaceAll('In-Season', '<span class="mls-nowrap">In-Season</span>')));
+    const summary = summaryLines(impact.you, impact.teams, { pct: !headline });
+    const key = `1 = strongest of ${impact.teams}. <span class="mls-trade-rank-up">Green</span> better, <span class="mls-trade-rank-down">red</span> worse.`;
     let body = `
-        <div class="mls-trade-impact-via">${via}</div>
         ${headline ? `<div class="mls-trade-impact-headline">${escapeHtml(headline)}</div>` : ''}
-        <div class="mls-trade-impact-summary">${escapeHtml(powerSummaryText(impact.you, impact.teams, { pct: !headline }))}</div>
+        ${summary}
         ${powerTable([impact.you], impact.teams, youIn, youOut, columns)}
-        <div class="mls-trade-impact-key">Ranks of ${impact.teams} teams: 1 = strongest. <span class="mls-trade-rank-up">Green</span> = better after the trade, <span class="mls-trade-rank-down">red</span> = worse.</div>`;
+        <div class="mls-trade-impact-key">${key}</div>`;
     if (impact.partner) {
         const pIn = new Set(give.map(p => p.cleanName));
         const pOut = get.filter(p => rosterMap[p.cleanName] === partner).concat(pickRows(tradedPicks ? tradedPicks.get : []));
@@ -193,13 +217,17 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
         body += `
         <details class="mls-trade-impact-partner">
             <summary>Their team: ${escapeHtml(partner)}</summary>
-            <div class="mls-trade-impact-summary">${escapeHtml(powerSummaryText(impact.partner, impact.teams))}</div>
+            ${summaryLines(impact.partner, impact.teams)}
             ${powerTable([impact.partner], impact.teams, pIn, pOut, columns)}
             ${notesHTML(pHoles)}
         </details>`;
     }
     return section(title, body + notesHTML(notes));
 }
+
+// A team's change as short labeled lines (S24, round 4): Lineup, Rooms, Future (powerSummaryLines).
+const summaryLines = (side, teams, opts) =>
+    `<dl class="mls-trade-impact-lines">${powerSummaryLines(side, teams, opts).map(l => `<div><dt>${l.label}</dt><dd>${escapeHtml(l.text)}</dd></div>`).join('')}</dl>`;
 
 // One row per team: each column's rank before -> after (one number when it doesn't move). Each
 // number opens the room after the trade, as the Roster tab's table does: players coming in marked +,

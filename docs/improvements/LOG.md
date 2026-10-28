@@ -6703,3 +6703,527 @@ in docs/TESTING.md, under "Needs the owner's decision first").
   way round back in the first league, and none after a file upload.
 - Owner's instruction: no full local run for these small changes; that spec file (8 runs) and the unit tests (451)
   passed locally, and CI runs the rest.
+
+## S24 — Dynasty leagues: now and long-term side by side
+
+**User-visible effect.** Only in a dynasty or keeper league with an In-Season set (S23) and its dynasty set loaded;
+redraft leagues, and dynasty leagues without an In-Season set, look exactly as before (spec).
+- **Trade Analyzer.** Each row shows "Dyn 12 · Now 6 · Wk …" and, on the right, the dynasty value with **"Now 9,132"**
+  (the In-Season value) under it, the market's under both. The "Your Rankings" banner becomes two, **By Your In-Season
+  Rankings** and **By Your Dynasty Rankings**, side by side from tablet width (stacked on phones), each with its own
+  Fair / Favors You / Favors Them; Market Consensus goes full width under them. Above them one line joins the two:
+  **"Wins now (+1,235), costs long-term (−1,811)"** ("Costs now …, wins long-term …", "Wins now (…) and long-term (…)",
+  "Fair now, costs long-term (…)", "Fair now and long-term"). **To make it fair** goes by the dynasty value ("by your
+  dynasty rankings"). **Power Rankings after the trade**: its headline's value is now the In-Season one, paired with
+  the lineup; the source line reads "Start and value by In-Season; Ovr, position rooms and Future by dynasty" ("Start,
+  value, Ovr and position rooms by In-Season; Future by dynasty" with I'm competing). **Export Trade** shows the
+  headline, both your verdicts (and the market's), and Dyn / Now columns, with "Dyn: estimated from my dynasty rankings,
+  Now: from my In-Season rankings" in its footnote.
+- **Roster tab.** Each row's "Ovr | Pos" badge becomes two on a line of their own under the team: **"In-Season WR20 ·
+  #14"** and **"Dyn WR1 · #1"** (position rank first, F6's display ranks, tiers when the file has them), each with its
+  rank-change chip. A **gap chip** (new, in the Guide's legend): **Now > long-term** (amber) or **Long-term > now**
+  (blue), explaining itself on tap. The line above the list names both sets, and under it **Sort by: Dynasty |
+  In-Season** (Dynasty by default) orders the list.
+- Guide: step 3's dynasty item and step 9 (Trade Analyzer) describe both.
+
+**Owner's decisions (asked before building, "Build your recommendation: 1, 2, 3 and 5. Save 4 for S25").**
+1. Trade Analyzer: two values and two verdicts with the joining headline; **make it fair by the dynasty value**;
+   **Export shows both** verdicts and values; Power Rankings after the trade's value by In-Season.
+2. Roster rows: both ranks.
+3. Gap chip with my threshold: **12 or more position spots apart, and at least one rank inside the startable range**
+   (top 36 RB / WR, top 24 QB / TE). No chip for K, DEF, or a player unranked in either set.
+4. Trade Finder with In-Season as a basis: **not built, saved for S25** (comparing In-Season ranks with a dynasty market
+   mixes "now" with "later"; the honest version needs FantasyCalc's redraft market beside the dynasty one).
+5. Roster sort switch: yes, **remembered per league on the league object** (`league.rosterSortSeason`, carried over by
+   a sync), so no storage key.
+- Wording: I used S23's "In-Season" for the set and the card's "now / long-term" for the headline and chip; compact
+  rows say "Dyn" and "Now".
+
+**What changed and where.**
+- `js/mls/rankings/nowAndLater.js` (new, pure, in `PRECACHE_ASSETS`): `dualVerdictNumbers` (both verdicts through
+  `verdictFromValues`, each from its own value), `dualHeadline`, `rankGap` / `rankGapTip`, `GAP_SPOTS`, `STARTABLE`.
+- `js/mls/scout/engine.js`: `buildCard` adds `seasonValue` / `seasonMatched` (the In-Season rank through
+  `rankToTradeValue`; a pick borrows the market's, as the dynasty value does), the rows' Dyn / Now ranks and Now value,
+  `exportRow.now`, `dual` for the export.
+- `js/mls/trade/verdict.js`: `tradeSeasonSet()` (the one test every part uses: `seasonSetFor` on the active league and a
+  loaded dynasty set); the two banners, the headline (`long-term` kept whole), "isn't in your In-Season / dynasty
+  rankings" notes. `trade/fairSection.js` (label), `trade/lineupSection.js` (headline value, source line),
+  `trade/export.js` (columns, footnote, the headline picked up with the banners).
+- `js/mls/render/roster.js`: both ranks (`ranksIn`, `dualRankBadge`), the chip, `setRosterSort` and the switch;
+  `js/mls/main.js` (`setRosterSort` action), `js/mls/leagues/sync.js` (carry-over), `js/mls/badges.js`
+  (`rankGapChipMarkup`), `js/mls/legend.js` (its line), `css/mls.css` (`.mls-gap-chip`, `.mls-roster-dual`,
+  `.mls-roster-sort`, `.mls-trade-dual-headline`, `.mls-trade-row-now`), `lineup/index.html` (Guide).
+- S23's resolver and slots are unchanged (only read). No storage key. `sw.js`: the new file; `CACHE_NAME` v2.8.114 →
+  v2.8.115. CHANGELOG line under Lineup Strategist.
+
+**Tests.** Unit `tests/unit/nowAndLater.test.mjs` (8): each verdict from its own value and never blended, the waiver
+adjustment on both, a set valuing nothing, every headline form, the threshold's edges, K / DEF / unranked. Spec
+`tests/mls-now-and-later.spec.mjs` (both widths, phone at 375px, 10 runs) on the fixture league as dynasty with two
+sets carrying Pos Rank columns: the headline and both banners with the curve's numbers, the rows' ranks and values, make
+it fair by dynasty, the Power Rankings line and headline, both banners' tooltips on screen, no sideways scroll; Export
+Trade's clone; the Roster tab's two badges, both chips and their toast, nothing past a row's edge at 375px, the sort
+switch (order, focus, saved, kept by a reload and a re-sync, back); a redraft league and a dynasty league with no
+In-Season set exactly as before.
+- S23's spec (`mls-season-rankings.spec.mjs`) had two lines S24 changes on purpose: the Roster tab's source line (now
+  names both sets) and the Trade Analyzer's Power Rankings source line ("Start and value by In-Season; …"). Updated.
+
+**Checks.** check-precache OK; 459 unit tests; Playwright 555 passed, 5 skipped, and only `visual.spec.mjs` failed, on
+the one environment message (this container's Chromium is 153, not the pinned 1194), plus the two S23 lines above,
+since updated (both specs then 34/34).
+
+**Screenshots.** Rendered all 42 on main (1541b1b) and on this branch here (`RENDER_ENV=any`) and compared with
+`npm run pxdiff`: only **`mls-league-guide.png`** changes, at both widths (`desktop/` 1280×8122 → 1280×8319, `phone/`
+390×18492 → 390×19144), from the legend's gap-chip line and the Guide sentences. The other 40 are pixel-identical (the
+screenshot league is redraft). Not re-taken here (this container can't render CI's); take both from the pull request's
+CI run, checking each `-expected.png` matches the committed baseline.
+
+**Left over.**
+- The two Guide PNGs, from CI once there's a pull request.
+- Trade Finder with In-Season as a basis (option 4): with S25, which can hold FantasyCalc's redraft market beside the
+  dynasty one.
+- A player unranked in one of the two sets gets no gap chip (nothing to compare). If dynasty sets often leave out
+  older veterans an In-Season set ranks, "unranked in dynasty, startable now" could be a third chip; not built.
+- A dynasty league whose only rankings are its In-Season set still gets one verdict by the market (S23, round 12):
+  two verdicts need both sets.
+- No open follow-up in docs/TESTING.md touches this area beyond the market-per-format one (S23), which S25 may cover.
+
+### S24, round 2: "nothing works after restoring a backup" (owner's report), and a chip for players one set leaves out
+
+**The report.** Testing the branch in an Incognito window: restore a backup, re-sync, open the Trade Analyzer and the
+Roster tab: no S24 at all. After a Factory Reset, importing the leagues by username and setting the In-Season, dynasty
+and Weekly rankings again, everything showed.
+
+**What I found.** I loaded the owner's backup (Oct 27) into this branch three ways: written straight into storage,
+through the real Restore (file input and confirm), and Restore followed by a real re-sync against Sleeper (both the
+Setup tab's username import and Sync All). In every case each dynasty league with an In-Season set showed both ranks,
+the chips, the sort switch and two verdicts (34 rows on Managers of the Round Table and on Draft Scouts of America, at
+both widths). The data was intact: 14 dynasty leagues pointing at "ROS Redraft" as In-Season, and their dynasty sets.
+My first guess was the league the backup reopens on (League of Ordinary Gentlemen, the one keeper league with no
+In-Season set). **The owner corrected me: the issue was in May the Receptions Be With You**, a dynasty league with both
+sets. I then reproduced their steps on that league exactly: Restore through the file input, a switch to it from the
+header drop-down, the Setup tab's username sync, Sync All, and a reload. At every step it showed 29 rows with both
+ranks, the source line, and the Trade Analyzer's two verdicts (`tradeSeasonSet()` set). So with this branch's files and
+this backup the feature works; **the cause is not found yet**. What's different in the owner's browser is still open
+(see the questions to the owner below). The likeliest cause is old files served after the deploy, since the S23 line
+"Ranks by your dynasty rankings (…)" would then still show; not confirmed.
+
+Still worth keeping from this round, since current users can have a dynasty or keeper league without an In-Season set
+and see nothing new there:
+- **A line where the features would be** (dynasty and keeper leagues with a dynasty set and no In-Season set):
+  - Roster tab, above the list: "No In-Season rankings in this league, so these are your dynasty ranks alone. Your
+    redraft leagues use **ROS Redraft**: **Use it here** to see this season's ranks beside them." (S23's own offer and
+    its "Also use it in…" question; without a redraft set to offer: "Choose In-Season rankings in the card above…").
+  - Trade Analyzer, under the verdict: "Choose In-Season rankings for this league on the Roster tab to get a
+    this-season verdict beside your dynasty one." On screen only (Export Trade leaves it out).
+  - Redraft leagues: nothing. `render/roster.js`, `trade/verdict.js`, `css/mls.css` (`.mls-roster-season-hint`,
+    `.mls-trade-season-hint`).
+- The service worker serves scripts stale-while-revalidate: a page loaded while an older version was cached runs the
+  old scripts once, and the next load gets the new ones (`CACHE_NAME` bumped).
+
+**Answered:** the rows showed one "Ovr | Pos" badge each, main's markup, so the browser ran cached older scripts; on
+the latest push (with `CACHE_NAME` v2.8.116) the owner can't reproduce it. Closed.
+
+**Questions to the owner (asked):** what the Roster tab showed in that league (the S23 line "Ranks by your dynasty
+rankings (Dynasty SF TEP)." and one "Ovr | Pos" badge per row means old files ran; no line at all means something else),
+the footer's version / which URL, phone or computer, and whether a second reload changed anything.
+
+**The owner's choice on players one set leaves out:** "build a chip … or just use the same chips and count unranked
+as much lower". **Same chips:** a player missing from one set counts as far below it, so if the other set has him in
+the startable range he gets the chip: In-Season WR20 left out of the dynasty set reads Now > long-term, a dynasty-ranked
+stash the In-Season set leaves out reads Long-term > now. The tip says so ("Your dynasty rankings have him at RB5 and
+your In-Season rankings leave him out: …"). Missing from both, past the startable range, K and DEF, or in a set without
+a position rank: no chip. `rankGap` takes null for "not in this set"; the legend line and the Guide say it.
+
+**Tests.** Unit: the unranked rule (both directions, the range's edge, both missing, K) and the tips (16 in the file).
+Spec: Derrick Henry left out of the In-Season set gets "In-Season UR", "Long-term > now" and the tip; the dynasty
+league with no In-Season set shows both lines with their wording, the redraft league neither; a new case, the offer
+in that line ("Use it here") sets the In-Season set and the rows show both ranks (12 runs).
+
+**Checks.** 461 unit tests; this spec 12/12 and the neighbouring specs (In-Season, make it fair, trade impact, roster
+counts, display ranks, legend, tooltips, Scout league switch, backup) 128/128. Screenshots: unchanged from round 1
+(the screenshot league is redraft); the Guide PNGs still come from CI.
+`CACHE_NAME` v2.8.115 → v2.8.116, so a browser that already opened the branch's first deploy gets this round's files on
+its next load rather than one load later.
+
+### S24, round 3: my review as a user on the owner's league, (a)–(d) and a switch for (e) (owner: "Do a through d; add the switch for e")
+
+I looked at May the Receptions Be With You from the owner's backup at 375px and 1280px (Swift and Evans for Loveland),
+plus the owner's Export Trade image. Found: Roster rows three or four lines tall, with tiers repeated and overall ranks
+that don't compare across a 1QB redraft set and a superflex dynasty one; three tall banners filling a phone's first
+screen (and two-thirds of the export image), the Market one full width on desktop; a plain white headline; an unlabeled
+dynasty value on each trade row; and "To make it fair" asking for more on a deliberate win-now trade.
+- **(a) Roster:** one badge, "In-Season WR16 (T8) | Dyn WR20 (T6)", position ranks only, each tier once; the overall
+  ranks in its title ("Overall: In-Season #36, dynasty #51"); F6's `rankBadgeParts`, split at the bar on a narrow row
+  (`fitRankBadges`, exported from render/lineup.js through main.js; a ResizeObserver refits the roster list). Every row
+  has the same shape: on phones team, change chips and SoS, then the badge and the gap chip on a line of their own
+  (`.mls-meta-break`); on desktop one line. A legend line for the badge (`mls-rank-dual`).
+- **(b) Trade verdicts:** one **By Your Rankings** card with two rows, "IN-SEASON Favors You (+7,721 pts, 68%) /
+  Receive 11,370 vs Give 3,649" and the same for Dynasty, each tinted by its verdict, beside the market's banner from
+  768px (stacked on phones, as before). About 150px tall on a phone where the two banners took about 330px.
+  `dualVerdictCard` in trade/verdict.js; `renderTradeVerdict(..., asParts)` hands it the same numbers and notes. The
+  export copies it (its children are taken out of the pair, as before).
+- **(c) Headline:** each half in its verdict's color (`dualHeadlineHTML`: green wins, red costs, blue fair).
+- **(d) Trade rows:** "Dyn" before the dynasty value.
+- **(e) "To make it fair": Value by: Dynasty | In-Season** at the top of the box in a league with both sets (Dynasty
+  by default; in memory, so a reload goes back to it). In-Season values the gap and the candidates by the In-Season
+  set. When the picked value already calls it fair but the other doesn't, the box stays with the switch and "Fair by
+  your In-Season rankings as it stands." (`setFairBasis`, trade/fairSection.js; the action re-runs the trade and keeps
+  focus on the switch).
+- Guide (steps 3 and 9) and the CHANGELOG line updated. `CACHE_NAME` v2.8.116 → v2.8.117.
+
+**Tests.** Spec: the headline's colored halves; the card's two rows (class, set, verdict, totals) and its height under
+200px; "Dyn" on the rows; the switch (Dynasty pressed, In-Season gives "you'd add" by your In-Season rankings, focus
+kept, back); the export's text; the roster badge's text and title; every row's shape at both widths (the badge under
+the team on phones, beside it on desktop); no switch, label or card in the other leagues. 12/12; unit 461.
+
+### S24, round 4: the owner's review of round 3
+
+**(a) Roster badge.** The overall ranks moved from a `title` (hover only, the browser's own box) into the site's
+tooltip (`.tooltip-container` around the badge, js/shared/ui/tooltips.js): tap on a phone, hover on a computer,
+keyboard too, kept on screen. It reads "In-Season: WR16 (T8), #36 overall (T8)" over "Dynasty: …". The line above the
+list says where they went: "Position ranks by your In-Season rankings (…) and your dynasty rankings (…). Tap or hover
+over a player's ranks for his overall ranks." Legend line and Guide updated.
+
+**(b), (c) Trade verdicts** (owner: the round 3 card's small, tight text looked busy; the market banner, now the odd
+one out, drew the eye; the one-sentence headline didn't appeal, "maybe two lines or cards"). Now two matching tiles
+side by side at every width are the headline: **NOW** "by In-Season" and **LONG-TERM** "by dynasty", each with the
+verdict in large type ("Favors You"), the points and swing ("+7,721 pts · 68%") and "Get 11,370 · Give 3,649", tinted
+by its verdict like the banners, its (i) naming the set and the waiver adjustment. Market Consensus is one muted line
+under them ("MARKET Fair Trade +280 · 6% Get 4,587 · Give 4,307 (i)"), colored only in its verdict word. The sentence
+("Wins now (+7,721), costs long-term (−3,222)") stays as the tiles' group label for screen readers. Export Trade copies
+the tiles and the line. `dualVerdictTiles`, `marketStrip` (trade/verdict.js); round 3's card and headline are gone.
+
+**Power Rankings after the trade** (owner: busy on a phone), in a league with both sets: no headline (the tiles carry
+the value), the summary as three short labeled lines (`powerSummaryLines`, trade/lineupImpact.js: "LINEUP 3rd of 12,
+stronger (107% → 108% of avg)", "ROOMS RB 7th → 5th · TE 2nd → 4th", "FUTURE 3rd → 4th"), the source line moved into
+"How this is worked out" ("Which rankings: …"), and a shorter key ("1 = strongest of 12. Green better, red worse.").
+Other leagues keep today's section.
+
+`CACHE_NAME` v2.8.117 → v2.8.118. Tests: unit `powerSummaryLines`; spec: the tiles (side by side, verdicts, points,
+totals, the group's label), no headline, the Power Rankings lines and the moved source line, the roster tooltip
+opening on tap inside the window and closing again, the new source line; S23's spec follows both moved lines.
+
+A trap found on the way (round 4): the Roster row's info box (`.mls-player-row-info`) has `overflow: hidden`, which
+clipped the badge's tooltip. Letting it out only while open (`:has(:hover)`) reflowed the row under the pointer, which
+ended the hover, so it flickered and a tap landed beside the badge. Rows with the two-set badge now never clip
+(`overflow: visible; min-width: 0`, the same width as before). The spec checks the open tooltip is the topmost element
+at its centre (it fails with that rule removed).
+
+### S24, round 5: tiles stacked on phones; the short Power Rankings lines in every league (owner)
+
+- **Owner: "Why side-by-side verdict cards on mobile? We have more vertical space and less horizontal."** My reason was
+  to read Now and Long-term in one glance, as the headline they replaced; at 375px that left each tile ~160px and
+  cramped. On phones (under 768px) the tiles now stack, each laid out sideways (NOW / by In-Season on the left; Favors
+  You, "+7,721 pts · 68%" and "Get … · Give …" on the right), about 70px tall each. Side by side from 768px as before.
+- **Owner: "have Redraft leagues match."** Every Sleeper league's Power Rankings after the trade (your team and their
+  team's fold) now uses the short labeled lines, the source line in "How this is worked out" ("Ranked by your ROS
+  rankings.") and the short key. Leagues without both sets keep the headline (the only line there joining value and
+  lineup); the Lineup line then leaves out the percent the headline already gives (`powerSummaryLines(..., { pct })`).
+  Manual leagues' "Your lineup after the trade" is unchanged. CHANGELOG line ("reads shorter in every league"), Guide.
+- `CACHE_NAME` v2.8.118 → v2.8.119. Tests: the tiles' phone layout (stacked, under 90px, verdict on the label's line)
+  and desktop layout; `mls-trade-impact.spec.mjs` follows the lines, key and moved source line; unit for `pct`.
+
+**Checks (round 5).** Full `npm run check`: check-precache OK, 462 unit tests, Playwright 561 passed, 5 skipped, and
+only `visual.spec.mjs` failed, on the environment message (Chromium 153 here). Screenshots rendered here on main
+(1541b1b) and this branch: still only **`mls-league-guide.png`** changes (`desktop/` 1280×8122 → 1280×8447, `phone/`
+390×18492 → 390×19524: the legend lines and Guide sentences); the other 40 are pixel-identical. Both from the pull
+request's CI.
+
+### S24, round 6: my second review as a user; the owner took 1–4, (a) for 1, and a note for 5
+
+Checked at 375px and 1280px on the owner's backup: May the Receptions (dynasty, superflex), League of Ordinary
+Gentlemen (keeper, no In-Season set), LOOG (redraft), a trade with a pick, the make-it-fair switch, and the Export Trade
+image (with Power Rankings), which read well.
+1. **A 1QB In-Season set in a superflex league** (the owner's "ROS Redraft": Lamar Jackson QB3 but #57 overall, so his
+   Now value was 3,616 against 9,299 by dynasty, and trading him away "won now" by +3,839). Values come from overall
+   ranks, so every QB trade in a superflex league leaned that way; the Roster chips (position ranks) didn't. Owner's
+   choice (a): a warning. In a superflex league (a SFLEX slot or two QB slots), with a QB in the trade, when the
+   In-Season set's top 50 holds fewer than 8 QBs (scaled to the positions known from the league's synced map, 20+
+   needed): "Your In-Season rankings (ROS Redraft) look like a 1QB list (1 QB in their top 50), and this league is
+   superflex, so Now undervalues QBs. Use a superflex set as this league's In-Season rankings." with **Choose on the
+   Roster tab**. Amber, under the tiles, on screen only. `isSuperflex`, `oneQbLook` (rankings/nowAndLater.js),
+   `oneQbWarning` (trade/verdict.js).
+2. **The "no In-Season rankings" note** in the Trade Analyzer is a quiet box now, with **Choose on the Roster tab**
+   (`goToSeasonPicker`, power/rosterCard.js: the Roster tab, the rankings card opened, scrolled to and focused on the
+   In-Season picker). The superflex warning uses the same button.
+3. **The market line's (i)** sits beside "MARKET", and its numbers and totals each stay whole, so on a phone a wrap
+   moves the totals, not the (i) alone.
+4. **The gap chip's legend line** is two lines on a phone: "Roster tab, dynasty and keeper leagues: your In-Season and
+   dynasty rankings are far apart at his position, or one leaves him out. Now > long-term: a sell-high candidate.
+   Long-term > now: buy-low or hold. Tap for more."
+
+`CACHE_NAME` v2.8.119 → v2.8.120; CHANGELOG line. Tests: unit (`isSuperflex`, `oneQbLook`); spec (the warning with a QB
+in a superflex league, none without a QB or without superflex; the market (i)'s place; the note's button opening the
+In-Season picker).
+
+**Left for later (owner: "make a note"):**
+- **"To make it fair" with long names on a phone** (from S19's layout, not this card): a name like "Rhamondre Stevenson"
+  is kept whole, so the value and Add drop onto their own line under it, which reads oddly. Options: let the name
+  shrink with an ellipsis and the full name in the row's title, or put the "Fair · 2% their way" line beside the value
+  so the row stays two lines. Check against `rowOverlaps` in `tests/mls-trade-fair.spec.mjs` (names whole was a round 10
+  and 14 choice there).
+- ~~Power Rankings' Start in a superflex league with a 1QB In-Season set~~: done in round 7.
+
+### S24, round 7: superflex QB prices for a 1QB-looking In-Season set (owner: "automatic, with the note")
+
+**The question.** Round 6 found Power Rankings' Start reads the In-Season set's overall ranks too, so a 1QB set
+undervalues QBs there as it did in trades. The owner asked whether Start could go by position. Answer: position rank
+alone can't choose a superflex starter or set a value (QB5 and RB5 aren't worth the same), so something has to say
+what the Nth QB is worth in this format. I offered (a) every In-Season player priced by position on the dynasty set's
+scale, (b) only where the In-Season set's format looks different, (c) leave it. The owner leaned (b): (a) would carry
+the dynasty set's long-term pricing (young RBs and WRs over aging QBs and TEs) into "now" in every league, making 1QB
+dynasty and 1QB redraft the same. The owner asked about a toggle; I recommended automatic with a note (a toggle is hard
+to explain, the format is a fact the app can check, and S23's answer was a default per place). Owner: "Build it that way,
+automatic with the note." TE premium left out (a TEP list is hard to tell from a plain one).
+
+**What it does.** In a superflex league (a SFLEX slot or two QB slots) whose In-Season set looks 1QB (fewer than 8 QBs in
+its top 50, round 6's check) and whose dynasty set doesn't: each QB keeps his In-Season order among QBs and takes the
+overall rank the dynasty set gives that QB spot (In-Season QB3 = the dynasty set's QB3); past the dynasty set's last QB,
+its last rank plus the average gap. Other positions, 1QB leagues, redraft leagues and the Long-term side are unchanged.
+On the owner's May the Receptions: Lamar Jackson's Now value 3,616 → 8,492, and Chase for Lamar plus the 2029 1st reads
+Favors Them (−1,037) now as well as long-term, where it read "wins now" by +3,839.
+- `superflexQbPrices(reqs, seasonData, dynastyData, posOf)` and `SF_QB_NOTE` (rankings/nowAndLater.js, pure): a copy of
+  the In-Season list with the QBs re-ranked (`seasonRank` keeps the original), or null.
+- Where: `tradeSeasonSet()` (trade/verdict.js) returns the priced list with `sfQbPrices`, so the rows' Now values, the
+  Now tile, "To make it fair" on In-Season and the trade's Power Rankings read it; `activePowerRankings()`
+  (leagues/sync.js) gives Start (and the rooms with I'm competing) the priced list, so the table, labels, power strip and
+  Power Rankings after the trade follow; All My Leagues does the same per league (power/allLeagues.js); the Roster
+  tab's Sort by In-Season orders by it (the badges keep the set's own ranks).
+- The note, "Your In-Season rankings look 1QB, so QBs are valued at your dynasty rankings' superflex QB prices, in your
+  In-Season order.": under the trade's tiles when a QB is in the trade, in its "How this is worked out", and under the
+  Power Rankings table's source line. Round 6's warning is gone (the prices fix what it warned about).
+- `CACHE_NAME` v2.8.120 → v2.8.121; CHANGELOG line and Guide sentence updated.
+
+**Tests.** Unit: QBs take the dynasty QB prices in order, others untouched, nothing in a 1QB league or with a
+superflex-looking In-Season set or a 1QB-looking dynasty set, and the continuation past the dynasty set's last QB.
+Spec: the fixture as superflex with a 1QB-looking In-Season set: Lamar's Now value at the dynasty QB1 price, Chase's
+unchanged, the note under the tiles and in the trade's Power Rankings notes, none without a QB in the trade, the note
+under the Power Rankings table; not superflex: the set as it is, no notes.
+
+**Left over.** The lineup with no Weekly set (S23: it reads the In-Season set) and the Waiver Wire's In-Season Rank
+still use the In-Season set as it is; both choose by position and FLEX ranks first, so a 1QB list mostly matters there
+for the superflex slot. Worth a look if a superflex lineup ever benches a QB it shouldn't.
+
+### S24, round 8: my third review as a user; the owner took all four, (a) for #1
+
+Checked on the owner's backup at 375px and 1280px: round 7's prices on May the Receptions (QB trades, the Power Rankings
+note, Sort by In-Season putting Lamar first), Gridiron Best Ball (1QB dynasty: untouched, as meant), LOOG (redraft).
+1. **Superflex redraft leagues on a 1QB ROS set** (the owner's LOOG, How I Met Your Punter, and League of Ordinary
+   Gentlemen played as redraft, all on "ROS Redraft"): no dynasty set to borrow prices from, so round 7 can't apply;
+   Drake Maye for Rashee Rice read Fair by your rankings while the market said Favors Them 68%. Owner's choice (a): a
+   note, amber, "Your ROS rankings look 1QB and this league is superflex, so QBs are valued low. Use a superflex set for
+   this league." with **Change on the Roster tab** (to the league's ROS set picker when it has no In-Season slot), in
+   the Trade Analyzer when a QB is in the trade, and under the Power Rankings table ("Change it above"). The same for a
+   dynasty league whose dynasty set looks 1QB ("Your dynasty rankings look 1QB…"), when round 7's prices aren't in
+   use. `oneQbRankingsNote` (rankings/nowAndLater.js), `oneQbNote` (trade/verdict.js), `oneQbTableNote`
+   (power/rosterCard.js); `goToSeasonPicker` falls back to the ROS set picker.
+2. **"To make it fair" called a trade fair when nothing in it had a value** by the picked set (Gridiron: two backup QBs
+   missing from "Dynasty 1QB"). It says "None of these players are in your dynasty rankings." now.
+3. **The notes under the Now / Long-term tiles** ("… isn't in your In-Season rankings, so he counts as 0", and the old
+   "Your Dynasty Rankings: none of the players entered were found…") were loose lines; they're one quiet box under the
+   tiles now (`.mls-trade-tile-notes`, also in Export Trade), and a missing tile says why: "None of these players are in
+   your dynasty rankings, so there's no Long-term verdict."
+4. **The superflex note broke "In-Season" at its hyphen** the second time it appeared; every one is kept whole now.
+
+`CACHE_NAME` v2.8.121 → v2.8.122; CHANGELOG line. Tests: spec cases for the redraft note (trade with and without a QB,
+the Power Rankings note, the button to the ROS picker, none when not superflex), the trade with no dynasty values (one
+tile, one notes box, make it fair's wording), and both "In-Season"s whole.
+
+**The owner's idea, to discuss: a toggle to bring in the market's QB prices** in these leagues (round 7's mechanism,
+with FantasyCalc's superflex list in place of a dynasty set). See the next entry once decided.
+
+### S24, round 9: the switch, "Price QBs by Market Consensus (superflex)" (owner: "Build the toggle that way")
+
+Where round 8's note shows (a superflex league whose own rankings look 1QB, no superflex set to borrow from), the note
+carries a switch, saved per league (`league.qbMarketPrices`, carried over by a sync, in backups with the leagues; no
+storage key). On: QBs keep your order and take the market's superflex QB prices (round 7's `superflexQbPrices` with
+Market Consensus in place of a dynasty set), everywhere your values are used: Power Rankings (table, labels, power
+strip, All My Leagues), the Trade Analyzer's "Your Rankings" values, "To make it fair", Power Rankings after the trade,
+and, in a dynasty league, round 7's In-Season prices (borrowed from the priced list).
+- **Ready only with superflex market values of the league's type**: the fetch's recorded format (`State.marketFormat`:
+  `qbs` 2 and the same redraft / dynasty type as the league), or, for an uploaded file, a list that looks superflex.
+  Otherwise the switch waits: "QBs can't be priced by Market Consensus yet: fetch superflex market values for this
+  league in Trade Finder (Scout tab)." (Found on the owner's data: the loaded values were dynasty; borrowing dynasty QB
+  prices into a redraft league would have priced in youth.)
+- **The note's three states**: off (amber, round 8's text, the Roster tab button, the switch), waiting (amber, the text
+  above, the switch on), on (quiet: "QBs priced by Market Consensus (superflex), in your order.", the switch on).
+  `qbMarketPricing`, `qbMarketNoteHTML`, `marketAsRanked` (rankings/nowAndLater.js); `marketIsSuperflex`,
+  `leagueQbMarketPricing`, `activeOwnRankings`, `setQbMarketPrices` (leagues/sync.js); the callers in scout/engine.js,
+  trade/fairSection.js, trade/verdict.js, power/allLeagues.js, power/rosterCard.js.
+- On the owner's LOOG (redraft, superflex, 1QB ROS list), with the switch on and superflex values: Drake Maye for
+  Rashee Rice reads Favors Them by your rankings too (Maye at the market's QB price), where it read Fair.
+- Not touched: the lineup and the Waiver Wire (position and FLEX ranks first), Market Disconnect.
+
+`CACHE_NAME` v2.8.122 → v2.8.123; CHANGELOG line; Guide sentence. Tests: unit (`qbMarketPricing`: applies, off, on,
+waiting, not superflex; `qbMarketNoteHTML`'s three states); spec (the switch on prices Lamar at the market's QB1, the
+note and Power Rankings say on and saved, 1QB market values wait, dynasty values in a redraft league wait, off from
+Power Rankings).
+
+**Checks (round 9).** Full `npm run check`: check-precache OK, 469 unit tests, Playwright 571 passed, 5 skipped, and only
+`visual.spec.mjs` failed, on the environment message (Chromium 153 here). Screenshots: the screenshot league is redraft
+and 1QB with no rankings, so none of rounds 6–9 shows there; only `mls-league-guide.png` changes (Guide sentences and
+legend lines), from the pull request's CI.
+
+### S24, round 10: my fourth review as a user, with real FantasyCalc values; three fixes (owner: "Do all three")
+
+Checked on the owner's backup at 375px and 1280px with live FantasyCalc values: in LOOG, Trade Finder's fetch followed
+the league (redraft, superflex, 197 players), and the switch from round 9 worked end to end (Drake Maye at the market's QB
+price, 8,492; the verdict Favors Them; the same switch on the Power Rankings card). Switching to May the Receptions,
+the format warning said the redraft values don't fit a dynasty league, as it should.
+1. **A note said three times.** The redraft values have no picks, so "2029 1st isn't in the Market Consensus data, so
+   it's left out of this total." showed in both tiles' notes and again under the market line. Each note is said once now.
+2. **Four boxes under the tiles.** The tiles' notes, the superflex QB note, the market's notes (and its no-total note)
+   are one box under the tiles (`noteBox` in trade/verdict.js, deduplicated by text); the market line and its two status
+   lines follow. Export Trade copies the box.
+3. **The switch lost keyboard focus** when its card redrew (Roster tab and Trade Analyzer). `setQbMarketPrices`
+   (leagues/sync.js) puts focus on the new switch in the same place once the redraw lands, as Sort by and "To make it
+   fair" do.
+
+`CACHE_NAME` v2.8.123 → v2.8.124. Tests: the switch focused after flipping it in both places; a pick the market doesn't
+price said once, inside the one box, nothing loose under the market line. 24/24 in the S24 spec.
+
+### S24, round 11: my fifth review as a user; the owner took 2, 3 and 4
+
+Checked on the owner's backup: the gap chips across all 14 dynasty and keeper leagues (1–10 a league, mostly 2–5, and
+the flags held up: Hampton and Henderson Long-term > now, Metcalf, Jacobs and Diggs Now > long-term), the Roster tab at
+both widths, the keeper league's line, All My Leagues for Lamar Jackson, Export Trade with Power Rankings, the Guide.
+1. Not built (owner): "ROS Redraft" leaves out Jalen Hurts, Justin Herbert, Bo Nix and Baker Mayfield, so they read
+   Long-term > now; the owner confirmed that's the list's intent (injured or playing poorly).
+2. **Two-QB leagues were labelled "1QB"** (League of Ordinary Gentlemen starts QB, QB): the format label counted only a
+   SUPER_FLEX slot. It reads "2QB" now (`formatBadge` in leagues/sync.js; a re-sync updates a saved league). The market
+   format and the QB notes already counted two QB slots as superflex. Predates S24; CHANGELOG line.
+3. **Export Trade left in the superflex QB note** ("Your In-Season rankings look 1QB…"), which is about your rankings,
+   not the trade; the export's clone drops it (`[data-sf-qb-note]`, trade/export.js), keeping the notes that explain
+   the totals, and drops the box if that leaves it empty.
+4. **The Guide's "Dynasty and keeper leagues" item** (step 3) was one 25-line paragraph on a phone; it's four short
+   sub-items now (two sets; Upload or Auto-Fetch into; both ranks and Sort by; the gap chip), same words.
+
+`CACHE_NAME` v2.8.124 → v2.8.125. Tests: the export's clone without the superflex note and with the pick note; a
+two-QB fixture league's label reads 2QB.
+
+### S24, round 12: the owner's notes on the Roster tooltip, the In-Season sort, the switch, and the market line
+
+1. **The two-set badge's tooltip wrapped with room to spare** on a computer (the site's tooltips are a fixed 260px).
+   This one sizes to its lines up to 360px (`.mls-rank-dual-text`; the window cap still applies on phones).
+2. **Nothing said how Sort by In-Season orders QBs** when the In-Season set looks 1QB in a superflex league (round 7's
+   prices: Lamar Jackson sorted first though his tooltip said #57). A line under Sort by while it's on In-Season and the
+   prices apply ("Your In-Season rankings look 1QB, so QBs sort at your dynasty rankings' superflex prices. Tap a QB's
+   ranks for what he counts as."), and a priced QB's tooltip adds "Counts as #5 in this superflex league (superflex QB
+   prices)." The pricing now reads `activeOwnRankings()` as the trade does.
+3. **No "Price QBs by Market Consensus" switch in Managers of the Round Table**: by design. The switch shows only where
+   there's no superflex list of yours to borrow from; Managers' dynasty set is superflex, so round 7's prices apply
+   automatically (its note). I offered a "Price QBs by: your dynasty rankings | Market Consensus" choice there; owner:
+   **leave it as is**.
+4. **The market line was over-corrected** in round 4 (a footnote; only its verdict word in color). Owner's choice (a):
+   a slim bar, its verdict's color on the left edge and a faint tint (5%), the verdict word larger (0.95rem, 800). Still
+   one line, under your two tiles. CSS only (`.mls-trade-market-strip`); `CACHE_NAME` v2.8.126 → v2.8.127.
+
+`CACHE_NAME` v2.8.125 → v2.8.126. Tests: the sort note on In-Season only, a QB's "Counts as" line, the tooltip wider
+than 260px and at most 360px on desktop.
+
+### S24, round 14: my sixth review as a user; the owner took 1 and 2, and added 3 and 4
+
+Checked on the owner's Oct 28 backup in May the Receptions Be With You: the Roster tab and the Trade Analyzer on a phone,
+and the Lineup tab without a Weekly set (the 1QB In-Season list there doesn't cost a superflex QB his slot: SFLEX takes a
+ranked QB first).
+1. **The superflex QB note showed for a QB the In-Season set leaves out** (Jalen Hurts, Sam Darnold): he counts as 0 Now,
+   so the prices change nothing. The note needs a QB in the trade that the In-Season set ranks (`sfQbNote`, `seasonMatched`).
+2. **Two wordings for "not in the rankings"**: the tile notes said "isn't in your In-Season rankings, so he counts as 0";
+   Power Rankings after the trade said "isn't in these rankings, so he counts as unranked (almost no value)". Both are
+   right (0 trade value; last in a room), so the second keeps its words and names its set: your In-Season rankings (rooms
+   with "I'm competing", or a league with only an In-Season set), your dynasty rankings, your ROS rankings or Market
+   Consensus. The Future line names "your dynasty rankings" too where there's an In-Season set.
+3. **The phone tiles' verdict sat centred** (owner's screenshot: "Favors You" not on the right): `.trade-verdict-result`'s
+   `text-align: center` beat the tile's right alignment. CSS only.
+4. **Lineup rows on phones** (owner's idea): names like "Rhamondre Stevenson (11)" split onto two lines with room to the
+   right, because the projection, swap and lock took about 100px side by side. Under 480px they stack in a column (about
+   35px wide, about 80px tall). Rows with a game-time or status badge (the owner's: three or four lines) keep their height
+   or get shorter, since the Pos | Flex badge now has room for one line; rows with only a name and one meta line (no
+   badge, as in the test fixture) grow from about 58px to about 95px. Asked the owner whether to keep that. Predates S24;
+   CHANGELOG line. **Visible change**: `phone/mls-league-lineup.png` (390x3027 → 390x3415; the only PNG this round
+   changes, by pxdiff against round 13 in this container). `mls-display-ranks.spec.mjs`'s split-badge check now runs
+   at 320px on phones (390px fits the badge on one line now).
+
+`CACHE_NAME` v2.8.127 → v2.8.128. Tests: no superflex note for a QB missing from the In-Season set, the Power Rankings
+note naming the dynasty set, the phone tiles' verdict on the right; `tests/mls-lineup-row-actions.spec.mjs` (stacked on a
+phone, in a row on desktop; fails on the old CSS).
+
+### S24, round 15: the Lineup column centred; Herbert in Draft Scouts of America; is the Trade Analyzer too busy?
+
+1. **The stacked Lineup column looked ragged** (owner): right-aligned, the "proj" caption, the bordered swap and the
+   borderless lock ended at one edge but looked uneven. I rendered three versions on the owner's league: as built,
+   centred, and projection on top with swap and lock side by side. Side by side is as wide as the old row, so
+   "Rhamondre Stevenson (11)" wrapped again. Owner chose **centred**. CSS only; the row-actions test checks the
+   shared centre line. `CACHE_NAME` v2.8.128 → v2.8.129.
+2. **"Herbert is unranked" in Power Rankings after the trade** (Draft Scouts of America, Herbert + 2028 1st for Burrow):
+   not a calculation bug. The league has "I'm competing" on, so Start and the rooms read the In-Season set ("ROS
+   Redraft"), which leaves Herbert out; the dynasty set has him #36. "Value by: Dynasty" only drives To make it fair.
+   Nothing on screen said so. Built in round 16.
+3. **Is the Trade Analyzer too busy?** (owner: "a bit iffy"; "are we overthinking?"). Partly: each piece earns its place,
+   but the order made a typical user scroll past the extras to see the players. Measured on the owner's Herbert-for-Burrow
+   trade on a 390px phone: To make it fair 383px down, Power Rankings 693px, **You Receive / You Give Up 1,040px** (of
+   1,323px). Built in round 16.
+
+### S24, round 16: players under the verdict, "More analysis" below, and one Value by switch
+
+The owner's direction ("move You Receive / You Give Up up ... everything else below, as extra information for power
+users") and their idea for Herbert ("rely on the Dynasty | In-Season switch ... based on what the user sees").
+1. **New order, every league**: verdict (tiles, notes, market line) → You Receive / You Give Up → "More analysis" (a
+   quiet divider and heading) → To make it fair → Power Rankings after the trade → Export. On the owner's trade the
+   players now start 383px down (was 1,040px). Nothing hidden or folded. This reverses S19's "right under the verdicts"
+   for To make it fair, by the owner's choice. The heading is a sibling of the sections, not a wrapper: Export Trade picks
+   Power Rankings up as a direct child of the output.
+2. **One Value by switch** (`moreAnalysisHTML`, trade/fairSection.js), beside "More analysis" in a league with both sets,
+   moved out of the fair box. It drives To make it fair (as before) and, new, Power Rankings' Ovr and position rooms;
+   Start stays In-Season and Future dynasty (as on the Roster tab). Default: In-Season when "I'm competing" is on (so
+   the Trade Analyzer opens matching the Roster tab's table), else Dynasty. A choice holds for its league until a reload.
+   The "Which rankings" line drops "value" there (no headline in that mode, so no value to name).
+3. **The visible line** (owner: "if there is a way to make that line shorter"): only when "I'm competing" set the default,
+   "In-Season since I'm competing is on." under the switch, one line on a 375px phone. On phones the heading, the switch
+   and the line stack left-aligned (side by side, "Value by" wrapped beside a squeezed switch); on wider screens the
+   switch sits at the right of the heading.
+4. The Guide's step 9 and the Power Rankings step say so; CHANGELOG line for the order, the S24 line updated.
+
+`CACHE_NAME` v2.8.129 → v2.8.130. Tests: the order and the moved switch (S24 spec's main test; mls-trade-impact's order
+check now expects players before "More analysis" before Power Rankings), a new test for "I'm competing" (In-Season by
+default with the line, Derrick Henry missing from the In-Season set counts as unranked; Dynasty removes the line and the
+note). Screenshots: none of the tabs' baselines show a trade, so only the Guide's (already changing this card) move.
+
+
+### S24, round 17: marks tie each note under the tiles to its card; my last review as a user
+
+1. **Which card a note is about** (owner: "Justin Herbert isn't in your In-Season rankings, so he counts as 0" sat right
+   under the Long-term tile, which it isn't about). Each card with a note gets a mark after its totals: *, then † and ‡,
+   in the order Now, Long-term, Market (only cards on screen, only those with a note). Each note starts with the marks
+   of every card it's about: a pick the market doesn't price is about all three ("*†‡ 2028 1st isn't in…"), the
+   superflex QB note about Now. A note about no card (a set with no tile) gets none. `markedNoteBox` replaces
+   `noteBox` in trade/verdict.js (same dedupe). Export Trade drops a card's mark when the note carrying it is left out
+   (the superflex note). Marks are `aria-hidden`: the notes name what they're about.
+   Not needed elsewhere: in a league with one set, each banner's notes sit inside that banner already.
+2. Review on the owner's backup (Draft Scouts of America, Herbert + 2028 1st for Burrow, both widths; How I Met Your
+   Punter, a redraft trade, on a phone): the new order and "More analysis" read well in both; redraft shows the heading
+   without a switch. One finding, put to the owner: a pick's values carry a "*" meaning "market value" ("Dyn 1,847*",
+   "Now 1,847*"), explained only by a hover title on Dyn (never on a phone, nothing on Now), and now beside cards whose
+   "*" means "see the note".
+
+`CACHE_NAME` v2.8.130 → v2.8.131. Tests: the marks (Now only for a player missing from the In-Season set; *, †, ‡ and a
+"*†‡" note for a pick the market lacks; none without notes); the superflex note's text now starts with "*"; the export
+keeps "*† 2029 1st".
+
+### S24, round 18: a pick's market value said in words, not "*"
+
+Owner took round 17's finding. A pick's value from Market Consensus ("Dyn 1,847*", "Now 1,847*") loses its "*" (on Dyn it
+was a hover title phones never showed; on Now nothing explained it; and "*" on the verdict cards now means "see the
+note"). Instead one muted line under the two sides, when a pick in the trade is valued that way: "Picks are valued by
+Market Consensus: your rankings don't rank picks." (`data-pick-note`, scout/engine.js). Export Trade's image drops its
+pick "*" too, and its footnote reads "Draft picks: market value." (the image also carries the card marks). To make it
+fair keeps its own "2027 1st*", explained in its box right under it. Predates S24 (picks from the market, S13).
+`CACHE_NAME` v2.8.131 → v2.8.132. Test: in mls-trade-impact.spec.mjs, a pick the market prices shows its value without
+"*" and the line (fails on round 17's code: "5,905*"); no line while the pick has no value.
+
+### S24: screenshot baselines from CI (PR #210)
+
+CI's first run failed on exactly the three screenshots the LOG lists: `desktop/mls-league-guide.png` (1280x7841 →
+1280x8332), `phone/mls-league-guide.png` (390x17549 → 390x18954; the Guide's new text) and `phone/mls-league-lineup.png`
+(390x2936 → 390x3338; the stacked, centred row column). Each `-expected.png` was byte-identical to the committed
+baseline; the `-actual.png` files from the run's `playwright-results` artifact are the new baselines.

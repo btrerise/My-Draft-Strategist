@@ -26,6 +26,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { withViewTransition } from '../../shared/ui/viewTransition.js';
 import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from '../rankings/season.js';
+import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '../rankings/nowAndLater.js';
 
     // --- LEAGUE & SYNC LOGIC ---
     export function refreshLeagueDropdown() {
@@ -176,11 +177,72 @@ import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from
     // Power Rankings' sources for the active league, with your own rankings: Start from this season's
     // rankings, Ovr and the rooms from the dynasty (ROS) set unless "I'm competing" is on, and Future
     // from the dynasty set. Each is State.rosRankings when there's no In-Season set, so nothing changes then.
+    // In a superflex league whose In-Season set looks 1QB (improvements S24, round 7), Start (and the rooms with "I'm
+    // competing") read it with superflex QB prices, and sfQbPrices says so for the table's note.
+    // Market QB prices (round 9): is Market Consensus loaded for superflex? The fetch says (State.marketFormat); a file
+    // upload doesn't, so its list is judged as the rankings are.
+    export function marketIsSuperflex() {
+        if (State.marketRankings.length === 0) return false;
+        if (State.marketFormat && State.marketFormat.qbs !== undefined) return String(State.marketFormat.qbs) === '2';
+        const posOf = (c) => State.marketRankings.find(m => m.cleanName === c)?.pos?.replace(/[^A-Z]/g, '') || undefined;
+        return !oneQbLook(marketAsRanked(State.marketRankings), posOf).oneQb;
+    }
+
+    // A league's own rankings (its ROS slot) with Market Consensus QB prices when its switch is on (round 9).
+    // Ready when the market values are superflex and, when the fetch recorded it, for this league's type (redraft or dynasty):
+    // a redraft league shouldn't borrow dynasty QB prices.
+    export function leagueQbMarketPricing(league, data) {
+        const posMap = (league && league.globalPosMap) || {};
+        const want = league ? leagueMarketFormat(league) : {};
+        const typeOk = !State.marketFormat || !State.marketFormat.type || !want.type || State.marketFormat.type === want.type;
+        return qbMarketPricing(league, data, (c) => posMap[c], marketAsRanked(State.marketRankings), marketIsSuperflex() && typeOk);
+    }
+
+    // The active league's own rankings as Power Rankings and the Trade Analyzer value them: State.rosRankings, with market
+    // QB prices when the league's switch is on and applies.
+    export function activeOwnRankings() {
+        if (State.rosRankings.length === 0) return State.rosRankings;
+        return leagueQbMarketPricing(getActiveLeague(), State.rosRankings).data;
+    }
+
+    // The switch (round 9): saved on the league; Power Rankings redraw, and a trade on screen re-runs in place.
+    export function setQbMarketPrices(checked) {
+        const league = getActiveLeague();
+        if (!league) return;
+        league.qbMarketPrices = !!checked;
+        localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+        // Both places redraw, so the switch you used is replaced: focus goes to its new copy (round 10), as the Roster
+        // tab's Sort and "To make it fair" do, rather than back to the top of the page.
+        const from = document.activeElement && document.activeElement.closest && document.activeElement.closest('#tradeOutput, #powerRankingsOutput');
+        const old = from ? from.querySelector('[data-action="setQbMarketPrices"]') : null;
+        loadRosterTab();
+        const rerun = document.getElementById('tradeOutput')?.innerHTML.trim() ? runScout('trade') : null;
+        if (!from) return;
+        Promise.resolve(rerun).then(() => {
+            let tries = 0;
+            const refocus = () => {
+                const next = document.querySelector(`#${from.id} [data-action="setQbMarketPrices"]`);
+                if (next && next !== old) next.focus({ preventScroll: true });
+                else if (tries++ < 30) requestAnimationFrame(refocus);
+            };
+            refocus();
+        });
+    }
+
     export function activePowerRankings() {
         const league = getActiveLeague();
-        const season = activeSeasonRankings();
-        const dynasty = State.rosRankings.length > 0 ? State.rosRankings : season;
-        return { start: season, rooms: roomsUseSeason(league, State.rankingSets.ros) ? season : dynasty, future: dynasty };
+        let season = activeSeasonRankings();
+        const own = activeOwnRankings();
+        // No In-Season set: "this season's" list is the league's own, market QB prices and all (round 9).
+        if (season === State.rosRankings) season = own;
+        const dynasty = State.rosRankings.length > 0 ? own : season;
+        let sfQbPrices = false;
+        if (league && season !== dynasty && season !== own) {
+            const posMap = league.globalPosMap || {};
+            const priced = superflexQbPrices(league.reqs, season, dynasty, (c) => posMap[c]);
+            if (priced) { season = priced; sfQbPrices = true; }
+        }
+        return { start: season, rooms: roomsUseSeason(league, State.rankingSets.ros) ? season : dynasty, future: dynasty, sfQbPrices };
     }
 
     // `animate`: a switch you make yourself (the header's drop-down and arrows, a card's name, Switch on a
@@ -506,7 +568,10 @@ import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from
                 if (leagueData.settings.best_ball === 1) typeStr = "Best Ball";
                 let pprVal = leagueData.scoring_settings?.rec || 0;
                 let pprStr = pprVal === 1 ? "PPR" : (pprVal === 0.5 ? "Half-PPR" : "Std");
-                let isSF = leagueData.roster_positions?.includes("SUPER_FLEX") ? "SF" : "1QB";
+                // Two QB slots read "2QB" (S24, round 11: a two-QB keeper league was labelled "1QB"; the market and the
+                // QB notes already count it as superflex).
+                const qbSlots = (leagueData.roster_positions || []).filter(p => p === 'QB').length;
+                let isSF = leagueData.roster_positions?.includes("SUPER_FLEX") ? "SF" : (qbSlots >= 2 ? "2QB" : "1QB");
                 let tepVal = leagueData.scoring_settings?.bonus_rec_te || 0;
                 let tepStr = tepVal > 0 ? `TEP (+${tepVal})` : "";
                 formatBadge = `${typeStr} ${isSF} ${pprStr} ${tepStr}`.trim();
@@ -674,6 +739,10 @@ import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from
                 // Dynasty and keeper leagues' In-Season set and "I'm competing" (improvements S23).
                 seasonRankingSetId: existingLeague ? (existingLeague.seasonRankingSetId || null) : null,
                 powerCompeting: existingLeague ? !!existingLeague.powerCompeting : false,
+                // Market QB prices in a superflex league on a 1QB list (S24, round 9).
+                qbMarketPrices: existingLeague && existingLeague.qbMarketPrices ? true : undefined,
+                // The Roster tab's Sort by In-Season (improvements S24).
+                rosterSortSeason: existingLeague && existingLeague.rosterSortSeason ? true : undefined,
                 // Keeper leagues (S23, round 10): how many players Sleeper lets each team keep (its max_keepers is 1 in
                 // every other league type, so only kept here), and your League style, carried over like the sets.
                 maxKeepers: leagueType === 'keeper' ? (Number(leagueData.settings?.max_keepers) || null) : null,

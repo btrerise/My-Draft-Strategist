@@ -15,7 +15,8 @@ import { renderRosterPowerStrip, scrollToPowerRankings } from './snapshot.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { roomsUseSeason, seasonSetFor } from '../rankings/season.js';
 import { showTab } from '../nav.js';
-import { activePowerRankings } from '../main.js';
+import { activePowerRankings, leagueQbMarketPricing } from '../main.js';
+import { qbMarketNoteHTML, SF_QB_NOTE } from '../rankings/nowAndLater.js';
 
 // --- POSITIONAL POWER RANKINGS: ROSTER TAB CARD ---
 // Generated automatically (no Calculate button) every time the Roster tab renders -- see the
@@ -38,7 +39,7 @@ function resolvePowerRankingsSource() {
     const wantMarket = State.powerSettings.source === 'market';
     const own = activePowerRankings();
     const mine = own.rooms, market = State.marketRankings;
-    const fromMine = (note) => ({ rankings: mine, start: own.start, future: own.future, source: 'custom', note });
+    const fromMine = (note) => ({ rankings: mine, start: own.start, future: own.future, source: 'custom', note, sfQbPrices: own.sfQbPrices });
     if (wantMarket) {
         if (market.length > 0) return { rankings: market, source: 'market', note: '' };
         if (mine.length > 0) return fromMine('No Market Consensus data loaded yet, so this uses your own rankings instead.');
@@ -68,6 +69,30 @@ export const goToLeagueStyle = function() {
         const wrap = document.getElementById('leagueStyleWrap');
         if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
         document.getElementById('leagueStyleSelect')?.focus({ preventScroll: true });
+    }, 60));
+};
+
+function oneQbTableNote(ctx) {
+    const league = ctx.league;
+    if (!league || !ctx.source || ctx.source.source !== 'custom' || ctx.source.sfQbPrices || State.rosRankings.length === 0) return '';
+    // With its switch (round 9): price QBs by Market Consensus (superflex) instead.
+    const q = leagueQbMarketPricing(league, State.rosRankings);
+    if (!q.applies) return '';
+    const word = getPowerLeagueKind(league) === 'dynasty' ? 'dynasty' : 'ROS';
+    return qbMarketNoteHTML(q, word, '<button type="button" class="mls-btn-sm btn-link-inline" data-action="goToSeasonPicker">Change it above</button>');
+}
+
+// The Roster tab's In-Season picker, opened, scrolled to and focused (improvements S24, round 6): the Trade Analyzer's notes
+// about In-Season rankings point here.
+export const goToSeasonPicker = function() {
+    showTab('roster').then(() => setTimeout(() => {
+        const card = document.getElementById('rosRankingsCard');
+        if (card && !card.classList.contains('expanded')) card.querySelector(':scope > .rankings-card-header .rankings-card-toggle')?.click();
+        // In a league with no In-Season slot (redraft), the league's own ROS set picker (round 8).
+        const row = document.getElementById('seasonRankingsRow');
+        const useSeason = row && !row.hidden;
+        (useSeason ? row : document.getElementById('rosRankingSetSelect'))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById(useSeason ? 'seasonRankingSetSelect' : 'rosRankingSetSelect')?.focus({ preventScroll: true });
     }, 60));
 };
 
@@ -374,6 +399,11 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
     // In a dynasty league with an In-Season set, which set gave each column, right under the table (S23).
     const seasonKey = seasonSourceKey(ctx.league, ctx.source, ctx.futureLabel);
     if (seasonKey) html += `<div class="mls-power-source-key">${seasonKey}</div>`;
+    // Superflex QB prices for a 1QB-looking In-Season set (S24, round 7), under the line naming the sets.
+    // A superflex league whose own rankings look 1QB with no prices to borrow (round 8): the same note as the trade's.
+    const oneQb = oneQbTableNote(ctx);
+    if (oneQb) html += oneQb;
+    if (ctx.source && ctx.source.sfQbPrices) html += `<div class="mls-power-source-key" data-sf-qb-note>${SF_QB_NOTE.replaceAll('In-Season', '<span class="mls-nowrap">In-Season</span>')}</div>`;
 
     const notes = [];
     if (ctx.source && ctx.source.note) notes.push(escapeHtml(ctx.source.note));

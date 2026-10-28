@@ -15,7 +15,7 @@
 import {
     BYE_BADGE_HTML, DISMISS_ICON, PICK_BADGE_HTML, STARTS_ICON, UPGRADE_ICON,
     WARNING_ICON, bestBallBadgeMarkup, edgeBadgeMarkup, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup, leagueStatusChipMarkup,
-    moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, scoutPillMarkup,
+    moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, rankGapChipMarkup, scoutPillMarkup,
     sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, weekResultMarkup, weekStatusMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
@@ -50,6 +50,8 @@ const GROUPS = [
             'Unranked: he isn\'t in your rankings (Top Available\'s Trending list).'],
         [`<span class="badge mls-rank-badge">${rankBadgeParts(`Pos: #5${tierTag(3)}`, `Flex: #13${tierTag(3)}`)}</span>`,
             'On the Lineup and Roster tabs: his rank at his position, then his FLEX rank (Overall on the Roster tab), each with its tier in parentheses.'],
+        [`<span class="badge mls-rank-badge mls-rank-dual">${rankBadgeParts(`<span class="mls-nowrap">In-Season</span> WR16${tierTag(8)}`, `Dyn WR20${tierTag(6)}`)}</span>`,
+            'On the Roster tab, in dynasty and keeper leagues with In-Season rankings: his position rank in each set, this season\'s first, each with its tier. Tap it (or hover on a computer) for his overall ranks.'],
         [`${tierGapMarkup('is-up', '1 tier up')} ${tierGapMarkup('is-same', 'same tier')} ${tierGapMarkup('is-down', '1 tier down')}`,
             'In the Waiver Wire Assistant: the free agent\'s tier against the player he\'s compared with.'],
         [`<span class="mls-power-chip mls-power-chip-rec">Consider</span><span class="mls-power-chip">Hold</span>`,
@@ -72,6 +74,8 @@ const GROUPS = [
             'On the Dashboard\'s Best Available: an upgrade over one of your players at his position.'],
         [`<span class="btn-bare mls-ba-dismiss">${DISMISS_ICON}</span>`,
             'On Best Available: hides him in that league for the rest of the week.'],
+        [rankGapChipMarkup('now', '', SAMPLE) + rankGapChipMarkup('later', '', SAMPLE),
+            'Roster tab, dynasty and keeper leagues: your In-Season and dynasty rankings are far apart at his position, or one leaves him out. Now &gt; long-term: a sell-high candidate. Long-term &gt; now: buy-low or hold. Tap for more.'],
         [edgeBadgeMarkup(12, true) + edgeBadgeMarkup(-9, false),
             'In the Trade Finder: how far the market\'s rank is from yours. Green is a buy-low target, red a sell-high one.'],
     ]],

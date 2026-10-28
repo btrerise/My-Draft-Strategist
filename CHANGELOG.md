@@ -91,6 +91,32 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Trade Analyzer: the players come right under the verdict**, with To make it fair and Power Rankings after the trade
+  below them under "More analysis". On a phone the players used to sit over a screen below the verdict.
+- **Lineup rows on phones give names more room**: the projection, swap and lock buttons stack in a narrow column on the
+  right, so names like "Rhamondre Stevenson (11)" stay on one line.
+- **Leagues that start two QBs read "2QB"** in their format label (it said "1QB"; only a superflex slot counted).
+  Re-sync a league to update its label.
+- **Power Rankings after the trade reads shorter** in every league: Lineup, Rooms and Future as short labeled lines
+  instead of sentences, with which rankings were used under "How this is worked out".
+- **Dynasty leagues: now and long-term side by side.** In a dynasty or keeper league with In-Season rankings, the
+  Trade Analyzer gives each player two values ("Dyn", with "Now" for In-Season under it) and two verdict tiles, **Now**
+  (In-Season) and **Long-term** (dynasty), side by side on wider screens and stacked on phones, with Market Consensus as
+  one line under them. A **Value by: Dynasty | In-Season** switch under "More analysis" picks the set To make it fair
+  and Power Rankings' Ovr and position rooms read (In-Season to start when "I'm competing" is on, with a line saying so);
+  Power Rankings after the trade pairs the In-Season value with your lineup, and Export Trade shows both. On the Roster
+  tab each player shows both position ranks in one badge ("In-Season WR22 | Dyn WR40"; tap or hover it for the
+  overall ranks), a **Sort by: Dynasty |
+  In-Season** switch picks the order (remembered per league), and a chip marks players your two sets rank 12 or more
+  spots apart: **Now > long-term** (sell-high) or **Long-term > now** (buy-low or hold). A player one set leaves out
+  counts as far below it, so a startable player missing from the other set gets the chip too. A dynasty or keeper
+  league with no In-Season rankings says so on the Roster tab and in the Trade Analyzer, with a **Use it here** for
+  the set your redraft leagues use, and a button to the In-Season picker. In a superflex league whose In-Season set
+  looks like a 1QB list, QBs keep their In-Season order but are valued at your dynasty rankings' superflex QB prices
+  (Power Rankings' Start, the trade's Now values, To make it fair), with a note saying so. A superflex league whose
+  own rankings look 1QB (a redraft league's ROS set, say) gets a note in trades with a QB and under Power Rankings,
+  with a way to change them and a switch, **Price QBs by Market Consensus (superflex)**, that keeps your QB order but
+  uses the market's superflex QB prices in that league (it waits for superflex market values of the league's type). Redraft leagues are unchanged.
 - **The Scout tab follows a league switch made there.** Switching between a redraft and a dynasty league on the Scout
   tab left the Waiver Wire's Rank By on the old league's choices (ROS Rank, or Dynasty and In-Season Rank) until you
   left the tab and came back. Market Disconnect's report is also re-run for the new league, so who rosters each player

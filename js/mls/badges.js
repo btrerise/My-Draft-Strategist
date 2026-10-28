@@ -140,6 +140,17 @@ export const scoutPillMarkup = (cls, text) => `<span class="scout-status ${cls}"
 export const tierGapMarkup = (cls, text, title = '') =>
     `<span class="mls-tier-gap ${cls}"${title ? ` title="${title}"` : ''}><span class="mls-rank-sep">&middot;</span> ${text}</span>`;
 
+// --- NOW VS. LONG-TERM (render/roster.js, improvements S24) ---
+// On a Roster tab row in a dynasty or keeper league with an In-Season set, when the two sets' position ranks are far
+// apart (rankings/nowAndLater.js rankGap). kind: 'now' | 'later'; tip: plain text, escaped here. Tap: the tip as a
+// toast, like the rank-change chips (data-action="explainRankMove").
+export function rankGapChipMarkup(kind, tip, { sample = false } = {}) {
+    const cls = kind === 'now' ? 'is-now' : 'is-later';
+    const text = kind === 'now' ? 'Now &gt; long-term' : 'Long-term &gt; now';
+    if (sample) return `<span class="badge mls-gap-chip ${cls}">${text}</span>`;
+    return `<button type="button" class="badge mls-gap-chip ${cls}" data-action="explainRankMove" data-tip="${escapeHtml(tip)}" title="${escapeHtml(tip)}">${text}</button>`;
+}
+
 // --- TRADE FINDER (scout/marketDisconnect.js) ---
 // How far the market's rank is from yours: green for a buy-low target (+12), red for a sell-high one (-9).
 export const edgeBadgeMarkup = (delta, buyLow) => buyLow

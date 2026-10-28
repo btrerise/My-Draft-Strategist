@@ -6,7 +6,8 @@ import { State } from '../state.js';
 import { rankingIndex } from '../helpers.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { roomsUseSeason, seasonSetFor } from '../rankings/season.js';
-import { activePowerRankings, computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from '../main.js';
+import { superflexQbPrices } from '../rankings/nowAndLater.js';
+import { activePowerRankings, leagueQbMarketPricing, computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from '../main.js';
 
     // --- ALL-LEAGUES POSITIONAL POWER RANKS ---
     // Each league's power ranks come from THAT league's own ROS rankings (its named set, else
@@ -28,12 +29,17 @@ import { activePowerRankings, computePositionalPower, POWER_UNRANKED_RANK, power
         const setId = league[cfg.leagueSetIdKey];
         const set = setId ? State.rankingSets[cfg.setsKey].find(rs => rs.id === setId) : null;
         const season = seasonSetFor(league, State.rankingSets.ros);
-        const withSeason = (dynasty) => season && season.data.length > 0
-            ? { rankings: roomsUseSeason(league, State.rankingSets.ros) ? season.data : dynasty, start: season.data, source: 'ros' }
-            : { rankings: dynasty, source: 'ros' };
-        if (set && Array.isArray(set.data) && set.data.length > 0) return withSeason(set.data);
+        // Superflex QB prices for a 1QB-looking In-Season set in a superflex league (S24, round 7), as on its own table.
+        const withSeason = (dynasty) => {
+            if (!(season && season.data.length > 0)) return { rankings: dynasty, source: 'ros' };
+            const posMap = league.globalPosMap || {};
+            const start = superflexQbPrices(league.reqs, season.data, dynasty, (c) => posMap[c]) || season.data;
+            return { rankings: roomsUseSeason(league, State.rankingSets.ros) ? start : dynasty, start, source: 'ros' };
+        };
+        // Market QB prices when the league's switch is on (round 9).
+        if (set && Array.isArray(set.data) && set.data.length > 0) return withSeason(leagueQbMarketPricing(league, set.data).data);
         const legacy = league[cfg.leagueLegacyDataKey];
-        if (Array.isArray(legacy) && legacy.length > 0) return withSeason(legacy);
+        if (Array.isArray(legacy) && legacy.length > 0) return withSeason(leagueQbMarketPricing(league, legacy).data);
         if (season && season.data.length > 0) return { rankings: season.data, source: 'ros' };
         if (State.marketRankings.length > 0) return { rankings: State.marketRankings, source: 'market' };
         return null;

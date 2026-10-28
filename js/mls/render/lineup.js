@@ -527,7 +527,7 @@ import { refreshThisWeek } from '../main.js';
     // `.is-stacked` (css/mls.css: one column, so the box fits its text). Every mark is cleared before any is
     // measured, so a badge that has room again goes back on one line. Run after each render, and when the
     // containers' width changes (rotation, a resize, the tab shown after being hidden: hidden, nothing stacks).
-    function fitRankBadges(roots) {
+    export function fitRankBadges(roots) {
         const wrappers = roots.flatMap(root => (root ? [...root.querySelectorAll('.mls-rank-parts')] : []));
         wrappers.forEach(w => w.classList.remove('is-stacked'));
         wrappers.filter(w => {

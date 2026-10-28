@@ -1,6 +1,6 @@
 // --- TRADE ANALYZER: "TO MAKE IT FAIR" (improvements S19) ---
-// Drawn by runScout (js/mls/scout/engine.js) between the verdict banners and "Power Rankings after the trade"
-// when a trade is outside the fair band: the gap in words and up to three players (or picks) from the roster of
+// Drawn by runScout (js/mls/scout/engine.js) under the two sides, first under "More analysis" (S24, round 16), above
+// "Power Rankings after the trade", when a trade is outside the fair band: the gap in words and up to three players (or picks) from the roster of
 // the side that has to add, each with where it would land the trade and an Add button that puts him on the trade
 // through the picker (trade/picker.js addTradeNames), which re-runs the analysis in place; then the pieces whose
 // removal alone would make it fair, each with Remove (round 5). After an Add or Remove, a line offers Undo until
@@ -10,13 +10,15 @@ import { escapeHtml } from '../../shared/html.js';
 import { PICK_BADGE_HTML } from '../badges.js';
 import { normalizeName } from '../../shared/names.js';
 import { State } from '../state.js';
-import { rankingIndex } from '../helpers.js';
+import { getActiveLeague, rankingIndex } from '../helpers.js';
 import { getPowerLeagueKind } from '../power/directionLabels.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { getMarketValue, isDraftPickName, rankToTradeValue } from './valueCurve.js';
 import { fairCandidates, fairRemovals, fairSuggestions, gapToClose, landing, verdictFromValues } from './makeFair.js';
 import { pickKey } from '../leagues/picks.js';
-import { unknownNames } from './verdict.js';
+import { tradeSeasonSet, unknownNames } from './verdict.js';
+import { activeOwnRankings } from '../main.js';
+import { roomsUseSeason } from '../rankings/season.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 // Matching key: a pick by its year and round, Early/Mid/Late ignored (normalizeName drops digits), a player by his
@@ -34,10 +36,30 @@ let _focusNext = null;
 export function rememberFairChange(label, before) { _undo = { label, before, after: null }; _focusNext = 'undo'; }
 export function takeFairUndo() { const u = _undo; _undo = null; _focusNext = u ? 'box' : null; return u ? u.before : null; }
 // Called by runScout once the trade's results are on the page. Without scrolling: the page stays where it is.
+// Which set the extras below the trade read in a league with both sets (S24): To make it fair's values (round 3) and,
+// since round 16, Power Rankings' Ovr and position rooms (owner: "rely on the switch the user sees"; Start stays
+// In-Season, Future dynasty). Default: In-Season when "I'm competing" is on (the Roster tab's table reads the rooms that
+// way), else Dynasty. A choice holds for the league it was made in, until a reload or a choice made in another league.
+let _fairBasis = null; // { leagueId, basis } | null
+export function setFairBasis(basis) {
+    const league = getActiveLeague();
+    _fairBasis = { leagueId: league ? league.leagueId : null, basis: basis === 'season' ? 'season' : 'dynasty' };
+    _focusNext = 'basis';
+}
+const competingDefault = (league) => roomsUseSeason(league, State.rankingSets.ros);
+// 'season' | 'dynasty' for a league with both sets (tradeSeasonSet), else 'dynasty'. { basis, chosen }.
+function basisFor(league) {
+    if (!league || State.rosRankings.length === 0 || !tradeSeasonSet()) return { basis: 'dynasty', chosen: false };
+    if (_fairBasis && _fairBasis.leagueId === league.leagueId) return { basis: _fairBasis.basis, chosen: true };
+    return { basis: competingDefault(league) ? 'season' : 'dynasty', chosen: false };
+}
+export const tradeAnalysisBasis = (league) => basisFor(league).basis;
+
 export function placeFairFocus(outputEl) {
     if (!_focusNext || !outputEl) return;
     const target = _focusNext === 'undo'
         ? outputEl.querySelector('[data-action="undoFairChange"]')
+        : _focusNext === 'basis' ? outputEl.querySelector('[data-action="setFairBasis"].active')
         : outputEl.querySelector('[data-action="addFairSuggestion"], [data-action="removeFairPiece"]');
     _focusNext = null;
     if (target) target.focus({ preventScroll: true });
@@ -84,7 +106,12 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
     if (!league || getNames.length === 0 || giveNames.length === 0) return '';
     // Your Rankings decide (owner's choice); Market Consensus only when no ROS rankings are loaded.
     let valueKey, label;
-    if (State.rosRankings.length > 0) { valueKey = 'userValue'; label = 'Your Rankings'; }
+    // With an In-Season set too (improvements S24) the dynasty value decides by default, the In-Season one when the box's
+    // switch says so (round 3), and the line says which.
+    const seasonSet = State.rosRankings.length > 0 ? tradeSeasonSet() : null;
+    const bySeason = !!seasonSet && basisFor(league).basis === 'season';
+    if (bySeason) { valueKey = 'seasonValue'; label = 'your In-Season rankings'; }
+    else if (State.rosRankings.length > 0) { valueKey = 'userValue'; label = seasonSet ? 'your dynasty rankings' : 'Your Rankings'; }
     else if (State.marketRankings.length > 0) { valueKey = 'marketValue'; label = 'Market Consensus'; }
     else return '';
     // Nothing to suggest while the verdict waits (round 11): a name that matches no player, or, when the market is
@@ -96,7 +123,18 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
     const getValues = getResults.map(r => r[valueKey]);
     const giveValues = giveResults.map(r => r[valueKey]);
     const gap = gapToClose(getValues, giveValues, waiver);
-    if (!gap) return '';
+    // The box stays when the picked value says the trade is already fair but the other doesn't (round 3), saying so.
+    if (!gap) {
+        if (!seasonSet) return '';
+        const other = bySeason ? 'userValue' : 'seasonValue';
+        if (!gapToClose(getResults.map(r => r[other]), giveResults.map(r => r[other]), waiver)) return '';
+        // Nothing in the trade has a value by the picked set (round 8): there's nothing to call fair.
+        const none = !verdictFromValues(getValues, giveValues, waiver);
+        return `
+    <section class="mls-trade-fair" data-trade-fair>
+        <div class="mls-trade-fair-note">${none ? `None of these players are in ${label}.` : `Fair by ${label} as it stands.`}</div>
+    </section>`;
+    }
     const adder = gap.adder;
     // Pieces on the side with too much whose removal alone makes it fair: needs no other roster, so it shows in
     // every case below, a manual league included.
@@ -119,7 +157,7 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
 
     // The candidates: that roster's ranked players (and its picks in dynasty and keeper leagues), valued
     // as the trade's rows are (rankToTradeValue of the ROS rank, or the market's; a pick borrows the market's).
-    const rosIndex = rankingIndex(State.rosRankings);
+    const rosIndex = rankingIndex(bySeason ? seasonSet.data : activeOwnRankings()); // market QB prices when on (round 9)
     const marketIndex = rankingIndex(State.marketRankings);
     const roster = new Map();
     Object.entries(rosterMap).forEach(([clean, owner]) => { if (owner === team) roster.set(clean, null); });
@@ -183,6 +221,25 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
 const rangeLow = (gap) => (gap.range ? gap.range.low : gap.gap);
 const rangeText = (gap) => !gap.range ? `about ${fmt(gap.gap)}`
     : gap.range.low <= 0 ? `up to ${fmt(gap.range.high)}` : `${fmt(gap.range.low)}&ndash;${fmt(gap.range.high)}`;
+
+// --- "MORE ANALYSIS" (S24, round 16) ---
+// The heading between the two sides and the extras (To make it fair, Power Rankings after the trade): owner, "everything
+// else below that, as extra information for power users". In a league with both sets it carries the Value by switch
+// (round 3's, moved out of the fair box) and, when "I'm competing" picked In-Season, a short line saying so.
+// show: there's something under it.
+export function moreAnalysisHTML(league, show) {
+    if (!show) return '';
+    const seasonSet = league && State.rosRankings.length > 0 ? tradeSeasonSet() : null;
+    let controls = '';
+    if (seasonSet) {
+        const { basis, chosen } = basisFor(league);
+        const bySeason = basis === 'season';
+        const btn = (b, text, on) => `<button type="button" class="mls-segmented-btn${on ? ' active' : ''}" data-action="setFairBasis" data-basis="${b}" aria-pressed="${on}">${text}</button>`;
+        const caption = bySeason && !chosen ? `<div class="mls-trade-more-caption" data-basis-caption>In-Season since I'm competing is on.</div>` : '';
+        controls = `<div class="mls-trade-fair-basis"><span>Value by</span><div class="mls-segmented" role="group" aria-label="Value the analysis by">${btn('dynasty', 'Dynasty', !bySeason)}${btn('season', '<span class="mls-nowrap">In-Season</span>', bySeason)}</div></div>${caption}`;
+    }
+    return `<div class="mls-trade-more" data-trade-more><h4 class="mls-trade-more-title">More analysis</h4>${controls}</div>`;
+}
 
 function section(adder, gap, body, market = '') {
     const who = adder === 'them' ? "they'd" : "you'd";
