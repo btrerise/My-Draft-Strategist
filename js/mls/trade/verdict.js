@@ -5,10 +5,10 @@ import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
 import { getFreshness } from '../../shared/freshness.js';
 import { verdictFromValues } from './makeFair.js';
-import { marketFormatWarning } from '../main.js';
+import { activeOwnRankings, leagueQbMarketPricing, marketFormatWarning } from '../main.js';
 import { getActiveLeague } from '../helpers.js';
 import { IN_SEASON, hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
-import { dualHeadline, dualVerdictNumbers, isSuperflex, oneQbLook, oneQbRankingsNote, SF_QB_NOTE, superflexQbPrices } from '../rankings/nowAndLater.js';
+import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superflexQbPrices } from '../rankings/nowAndLater.js';
 
     // The active league's In-Season set when the Trade Analyzer shows two values and two verdicts (improvements
     // S24): a dynasty or keeper league with an In-Season set (S23) and its dynasty set loaded. null everywhere else,
@@ -21,7 +21,7 @@ import { dualHeadline, dualVerdictNumbers, isSuperflex, oneQbLook, oneQbRankings
         const set = seasonSetFor(league, State.rankingSets.ros);
         if (!set) return null;
         const posMap = league.globalPosMap || {};
-        const priced = superflexQbPrices(league.reqs, set.data, State.rosRankings, (c) => posMap[c]);
+        const priced = superflexQbPrices(league.reqs, set.data, activeOwnRankings(), (c) => posMap[c]);
         return priced ? { ...set, data: priced, sfQbPrices: true } : set;
     }
 
@@ -133,12 +133,13 @@ import { dualHeadline, dualVerdictNumbers, isSuperflex, oneQbLook, oneQbRankings
     function oneQbNote(getResults, giveResults, seasonSet) {
         if (seasonSet && seasonSet.sfQbPrices) return '';
         const league = getActiveLeague();
-        if (!league || !isSuperflex(league.reqs) || State.rosRankings.length === 0) return '';
+        if (!league || State.rosRankings.length === 0) return '';
         if (!getResults.concat(giveResults).some(r => r.exportRow && r.exportRow.pos === 'QB')) return '';
-        const posMap = league.globalPosMap || {};
-        if (!oneQbLook(State.rosRankings, (c) => posMap[c]).oneQb) return '';
+        // With its switch (round 9): price QBs by Market Consensus (superflex) instead.
+        const q = leagueQbMarketPricing(league, State.rosRankings);
+        if (!q.applies) return '';
         const word = hasSeasonSlot(league) ? 'dynasty' : 'ROS';
-        return `<div class="mls-trade-season-hint is-warning" data-one-qb-note><span>${oneQbRankingsNote(word)}</span> ${SEASON_PICKER_BTN.replace('Choose on the Roster tab', 'Change on the Roster tab')}</div>`;
+        return qbMarketNoteHTML(q, word, SEASON_PICKER_BTN.replace('Choose on the Roster tab', 'Change on the Roster tab'));
     }
 
     const signedPts = (n) => `${n >= 0 ? '+' : '\u2212'}${Math.abs(n).toLocaleString()}`;

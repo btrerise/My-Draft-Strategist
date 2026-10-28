@@ -7,7 +7,7 @@ import { rankingIndex } from '../helpers.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { roomsUseSeason, seasonSetFor } from '../rankings/season.js';
 import { superflexQbPrices } from '../rankings/nowAndLater.js';
-import { activePowerRankings, computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from '../main.js';
+import { activePowerRankings, leagueQbMarketPricing, computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from '../main.js';
 
     // --- ALL-LEAGUES POSITIONAL POWER RANKS ---
     // Each league's power ranks come from THAT league's own ROS rankings (its named set, else
@@ -36,9 +36,10 @@ import { activePowerRankings, computePositionalPower, POWER_UNRANKED_RANK, power
             const start = superflexQbPrices(league.reqs, season.data, dynasty, (c) => posMap[c]) || season.data;
             return { rankings: roomsUseSeason(league, State.rankingSets.ros) ? start : dynasty, start, source: 'ros' };
         };
-        if (set && Array.isArray(set.data) && set.data.length > 0) return withSeason(set.data);
+        // Market QB prices when the league's switch is on (round 9).
+        if (set && Array.isArray(set.data) && set.data.length > 0) return withSeason(leagueQbMarketPricing(league, set.data).data);
         const legacy = league[cfg.leagueLegacyDataKey];
-        if (Array.isArray(legacy) && legacy.length > 0) return withSeason(legacy);
+        if (Array.isArray(legacy) && legacy.length > 0) return withSeason(leagueQbMarketPricing(league, legacy).data);
         if (season && season.data.length > 0) return { rankings: season.data, source: 'ros' };
         if (State.marketRankings.length > 0) return { rankings: State.marketRankings, source: 'market' };
         return null;

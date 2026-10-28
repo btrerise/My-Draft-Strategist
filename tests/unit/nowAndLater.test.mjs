@@ -161,3 +161,43 @@ test('superflexQbPrices: In-Season QBs past the dynasty set\'s last QB continue 
     const priced = superflexQbPrices({ QB: 2 }, season, dynasty, (c) => pos[c]);
     assert.deepEqual(priced.filter(p => pos[p.cleanName] === 'QB').map(p => p.rank), [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]);
 });
+
+// Round 9: the owner's switch, QBs priced by Market Consensus (superflex).
+import { marketAsRanked, qbMarketPricing, qbMarketNoteHTML } from '../../js/mls/rankings/nowAndLater.js';
+test('qbMarketPricing: applies in a superflex league on a 1QB list; prices only when on and the market is superflex', () => {
+    const pos = {};
+    const oneQbList = Array.from({ length: 60 }, (_, i) => { const qb = [9, 29, 49].includes(i); const c = (qb ? 'q' : 'w') + i; pos[c] = qb ? 'QB' : 'WR'; return { cleanName: c, rank: i + 1 }; });
+    // The market: the same QBs near the top (superflex-style), plus other QBs every 4th.
+    const others = Array.from({ length: 60 }, (_, i) => i + 1).filter(r => ![1, 5, 9].includes(r));
+    const market = marketAsRanked([...['q9', 'q29', 'q49'].map((c, i) => ({ cleanName: c, marketVal: i * 4 + 1, pos: 'QB' })),
+        ...others.map(r => { const c = `m${r}`; pos[c] = r % 4 === 1 ? 'QB' : 'RB'; return { cleanName: c, marketVal: r, pos: pos[c] }; })]);
+    const posOf = (c) => pos[c];
+    const sf = { reqs: { QB: 1, SFLEX: 1 } };
+    // Off: applies, nothing priced.
+    let q = qbMarketPricing(sf, oneQbList, posOf, market, true);
+    assert.deepEqual([q.applies, q.on, q.active], [true, false, false]);
+    assert.equal(q.data, oneQbList);
+    // On with superflex market values: QBs take the market's QB prices in your order.
+    q = qbMarketPricing({ ...sf, qbMarketPrices: true }, oneQbList, posOf, market, true);
+    assert.equal(q.active, true);
+    assert.deepEqual(q.data.filter(p => pos[p.cleanName] === 'QB').map(p => p.rank), [1, 5, 9]);
+    // On, but the market isn't superflex: waits.
+    q = qbMarketPricing({ ...sf, qbMarketPrices: true }, oneQbList, posOf, market, false);
+    assert.deepEqual([q.applies, q.on, q.active], [true, true, false]);
+    // Not superflex: doesn't apply at all.
+    assert.equal(qbMarketPricing({ reqs: { QB: 1 }, qbMarketPrices: true }, oneQbList, posOf, market, true).applies, false);
+});
+test('qbMarketNoteHTML: the three states', () => {
+    const off = qbMarketNoteHTML({ applies: true, on: false, active: false }, 'ROS', '<button>Change</button>');
+    assert.match(off, /data-qb-market="off"/);
+    assert.match(off, /Your ROS rankings look 1QB/);
+    assert.match(off, /<button>Change<\/button>/);
+    assert.ok(!/ checked/.test(off));
+    const waiting = qbMarketNoteHTML({ applies: true, on: true, active: false }, 'ROS', '<button>Change</button>');
+    assert.match(waiting, /data-qb-market="waiting"/);
+    assert.match(waiting, /fetch superflex market values for this league in Trade Finder/);
+    assert.match(waiting, / checked/);
+    const on = qbMarketNoteHTML({ applies: true, on: true, active: true }, 'ROS', '');
+    assert.match(on, /QBs priced by Market Consensus \(superflex\), in your order\./);
+    assert.match(on, /data-action="setQbMarketPrices" checked/);
+});

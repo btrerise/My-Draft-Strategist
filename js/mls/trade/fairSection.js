@@ -17,6 +17,7 @@ import { getMarketValue, isDraftPickName, rankToTradeValue } from './valueCurve.
 import { fairCandidates, fairRemovals, fairSuggestions, gapToClose, landing, verdictFromValues } from './makeFair.js';
 import { pickKey } from '../leagues/picks.js';
 import { tradeSeasonSet, unknownNames } from './verdict.js';
+import { activeOwnRankings } from '../main.js';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-US');
 // Matching key: a pick by its year and round, Early/Mid/Late ignored (normalizeName drops digits), a player by his
@@ -144,7 +145,7 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
 
     // The candidates: that roster's ranked players (and its picks in dynasty and keeper leagues), valued
     // as the trade's rows are (rankToTradeValue of the ROS rank, or the market's; a pick borrows the market's).
-    const rosIndex = rankingIndex(bySeason ? seasonSet.data : State.rosRankings);
+    const rosIndex = rankingIndex(bySeason ? seasonSet.data : activeOwnRankings()); // market QB prices when on (round 9)
     const marketIndex = rankingIndex(State.marketRankings);
     const roster = new Map();
     Object.entries(rosterMap).forEach(([clean, owner]) => { if (owner === team) roster.set(clean, null); });

@@ -116,3 +116,34 @@ export const SF_QB_NOTE = "Your In-Season rankings look 1QB, so QBs are valued a
 // set, or a dynasty set that looks 1QB too): only a note, with the way to fix it. setWord: "ROS", "dynasty".
 export const oneQbRankingsNote = (setWord) =>
     `Your ${setWord} rankings look 1QB and this league is superflex, so QBs are valued low. Use a superflex set for this league.`;
+
+// --- QB PRICES FROM MARKET CONSENSUS (round 9, the owner's toggle) ---
+// Where round 8's note shows (a superflex league whose own rankings look 1QB, with no superflex set to borrow from), a
+// switch, saved per league (league.qbMarketPrices), prices QBs by Market Consensus instead: round 7's mechanism with the
+// market's list in place of a dynasty set, so QBs keep your order and take the market's superflex QB prices. Only with
+// superflex market values loaded (marketReady). Opt-in, and the note says so while it's on, since it puts market prices in
+// "your rankings".
+
+// Market Consensus as a ranked list for superflexQbPrices: marketVal is the market's overall rank.
+export const marketAsRanked = (market) => (market || []).map(m => ({ cleanName: m.cleanName, rank: m.marketVal, pos: m.pos }));
+
+// league: { reqs, qbMarketPrices }; data: the league's own rankings; posOf(cleanName); market: marketAsRanked(...);
+// marketReady: superflex market values are loaded. { applies, on, active, data }: applies = round 8's condition (superflex,
+// data looks 1QB); active = on and priced (then data is the priced copy, else the list as it is).
+export function qbMarketPricing(league, data, posOf, market, marketReady) {
+    const applies = !!league && isSuperflex(league.reqs) && Array.isArray(data) && data.length > 0 && oneQbLook(data, posOf).oneQb;
+    const on = !!(league && league.qbMarketPrices);
+    const priced = applies && on && marketReady ? superflexQbPrices(league.reqs, data, market, posOf) : null;
+    return { applies, on, active: !!priced, data: priced || data };
+}
+
+// The note and its switch (Trade Analyzer, Power Rankings), for qbMarketPricing's result. setWord: "ROS" | "dynasty".
+// button: the "Change on the Roster tab" button's markup, or ''.
+export function qbMarketNoteHTML(q, setWord, button) {
+    const toggle = `<label class="mls-qb-market-toggle"><input type="checkbox" class="toggle-switch" data-action="setQbMarketPrices"${q.on ? ' checked' : ''}> Price QBs by Market Consensus (superflex)</label>`;
+    if (q.active) return `<div class="mls-qb-market-note" data-one-qb-note data-qb-market="on"><span>QBs priced by Market Consensus (superflex), in your order.</span>${toggle}</div>`;
+    const text = q.on
+        ? 'QBs can\'t be priced by Market Consensus yet: fetch superflex market values for this league in Trade Finder (Scout tab).'
+        : oneQbRankingsNote(setWord);
+    return `<div class="mls-qb-market-note is-warning" data-one-qb-note data-qb-market="${q.on ? 'waiting' : 'off'}"><span>${text}</span>${q.on ? '' : ` ${button}`}${toggle}</div>`;
+}

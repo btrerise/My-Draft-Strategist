@@ -21,7 +21,7 @@ import { toggleMlsHeadshots } from './lineup/headshots.js';
 import './players.js';
 import { addEarlyTeam, removeEarlyTeam } from './lineup/earlyGames.js';
 import { explainIrSlot, toggleLineupNeeds, toggleLockCountdown } from './lineup/gameInfo.js';
-import { activePowerRankings, activeSeasonRankings, addAndSyncLeague, createManualLeague, cycleLeague, deleteLeagueManager, getLeagueRankings, getLeagueSeasonRankings, moveLeague, saveRequirements, setLeagueStyle, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
+import { activeOwnRankings, activePowerRankings, activeSeasonRankings, addAndSyncLeague, leagueQbMarketPricing, setQbMarketPrices, createManualLeague, cycleLeague, deleteLeagueManager, getLeagueRankings, getLeagueSeasonRankings, moveLeague, saveRequirements, setLeagueStyle, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
 import './leagues/scoutResults.js';
 import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDraftStrategistRoster } from './leagues/handoff.js';
 import { addManualPlayer, deletePlayer } from './leagues/addPlayer.js';
@@ -71,7 +71,7 @@ import { dismissBannerAndReveal, dismissBanner } from '../shared/ui/banners.js';
 // state.js would then read State in its TDZ, and the headshot/SoS/market load-time code would run
 // out of mls.js order. main.js is the entry module, so it is always mid-evaluation while the
 // others evaluate, and importing from it never triggers an evaluation.
-export { activePowerRankings, activeSeasonRankings, getLeagueSeasonRankings };
+export { activeOwnRankings, activePowerRankings, activeSeasonRankings, getLeagueSeasonRankings, leagueQbMarketPricing };
 export { applyDefaultFolds, applyWaiverScanSettingsToUI, checkForDraftStrategistHandoff, clearLocksForNewWeek, computePositionalPower, generateSoSGrid, getLeagueRankings, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, onScoutTabShown, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, refreshTopAvailable, renderBestAvailable, renderLeagueCards, renderLineupUI, renderSyncLogs, reoptimizeProjectionlessLeagues, runMarketDisconnectAnalysis, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
 // For the Playwright tests, which import this module (`import('/js/mls/main.js')` in the page returns
 // this same instance) instead of reading the functions off window.
@@ -247,6 +247,8 @@ const clickActions = {
     goToPowerRankings() { goToPowerRankings(); },
     goToLeagueStyle() { goToLeagueStyle(); },
     goToSeasonPicker() { goToSeasonPicker(); },
+    // Price QBs by Market Consensus (superflex), per league (S24, round 9)
+    setQbMarketPrices() { setQbMarketPrices(this.checked); },
     fetchMarketValue() { fetchMarketValue(this); },
     runMarketDisconnectAnalysis() { runMarketDisconnectAnalysis(); },
     // Rankings upload preview modal

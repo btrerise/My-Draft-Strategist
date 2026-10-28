@@ -13,6 +13,7 @@ import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js'
 import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
 import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
 import { buildTradeVerdictHTML, tradeSeasonSet } from '../trade/verdict.js';
+import { activeOwnRankings } from '../main.js';
 import { buildTradeImpactHTML } from '../trade/lineupSection.js';
 import { buildMakeFairHTML, placeFairFocus } from '../trade/fairSection.js';
 import { pickHolders } from '../leagues/picks.js';
@@ -114,7 +115,8 @@ import { normalizeName } from '../../shared/names.js';
         // Indexed once for this whole Scout run -- getPos and buildCard below are both called
         // per player, and each was scanning a full rankings array on every call.
         const marketIndex = rankingIndex(State.marketRankings);
-        const rosIndex = rankingIndex(State.rosRankings);
+        // The Trade Analyzer values your rankings with market QB prices when the league's switch is on (S24, round 9).
+        const rosIndex = rankingIndex(type === 'trade' ? activeOwnRankings() : State.rosRankings);
         const weeklyIndex = rankingIndex(State.weeklyRankings);
         // A dynasty league with an In-Season set (improvements S24): each trade row also gets its In-Season value, by
         // the same curve, beside the dynasty one ("Your rankings"). null everywhere else: rows as before.

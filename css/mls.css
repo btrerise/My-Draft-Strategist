@@ -2627,3 +2627,9 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .mls-trade-tile-notes .trade-verdict-note + .trade-verdict-note { margin-top: 0.3rem; }
 /* Power Rankings: the 1QB-rankings note in a superflex league (S24, round 8), amber like the Trade Analyzer's. */
 .mls-power-source-key.is-warning { color: #fcd34d; }
+/* The 1QB-rankings note with its switch (S24, rounds 8 and 9): Trade Analyzer and Power Rankings. Amber while QBs read
+   low (off) or wait for superflex market values; quiet once the market prices them. */
+.mls-qb-market-note { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; margin: 0 0 0.6rem; padding: 0.5rem 0.7rem;
+    border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); font-size: 0.8rem; color: var(--text-muted); text-align: left; }
+.mls-qb-market-note.is-warning { border-color: rgba(251, 191, 36, 0.45); color: #fcd34d; }
+.mls-qb-market-toggle { display: flex; align-items: center; gap: 0.5rem; flex-basis: 100%; color: var(--text-main); font-weight: 600; cursor: pointer; }

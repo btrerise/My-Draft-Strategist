@@ -15,8 +15,8 @@ import { renderRosterPowerStrip, scrollToPowerRankings } from './snapshot.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { roomsUseSeason, seasonSetFor } from '../rankings/season.js';
 import { showTab } from '../nav.js';
-import { activePowerRankings } from '../main.js';
-import { isSuperflex, oneQbLook, oneQbRankingsNote, SF_QB_NOTE } from '../rankings/nowAndLater.js';
+import { activePowerRankings, leagueQbMarketPricing } from '../main.js';
+import { qbMarketNoteHTML, SF_QB_NOTE } from '../rankings/nowAndLater.js';
 
 // --- POSITIONAL POWER RANKINGS: ROSTER TAB CARD ---
 // Generated automatically (no Calculate button) every time the Roster tab renders -- see the
@@ -74,11 +74,12 @@ export const goToLeagueStyle = function() {
 
 function oneQbTableNote(ctx) {
     const league = ctx.league;
-    if (!league || !ctx.source || ctx.source.source !== 'custom' || ctx.source.sfQbPrices || !isSuperflex(league.reqs)) return '';
-    const posMap = league.globalPosMap || {};
-    if (!(ctx.source.rankings || []).length || !oneQbLook(ctx.source.rankings, (c) => posMap[c]).oneQb) return '';
+    if (!league || !ctx.source || ctx.source.source !== 'custom' || ctx.source.sfQbPrices || State.rosRankings.length === 0) return '';
+    // With its switch (round 9): price QBs by Market Consensus (superflex) instead.
+    const q = leagueQbMarketPricing(league, State.rosRankings);
+    if (!q.applies) return '';
     const word = getPowerLeagueKind(league) === 'dynasty' ? 'dynasty' : 'ROS';
-    return `<div class="mls-power-source-key is-warning" data-one-qb-note>${oneQbRankingsNote(word)} <button type="button" class="mls-btn-sm btn-link-inline" data-action="goToSeasonPicker">Change it above</button></div>`;
+    return qbMarketNoteHTML(q, word, '<button type="button" class="mls-btn-sm btn-link-inline" data-action="goToSeasonPicker">Change it above</button>');
 }
 
 // The Roster tab's In-Season picker, opened, scrolled to and focused (improvements S24, round 6): the Trade Analyzer's notes

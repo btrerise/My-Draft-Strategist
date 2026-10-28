@@ -480,3 +480,60 @@ test('players missing from the dynasty set: no Long-term tile, one notes box say
     await expect(out.locator('[data-trade-fair] .mls-trade-fair-note')).toHaveText('None of these players are in your dynasty rankings.');
     await expectClean(page, state);
 });
+
+// Round 9: the switch in that note prices QBs by Market Consensus (superflex), per league.
+test('the note\'s switch prices QBs by superflex Market Consensus, and waits for superflex market values', async ({ page }) => {
+    const { state, ids } = await setUp(page, 'redraft');
+    await page.evaluate(async (id) => {
+        const { State } = await import('/js/mls/state.js');
+        const set = State.rankingSets.ros.find(s => s.id === id);
+        set.data = set.data.filter(p => !['jalenhurts', 'joeburrow'].includes(p.cleanName));
+        localStorage.setItem('mls_ranking_sets_ros', JSON.stringify(State.rankingSets.ros));
+    }, ids.season);
+    const reqs = (await fixture(page)).reqs || {};
+    await patchLeagues(page, { 'Fixture League': { rosRankingSetId: ids.season, reqs: { ...reqs, QB: 1, SFLEX: 1 } } });
+    // Superflex market values: the four QBs first, then everyone else in the rankings file's order.
+    const setMarket = (qbs, type = 'redraft') => page.evaluate(async ({ qbs, type, csv }) => {
+        const { State } = await import('/js/mls/state.js');
+        const { normalizeName } = await import('/js/shared/names.js');
+        const rows = csv.trim().split('\n').slice(1).map(l => l.split(','));
+        const order = [...rows.filter(r => r[2] === 'QB'), ...rows.filter(r => r[2] !== 'QB')];
+        State.marketRankings = order.map((r, i) => ({ name: r[1], cleanName: normalizeName(r[1]), marketVal: i + 1, pos: r[2] }));
+        State.marketFormat = { type, qbs, ppr: '1', tep: false };
+    }, { qbs, type, csv: RANKINGS_CSV });
+    await setMarket('2');
+
+    await runTrade(page, ['Lamar Jackson'], ["Ja'Marr Chase"]);
+    const note = page.locator('#tradeOutput [data-one-qb-note]');
+    await expect(note).toHaveAttribute('data-qb-market', 'off');
+    const lamarValue = () => page.locator('#tradeOutput .mls-trade-row').filter({ hasText: 'Lamar Jackson' }).locator('.mls-trade-row-value .mls-stat-value');
+    await expect(lamarValue()).toHaveText(fmt(value(7))); // his rank in your 1QB-looking list
+    // On: Lamar, your QB1, takes the market's QB1 price (#1); the note says where QBs are priced; saved on the league.
+    await note.locator('[data-action="setQbMarketPrices"]').check();
+    await expect(page.locator('#tradeOutput [data-one-qb-note]')).toHaveAttribute('data-qb-market', 'on');
+    await expect(page.locator('#tradeOutput [data-one-qb-note]')).toContainText('QBs priced by Market Consensus (superflex), in your order.');
+    await expect(lamarValue()).toHaveText(fmt(value(1)));
+    expect((await fixture(page)).qbMarketPrices).toBe(true);
+    // Power Rankings show the same switch, on.
+    await showTab(page, 'roster');
+    await expect(page.locator('#powerRankingsOutput [data-one-qb-note]')).toHaveAttribute('data-qb-market', 'on');
+    await expect(page.locator('#powerRankingsOutput [data-action="setQbMarketPrices"]')).toBeChecked();
+    // Market values fetched for 1QB: the switch waits, and says how to get superflex values; your list as it is.
+    await setMarket('1');
+    await runTrade(page, ['Lamar Jackson'], ["Ja'Marr Chase"]);
+    await expect(page.locator('#tradeOutput [data-one-qb-note]')).toHaveAttribute('data-qb-market', 'waiting');
+    await expect(page.locator('#tradeOutput [data-one-qb-note]')).toContainText('fetch superflex market values for this league in Trade Finder');
+    await expect(lamarValue()).toHaveText(fmt(value(7)));
+    // Superflex but fetched for dynasty, in this redraft league: waits too (no dynasty QB prices in a redraft league).
+    await setMarket('2', 'dynasty');
+    await runTrade(page, ['Lamar Jackson'], ["Ja'Marr Chase"]);
+    await expect(page.locator('#tradeOutput [data-one-qb-note]')).toHaveAttribute('data-qb-market', 'waiting');
+    // Off again, from Power Rankings.
+    await setMarket('2');
+    await showTab(page, 'roster');
+    await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
+    await page.locator('#powerRankingsOutput [data-action="setQbMarketPrices"]').uncheck();
+    expect((await fixture(page)).qbMarketPrices).toBe(false);
+    await expect(page.locator('#powerRankingsOutput [data-one-qb-note]')).toHaveAttribute('data-qb-market', 'off');
+    await expectClean(page, state);
+});

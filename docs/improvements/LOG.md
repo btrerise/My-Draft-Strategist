@@ -7031,3 +7031,30 @@ tile, one notes box, make it fair's wording), and both "In-Season"s whole.
 
 **The owner's idea, to discuss: a toggle to bring in the market's QB prices** in these leagues (round 7's mechanism,
 with FantasyCalc's superflex list in place of a dynasty set). See the next entry once decided.
+
+### S24, round 9: the switch, "Price QBs by Market Consensus (superflex)" (owner: "Build the toggle that way")
+
+Where round 8's note shows (a superflex league whose own rankings look 1QB, no superflex set to borrow from), the note
+carries a switch, saved per league (`league.qbMarketPrices`, carried over by a sync, in backups with the leagues; no
+storage key). On: QBs keep your order and take the market's superflex QB prices (round 7's `superflexQbPrices` with
+Market Consensus in place of a dynasty set), everywhere your values are used: Power Rankings (table, labels, power
+strip, All My Leagues), the Trade Analyzer's "Your Rankings" values, "To make it fair", Power Rankings after the trade,
+and, in a dynasty league, round 7's In-Season prices (borrowed from the priced list).
+- **Ready only with superflex market values of the league's type**: the fetch's recorded format (`State.marketFormat`:
+  `qbs` 2 and the same redraft / dynasty type as the league), or, for an uploaded file, a list that looks superflex.
+  Otherwise the switch waits: "QBs can't be priced by Market Consensus yet: fetch superflex market values for this
+  league in Trade Finder (Scout tab)." (Found on the owner's data: the loaded values were dynasty; borrowing dynasty QB
+  prices into a redraft league would have priced in youth.)
+- **The note's three states**: off (amber, round 8's text, the Roster tab button, the switch), waiting (amber, the text
+  above, the switch on), on (quiet: "QBs priced by Market Consensus (superflex), in your order.", the switch on).
+  `qbMarketPricing`, `qbMarketNoteHTML`, `marketAsRanked` (rankings/nowAndLater.js); `marketIsSuperflex`,
+  `leagueQbMarketPricing`, `activeOwnRankings`, `setQbMarketPrices` (leagues/sync.js); the callers in scout/engine.js,
+  trade/fairSection.js, trade/verdict.js, power/allLeagues.js, power/rosterCard.js.
+- On the owner's LOOG (redraft, superflex, 1QB ROS list), with the switch on and superflex values: Drake Maye for
+  Rashee Rice reads Favors Them by your rankings too (Maye at the market's QB price), where it read Fair.
+- Not touched: the lineup and the Waiver Wire (position and FLEX ranks first), Market Disconnect.
+
+`CACHE_NAME` v2.8.122 → v2.8.123; CHANGELOG line; Guide sentence. Tests: unit (`qbMarketPricing`: applies, off, on,
+waiting, not superflex; `qbMarketNoteHTML`'s three states); spec (the switch on prices Lamar at the market's QB1, the
+note and Power Rankings say on and saved, 1QB market values wait, dynasty values in a redraft league wait, off from
+Power Rankings).

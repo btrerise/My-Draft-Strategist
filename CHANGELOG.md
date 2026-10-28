@@ -108,7 +108,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   looks like a 1QB list, QBs keep their In-Season order but are valued at your dynasty rankings' superflex QB prices
   (Power Rankings' Start, the trade's Now values, To make it fair), with a note saying so. A superflex league whose
   own rankings look 1QB (a redraft league's ROS set, say) gets a note in trades with a QB and under Power Rankings,
-  with a way to change them. Redraft leagues are unchanged.
+  with a way to change them and a switch, **Price QBs by Market Consensus (superflex)**, that keeps your QB order but
+  uses the market's superflex QB prices in that league (it waits for superflex market values of the league's type). Redraft leagues are unchanged.
 - **The Scout tab follows a league switch made there.** Switching between a redraft and a dynasty league on the Scout
   tab left the Waiver Wire's Rank By on the old league's choices (ROS Rank, or Dynasty and In-Season Rank) until you
   left the tab and came back. Market Disconnect's report is also re-run for the new league, so who rosters each player
