@@ -211,8 +211,22 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
         if (!league) return;
         league.qbMarketPrices = !!checked;
         localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+        // Both places redraw, so the switch you used is replaced: focus goes to its new copy (round 10), as the Roster
+        // tab's Sort and "To make it fair" do, rather than back to the top of the page.
+        const from = document.activeElement && document.activeElement.closest && document.activeElement.closest('#tradeOutput, #powerRankingsOutput');
+        const old = from ? from.querySelector('[data-action="setQbMarketPrices"]') : null;
         loadRosterTab();
-        if (document.getElementById('tradeOutput')?.innerHTML.trim()) runScout('trade');
+        const rerun = document.getElementById('tradeOutput')?.innerHTML.trim() ? runScout('trade') : null;
+        if (!from) return;
+        Promise.resolve(rerun).then(() => {
+            let tries = 0;
+            const refocus = () => {
+                const next = document.querySelector(`#${from.id} [data-action="setQbMarketPrices"]`);
+                if (next && next !== old) next.focus({ preventScroll: true });
+                else if (tries++ < 30) requestAnimationFrame(refocus);
+            };
+            refocus();
+        });
     }
 
     export function activePowerRankings() {

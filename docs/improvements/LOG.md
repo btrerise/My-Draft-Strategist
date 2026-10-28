@@ -7063,3 +7063,21 @@ Power Rankings).
 `visual.spec.mjs` failed, on the environment message (Chromium 153 here). Screenshots: the screenshot league is redraft
 and 1QB with no rankings, so none of rounds 6–9 shows there; only `mls-league-guide.png` changes (Guide sentences and
 legend lines), from the pull request's CI.
+
+### S24, round 10: my fourth review as a user, with real FantasyCalc values; three fixes (owner: "Do all three")
+
+Checked on the owner's backup at 375px and 1280px with live FantasyCalc values: in LOOG, Trade Finder's fetch followed
+the league (redraft, superflex, 197 players), and the switch from round 9 worked end to end (Drake Maye at the market's QB
+price, 8,492; the verdict Favors Them; the same switch on the Power Rankings card). Switching to May the Receptions,
+the format warning said the redraft values don't fit a dynasty league, as it should.
+1. **A note said three times.** The redraft values have no picks, so "2029 1st isn't in the Market Consensus data, so
+   it's left out of this total." showed in both tiles' notes and again under the market line. Each note is said once now.
+2. **Four boxes under the tiles.** The tiles' notes, the superflex QB note, the market's notes (and its no-total note)
+   are one box under the tiles (`noteBox` in trade/verdict.js, deduplicated by text); the market line and its two status
+   lines follow. Export Trade copies the box.
+3. **The switch lost keyboard focus** when its card redrew (Roster tab and Trade Analyzer). `setQbMarketPrices`
+   (leagues/sync.js) puts focus on the new switch in the same place once the redraw lands, as Sort by and "To make it
+   fair" do.
+
+`CACHE_NAME` v2.8.123 → v2.8.124. Tests: the switch focused after flipping it in both places; a pick the market doesn't
+price said once, inside the one box, nothing loose under the market line. 24/24 in the S24 spec.

@@ -514,6 +514,8 @@ test('the note\'s switch prices QBs by superflex Market Consensus, and waits for
     await expect(page.locator('#tradeOutput [data-one-qb-note]')).toContainText('QBs priced by Market Consensus (superflex), in your order.');
     await expect(lamarValue()).toHaveText(fmt(value(1)));
     expect((await fixture(page)).qbMarketPrices).toBe(true);
+    // The trade redrew; focus is on the new switch, not the top of the page (round 10).
+    await expect(page.locator('#tradeOutput [data-action="setQbMarketPrices"]')).toBeFocused();
     // Power Rankings show the same switch, on.
     await showTab(page, 'roster');
     await expect(page.locator('#powerRankingsOutput [data-one-qb-note]')).toHaveAttribute('data-qb-market', 'on');
@@ -534,6 +536,26 @@ test('the note\'s switch prices QBs by superflex Market Consensus, and waits for
     await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
     await page.locator('#powerRankingsOutput [data-action="setQbMarketPrices"]').uncheck();
     expect((await fixture(page)).qbMarketPrices).toBe(false);
+    await expect(page.locator('#powerRankingsOutput [data-action="setQbMarketPrices"]')).toBeFocused();
     await expect(page.locator('#powerRankingsOutput [data-one-qb-note]')).toHaveAttribute('data-qb-market', 'off');
+    await expectClean(page, state);
+});
+
+// Round 10: every note about the totals in one box under the tiles, each once (a pick the market doesn't price was said
+// three times, in four boxes).
+test('a pick missing from the market is said once, in the one notes box under the tiles', async ({ page }) => {
+    const { state } = await setUp(page);
+    await page.evaluate(async () => {
+        const { State } = await import('/js/mls/state.js');
+        const { normalizeName } = await import('/js/shared/names.js');
+        State.marketRankings = [['Nico Collins', 20], ["Ja'Marr Chase", 3]].map(([name, marketVal]) => ({ name, cleanName: normalizeName(name), marketVal, pos: '' }));
+    });
+    await runTrade(page, ['Nico Collins'], ["Ja'Marr Chase", '2029 1st']);
+    const out = page.locator('#tradeOutput');
+    await expect(out.locator('[data-tile-notes]')).toHaveCount(1);
+    await expect(out.locator('.trade-verdict-note').filter({ hasText: "2029 1st isn't in the Market Consensus data" })).toHaveCount(1);
+    await expect(out.locator('[data-tile-notes] .trade-verdict-note').filter({ hasText: "2029 1st isn't in the Market Consensus data" })).toHaveCount(1);
+    // Nothing loose under the market line.
+    await expect(out.locator(':scope > .trade-verdict-note')).toHaveCount(0);
     await expectClean(page, state);
 });

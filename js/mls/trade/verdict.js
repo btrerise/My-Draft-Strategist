@@ -66,8 +66,11 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
             const both = dualVerdictNumbers(getResults, giveResults, waiver);
             const market = State.marketRankings.length > 0
                 ? renderTradeVerdict("Market Consensus", '', getResults, giveResults, "marketValue", "marketMatched", true, '', true) : null;
-            verdictHTML = dualVerdictTiles(seasonSet, now, later, dualHeadline(both.now, both.later))
-                + sfQbNote(seasonSet, getResults, giveResults) + oneQbNote(getResults, giveResults, seasonSet) + marketStrip(market) + marketAgeHTML();
+            // Every note about the totals in one box under the tiles, each said once (round 10: a pick missing from the
+            // market was said three times, in four boxes): the tiles', the superflex prices', the market's.
+            const tiles = dualVerdictTiles(seasonSet, now, later, dualHeadline(both.now, both.later));
+            const notes = noteBox([...tiles.notes, sfQbNote(seasonSet, getResults, giveResults), ...(market ? [market.nums ? market.unmatchedNote : market.note] : [])]);
+            verdictHTML = tiles.html + notes + oneQbNote(getResults, giveResults, seasonSet) + marketStrip(market) + marketAgeHTML();
             return verdictHTML || `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
         } else {
             yours = renderTradeVerdict(
@@ -124,7 +127,7 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
     function sfQbNote(seasonSet, getResults, giveResults) {
         if (!seasonSet.sfQbPrices) return '';
         if (!getResults.concat(giveResults).some(r => r.exportRow && r.exportRow.pos === 'QB')) return '';
-        return `<div class="mls-trade-season-hint" data-sf-qb-note><span>${SF_QB_NOTE.replaceAll('In-Season', '<span class="mls-nowrap">In-Season</span>')}</span></div>`;
+        return `<div class="trade-verdict-note" data-sf-qb-note>${SF_QB_NOTE.replaceAll('In-Season', '<span class="mls-nowrap">In-Season</span>')}</div>`;
     }
 
     // A superflex league whose own rankings (the ROS slot: a redraft league's ROS set, a dynasty league's dynasty set) look
@@ -170,18 +173,17 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
         // nothing in the trade says which tile is missing and why.
         const missing = (p, set, tileName) => p && !p.nums && p.note
             ? `<div class="trade-verdict-note">None of these players are in your ${set} rankings, so there's no ${tileName} verdict.</div>` : '';
-        const notes = [now, later].map(p => (p && p.nums && p.unmatchedNote) || '').join('')
-            + missing(now, '<span class="mls-nowrap">In-Season</span>', 'Now') + missing(later, 'dynasty', '<span class="mls-nowrap">Long-term</span>');
-        const notesBox = notes ? `<div class="mls-trade-tile-notes" data-tile-notes>${notes}</div>` : '';
-        if (!tiles) return notesBox;
-        return `<div class="mls-trade-tiles" data-trade-verdict-dual role="group"${headline ? ` aria-label="${escapeHtml(headline)}"` : ''}>${tiles}</div>${notesBox}`;
+        const notes = [now, later].map(p => (p && p.nums && p.unmatchedNote) || '')
+            .concat(missing(now, '<span class="mls-nowrap">In-Season</span>', 'Now'), missing(later, 'dynasty', '<span class="mls-nowrap">Long-term</span>'));
+        if (!tiles) return { html: '', notes };
+        return { html: `<div class="mls-trade-tiles" data-trade-verdict-dual role="group"${headline ? ` aria-label="${escapeHtml(headline)}"` : ''}>${tiles}</div>`, notes };
     }
 
     // Market Consensus beside your two verdicts (S24, round 4): one muted line, there for comparison, so it doesn't draw
     // the eye from your own. parts: renderTradeVerdict's, or null without market values.
     function marketStrip(p) {
         if (!p) return '';
-        if (!p.nums) return p.note || '';
+        if (!p.nums) return ''; // its note is in the tiles' notes box
         const { nums } = p;
         return `
         <div class="mls-trade-market-strip ${p.verdictClass}" data-trade-market-strip>
@@ -190,7 +192,19 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
             <span class="mls-trade-market-strip-result">${p.verdictText}</span>
             ${p.incomplete ? '' : `<span class="mls-nowrap">${signedPts(nums.diff)} &middot; ${nums.swingPct.toFixed(0)}%</span>`}
             <span class="mls-nowrap">Get ${nums.getTotal.toLocaleString()} &middot; Give ${nums.giveTotal.toLocaleString()}</span>
-        </div>${p.unmatchedNote || ''}`;
+        </div>`;
+    }
+
+    // The tiles' notes box (round 10): each note once, in order. parts: HTML strings, each holding one or more
+    // .trade-verdict-note divs (or '').
+    function noteBox(parts) {
+        const seen = new Set(), notes = [];
+        parts.join('').replace(/<div class="trade-verdict-note"[^>]*>[\s\S]*?<\/div>/g, (div) => {
+            const text = div.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+            if (!seen.has(text)) { seen.add(text); notes.push(div); }
+            return div;
+        });
+        return notes.length ? `<div class="mls-trade-tile-notes" data-tile-notes>${notes.join('')}</div>` : '';
     }
 
     // The verdict's numbers, for the banner below and for the Trade Analyzer's headline under it (improvements
