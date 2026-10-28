@@ -448,7 +448,7 @@ test('a superflex league with a 1QB-looking In-Season set prices QBs at the dyna
         }
     }
     await expect(page.locator("#tradeOutput .mls-trade-row").filter({ hasText: "Ja'Marr Chase" }).locator('.mls-trade-row-now')).toHaveText(`Now ${fmt(value(14))}`);
-    await expect(note).toHaveText(NOTE);
+    await expect(note).toHaveText(`* ${NOTE}`); // with the Now tile's mark (round 17)
     await expect(note.locator('.mls-nowrap')).toHaveCount(2); // both "In-Season"s kept whole (round 8)
     await expect(page.locator('#tradeOutput [data-one-qb-note]')).toHaveCount(0); // the prices cover it
     // Power Rankings after the trade says so in "How this is worked out".
@@ -630,6 +630,35 @@ test('a pick missing from the market is said once, in the one notes box under th
     await expectClean(page, state);
 });
 
+// Round 17 (owner: "Herbert isn't in your In-Season rankings, so he counts as 0" sat right under the Long-term tile): each
+// card with a note carries a mark after its totals (*, then †, ‡: Now, Long-term, Market), and each note starts with the
+// marks of the cards it's about.
+test('a note under the tiles starts with the mark of the card it\'s about, and that card carries it', async ({ page }) => {
+    const { state } = await setUp(page);
+    const out = page.locator('#tradeOutput');
+    const markOf = (sel) => out.locator(`${sel} [data-card-mark]`);
+    // Derrick Henry isn't in the In-Season set: a note about the Now tile only.
+    await runTrade(page, ['Nico Collins'], ['Derrick Henry']);
+    await expect(markOf('.mls-trade-tile.is-now')).toHaveText('*');
+    await expect(markOf('.mls-trade-tile.is-later')).toHaveCount(0);
+    await expect(out.locator('[data-tile-notes] .trade-verdict-note')).toHaveText(["* Derrick Henry isn't in your In-Season rankings, so he counts as 0."]);
+    // A pick the market doesn't price: about all three cards.
+    await page.evaluate(async () => {
+        const { State } = await import('/js/mls/state.js');
+        const { normalizeName } = await import('/js/shared/names.js');
+        State.marketRankings = [['Nico Collins', 20], ["Ja'Marr Chase", 3]].map(([name, marketVal]) => ({ name, cleanName: normalizeName(name), marketVal, pos: '' }));
+    });
+    await runTrade(page, ['Nico Collins'], ["Ja'Marr Chase", '2029 1st']);
+    await expect(markOf('.mls-trade-tile.is-now')).toHaveText('*');
+    await expect(markOf('.mls-trade-tile.is-later')).toHaveText('\u2020');
+    await expect(markOf('[data-trade-market-strip]')).toHaveText('\u2021');
+    await expect(out.locator('[data-tile-notes] .trade-verdict-note').filter({ hasText: '2029 1st' }).locator('.mls-note-mark')).toHaveText('*\u2020\u2021');
+    // No note, no marks.
+    await runTrade(page, ['Nico Collins'], ["Ja'Marr Chase"]);
+    await expect(out.locator('[data-card-mark], .mls-note-mark')).toHaveCount(0);
+    await expectClean(page, state);
+});
+
 // Round 11: Export Trade leaves out the note about your own rankings' format; a two-QB league reads "2QB".
 test('Export Trade leaves out the superflex QB note, and keeps the notes about the totals', async ({ page }) => {
     const { state, ids } = await setUp(page, 'both', { html2canvas: true });
@@ -648,6 +677,8 @@ test('Export Trade leaves out the superflex QB note, and keeps the notes about t
     await download;
     const text = await page.evaluate(() => window.__tradeCloneText);
     expect(text).not.toContain('look 1QB');
+    // Round 17: the superflex note was the Now tile's; the pick's note (about both tiles) keeps both marks.
+    expect(text).toContain('*\u2020 2029 1st');
     expect(text).toContain("2029 1st has no value without Market Consensus data");
     await expectClean(page, state);
 });

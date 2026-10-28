@@ -7189,3 +7189,23 @@ check now expects players before "More analysis" before Power Rankings), a new t
 default with the line, Derrick Henry missing from the In-Season set counts as unranked; Dynasty removes the line and the
 note). Screenshots: none of the tabs' baselines show a trade, so only the Guide's (already changing this card) move.
 
+
+### S24, round 17: marks tie each note under the tiles to its card; my last review as a user
+
+1. **Which card a note is about** (owner: "Justin Herbert isn't in your In-Season rankings, so he counts as 0" sat right
+   under the Long-term tile, which it isn't about). Each card with a note gets a mark after its totals: *, then † and ‡,
+   in the order Now, Long-term, Market (only cards on screen, only those with a note). Each note starts with the marks
+   of every card it's about: a pick the market doesn't price is about all three ("*†‡ 2028 1st isn't in…"), the
+   superflex QB note about Now. A note about no card (a set with no tile) gets none. `markedNoteBox` replaces
+   `noteBox` in trade/verdict.js (same dedupe). Export Trade drops a card's mark when the note carrying it is left out
+   (the superflex note). Marks are `aria-hidden`: the notes name what they're about.
+   Not needed elsewhere: in a league with one set, each banner's notes sit inside that banner already.
+2. Review on the owner's backup (Draft Scouts of America, Herbert + 2028 1st for Burrow, both widths; How I Met Your
+   Punter, a redraft trade, on a phone): the new order and "More analysis" read well in both; redraft shows the heading
+   without a switch. One finding, put to the owner: a pick's values carry a "*" meaning "market value" ("Dyn 1,847*",
+   "Now 1,847*"), explained only by a hover title on Dyn (never on a phone, nothing on Now), and now beside cards whose
+   "*" means "see the note".
+
+`CACHE_NAME` v2.8.130 → v2.8.131. Tests: the marks (Now only for a player missing from the In-Season set; *, †, ‡ and a
+"*†‡" note for a pick the market lacks; none without notes); the superflex note's text now starts with "*"; the export
+keeps "*† 2029 1st".

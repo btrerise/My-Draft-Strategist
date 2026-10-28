@@ -226,6 +226,9 @@ export const exportTrade = async function() {
                 // explaining the totals stay. A box left empty goes too.
                 clone.querySelectorAll('[data-sf-qb-note]').forEach(el => el.remove());
                 clone.querySelectorAll('.mls-trade-tile-notes').forEach(el => { if (!el.children.length) el.remove(); });
+                // A card's mark (round 17) goes with the last note carrying it.
+                const marksLeft = [...clone.querySelectorAll('.mls-trade-tile-notes .mls-note-mark')].map(m => m.textContent).join('');
+                clone.querySelectorAll('[data-card-mark]').forEach(m => { if (!marksLeft.includes(m.textContent)) m.remove(); });
                 clone.querySelectorAll('li .mls-trade-impact-help').forEach(el => el.closest('li').remove());
                 clone.querySelectorAll('.mls-trade-impact-notes').forEach(ul => { if (!ul.children.length) ul.remove(); });
                 clone.style.width = '480px';

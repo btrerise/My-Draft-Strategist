@@ -67,10 +67,16 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
             const market = State.marketRankings.length > 0
                 ? renderTradeVerdict("Market Consensus", '', getResults, giveResults, "marketValue", "marketMatched", true, '', true) : null;
             // Every note about the totals in one box under the tiles, each said once (round 10: a pick missing from the
-            // market was said three times, in four boxes): the tiles', the superflex prices', the market's.
-            const tiles = dualVerdictTiles(seasonSet, now, later, dualHeadline(both.now, both.later));
-            const notes = noteBox([...tiles.notes, sfQbNote(seasonSet, getResults, giveResults), ...(market ? [market.nums ? market.unmatchedNote : market.note] : [])]);
-            verdictHTML = tiles.html + notes + oneQbNote(getResults, giveResults, seasonSet) + marketStrip(market) + marketAgeHTML();
+            // market was said three times, in four boxes): the tiles', the superflex prices', the market's. Each starts
+            // with the mark of the card(s) it's about, and those cards carry it (round 17).
+            const box = markedNoteBox([
+                { key: 'now', shown: !!(now && now.nums), notes: [(now && now.nums && now.unmatchedNote) || '', sfQbNote(seasonSet, getResults, giveResults)] },
+                { key: 'later', shown: !!(later && later.nums), notes: [(later && later.nums && later.unmatchedNote) || ''] },
+                { key: 'market', shown: !!(market && market.nums), notes: [market ? (market.nums ? market.unmatchedNote : market.note) : ''] },
+                { key: 'none', shown: false, notes: [missingTileNotes(now, later)] }
+            ]);
+            const tiles = dualVerdictTiles(seasonSet, now, later, dualHeadline(both.now, both.later), box.marks);
+            verdictHTML = tiles + box.html + oneQbNote(getResults, giveResults, seasonSet) + marketStrip(market, box.marks.market) + marketAgeHTML();
             return verdictHTML || `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
         } else {
             yours = renderTradeVerdict(
@@ -152,9 +158,9 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
 
     // The In-Season and Dynasty verdicts as two tiles (S24, round 4): "NOW" / "LONG-TERM", the verdict, the points and
     // swing, and the totals; each tinted by its verdict like the banners, its (i) naming the set. headline: dualHeadline's
-    // sentence, for screen readers. parts: renderTradeVerdict's.
-    function dualVerdictTiles(seasonSet, now, later, headline) {
-        const tile = (cls, label, set, setTip, p) => {
+    // sentence, for screen readers. parts: renderTradeVerdict's. marks: markedNoteBox's, for each tile's totals.
+    function dualVerdictTiles(seasonSet, now, later, headline, marks = {}) {
+        const tile = (cls, label, set, setTip, p, mark) => {
             if (!p || !p.nums) return '';
             const { nums } = p;
             return `
@@ -165,24 +171,29 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
                 <div class="mls-trade-tile-set">by ${set}</div>
                 <div class="trade-verdict-result mls-trade-tile-result">${p.verdictText}</div>
                 <div class="mls-trade-tile-diff">${signedPts(nums.diff)} pts &middot; ${nums.swingPct.toFixed(0)}%</div>
-                <div class="mls-trade-tile-totals">Get ${nums.getTotal.toLocaleString()} &middot; Give ${nums.giveTotal.toLocaleString()}</div>
+                <div class="mls-trade-tile-totals">Get ${nums.getTotal.toLocaleString()} &middot; Give ${nums.giveTotal.toLocaleString()}${cardMark(mark)}</div>
             </div>`;
         };
-        const tiles = tile('is-now', 'Now', '<span class="mls-nowrap">In-Season</span>', `This season, by your In-Season rankings (${escapeHtml(seasonSet.name || '')}).`, now)
-            + tile('is-later', '<span class="mls-nowrap">Long-term</span>', 'dynasty', 'The long run, by your dynasty rankings.', later);
-        // The notes under the tiles, in one quiet box (round 8: loose, they read like stray lines). A set that values
-        // nothing in the trade says which tile is missing and why.
+        const tiles = tile('is-now', 'Now', '<span class="mls-nowrap">In-Season</span>', `This season, by your In-Season rankings (${escapeHtml(seasonSet.name || '')}).`, now, marks.now)
+            + tile('is-later', '<span class="mls-nowrap">Long-term</span>', 'dynasty', 'The long run, by your dynasty rankings.', later, marks.later);
+        if (!tiles) return '';
+        return `<div class="mls-trade-tiles" data-trade-verdict-dual role="group"${headline ? ` aria-label="${escapeHtml(headline)}"` : ''}>${tiles}</div>`;
+    }
+
+    // A set that values nothing in the trade has no tile: a note says which is missing and why (round 8).
+    function missingTileNotes(now, later) {
         const missing = (p, set, tileName) => p && !p.nums && p.note
             ? `<div class="trade-verdict-note">None of these players are in your ${set} rankings, so there's no ${tileName} verdict.</div>` : '';
-        const notes = [now, later].map(p => (p && p.nums && p.unmatchedNote) || '')
-            .concat(missing(now, '<span class="mls-nowrap">In-Season</span>', 'Now'), missing(later, 'dynasty', '<span class="mls-nowrap">Long-term</span>'));
-        if (!tiles) return { html: '', notes };
-        return { html: `<div class="mls-trade-tiles" data-trade-verdict-dual role="group"${headline ? ` aria-label="${escapeHtml(headline)}"` : ''}>${tiles}</div>`, notes };
+        return missing(now, '<span class="mls-nowrap">In-Season</span>', 'Now') + missing(later, 'dynasty', '<span class="mls-nowrap">Long-term</span>');
     }
+
+    // A card's mark (round 17), after its totals: the same mark starts each note about that card. Read aloud as nothing
+    // (the notes say what they're about).
+    const cardMark = (mark) => mark ? `<span class="mls-note-mark" data-card-mark aria-hidden="true">${mark}</span>` : '';
 
     // Market Consensus beside your two verdicts (S24, round 4): one muted line, there for comparison, so it doesn't draw
     // the eye from your own. parts: renderTradeVerdict's, or null without market values.
-    function marketStrip(p) {
+    function marketStrip(p, mark = '') {
         if (!p) return '';
         if (!p.nums) return ''; // its note is in the tiles' notes box
         const { nums } = p;
@@ -192,20 +203,33 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
                 <span class="tooltip-container"><span class="tooltip-icon">i</span><span class="tooltip-text">By Market Consensus: the same estimate applied to the market's ranks (Trade Finder below), for comparison.${totalsWaiver(nums)}</span></span></span>
             <span class="mls-trade-market-strip-result">${p.verdictText}</span>
             ${p.incomplete ? '' : `<span class="mls-nowrap">${signedPts(nums.diff)} &middot; ${nums.swingPct.toFixed(0)}%</span>`}
-            <span class="mls-nowrap">Get ${nums.getTotal.toLocaleString()} &middot; Give ${nums.giveTotal.toLocaleString()}</span>
+            <span class="mls-nowrap">Get ${nums.getTotal.toLocaleString()} &middot; Give ${nums.giveTotal.toLocaleString()}${cardMark(mark)}</span>
         </div>`;
     }
 
-    // The tiles' notes box (round 10): each note once, in order. parts: HTML strings, each holding one or more
-    // .trade-verdict-note divs (or '').
-    function noteBox(parts) {
-        const seen = new Set(), notes = [];
-        parts.join('').replace(/<div class="trade-verdict-note"[^>]*>[\s\S]*?<\/div>/g, (div) => {
+    // The tiles' notes box (round 10): each note once, in order. Round 17 (owner: "Herbert isn't in your In-Season
+    // rankings" sat right under the Long-term tile, which it isn't about): each card with a note gets a mark, *, then
+    // † and ‡, in the order Now, Long-term, Market; a note starts with the mark of every card it's about (a pick missing
+    // from the market is about all three: "*†‡"). Notes about no card (a missing tile) get none.
+    // groups: [{ key, shown (the card is on screen), notes: HTML strings, each holding .trade-verdict-note divs or '' }].
+    // { html, marks: { now, later, market } }.
+    const MARKS = ['*', '\u2020', '\u2021'];
+    function markedNoteBox(groups) {
+        const entries = new Map(); // text -> { div, keys }
+        groups.forEach(g => g.notes.join('').replace(/<div class="trade-verdict-note"[^>]*>[\s\S]*?<\/div>/g, (div) => {
             const text = div.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-            if (!seen.has(text)) { seen.add(text); notes.push(div); }
+            if (!entries.has(text)) entries.set(text, { div, keys: new Set() });
+            if (g.shown) entries.get(text).keys.add(g.key);
             return div;
+        }));
+        const marks = {};
+        let next = 0;
+        groups.forEach(g => { if (g.shown && [...entries.values()].some(e => e.keys.has(g.key))) marks[g.key] = MARKS[next++]; });
+        const notes = [...entries.values()].map(({ div, keys }) => {
+            const mark = groups.filter(g => keys.has(g.key)).map(g => marks[g.key]).join('');
+            return mark ? div.replace(/^(<div[^>]*>)/, `$1<span class="mls-note-mark" aria-hidden="true">${mark}</span> `) : div;
         });
-        return notes.length ? `<div class="mls-trade-tile-notes" data-tile-notes>${notes.join('')}</div>` : '';
+        return { marks, html: notes.length ? `<div class="mls-trade-tile-notes" data-tile-notes>${notes.join('')}</div>` : '' };
     }
 
     // The verdict's numbers, for the banner below and for the Trade Analyzer's headline under it (improvements
