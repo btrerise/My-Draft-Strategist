@@ -6928,3 +6928,40 @@ only `visual.spec.mjs` failed, on the environment message (Chromium 153 here). S
 (1541b1b) and this branch: still only **`mls-league-guide.png`** changes (`desktop/` 1280×8122 → 1280×8447, `phone/`
 390×18492 → 390×19524: the legend lines and Guide sentences); the other 40 are pixel-identical. Both from the pull
 request's CI.
+
+### S24, round 6: my second review as a user; the owner took 1–4, (a) for 1, and a note for 5
+
+Checked at 375px and 1280px on the owner's backup: May the Receptions (dynasty, superflex), League of Ordinary
+Gentlemen (keeper, no In-Season set), LOOG (redraft), a trade with a pick, the make-it-fair switch, and the Export Trade
+image (with Power Rankings), which read well.
+1. **A 1QB In-Season set in a superflex league** (the owner's "ROS Redraft": Lamar Jackson QB3 but #57 overall, so his
+   Now value was 3,616 against 9,299 by dynasty, and trading him away "won now" by +3,839). Values come from overall
+   ranks, so every QB trade in a superflex league leaned that way; the Roster chips (position ranks) didn't. Owner's
+   choice (a): a warning. In a superflex league (a SFLEX slot or two QB slots), with a QB in the trade, when the
+   In-Season set's top 50 holds fewer than 8 QBs (scaled to the positions known from the league's synced map, 20+
+   needed): "Your In-Season rankings (ROS Redraft) look like a 1QB list (1 QB in their top 50), and this league is
+   superflex, so Now undervalues QBs. Use a superflex set as this league's In-Season rankings." with **Choose on the
+   Roster tab**. Amber, under the tiles, on screen only. `isSuperflex`, `oneQbLook` (rankings/nowAndLater.js),
+   `oneQbWarning` (trade/verdict.js).
+2. **The "no In-Season rankings" note** in the Trade Analyzer is a quiet box now, with **Choose on the Roster tab**
+   (`goToSeasonPicker`, power/rosterCard.js: the Roster tab, the rankings card opened, scrolled to and focused on the
+   In-Season picker). The superflex warning uses the same button.
+3. **The market line's (i)** sits beside "MARKET", and its numbers and totals each stay whole, so on a phone a wrap
+   moves the totals, not the (i) alone.
+4. **The gap chip's legend line** is two lines on a phone: "Roster tab, dynasty and keeper leagues: your In-Season and
+   dynasty rankings are far apart at his position, or one leaves him out. Now > long-term: a sell-high candidate.
+   Long-term > now: buy-low or hold. Tap for more."
+
+`CACHE_NAME` v2.8.119 → v2.8.120; CHANGELOG line. Tests: unit (`isSuperflex`, `oneQbLook`); spec (the warning with a QB
+in a superflex league, none without a QB or without superflex; the market (i)'s place; the note's button opening the
+In-Season picker).
+
+**Left for later (owner: "make a note"):**
+- **"To make it fair" with long names on a phone** (from S19's layout, not this card): a name like "Rhamondre Stevenson"
+  is kept whole, so the value and Add drop onto their own line under it, which reads oddly. Options: let the name
+  shrink with an ellipsis and the full name in the row's title, or put the "Fair · 2% their way" line beside the value
+  so the row stays two lines. Check against `rowOverlaps` in `tests/mls-trade-fair.spec.mjs` (names whole was a round 10
+  and 14 choice there).
+- Power Rankings' **Start** in a superflex league is also scored from the In-Season set's overall ranks, so a 1QB
+  In-Season set undervalues QBs there too (S23). The warning above covers trades only; the same check could show on the
+  Power Rankings card.

@@ -8,7 +8,7 @@ import { verdictFromValues } from './makeFair.js';
 import { marketFormatWarning } from '../main.js';
 import { getActiveLeague } from '../helpers.js';
 import { IN_SEASON, hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
-import { dualHeadline, dualVerdictNumbers } from '../rankings/nowAndLater.js';
+import { dualHeadline, dualVerdictNumbers, isSuperflex, oneQbLook } from '../rankings/nowAndLater.js';
 
     // The active league's In-Season set when the Trade Analyzer shows two values and two verdicts (improvements
     // S24): a dynasty or keeper league with an In-Season set (S23) and its dynasty set loaded. null everywhere else,
@@ -59,7 +59,8 @@ import { dualHeadline, dualVerdictNumbers } from '../rankings/nowAndLater.js';
             const both = dualVerdictNumbers(getResults, giveResults, waiver);
             const market = State.marketRankings.length > 0
                 ? renderTradeVerdict("Market Consensus", '', getResults, giveResults, "marketValue", "marketMatched", true, '', true) : null;
-            verdictHTML = dualVerdictTiles(seasonSet, now, later, dualHeadline(both.now, both.later)) + marketStrip(market) + marketAgeHTML();
+            verdictHTML = dualVerdictTiles(seasonSet, now, later, dualHeadline(both.now, both.later))
+                + oneQbWarning(seasonSet, getResults, giveResults) + marketStrip(market) + marketAgeHTML();
             return verdictHTML || `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
         } else {
             yours = renderTradeVerdict(
@@ -80,7 +81,8 @@ import { dualHeadline, dualVerdictNumbers } from '../rankings/nowAndLater.js';
         // A dynasty or keeper league with no In-Season set (S24, owner's report): one verdict by your rankings, as before,
         // and a line saying how to get the this-season one beside it. On screen only (Export Trade doesn't pick it up).
         if (!seasonSet && yours && hasSeasonSlot(getActiveLeague())) {
-            verdictHTML += `<div class="mls-trade-season-hint" data-season-hint>Choose <span class="mls-nowrap">In-Season</span> rankings for this league on the Roster tab to get a this-season verdict beside your dynasty one.</div>`;
+            // A note in a box with a way there (round 6: as plain text it read like a stray line).
+            verdictHTML += `<div class="mls-trade-season-hint" data-season-hint><span>Choose <span class="mls-nowrap">In-Season</span> rankings for this league to get a this-season verdict beside your dynasty one.</span> ${SEASON_PICKER_BTN}</div>`;
         }
 
         if (!verdictHTML) {
@@ -106,6 +108,21 @@ import { dualHeadline, dualVerdictNumbers } from '../rankings/nowAndLater.js';
     // The names in a trade that match no player at all (runScout's rows mark them known: false), as shown on their rows.
     export function unknownNames(getResults, giveResults) {
         return getResults.concat(giveResults).filter(r => r.known === false).map(r => (r.exportRow && r.exportRow.name) || '?');
+    }
+
+    const SEASON_PICKER_BTN = `<button type="button" class="mls-btn-sm btn-link-inline" data-action="goToSeasonPicker">Choose on the Roster tab</button>`;
+
+    // A superflex league whose In-Season set looks like a 1QB list (S24, round 6, the owner's choice (a)): its overall ranks
+    // put QBs far down, so the Now values undervalue them. Said only when a QB is in the trade, where it changes the
+    // verdict. Positions from the league's synced map (the top 50 are nearly always rostered). On screen only.
+    function oneQbWarning(seasonSet, getResults, giveResults) {
+        const league = getActiveLeague();
+        if (!league || !isSuperflex(league.reqs)) return '';
+        if (!getResults.concat(giveResults).some(r => r.exportRow && r.exportRow.pos === 'QB')) return '';
+        const posMap = league.globalPosMap || {};
+        const look = oneQbLook(seasonSet.data, (c) => posMap[c]);
+        if (!look.oneQb) return '';
+        return `<div class="mls-trade-season-hint is-warning" data-one-qb-warning><span>Your <span class="mls-nowrap">In-Season</span> rankings (${escapeHtml(seasonSet.name || '')}) look like a 1QB list (${look.qbs} QB${look.qbs === 1 ? '' : 's'} in their top 50), and this league is superflex, so Now undervalues QBs. Use a superflex set as this league's <span class="mls-nowrap">In-Season</span> rankings.</span> ${SEASON_PICKER_BTN}</div>`;
     }
 
     const signedPts = (n) => `${n >= 0 ? '+' : '\u2212'}${Math.abs(n).toLocaleString()}`;
@@ -145,11 +162,11 @@ import { dualHeadline, dualVerdictNumbers } from '../rankings/nowAndLater.js';
         const { nums } = p;
         return `
         <div class="mls-trade-market-strip ${p.verdictClass}" data-trade-market-strip>
-            <span class="mls-trade-market-strip-label">Market</span>
+            <span class="mls-trade-market-strip-head"><span class="mls-trade-market-strip-label">Market</span>
+                <span class="tooltip-container"><span class="tooltip-icon">i</span><span class="tooltip-text">By Market Consensus: the same estimate applied to the market's ranks (Trade Finder below), for comparison.${totalsWaiver(nums)}</span></span></span>
             <span class="mls-trade-market-strip-result">${p.verdictText}</span>
-            ${p.incomplete ? '' : `<span>${signedPts(nums.diff)} &middot; ${nums.swingPct.toFixed(0)}%</span>`}
-            <span>Get ${nums.getTotal.toLocaleString()} &middot; Give ${nums.giveTotal.toLocaleString()}</span>
-            <div class="tooltip-container"><div class="tooltip-icon">i</div><span class="tooltip-text">By Market Consensus: the same estimate applied to the market's ranks (Trade Finder below), for comparison.${totalsWaiver(nums)}</span></div>
+            ${p.incomplete ? '' : `<span class="mls-nowrap">${signedPts(nums.diff)} &middot; ${nums.swingPct.toFixed(0)}%</span>`}
+            <span class="mls-nowrap">Get ${nums.getTotal.toLocaleString()} &middot; Give ${nums.giveTotal.toLocaleString()}</span>
         </div>${p.unmatchedNote || ''}`;
     }
 

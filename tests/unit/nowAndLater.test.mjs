@@ -101,3 +101,25 @@ test('rankGapTip names both ranks and what the gap suggests', () => {
     assert.match(rankGapTip('now', 'WR', 24, 40), /In-Season WR24, dynasty WR40.*sell-high/);
     assert.match(rankGapTip('later', 'RB', 30, 8), /In-Season RB30, dynasty RB8.*buy-low or hold/);
 });
+
+// Round 6: a 1QB In-Season set in a superflex league.
+import { isSuperflex, oneQbLook } from '../../js/mls/rankings/nowAndLater.js';
+test('isSuperflex: a SFLEX slot or two QB slots', () => {
+    assert.equal(isSuperflex({ QB: 1, SFLEX: 1 }), true);
+    assert.equal(isSuperflex({ QB: 2 }), true);
+    assert.equal(isSuperflex({ QB: 1, SFLEX: 0 }), false);
+    assert.equal(isSuperflex(null), false);
+});
+test('oneQbLook: QBs in the top 50 decide, scaled to the positions known', () => {
+    const set = (qbEvery) => Array.from({ length: 60 }, (_, i) => ({ cleanName: `p${i}`, rank: i + 1, pos: i % qbEvery === 0 ? 'QB' : 'WR' }));
+    const posOf = (data) => (c) => (data.find(p => p.cleanName === c) || {}).pos;
+    const oneQb = set(12);                                   // 5 QBs in the top 50
+    assert.deepEqual(oneQbLook(oneQb, posOf(oneQb)), { qbs: 5, known: 50, oneQb: true });
+    const sf = set(4);                                       // 13 QBs in the top 50
+    assert.equal(oneQbLook(sf, posOf(sf)).oneQb, false);
+    // Too few positions known to judge: no warning.
+    assert.equal(oneQbLook(oneQb, (c) => (c < 'p2' ? 'WR' : undefined)).oneQb, false);
+    // Rank order, not array order; unranked (999) left out.
+    const shuffled = [...oneQb].reverse().concat([{ cleanName: 'x', rank: 999, pos: 'QB' }]);
+    assert.equal(oneQbLook(shuffled, posOf(shuffled)).qbs, 5);
+});

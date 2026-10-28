@@ -331,7 +331,7 @@ test.describe('Now and long-term side by side', () => {
             // a restored backup opened on such a league, and S24 looked broken). A redraft league doesn't.
             const hint = kind === 'dynasty' ? 1 : 0;
             await expect(out.locator('[data-season-hint]')).toHaveCount(hint);
-            if (hint) await expect(out.locator('[data-season-hint]')).toHaveText('Choose In-Season rankings for this league on the Roster tab to get a this-season verdict beside your dynasty one.');
+            if (hint) await expect(out.locator('[data-season-hint]')).toHaveText('Choose In-Season rankings for this league to get a this-season verdict beside your dynasty one. Choose on the Roster tab');
 
             await showTab(page, 'roster');
             await expect(page.locator('#rosterSort')).toHaveCount(0);
@@ -362,5 +362,46 @@ test('a dynasty league with no In-Season set offers the set your redraft leagues
     await expect(page.locator('#rosterList .mls-rank-dual').first()).toBeVisible();
     await expect(page.locator('#rosterList [data-season-hint]')).toHaveCount(0);
     expect((await fixture(page)).seasonRankingSetId).toBe(ids.season);
+    await expectClean(page, state);
+});
+
+test('the Trade Analyzer\'s In-Season note takes you to the In-Season picker', async ({ page }) => {
+    const { state } = await setUp(page, 'dynasty');
+    await runTrade(page, ['Nico Collins'], ["Ja'Marr Chase"]);
+    await page.locator('#tradeOutput [data-season-hint] [data-action="goToSeasonPicker"]').click();
+    await expect(page.locator('#rosterTab')).toHaveClass(/active/);
+    await expect(page.locator('#rosRankingsCard')).toHaveClass(/expanded/);
+    await expect(page.locator('#seasonRankingSetSelect')).toBeFocused();
+    await expectClean(page, state);
+});
+
+test('a superflex league with a 1QB-looking In-Season set warns when a QB is in the trade', async ({ page }) => {
+    const { state, ids } = await setUp(page);
+    // The In-Season set without Hurts and Burrow: 2 QBs among the fixture's known players reads as a 1QB list.
+    await page.evaluate(async (id) => {
+        const { State } = await import('/js/mls/state.js');
+        const set = State.rankingSets.ros.find(s => s.id === id);
+        set.data = set.data.filter(p => !['jalenhurts', 'joeburrow'].includes(p.cleanName));
+        localStorage.setItem('mls_ranking_sets_ros', JSON.stringify(State.rankingSets.ros));
+        const { normalizeName } = await import('/js/shared/names.js');
+        State.marketRankings = [['Lamar Jackson', 10], ["Ja'Marr Chase", 3], ['Nico Collins', 20]].map(([name, marketVal]) => ({ name, cleanName: normalizeName(name), marketVal, pos: '' }));
+    }, ids.season);
+    const reqs = (await fixture(page)).reqs || {};
+    await patchLeagues(page, { 'Fixture League': { reqs: { ...reqs, QB: 1, SFLEX: 1 } } });
+    const warning = page.locator('#tradeOutput [data-one-qb-warning]');
+
+    await runTrade(page, ['Lamar Jackson'], ["Ja'Marr Chase"]);
+    await expect(warning).toHaveCount(1);
+    await expect(warning).toContainText('Your In-Season rankings (Redraft ROS) look like a 1QB list (2 QBs in their top 50), and this league is superflex, so Now undervalues QBs.');
+    await expect(warning.locator('[data-action="goToSeasonPicker"]')).toHaveCount(1);
+    // The market line's (i) sits beside its label (round 6), so a wrap never leaves it alone on a line.
+    await expect(page.locator('#tradeOutput [data-trade-market-strip] .mls-trade-market-strip-head .tooltip-icon')).toHaveCount(1);
+    // No QB in the trade: no warning.
+    await runTrade(page, ['Nico Collins'], ["Ja'Marr Chase"]);
+    await expect(warning).toHaveCount(0);
+    // Not superflex: none.
+    await patchLeagues(page, { 'Fixture League': { reqs: { ...reqs, QB: 1, SFLEX: 0 } } });
+    await runTrade(page, ['Lamar Jackson'], ["Ja'Marr Chase"]);
+    await expect(warning).toHaveCount(0);
     await expectClean(page, state);
 });

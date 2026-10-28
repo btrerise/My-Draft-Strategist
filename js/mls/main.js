@@ -58,7 +58,7 @@ import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
 import { getPowerLeagueKind } from './power/directionLabels.js';
-import { goToLeagueStyle, goToPowerRankings, refreshPowerRankings, setPowerCompeting, updatePowerSetting } from './power/rosterCard.js';
+import { goToLeagueStyle, goToPowerRankings, goToSeasonPicker, refreshPowerRankings, setPowerCompeting, updatePowerSetting } from './power/rosterCard.js';
 import { scrollToPowerRankings } from './power/snapshot.js';
 import './scout/waiverInsights.js';
 import { lookupSimPlayer, runMatchupSim } from './sim/matchup.js';
@@ -246,6 +246,7 @@ const clickActions = {
     undoFairChange() { const before = takeFairUndo(); if (before) restoreTrade(before); },
     goToPowerRankings() { goToPowerRankings(); },
     goToLeagueStyle() { goToLeagueStyle(); },
+    goToSeasonPicker() { goToSeasonPicker(); },
     fetchMarketValue() { fetchMarketValue(this); },
     runMarketDisconnectAnalysis() { runMarketDisconnectAnalysis(); },
     // Rankings upload preview modal

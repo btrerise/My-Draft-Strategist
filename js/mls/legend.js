@@ -75,7 +75,7 @@ const GROUPS = [
         [`<span class="btn-bare mls-ba-dismiss">${DISMISS_ICON}</span>`,
             'On Best Available: hides him in that league for the rest of the week.'],
         [rankGapChipMarkup('now', '', SAMPLE) + rankGapChipMarkup('later', '', SAMPLE),
-            'On the Roster tab, in dynasty and keeper leagues with In-Season rankings: your two sets rank him 12 or more spots apart at his position (one of them inside the top 36 at RB and WR, top 24 at QB and TE), or one set leaves him out while the other has him in that range. Now &gt; long-term: he helps this season more, a sell-high candidate. Long-term &gt; now: worth more later, a buy-low or hold candidate. Tap for more.'],
+            'Roster tab, dynasty and keeper leagues: your In-Season and dynasty rankings are far apart at his position, or one leaves him out. Now &gt; long-term: a sell-high candidate. Long-term &gt; now: buy-low or hold. Tap for more.'],
         [edgeBadgeMarkup(12, true) + edgeBadgeMarkup(-9, false),
             'In the Trade Finder: how far the market\'s rank is from yours. Green is a buy-low target, red a sell-high one.'],
     ]],

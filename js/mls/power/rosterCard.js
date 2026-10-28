@@ -71,6 +71,17 @@ export const goToLeagueStyle = function() {
     }, 60));
 };
 
+// The Roster tab's In-Season picker, opened, scrolled to and focused (improvements S24, round 6): the Trade Analyzer's notes
+// about In-Season rankings point here.
+export const goToSeasonPicker = function() {
+    showTab('roster').then(() => setTimeout(() => {
+        const card = document.getElementById('rosRankingsCard');
+        if (card && !card.classList.contains('expanded')) card.querySelector(':scope > .rankings-card-header .rankings-card-toggle')?.click();
+        document.getElementById('seasonRankingsRow')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('seasonRankingSetSelect')?.focus({ preventScroll: true });
+    }, 60));
+};
+
 // "I'm competing this year" (improvements S23): per league, saved on the league object.
 export const setPowerCompeting = function(checked) {
     const league = getActiveLeague();

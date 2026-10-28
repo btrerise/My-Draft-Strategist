@@ -64,3 +64,25 @@ export function rankGapTip(kind, pos, nowPosRank, laterPosRank) {
     const lead = kind === 'now' ? 'Your In-Season rankings have him well ahead of your dynasty rankings' : 'Your dynasty rankings have him well ahead of your In-Season rankings';
     return `${lead} (In-Season ${pos}${nowPosRank}, dynasty ${pos}${laterPosRank}): ${tail}`;
 }
+
+// --- A 1QB IN-SEASON SET IN A SUPERFLEX LEAGUE (round 6) ---
+// Trade values come from overall ranks, and a 1QB list ranks QBs far lower overall than a superflex one (the owner's
+// "ROS Redraft": Lamar Jackson QB3 but #57), so in a superflex league its Now values undervalue every QB. A rankings set
+// stores no format, so it's judged by how many QBs its top 50 holds: superflex lists have about 12-16, 1QB lists 3-6.
+export const ONE_QB_TOP = 50;
+export const ONE_QB_MAX_QBS = 8;
+
+// reqs: the league's lineup slots. A superflex slot, or two QB slots.
+export function isSuperflex(reqs) {
+    return !!reqs && ((reqs.SFLEX || 0) > 0 || (reqs.QB || 0) >= 2);
+}
+
+// data: a set's players (rank order not assumed); posOf(cleanName) -> 'QB' | ... | undefined. { qbs, known }: QBs among
+// the top 50 by rank whose position is known, and how many are known. oneQb: enough known (20+) to judge, and fewer than
+// 8 QBs (scaled to the known count).
+export function oneQbLook(data, posOf) {
+    const top = [...(data || [])].filter(p => Number.isFinite(p.rank) && p.rank < 999).sort((a, b) => a.rank - b.rank).slice(0, ONE_QB_TOP);
+    let qbs = 0, known = 0;
+    top.forEach(p => { const pos = posOf(p.cleanName); if (!pos) return; known++; if (pos === 'QB') qbs++; });
+    return { qbs, known, oneQb: known >= 20 && qbs * ONE_QB_TOP / known < ONE_QB_MAX_QBS };
+}
