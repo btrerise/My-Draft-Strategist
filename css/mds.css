@@ -1018,11 +1018,12 @@ body.hide-headshots .draft-cell-img {
 
 /* --- FULL-WIDTH DRAFT BOARD FOR DESKTOP --- */
 @media (min-width: 1024px) {
-    /* THE FIX: Break #boardTab out of the 1200px .container trap to fill the monitor */
+    /* THE FIX: Break #boardTab out of the 1200px .container trap to fill the monitor -- the part of it beside the
+       navigation rail (--rail-inset, css/base.css, improvements S26), where the page is centred. */
     #boardTab {
-        width: 100vw !important;
-        max-width: 100vw !important;
-        margin-left: calc(50% - 50vw) !important;
+        width: calc(100vw - var(--rail-inset)) !important;
+        max-width: calc(100vw - var(--rail-inset)) !important;
+        margin-left: calc(50% - 50vw + var(--rail-inset) / 2) !important;
         padding-left: 2rem !important;
         padding-right: 2rem !important;
         box-sizing: border-box;

@@ -15,6 +15,15 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A navigation rail on computers.** On a window 840px or wider, the tabs sit in a column at the left edge (icons with
+  their names underneath) instead of a bar along the bottom, and the green bar beside the active tab slides up and
+  down. The menu button moves to the top of the rail; it opens the full menu (every tab by name, then the Guide,
+  T-Score and Lineup Strategist under "More") over the page. On tablets (600 to 839px) the bottom bar shows each icon
+  beside its name. Phones keep the bottom bar as before.
+- **Setup is now the Dashboard, and it's in the tab bar.** The first tab, with your rankings, drafts, settings and
+  Backup & Restore, is called Dashboard (as in Lineup Strategist) and sits first in the tab bar on every screen, so you
+  can tap or swipe to it. Number key 1 still opens it.
+
 - **A clearer tab bar.** The tab you're on now has a bold name and a heavier icon, with the green bar above it as
   before.
 - **No console errors when switching tabs quickly in Chrome 153.** A tab switch cut short by the next one no longer
@@ -90,6 +99,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 ## Lineup Strategist
 
 ### Unreleased
+
+- **A navigation rail on computers.** On a window 840px or wider, the five tabs sit in a column at the left edge (icons
+  with their names underneath) instead of a bar along the bottom, and the green bar beside the active tab slides up and
+  down. The menu button moves to the top of the rail; it opens the full menu (every tab by name, then the Guide,
+  T-Score and Draft Strategist under "More") over the page, with the tab you're on marked. On tablets (600 to 839px)
+  the bottom bar shows each icon beside its name. Phones keep the bottom bar as before.
 
 - **Trade Analyzer: the players come right under the verdict**, with To make it fair and Power Rankings after the trade
   below them under "More analysis". On a phone the players used to sit over a screen below the verdict.

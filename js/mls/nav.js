@@ -18,7 +18,8 @@ import { syncTradePicker } from './trade/picker.js';
     export const toggleDrawer = function() {
         const drawer = document.getElementById('drawer');
         const overlay = document.getElementById('drawerOverlay');
-        const hamburgerBtn = document.querySelector('.hamburger-btn');
+        // The header's menu button, and the navigation rail's on computers (improvements S26).
+        const hamburgerBtns = document.querySelectorAll('.hamburger-btn');
 
         if (!drawer || !overlay) return;
 
@@ -26,9 +27,7 @@ import { syncTradePicker } from './trade/picker.js';
         overlay.style.display = isOpen ? 'block' : 'none';
 
         // Announce the new state to screen readers
-        if (hamburgerBtn) {
-            hamburgerBtn.setAttribute('aria-expanded', isOpen);
-        }
+        hamburgerBtns.forEach(btn => btn.setAttribute('aria-expanded', isOpen));
 
         if (isOpen) {
             // No onEscape here: the existing document-level Escape handler below already
@@ -44,10 +43,7 @@ import { syncTradePicker } from './trade/picker.js';
     };
 
     export const navigateFromDrawer = function(tabId) {
-        document.querySelectorAll('.hamburger-menu .nav-btn').forEach(l => l.classList.remove('active-link'));
-        const targetBtn = document.querySelector(`.hamburger-menu .nav-btn[data-drawer-target="${tabId}"]`);
-        if (targetBtn) targetBtn.classList.add('active-link');
-        
+        updateDrawerActiveState(tabId);
         toggleDrawer();
         showTab(tabId);
     };
@@ -84,21 +80,19 @@ import { syncTradePicker } from './trade/picker.js';
         if (State.touchEndX < State.touchStartX - swipeThreshold) {
             if (currentIdx < tabs.length - 1) {
                 showTab(tabs[currentIdx + 1]);
-                updateDrawerActiveState(tabs[currentIdx + 1]);
             }
         }
         if (State.touchEndX > State.touchStartX + swipeThreshold) {
             if (currentIdx > 0) {
                 showTab(tabs[currentIdx - 1]);
-                updateDrawerActiveState(tabs[currentIdx - 1]);
             }
         }
     }
 
     export function updateDrawerActiveState(tabId) {
-        document.querySelectorAll('.hamburger-menu .nav-btn').forEach(l => l.classList.remove('active-link'));
+        document.querySelectorAll('.hamburger-menu .nav-btn').forEach(l => { l.classList.remove('active-link'); l.removeAttribute('aria-current'); });
         const targetBtn = document.querySelector(`.hamburger-menu .nav-btn[data-drawer-target="${tabId}"]`);
-        if (targetBtn) targetBtn.classList.add('active-link');
+        if (targetBtn) { targetBtn.classList.add('active-link'); targetBtn.setAttribute('aria-current', 'page'); }
     }
 
     // --- NAVIGATION LOGIC ---
@@ -121,10 +115,13 @@ import { syncTradePicker } from './trade/picker.js';
         const targetTab = document.getElementById(tabId + 'Tab');
         if (targetTab) targetTab.classList.add('active');
 
-        document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.nav-bar .nav-btn').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
         const activeNavBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
-        if (activeNavBtn) activeNavBtn.classList.add('active');
+        if (activeNavBtn) { activeNavBtn.classList.add('active'); activeNavBtn.setAttribute('aria-current', 'page'); }
         placeTabMarker();
+        // The drawer marks the tab too, whichever way it was reached: on computers it's the expanded navigation rail
+        // (improvements S26), which shows where you are.
+        updateDrawerActiveState(tabId);
 
         // Announced to screen readers via the aria-live region in index.html -- covers every
         // way a tab can change (swipe, number-key shortcuts, hamburger menu, browser back/

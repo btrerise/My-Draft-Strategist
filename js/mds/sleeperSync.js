@@ -466,7 +466,7 @@ import { showToast } from '../shared/ui/toast.js';
             targetDraftId = targetDraftId || (draft ? draft.draftId : "");
 
             if (!targetUser || targetUser === "Manual" || !targetDraftId) {
-                showToast("Please enter your Sleeper Username and Draft ID on the Setup tab first.", { isError: true });
+                showToast("Please enter your Sleeper Username and Draft ID on the Dashboard first.", { isError: true });
                 return;
             }
 
@@ -591,7 +591,7 @@ import { showToast } from '../shared/ui/toast.js';
             targetDraftId = targetDraftId || (draft ? draft.draftId : "");
 
             if (!targetUser || targetUser === "Manual" || !targetDraftId) {
-                showToast("Please enter your Sleeper Username and Draft ID on the Setup tab first.", { isError: true });
+                showToast("Please enter your Sleeper Username and Draft ID on the Dashboard first.", { isError: true });
                 document.querySelectorAll('.sync-toggle').forEach(el => el.checked = false);
                 return;
             }

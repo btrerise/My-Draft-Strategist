@@ -2291,8 +2291,8 @@ button.pos-filter {
         object-position: top;
     }
 
-    /* The tab bar's marker slides to the active tab. */
-    .nav-marker { transition: left var(--vt-fade-ms) var(--vt-ease), width var(--vt-fade-ms) var(--vt-ease); }
+    /* The tab bar's marker slides to the active tab: along the bar, or up and down the rail (improvements S26). */
+    .nav-marker { transition: left var(--vt-fade-ms) var(--vt-ease), width var(--vt-fade-ms) var(--vt-ease), top var(--vt-fade-ms) var(--vt-ease), height var(--vt-fade-ms) var(--vt-ease); }
 }
 /* Phones: the old tab leaves and the new one arrives in the direction of travel (a swipe left, or a tab further
    right, moves forward). Wider screens fade (above). */
@@ -2332,3 +2332,75 @@ button.pos-filter {
     }
 }
 
+
+/* --- NAVIGATION RAIL AND TABLET BAR (improvements S26, Material 3's window sizes) ---
+   One set of tab buttons, laid out three ways by CSS alone, so showTab, swipes, number keys, the drawer and the
+   screen-reader announcement don't know which one shows:
+   - phones (under 600px): the bottom bar as before, icon over label;
+   - tablets (600-839px): the bottom bar with each icon beside its label, the tabs centred;
+   - computers (840px and up): a 96px navigation rail at the left edge, the menu button at its top. The menu button
+     opens the drawer, restyled as the expanded rail (280px, over the page with a dimmed backdrop: M3's "modal"
+     configuration); the header's own menu button hides. The marker slides up and down beside the active tab
+     (placeTabMarker measures whichever way the bar runs). */
+/* --rail-inset: how far the rail pushes the page in (0 without it), for anything sized from the window's width. */
+:root { --rail-w: 96px; --rail-inset: 0px; }
+.nav-rail-menu,
+.menu-section-label,
+.close-menu-btn .icon-collapse { display: none; }
+
+@media (min-width: 600px) and (max-width: 839px) {
+    .nav-bar { justify-content: center; gap: 4px; padding-left: 16px; padding-right: 16px; }
+    /* Equal widths (the marker and the bold label, as on phones), sized for "Scoreboard" in bold beside its icon. */
+    .nav-bar .nav-btn { flex: 0 1 8.5rem; flex-direction: row; justify-content: center; gap: 0.5rem; padding: 0.75rem 4px; }
+    .nav-bar .nav-btn.active svg { transform: none; }
+}
+
+@media (min-width: 840px) {
+    :root { --rail-inset: var(--rail-w); }
+    body { padding-left: var(--rail-w); padding-bottom: 0; }
+    .header .hamburger-btn { display: none; }
+
+    .nav-bar {
+        top: 0;
+        right: auto;
+        width: var(--rail-w);
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: 12px;
+        padding: 12px 0 calc(1rem + env(safe-area-inset-bottom));
+        border-top: 0;
+        border-right: 1px solid var(--border);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .nav-rail-menu { display: flex; align-self: center; flex: 0 0 auto; width: 48px; height: 48px; margin-bottom: 20px; }
+    .nav-bar .nav-btn { flex: 0 0 auto; padding: 0.5rem 4px; border-radius: 0; }
+    .nav-bar .nav-btn.active svg { transform: none; }
+    /* Beside the active tab, at the rail's left edge (top and height set by placeTabMarker). */
+    .nav-marker { width: 3px; height: 0; border-radius: 0 3px 3px 0; }
+
+    /* The expanded rail: the drawer, opened from the rail's menu button, with its collapse button in the same spot. */
+    .hamburger-menu .menu-header { justify-content: flex-start; padding: 12px 24px; border-bottom: 0; }
+    .hamburger-menu .menu-logo-section { display: none; }
+    .close-menu-btn { width: 48px; height: 48px; }
+    .close-menu-btn .icon-close { display: none; }
+    .close-menu-btn .icon-collapse { display: block; }
+    .menu-section-label {
+        display: block;
+        margin: 0.75rem 0 0;
+        padding: 0.85rem 1.5rem 0.5rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
+    .menu-section-label + .nav-btn { margin-top: 0; }
+
+    /* Fixed elements stay clear of the rail: toasts drop to the bottom (no bar there), dialogs centre on the page. */
+    .mds-toast { bottom: calc(24px + env(safe-area-inset-bottom)); }
+    .preview-overlay,
+    .mds-modal-overlay { padding-left: calc(1.5rem + var(--rail-w)); }
+}

@@ -35,7 +35,8 @@ import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/v
     export const toggleMenu = function() {
     const menu = document.getElementById('hamburgerMenu');
     const overlay = document.getElementById('menuOverlay');
-    const hamburgerBtn = document.querySelector('.hamburger-btn'); // Grab the button
+    // The header's menu button, and the navigation rail's on computers (improvements S26).
+    const hamburgerBtns = document.querySelectorAll('.hamburger-btn');
     
     if (!menu || !overlay) return;
     
@@ -43,9 +44,7 @@ import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/v
     overlay.style.display = isOpen ? 'block' : 'none';
     
     // Announce the new state to screen readers
-    if (hamburgerBtn) {
-        hamburgerBtn.setAttribute('aria-expanded', isOpen);
-    }
+    hamburgerBtns.forEach(btn => btn.setAttribute('aria-expanded', isOpen));
 
     if (isOpen) {
         menuFocusTrap = createFocusTrap(menu);
@@ -74,9 +73,9 @@ import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/v
     const targetTab = document.getElementById(tabId + 'Tab');
     if (targetTab) targetTab.classList.add('active');
 
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
     document.querySelectorAll(`.hamburger-menu .nav-btn[data-target="${tabId}"], .nav-bar .nav-btn[data-target="${tabId}"]`)
-        .forEach(btn => btn.classList.add('active'));
+        .forEach(btn => { btn.classList.add('active'); btn.setAttribute('aria-current', 'page'); });
     placeTabMarker();
 
     const menu = document.getElementById('hamburgerMenu');

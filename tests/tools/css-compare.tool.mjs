@@ -179,7 +179,7 @@ function compare(state, before, after) {
 // run on both sides, so anything that isn't CSS (data, timing of user actions) is identical.
 
 const menu = async (page, snap) => {
-    await page.click('.hamburger-btn');
+    await page.click('.hamburger-btn:visible'); // the header's, or the navigation rail's on computers (improvements S26)
     await expect(page.locator('.hamburger-menu.open')).toBeVisible();
     await snap('menu open');
     await page.locator('.hamburger-menu.open .close-menu-btn').click();
