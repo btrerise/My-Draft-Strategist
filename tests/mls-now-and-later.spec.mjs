@@ -154,21 +154,34 @@ test.describe('Now and long-term side by side', () => {
         await expect(collins.locator('.mls-trade-row-dyn')).toHaveText('Dyn');
         await expect(collins.locator('.mls-trade-row-now')).toHaveText(`Now ${fmt(value(6))}`);
 
+        // Round 16: the order is the verdict, the two sides, then "More analysis" (To make it fair, Power Rankings after
+        // the trade). The heading carries the Value by switch, Dynasty by default ("I'm competing" is off).
+        const order = await out.evaluate(el => ['[data-trade-verdict-dual]', '.mls-trade-sides', '[data-trade-more]', '[data-trade-fair]', '[data-trade-impact]']
+            .map(sel => [...el.children].findIndex(c => c.matches(sel))));
+        expect(order.every(i => i >= 0)).toBe(true);
+        expect([...order].sort((a, b) => a - b)).toEqual(order);
+        const more = out.locator('[data-trade-more]');
+        await expect(more.locator('.mls-trade-more-title')).toHaveText('More analysis');
+        await expect(more.locator('[data-basis-caption]')).toHaveCount(0);
         // "To make it fair" goes by the dynasty value, and says so.
         const fair = out.locator('[data-trade-fair]');
         await expect(fair).toHaveCount(1);
         await expect(fair).toContainText("they'd add");
         await expect(fair).toContainText(/by your dynasty rankings/);
-        // Its switch (round 3): by In-Season this trade favors you, so you'd add; then back.
-        const basis = fair.locator('[data-action="setFairBasis"]');
+        await expect(fair.locator('[data-action="setFairBasis"]')).toHaveCount(0); // moved to the heading
+        // The switch (round 3): by In-Season this trade favors you, so you'd add, and Power Rankings' rooms read In-Season
+        // too (round 16); then back.
+        const basis = more.locator('[data-action="setFairBasis"]');
         await expect(basis).toHaveText(['Dynasty', 'In-Season']);
         await expect(basis.nth(0)).toHaveAttribute('aria-pressed', 'true');
         await basis.nth(1).click();
-        await expect(fair.locator('[data-basis="season"]')).toHaveAttribute('aria-pressed', 'true');
+        await expect(more.locator('[data-basis="season"]')).toHaveAttribute('aria-pressed', 'true');
         await expect(fair).toContainText("you'd add");
         await expect(fair).toContainText(/by your In-Season rankings/);
-        await expect(fair.locator('[data-basis="season"]')).toBeFocused();
-        await fair.locator('[data-basis="dynasty"]').click();
+        await expect(more.locator('[data-basis="season"]')).toBeFocused();
+        await expect(more.locator('[data-basis-caption]')).toHaveCount(0); // your own choice: nothing to explain
+        await expect(out.locator('[data-trade-impact] [data-about]').first()).toHaveText('Which rankings: Start, Ovr and position rooms by In-Season; Future by dynasty.');
+        await more.locator('[data-basis="dynasty"]').click();
         await expect(fair).toContainText("they'd add");
 
         // Power Rankings after the trade (round 4): no headline (the tiles have the value), short labeled lines, and the
@@ -178,7 +191,7 @@ test.describe('Now and long-term side by side', () => {
         await expect(impact.locator('.mls-trade-impact-summary:not(details *)')).toHaveCount(0); // their team's fold keeps its own
         await expect(impact.locator('.mls-trade-impact-lines').first().locator('dt')).toHaveText(['Lineup', 'Rooms', 'Future']);
         await expect(impact.locator('.mls-trade-impact-lines dd').first()).toContainText(' of 2');
-        await expect(impact.locator('[data-about]').first()).toHaveText('Which rankings: Start and value by In-Season; Ovr, position rooms and Future by dynasty.');
+        await expect(impact.locator('[data-about]').first()).toHaveText('Which rankings: Start by In-Season; Ovr, position rooms and Future by dynasty.');
 
         // Phones: the rows and the verdicts fit 375px, and both banners' (i) tooltips open on screen (as
         // tooltips-onscreen.spec.mjs checks the others).
@@ -372,6 +385,36 @@ test('the Trade Analyzer\'s In-Season note takes you to the In-Season picker', a
     await expect(page.locator('#rosterTab')).toHaveClass(/active/);
     await expect(page.locator('#rosRankingsCard')).toHaveClass(/expanded/);
     await expect(page.locator('#seasonRankingSetSelect')).toBeFocused();
+    await expectClean(page, state);
+});
+
+// Round 16 (owner's report: Herbert "unranked" in Power Rankings after the trade, though the dynasty set ranks him): with
+// "I'm competing" on, the rooms read the In-Season set, and nothing on screen said so. The Value by switch under "More
+// analysis" now drives them, In-Season by default when "I'm competing" is on, with a line saying why; Dynasty puts the
+// player back.
+test('"I\'m competing" makes Value by start on In-Season, says so, and Dynasty reads the rooms by the dynasty set', async ({ page }) => {
+    const { state } = await setUp(page);
+    await patchLeagues(page, { 'Fixture League': { powerCompeting: true } });
+    // Derrick Henry: dynasty RB5, left out of the In-Season set.
+    await runTrade(page, ['Nico Collins'], ['Derrick Henry']);
+    const out = page.locator('#tradeOutput');
+    const more = out.locator('[data-trade-more]');
+    await expect(more.locator('[data-basis="season"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(more.locator('[data-basis-caption]')).toHaveText("In-Season since I'm competing is on.");
+    const impact = out.locator('[data-trade-impact]');
+    await expect(impact).toContainText("Derrick Henry isn't in your In-Season rankings, so he counts as unranked (almost no value).");
+    await expect(impact.locator('[data-about]').first()).toHaveText('Which rankings: Start, Ovr and position rooms by In-Season; Future by dynasty.');
+    // On a phone the caption is one line.
+    if (test.info().project.name === 'phone') {
+        const cap = await more.locator('[data-basis-caption]').evaluate(el => ({ h: el.getBoundingClientRect().height, lh: parseFloat(getComputedStyle(el).lineHeight) || 18 }));
+        expect(cap.h).toBeLessThan(cap.lh * 1.5);
+    }
+    await more.locator('[data-basis="dynasty"]').click();
+    await expect(more.locator('[data-basis="dynasty"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(more.locator('[data-basis-caption]')).toHaveCount(0);
+    await expect(impact).not.toContainText('Derrick Henry isn');
+    await expect(impact.locator('[data-about]').first()).toHaveText('Which rankings: Start by In-Season; Ovr, position rooms and Future by dynasty.');
+    expect(await noSideScroll(page)).toBe(true);
     await expectClean(page, state);
 });
 

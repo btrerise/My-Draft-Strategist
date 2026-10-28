@@ -91,6 +91,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Trade Analyzer: the players come right under the verdict**, with To make it fair and Power Rankings after the trade
+  below them under "More analysis". On a phone the players used to sit over a screen below the verdict.
 - **Lineup rows on phones give names more room**: the projection, swap and lock buttons stack in a narrow column on the
   right, so names like "Rhamondre Stevenson (11)" stay on one line.
 - **Leagues that start two QBs read "2QB"** in their format label (it said "1QB"; only a superflex slot counted).
@@ -100,7 +102,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Dynasty leagues: now and long-term side by side.** In a dynasty or keeper league with In-Season rankings, the
   Trade Analyzer gives each player two values ("Dyn", with "Now" for In-Season under it) and two verdict tiles, **Now**
   (In-Season) and **Long-term** (dynasty), side by side on wider screens and stacked on phones, with Market Consensus as
-  one line under them. To make it fair goes by the dynasty value, or the In-Season one with its **Value by** switch;
+  one line under them. A **Value by: Dynasty | In-Season** switch under "More analysis" picks the set To make it fair
+  and Power Rankings' Ovr and position rooms read (In-Season to start when "I'm competing" is on, with a line saying so);
   Power Rankings after the trade pairs the In-Season value with your lineup, and Export Trade shows both. On the Roster
   tab each player shows both position ranks in one badge ("In-Season WR22 | Dyn WR40"; tap or hover it for the
   overall ranks), a **Sort by: Dynasty |

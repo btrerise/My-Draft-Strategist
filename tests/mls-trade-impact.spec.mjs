@@ -121,13 +121,16 @@ test.describe('Trade Analyzer: how your team changes', () => {
         // Explanations like this one sit behind "How this is worked out" (i), not in the bullets (improvements S19, round 5).
         await expect(s.locator('.mls-trade-impact-notes')).not.toContainText('Injuries and byes');
         await expect(s.locator('.mls-trade-impact-about .tooltip-text')).toContainText('Injuries and byes are left out');
-        // The verdict is still above it, and the player cards below.
+        // The verdict, then the player cards, then this, under "More analysis" (improvements S24, round 16: the cards
+        // used to come last, over 1,000px below the verdict on a phone).
         await expect(page.locator('#tradeOutput .trade-verdict-banner').first()).toBeVisible();
         expect(await page.locator('#tradeOutput').evaluate(el => {
-            const sec = el.querySelector('[data-trade-impact]');
-            return !!(el.querySelector('.trade-verdict-banner').compareDocumentPosition(sec) & Node.DOCUMENT_POSITION_FOLLOWING)
-                && !!(sec.compareDocumentPosition(el.querySelector('.mls-trade-row')) & Node.DOCUMENT_POSITION_FOLLOWING);
+            const sec = el.querySelector('[data-trade-impact]'), more = el.querySelector('[data-trade-more]');
+            const after = (a, b) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+            return after(el.querySelector('.trade-verdict-banner'), el.querySelector('.mls-trade-row'))
+                && after(el.querySelector('.mls-trade-row'), more) && after(more, sec);
         })).toBe(true);
+        await expect(page.locator('#tradeOutput [data-trade-more] [data-action="setFairBasis"]')).toHaveCount(0); // one set: no switch
         expect(await noSideScroll(page)).toBe(true);
         expect(await s.locator('.mls-power-table-wrap').first().evaluate(w => w.scrollWidth <= w.clientWidth)).toBe(true);
 

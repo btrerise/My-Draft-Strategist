@@ -15,7 +15,7 @@ import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
 import { buildTradeVerdictHTML, tradeSeasonSet } from '../trade/verdict.js';
 import { activeOwnRankings } from '../main.js';
 import { buildTradeImpactHTML } from '../trade/lineupSection.js';
-import { buildMakeFairHTML, placeFairFocus } from '../trade/fairSection.js';
+import { buildMakeFairHTML, moreAnalysisHTML, placeFairFocus } from '../trade/fairSection.js';
 import { pickHolders } from '../leagues/picks.js';
 import { setTradeExport } from '../trade/export.js';
 import { KEYS } from '../../shared/storage/keys.js';
@@ -394,7 +394,7 @@ import { normalizeName } from '../../shared/names.js';
             } catch (e) {
                 console.warn('Trade Analyzer: lineup comparison unavailable.', e);
             }
-            // What would make a lopsided trade fair (improvements S19), right under the verdicts. Same guard.
+            // What would make a lopsided trade fair (improvements S19), under the two sides (round 16). Same guard.
             let fairHTML = '';
             if (!isOneSided) {
                 try {
@@ -403,9 +403,11 @@ import { normalizeName } from '../../shared/names.js';
                     console.warn('Trade Analyzer: fair-trade suggestions unavailable.', e);
                 }
             }
-            html += verdictHTML + fairHTML + impactHTML;
+            html += verdictHTML;
 
             // The two sides side by side on wider screens, stacked on phones (round 8; css/mls.css .mls-trade-sides).
+            // Right under the verdict since S24 round 16 (owner: on a phone they sat over 1,000px below it); To make it fair
+            // and Power Rankings follow under "More analysis", as extras.
             html += `<div class="mls-trade-sides">`;
             if (targetNames.length > 0) {
                 html += `<div class="mls-trade-side"><div class="mls-trade-side-title mls-trade-side-get">You Receive</div>`;
@@ -418,6 +420,7 @@ import { normalizeName } from '../../shared/names.js';
                 html += `</div>`;
             }
             html += `</div>`;
+            html += moreAnalysisHTML(league, !!(fairHTML || impactHTML)) + fairHTML + impactHTML;
 
             // Export Trade (trade/export.js), at the bottom of the card: an image of the assets with their
             // values and the verdict, plus the Power Rankings change when "Include Power Rankings" is on

@@ -2622,6 +2622,20 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .mls-trade-fair-basis { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.78rem; color: var(--text-muted); }
 .mls-trade-fair-basis .mls-segmented { flex: 0 1 13rem; }
 .mls-trade-fair-basis .mls-segmented-btn { padding: 0.25rem 0.5rem; font-size: 0.78rem; }
+/* "More analysis" (S24, round 16): a quiet divider between the two sides and the extras under them (To make it fair,
+   Power Rankings after the trade), with the Value by switch on the same line where it fits. */
+.mls-trade-more { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem 0.75rem; margin: 1.25rem 0 0.75rem; padding-top: 0.85rem; border-top: 1px solid var(--border); }
+.mls-trade-more-title { margin: 0; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+.mls-trade-more .mls-trade-fair-basis { margin-bottom: 0; }
+.mls-trade-more-caption { flex-basis: 100%; text-align: right; font-size: 0.75rem; color: var(--text-muted); }
+.mls-trade-more .mls-trade-fair-basis > span { white-space: nowrap; }
+/* Phones: the title, then the switch, then the caption, each on its own line and left-aligned (side by side, "Value by"
+   wrapped beside a squeezed switch). */
+@media (max-width: 520px) {
+    .mls-trade-more { flex-direction: column; align-items: flex-start; }
+    .mls-trade-more .mls-trade-fair-basis { align-self: stretch; }
+    .mls-trade-more-caption { text-align: left; }
+}
 /* Roster tab, both sets (round 3): on phones the two-set badge starts a line of its own under team, chips and SoS. */
 .mls-meta-break { display: none; }
 @media (max-width: 600px) { .mls-meta-break { display: block; flex-basis: 100%; height: 0; } }

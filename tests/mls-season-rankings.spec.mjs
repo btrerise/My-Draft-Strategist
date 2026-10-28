@@ -229,7 +229,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await callApp(page, 'setTradePlayers', 'give', ["Ja'Marr Chase"]);
         await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
         // Since S24 (round 4) the source line is in "How this is worked out" when the trade shows both values.
-        await expect(page.locator('[data-trade-impact] [data-about]').first()).toHaveText('Which rankings: Start and value by In-Season; Ovr, position rooms and Future by dynasty.');
+        await expect(page.locator('[data-trade-impact] [data-about]').first()).toHaveText('Which rankings: Start by In-Season; Ovr, position rooms and Future by dynasty.');
 
         // The Dashboard's best available: two choices; ROS reads a dynasty league's In-Season set and says so.
         await showTab(page, 'setup'); // the Dashboard

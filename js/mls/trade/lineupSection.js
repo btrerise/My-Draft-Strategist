@@ -17,6 +17,7 @@ import { getSleeperMetaByName, makeLeagueGetPos } from '../scout/waivers.js';
 import { buildRankDisplayIndex } from '../scout/waiverScanner.js';
 import { isDraftPickName } from './valueCurve.js';
 import { tradeSeasonSet, tradeVerdictNumbers, unknownNames } from './verdict.js';
+import { tradeAnalysisBasis } from './fairSection.js';
 import {
     FUTURE_COLUMN, lineupSlotCount, lineupSummaryText, lineupTradeChanges, POWER_COLUMNS,
     powerSummaryLines, powerTradeImpact, tradeHeadline, tradePartner
@@ -112,16 +113,22 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     // Roster tab's table; Future stays on the dynasty set. All three are State.rosRankings without an In-Season set.
     // A league whose only rankings are its In-Season set (round 12) is scored by it, as the Roster tab's table is.
     const powered = activePowerRankings();
-    const own = powered.rooms.length > 0 ? powered : null;
-    let rankings = own ? own.rooms : State.rosRankings, via = 'by your ROS rankings';
-    if (own && State.rosRankings.length === 0) via = 'by your In-Season rankings (no dynasty rankings loaded)';
-    const powerOpts = own ? { startRankings: own.start, futureRankings: own.future } : {};
+    const own = powered.rooms.length > 0 ? { ...powered } : null;
     // Which set gave what (round 5). Since S24 the headline's value is the In-Season one, beside the lineup it's
     // paired with, whenever the Trade Analyzer shows both values (the dynasty verdict is above, with the market's).
     const seasonValues = !!tradeSeasonSet();
-    if (own && own.start !== own.future) via = own.rooms === own.start
-        ? (seasonValues ? 'Start, value, Ovr and position rooms by In-Season; Future by dynasty' : 'Start, Ovr and position rooms by In-Season; value and Future by dynasty')
-        : seasonValues ? 'Start and value by In-Season; Ovr, position rooms and Future by dynasty'
+    // With both values on screen (round 16, owner: "rely on the switch the user sees"), Ovr and the rooms follow "More
+    // analysis"'s Value by switch, whose default is the Roster tab's choice ("I'm competing"); Start stays In-Season and
+    // Future dynasty. There's no headline then, so no value to name.
+    const dualSets = own && seasonValues && own.start !== own.future;
+    if (dualSets) own.rooms = tradeAnalysisBasis(league) === 'season' ? own.start : own.future;
+    let rankings = own ? own.rooms : State.rosRankings, via = 'by your ROS rankings';
+    if (own && State.rosRankings.length === 0) via = 'by your In-Season rankings (no dynasty rankings loaded)';
+    const powerOpts = own ? { startRankings: own.start, futureRankings: own.future } : {};
+    if (dualSets) via = own.rooms === own.start ? 'Start, Ovr and position rooms by In-Season; Future by dynasty'
+        : 'Start by In-Season; Ovr, position rooms and Future by dynasty';
+    else if (own && own.start !== own.future) via = own.rooms === own.start
+        ? 'Start, Ovr and position rooms by In-Season; value and Future by dynasty'
         : 'Start by In-Season; value, Ovr, position rooms and Future by dynasty';
     if (rankings.length === 0) {
         if (State.marketRankings.length === 0) {

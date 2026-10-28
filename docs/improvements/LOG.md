@@ -7158,4 +7158,34 @@ phone, in a row on desktop; fails on the old CSS).
 2. **"Herbert is unranked" in Power Rankings after the trade** (Draft Scouts of America, Herbert + 2028 1st for Burrow):
    not a calculation bug. The league has "I'm competing" on, so Start and the rooms read the In-Season set ("ROS
    Redraft"), which leaves Herbert out; the dynasty set has him #36. "Value by: Dynasty" only drives To make it fair.
-   Nothing on screen said so. Proposals to the owner in progress (below).
+   Nothing on screen said so. Built in round 16.
+3. **Is the Trade Analyzer too busy?** (owner: "a bit iffy"; "are we overthinking?"). Partly: each piece earns its place,
+   but the order made a typical user scroll past the extras to see the players. Measured on the owner's Herbert-for-Burrow
+   trade on a 390px phone: To make it fair 383px down, Power Rankings 693px, **You Receive / You Give Up 1,040px** (of
+   1,323px). Built in round 16.
+
+### S24, round 16: players under the verdict, "More analysis" below, and one Value by switch
+
+The owner's direction ("move You Receive / You Give Up up ... everything else below, as extra information for power
+users") and their idea for Herbert ("rely on the Dynasty | In-Season switch ... based on what the user sees").
+1. **New order, every league**: verdict (tiles, notes, market line) → You Receive / You Give Up → "More analysis" (a
+   quiet divider and heading) → To make it fair → Power Rankings after the trade → Export. On the owner's trade the
+   players now start 383px down (was 1,040px). Nothing hidden or folded. This reverses S19's "right under the verdicts"
+   for To make it fair, by the owner's choice. The heading is a sibling of the sections, not a wrapper: Export Trade picks
+   Power Rankings up as a direct child of the output.
+2. **One Value by switch** (`moreAnalysisHTML`, trade/fairSection.js), beside "More analysis" in a league with both sets,
+   moved out of the fair box. It drives To make it fair (as before) and, new, Power Rankings' Ovr and position rooms;
+   Start stays In-Season and Future dynasty (as on the Roster tab). Default: In-Season when "I'm competing" is on (so
+   the Trade Analyzer opens matching the Roster tab's table), else Dynasty. A choice holds for its league until a reload.
+   The "Which rankings" line drops "value" there (no headline in that mode, so no value to name).
+3. **The visible line** (owner: "if there is a way to make that line shorter"): only when "I'm competing" set the default,
+   "In-Season since I'm competing is on." under the switch, one line on a 375px phone. On phones the heading, the switch
+   and the line stack left-aligned (side by side, "Value by" wrapped beside a squeezed switch); on wider screens the
+   switch sits at the right of the heading.
+4. The Guide's step 9 and the Power Rankings step say so; CHANGELOG line for the order, the S24 line updated.
+
+`CACHE_NAME` v2.8.129 → v2.8.130. Tests: the order and the moved switch (S24 spec's main test; mls-trade-impact's order
+check now expects players before "More analysis" before Power Rankings), a new test for "I'm competing" (In-Season by
+default with the line, Derrick Henry missing from the In-Season set counts as unranked; Dynasty removes the line and the
+note). Screenshots: none of the tabs' baselines show a trade, so only the Guide's (already changing this card) move.
+
