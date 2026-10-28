@@ -133,10 +133,18 @@ test.describe('Now and long-term side by side', () => {
         await expect(tiles.nth(1).locator('.mls-trade-tile-result')).toHaveText('Favors Them');
         await expect(tiles.nth(1).locator('.mls-trade-tile-diff')).toContainText(`\u2212${fmt(-laterDiff)} pts`);
         await expect(tiles.nth(1).locator('.mls-trade-tile-totals')).toHaveText(`Get ${fmt(value(12))} · Give ${fmt(value(1))}`);
-        // Side by side, even on a phone.
+        // Side by side from tablet width; on a phone one over the other (round 5), each short: verdict on the label's line.
         const [t0, t1] = [await tiles.nth(0).boundingBox(), await tiles.nth(1).boundingBox()];
-        expect(Math.abs(t0.y - t1.y)).toBeLessThan(1);
-        expect(t1.x).toBeGreaterThan(t0.x + t0.width - 1);
+        if (test.info().project.name === 'phone') {
+            expect(t1.y).toBeGreaterThan(t0.y + t0.height - 1);
+            expect(t0.height).toBeLessThan(90);
+            const [label, result] = [await tiles.nth(0).locator('.mls-trade-tile-label').boundingBox(), await tiles.nth(0).locator('.mls-trade-tile-result').boundingBox()];
+            expect(result.x).toBeGreaterThan(label.x + label.width);
+            expect(Math.abs((result.y + result.height / 2) - (label.y + label.height / 2))).toBeLessThan(8);
+        } else {
+            expect(Math.abs(t0.y - t1.y)).toBeLessThan(1);
+            expect(t1.x).toBeGreaterThan(t0.x + t0.width - 1);
+        }
 
         // Each row: dynasty and In-Season ranks, the dynasty value with the In-Season one under it.
         const collins = out.locator('.mls-trade-row').filter({ hasText: 'Nico Collins' });
@@ -168,7 +176,7 @@ test.describe('Now and long-term side by side', () => {
         const impact = out.locator('[data-trade-impact]');
         await expect(impact.locator('.mls-trade-impact-headline, .mls-trade-impact-via')).toHaveCount(0);
         await expect(impact.locator('.mls-trade-impact-summary:not(details *)')).toHaveCount(0); // their team's fold keeps its own
-        await expect(impact.locator('.mls-trade-impact-lines dt')).toHaveText(['Lineup', 'Rooms', 'Future']);
+        await expect(impact.locator('.mls-trade-impact-lines').first().locator('dt')).toHaveText(['Lineup', 'Rooms', 'Future']);
         await expect(impact.locator('.mls-trade-impact-lines dd').first()).toContainText(' of 2');
         await expect(impact.locator('[data-about]').first()).toHaveText('Which rankings: Start and value by In-Season; Ovr, position rooms and Future by dynasty.');
 

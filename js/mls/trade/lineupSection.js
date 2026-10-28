@@ -18,7 +18,7 @@ import { isDraftPickName } from './valueCurve.js';
 import { tradeSeasonSet, tradeVerdictNumbers, unknownNames } from './verdict.js';
 import {
     FUTURE_COLUMN, lineupSlotCount, lineupSummaryText, lineupTradeChanges, POWER_COLUMNS,
-    powerSummaryLines, powerSummaryText, powerTradeImpact, tradeHeadline, tradePartner
+    powerSummaryLines, powerTradeImpact, tradeHeadline, tradePartner
 } from './lineupImpact.js';
 
 // Notes that explain the screen to you, not the trade to your league: Export Trade (trade/export.js) leaves
@@ -182,19 +182,16 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     const settled = cards.getResults && cards.giveResults && !unknownNames(cards.getResults, cards.giveResults).length
         && (valueKey !== 'marketValue' || cards.getResults.concat(cards.giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick')));
     const value = settled ? tradeVerdictNumbers(cards.getResults, cards.giveResults, valueKey) : null;
-    // A league with both sets (S24, round 4, owner: busy on a phone): the value is in the Now / Long-term tiles above, so
-    // no headline; the summary is short labeled lines; the source line moves into "How this is worked out"; a shorter key.
-    const short = seasonValues && own;
-    const headline = short ? null : tradeHeadline(value, impact.you);
-    if (short) notes.unshift(about(`Which rankings: ${via}.`));
-    const summary = short
-        ? `<dl class="mls-trade-impact-lines">${powerSummaryLines(impact.you, impact.teams).map(l => `<div><dt>${l.label}</dt><dd>${escapeHtml(l.text)}</dd></div>`).join('')}</dl>`
-        : `<div class="mls-trade-impact-summary">${escapeHtml(powerSummaryText(impact.you, impact.teams, { pct: !headline }))}</div>`;
-    const key = short
-        ? `1 = strongest of ${impact.teams}. <span class="mls-trade-rank-up">Green</span> better, <span class="mls-trade-rank-down">red</span> worse.`
-        : `Ranks of ${impact.teams} teams: 1 = strongest. <span class="mls-trade-rank-up">Green</span> = better after the trade, <span class="mls-trade-rank-down">red</span> = worse.`;
+    // Short and the same in every Sleeper league (S24, rounds 4 and 5, owner: busy on a phone; "have Redraft leagues match"):
+    // the summary as labeled lines, the source line in "How this is worked out", a shorter key. A league with both sets
+    // has no headline either (the Now / Long-term tiles above carry the value); the others keep it, the only line there
+    // that joins value and lineup.
+    const dual = seasonValues && own;
+    const headline = dual ? null : tradeHeadline(value, impact.you);
+    notes.unshift(about(via.startsWith('by ') ? `Ranked ${via}.` : `Which rankings: ${via}.`));
+    const summary = summaryLines(impact.you, impact.teams, { pct: !headline });
+    const key = `1 = strongest of ${impact.teams}. <span class="mls-trade-rank-up">Green</span> better, <span class="mls-trade-rank-down">red</span> worse.`;
     let body = `
-        ${short ? '' : `<div class="mls-trade-impact-via">${via}</div>`}
         ${headline ? `<div class="mls-trade-impact-headline">${escapeHtml(headline)}</div>` : ''}
         ${summary}
         ${powerTable([impact.you], impact.teams, youIn, youOut, columns)}
@@ -206,13 +203,17 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
         body += `
         <details class="mls-trade-impact-partner">
             <summary>Their team: ${escapeHtml(partner)}</summary>
-            <div class="mls-trade-impact-summary">${escapeHtml(powerSummaryText(impact.partner, impact.teams))}</div>
+            ${summaryLines(impact.partner, impact.teams)}
             ${powerTable([impact.partner], impact.teams, pIn, pOut, columns)}
             ${notesHTML(pHoles)}
         </details>`;
     }
     return section(title, body + notesHTML(notes));
 }
+
+// A team's change as short labeled lines (S24, round 4): Lineup, Rooms, Future (powerSummaryLines).
+const summaryLines = (side, teams, opts) =>
+    `<dl class="mls-trade-impact-lines">${powerSummaryLines(side, teams, opts).map(l => `<div><dt>${l.label}</dt><dd>${escapeHtml(l.text)}</dd></div>`).join('')}</dl>`;
 
 // One row per team: each column's rank before -> after (one number when it doesn't move). Each
 // number opens the room after the trade, as the Roster tab's table does: players coming in marked +,

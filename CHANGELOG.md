@@ -91,10 +91,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Power Rankings after the trade reads shorter** in every league: Lineup, Rooms and Future as short labeled lines
+  instead of sentences, with which rankings were used under "How this is worked out".
 - **Dynasty leagues: now and long-term side by side.** In a dynasty or keeper league with In-Season rankings, the
-  Trade Analyzer gives each player two values ("Dyn", with "Now" for In-Season under it) and two verdict tiles side by
-  side, **Now** (In-Season) and **Long-term** (dynasty), with Market Consensus as one line under them; Power Rankings
-  after the trade lists Lineup, Rooms and Future in short lines. To make it fair goes by the dynasty value, or the In-Season one with its **Value by** switch;
+  Trade Analyzer gives each player two values ("Dyn", with "Now" for In-Season under it) and two verdict tiles, **Now**
+  (In-Season) and **Long-term** (dynasty), side by side on wider screens and stacked on phones, with Market Consensus as
+  one line under them. To make it fair goes by the dynasty value, or the In-Season one with its **Value by** switch;
   Power Rankings after the trade pairs the In-Season value with your lineup, and Export Trade shows both. On the Roster
   tab each player shows both position ranks in one badge ("In-Season WR22 | Dyn WR40"; tap or hover it for the
   overall ranks), a **Sort by: Dynasty |

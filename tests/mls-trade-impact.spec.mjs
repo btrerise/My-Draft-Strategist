@@ -83,12 +83,15 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await expect(s).toHaveCount(1);
         await expect(s).toContainText('Power Rankings after the trade');
         await expect(s).toContainText('by your ROS rankings');
-        await expect(s.locator('.mls-trade-impact-summary').first()).toHaveText(/Stronger at RB \(2nd → 1st\); weaker at WR \(1st → 2nd\)\./);
+        // Short labeled lines (improvements S24, round 5: every Sleeper league, as with In-Season rankings).
+        await expect(s.locator('.mls-trade-impact-lines').first().locator('dt')).toHaveText(['Lineup', 'Rooms']);
+        await expect(s.locator('.mls-trade-impact-lines').first().locator('dd').nth(1)).toHaveText('RB 2nd → 1st · WR 1st → 2nd');
         // The headline puts the value verdict (Fair, by your rankings) and the lineup change together; the key explains the ranks.
         await expect(s.locator('.mls-trade-impact-headline')).toHaveText(/^A fair trade by value (that makes your starting lineup stronger|, but your starting lineup gets weaker|that doesn't change your starting lineup)/);
-        await expect(s.locator('.mls-trade-impact-key')).toHaveText('Ranks of 2 teams: 1 = strongest. Green = better after the trade, red = worse.');
-        // Under the headline, the sentence leaves out the percents the headline already gives.
-        await expect(s.locator('.mls-trade-impact-summary').first()).toHaveText(/^Starting lineup stays 1st of 2(, but (stronger|weaker))?\. /);
+        await expect(s.locator('.mls-trade-impact-key')).toHaveText('1 = strongest of 2. Green better, red worse.');
+        await expect(s.locator('.mls-trade-impact-lines').first().locator('dd').first()).toHaveText(/^1st of 2(, (stronger|weaker))?$/); // the headline gives the percent
+        // The source line is in "How this is worked out".
+        await expect(s.locator('[data-about]').first()).toHaveText('Ranked by your ROS rankings.');
         const you = s.locator('table').first().locator('tr.mls-power-you');
         const cells = await cellTexts(you);
         expect(cells[0]).toBe('You');
@@ -112,7 +115,7 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await expect(partner.locator('summary')).toHaveText('Their team: Rival');
         await expect(partner).not.toHaveAttribute('open', '');
         await partner.locator('summary').click();
-        await expect(partner.locator('.mls-trade-impact-summary')).toHaveText(/Stronger at WR \(2nd → 1st\); weaker at RB \(1st → 2nd\)\./);
+        await expect(partner.locator('.mls-trade-impact-lines dd').nth(1)).toHaveText('RB 1st → 2nd · WR 2nd → 1st');
         await expect(s).toContainText('2027 1st is a draft pick: no lineup spot.');
         await expect(s).toContainText('Injuries and byes are left out');
         // Explanations like this one sit behind "How this is worked out" (i), not in the bullets (improvements S19, round 5).
@@ -168,7 +171,8 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await runTrade(page, 'Bijan Robinson\nJahmyr Gibbs\nSaquon Barkley', "Ja'Marr Chase\nJustin Jefferson\nCeeDee Lamb\nPuka Nacua\nAmon-Ra St. Brown");
         const s = section(page);
         await expect(s.locator('table').first().locator('th')).toHaveText(['Team', 'Start', 'Ovr', 'QB', 'RB', 'WR', 'TE', 'Future']);
-        await expect(s.locator('.mls-trade-impact-summary').first()).toHaveText(/ Future value 1st → 2nd\.$/);
+        await expect(s.locator('.mls-trade-impact-lines').first().locator('dt').last()).toHaveText('Future');
+        await expect(s.locator('.mls-trade-impact-lines').first().locator('dd').last()).toHaveText('1st → 2nd');
         expect((await cellTexts(s.locator('tr.mls-power-you')))[7]).toBe('1→2');
         await expect(s.locator('tr.mls-power-you td').nth(7)).toHaveClass(/mls-trade-rank-down/);
         const tip = s.locator('tr.mls-power-you td').nth(7).locator('.tooltip-text');
@@ -227,7 +231,7 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await toggle.check();
         clone = await exportOnce();
         expect(clone.text).toMatch(/Power Rankings after the trade/i);
-        expect(clone.text).toContain('Stronger at RB (2nd → 1st)');
+        expect(clone.text).toContain('RB 2nd → 1st · WR 1st → 2nd');
         expect(clone.text).toContain('Their team: Rival');
         expect(clone.closedDetails).toBe(0);
         expect(clone.summaries).toBe(0);

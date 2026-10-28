@@ -282,3 +282,10 @@ test('powerSummaryLines: Lineup, Rooms and Future in short lines', () => {
         { label: 'Rooms', text: 'no change' }
     ]);
 });
+
+test('powerSummaryLines: no percent when a headline above already gives it', () => {
+    const team = (o) => ({ starterRank: 1, starterScore: 1.13, overallRank: 1, qbRank: 2, rbRank: 1, wrRank: 2, teRank: 1, ...o });
+    const side = { before: team(), after: team({ starterRank: 2, starterScore: 1.08 }) };
+    assert.equal(powerSummaryLines(side, 9, { pct: false })[0].text, '1st \u2192 2nd of 9, weaker');
+    assert.equal(powerSummaryLines(side, 9)[0].text, '1st \u2192 2nd of 9, weaker (113% \u2192 108% of avg)');
+});

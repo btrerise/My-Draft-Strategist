@@ -2579,6 +2579,18 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .mls-trade-tile .mls-trade-tile-result { font-size: 1.2rem; font-weight: 800; margin: 0.4rem 0 0.1rem; line-height: 1.2; }
 .mls-trade-tile-diff { font-size: 0.85rem; font-weight: 700; color: var(--text-main); font-variant-numeric: tabular-nums; }
 .mls-trade-tile-totals { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; font-variant-numeric: tabular-nums; }
+/* Phones (round 5, owner: "more vertical space, less horizontal"): one tile over the other, each laid out sideways (the label
+   and its set on the left, the verdict, points and totals on the right), so the two stay short without being cramped. */
+@media (max-width: 767px) {
+    .mls-trade-tiles { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+    .mls-trade-tile { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "label result" "set diff" ". totals";
+        column-gap: 0.75rem; align-items: baseline; text-align: right; padding: 0.6rem 0.8rem; }
+    .mls-trade-tile-label { grid-area: label; justify-content: flex-start; }
+    .mls-trade-tile-set { grid-area: set; text-align: left; margin-top: 0; }
+    .mls-trade-tile .mls-trade-tile-result { grid-area: result; margin: 0; font-size: 1.1rem; }
+    .mls-trade-tile-diff { grid-area: diff; }
+    .mls-trade-tile-totals { grid-area: totals; margin-top: 0.1rem; }
+}
 .mls-trade-market-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.15rem 0.6rem; margin-bottom: 0.6rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: transparent; font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .mls-trade-market-strip.verdict-fair, .mls-trade-market-strip.verdict-favor-you, .mls-trade-market-strip.verdict-favor-them, .mls-trade-market-strip.verdict-incomplete { border-color: var(--border); background: transparent; }
 .mls-trade-market-strip-label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; }

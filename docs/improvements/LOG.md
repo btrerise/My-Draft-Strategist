@@ -6908,3 +6908,17 @@ clipped the badge's tooltip. Letting it out only while open (`:has(:hover)`) ref
 ended the hover, so it flickered and a tap landed beside the badge. Rows with the two-set badge now never clip
 (`overflow: visible; min-width: 0`, the same width as before). The spec checks the open tooltip is the topmost element
 at its centre (it fails with that rule removed).
+
+### S24, round 5: tiles stacked on phones; the short Power Rankings lines in every league (owner)
+
+- **Owner: "Why side-by-side verdict cards on mobile? We have more vertical space and less horizontal."** My reason was
+  to read Now and Long-term in one glance, as the headline they replaced; at 375px that left each tile ~160px and
+  cramped. On phones (under 768px) the tiles now stack, each laid out sideways (NOW / by In-Season on the left; Favors
+  You, "+7,721 pts · 68%" and "Get … · Give …" on the right), about 70px tall each. Side by side from 768px as before.
+- **Owner: "have Redraft leagues match."** Every Sleeper league's Power Rankings after the trade (your team and their
+  team's fold) now uses the short labeled lines, the source line in "How this is worked out" ("Ranked by your ROS
+  rankings.") and the short key. Leagues without both sets keep the headline (the only line there joining value and
+  lineup); the Lineup line then leaves out the percent the headline already gives (`powerSummaryLines(..., { pct })`).
+  Manual leagues' "Your lineup after the trade" is unchanged. CHANGELOG line ("reads shorter in every league"), Guide.
+- `CACHE_NAME` v2.8.118 → v2.8.119. Tests: the tiles' phone layout (stacked, under 90px, verdict on the label's line)
+  and desktop layout; `mls-trade-impact.spec.mjs` follows the lines, key and moved source line; unit for `pct`.
