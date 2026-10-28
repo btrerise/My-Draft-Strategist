@@ -7100,3 +7100,17 @@ both widths, the keeper league's line, All My Leagues for Lamar Jackson, Export 
 
 `CACHE_NAME` v2.8.124 → v2.8.125. Tests: the export's clone without the superflex note and with the pick note; a
 two-QB fixture league's label reads 2QB.
+
+### S24, round 12: the owner's notes on the Roster tooltip, the In-Season sort, the switch, and the market line
+
+1. **The two-set badge's tooltip wrapped with room to spare** on a computer (the site's tooltips are a fixed 260px).
+   This one sizes to its lines up to 360px (`.mls-rank-dual-text`; the window cap still applies on phones).
+2. **Nothing said how Sort by In-Season orders QBs** when the In-Season set looks 1QB in a superflex league (round 7's
+   prices: Lamar Jackson sorted first though his tooltip said #57). A line under Sort by while it's on In-Season and the
+   prices apply ("Your In-Season rankings look 1QB, so QBs sort at your dynasty rankings' superflex prices. Tap a QB's
+   ranks for what he counts as."), and a priced QB's tooltip adds "Counts as #5 in this superflex league (superflex QB
+   prices)." The pricing now reads `activeOwnRankings()` as the trade does.
+3. and 4.: answered in chat; see below once decided.
+
+`CACHE_NAME` v2.8.125 → v2.8.126. Tests: the sort note on In-Season only, a QB's "Counts as" line, the tooltip wider
+than 260px and at most 360px on desktop.

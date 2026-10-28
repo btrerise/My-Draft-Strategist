@@ -412,6 +412,20 @@ test('a superflex league with a 1QB-looking In-Season set prices QBs at the dyna
     // The Roster tab's Power Rankings table says so under the line naming the sets.
     await showTab(page, 'roster');
     await expect(page.locator('#powerRankingsOutput [data-sf-qb-note]')).toHaveText(NOTE);
+    // Round 12: Sort by In-Season says why QBs sort where they do, and a QB's tooltip says what he counts as.
+    await expect(page.locator('#rosterList [data-sf-qb-sort-note]')).toHaveCount(0);
+    await page.locator('#rosterSort [data-sort="season"]').click();
+    await expect(page.locator('#rosterList [data-sf-qb-sort-note]')).toContainText('QBs sort at your dynasty rankings\' superflex prices');
+    const allen = page.locator('#rosterList .roster-item').filter({ hasText: 'Josh Allen' });
+    await expect(allen.locator('.mls-rank-dual-priced')).toHaveText(/^Counts as #\d+ in this superflex league \(superflex QB prices\)\.$/);
+    // The tooltip sizes to its lines (up to 360px), so on a computer "In-Season: QB.., #.. overall" stays on one line.
+    if (test.info().project.name === 'desktop') {
+        await allen.locator('.mls-rank-dual-tip').hover();
+        const box = await allen.locator('.mls-rank-dual-text').boundingBox();
+        expect(box.width).toBeGreaterThan(260);
+        expect(box.width).toBeLessThanOrEqual(360);
+    }
+    await page.locator('#rosterSort [data-sort="dynasty"]').click();
 
     // Not superflex: the In-Season set as it is, no note.
     await patchLeagues(page, { 'Fixture League': { reqs: { ...reqs, QB: 1, SFLEX: 0 } } });

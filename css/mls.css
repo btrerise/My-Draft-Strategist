@@ -2633,3 +2633,8 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
     border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); font-size: 0.8rem; color: var(--text-muted); text-align: left; }
 .mls-qb-market-note.is-warning { border-color: rgba(251, 191, 36, 0.45); color: #fcd34d; }
 .mls-qb-market-toggle { display: flex; align-items: center; gap: 0.5rem; flex-basis: 100%; color: var(--text-main); font-weight: 600; cursor: pointer; }
+/* The Roster tab's two-set badge tooltip (S24, round 12): sized to its lines up to 360px instead of the site's fixed 260px,
+   which wrapped "In-Season: QB3 (T11), #57 overall (T11)" with room to spare on a computer. The window cap still applies. */
+.mls-rank-dual-tip .tooltip-text.mls-rank-dual-text { width: max-content; max-width: min(360px, calc(100vw - 16px)); }
+.mls-rank-dual-priced { display: inline-block; margin-top: 4px; color: var(--text-muted); }
+.mls-roster-sort-note { margin: -0.3rem 0 0.6rem; font-size: 0.78rem; color: var(--text-muted); }

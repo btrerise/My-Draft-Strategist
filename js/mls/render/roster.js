@@ -10,7 +10,7 @@ import { getByeBadgeHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML } from '../line
 import { renderManualAddLog } from '../leagues/addPlayer.js';
 import { getSoSBadgeHTML } from '../sos.js';
 import { _rookieIndex, getRookieIndex, isRookiePlayer } from './rookies.js';
-import { fitRankBadges, refreshPowerRankings } from '../main.js';
+import { activeOwnRankings, fitRankBadges, refreshPowerRankings } from '../main.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { posCountChipMarkup, rankBadgeParts, rankGapChipMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
@@ -100,13 +100,16 @@ import { KEYS } from '../../shared/storage/keys.js';
     // The halves are rankBadgeParts' (F6), so a narrow row splits the badge at the bar (fitRankBadges).
     // Overall ranks don't compare across a 1QB redraft set and a superflex dynasty one, so they're in the badge's tooltip,
     // the site's own (round 4, owner: hover on a computer, tap on a phone, keyboard too; js/shared/ui/tooltips.js).
-    function dualRankBadge(pos, now, later) {
+    // pricedRank (round 12): the overall rank a QB counts as at superflex prices (rankings/nowAndLater.js), or null.
+    function dualRankBadge(pos, now, later, pricedRank = null) {
         const half = (label, r) => r.posRank !== 999 ? `${label} ${escapeHtml(pos)}${r.posRank}${tierTag(r.posTier)}`
             : r.rank !== 999 ? `${label} #${r.rank}${tierTag(r.tier)}` : `${label} UR`;
         const line = (label, r) => r.rank === 999 && r.posRank === 999 ? `<strong>${label}:</strong> unranked`
             : `<strong>${label}:</strong> ${r.posRank !== 999 ? `${escapeHtml(pos)}${r.posRank}${tierTag(r.posTier)}, ` : ''}${r.rank !== 999 ? `#${r.rank} overall${tierTag(r.tier)}` : 'no overall rank'}`;
         return `<span class="tooltip-container mls-rank-dual-tip"><span class="badge mls-rank-badge mls-rank-dual">${rankBadgeParts(half('<span class="mls-nowrap">In-Season</span>', now), half('Dyn', later))}</span>`
-            + `<span class="tooltip-text">${line('In-Season', now)}<br>${line('Dynasty', later)}</span></span>`;
+            + `<span class="tooltip-text mls-rank-dual-text">${line('In-Season', now)}<br>${line('Dynasty', later)}`
+            + (pricedRank ? `<br><span class="mls-rank-dual-priced">Counts as #${pricedRank} in this superflex league (superflex QB prices).</span>` : '')
+            + `</span></span>`;
     }
 
     // A two-part badge whose halves landed on two lines gets .is-stacked, so its box fits its text (the Lineup tab's
@@ -209,8 +212,10 @@ import { KEYS } from '../../shared/storage/keys.js';
         // Sorting by In-Season in a superflex league with a 1QB-looking In-Season set uses superflex QB prices (round 7),
         // as Start does; the badges still show the set's own ranks.
         const posMap = league.globalPosMap || {};
-        const sortPriced = sortSeason ? superflexQbPrices(league.reqs, seasonSet.data, State.rosRankings, (c) => posMap[c] || league.roster.find(r => r.cleanName === c)?.pos) : null;
-        const sortIndex = sortPriced ? rankingIndex(sortPriced) : null;
+        // Round 12: also each priced QB's tooltip says what he counts as, and Sort by says why QBs sort where they do.
+        const priced = seasonSet ? superflexQbPrices(league.reqs, seasonSet.data, activeOwnRankings(), (c) => posMap[c] || league.roster.find(r => r.cleanName === c)?.pos) : null;
+        const pricedIndex = priced ? rankingIndex(priced) : null;
+        const sortIndex = sortSeason ? pricedIndex : null;
         let displayRoster = league.roster.map(p => {
             const ros = ranksIn(rosIndex, rosDisplay, p.cleanName);
             return {
@@ -224,6 +229,11 @@ import { KEYS } from '../../shared/storage/keys.js';
         });
 
         const posOrder = { "QB": 1, "RB": 2, "WR": 3, "TE": 4, "K": 5, "DEF": 6 };
+        // The overall rank a QB counts as at superflex prices, when it differs from his In-Season one (round 12).
+        const pricedRankOf = (p) => {
+            const r = pricedIndex && p.pos === 'QB' ? pricedIndex.get(p.cleanName)?.rank : null;
+            return r && r !== p.now.rank ? r : null;
+        };
         const sortRank = (p) => !sortSeason ? p.rosRank : sortIndex ? (sortIndex.get(p.cleanName)?.rank ?? 999) : p.now.rank;
         displayRoster.sort((a, b) => {
             if (sortRank(a) !== 999 || sortRank(b) !== 999) return sortRank(a) - sortRank(b);
@@ -252,6 +262,10 @@ import { KEYS } from '../../shared/storage/keys.js';
                 return `<button type="button" class="mls-segmented-btn${on ? ' active' : ''}" data-action="setRosterSort" data-sort="${sort}" aria-pressed="${on}">${label}</button>`;
             };
             html += `<div class="mls-roster-sort" id="rosterSort"><span>Sort by</span><div class="mls-segmented" role="group" aria-label="Sort your roster by">${btn('dynasty', 'Dynasty')}${btn('season', '<span class="mls-nowrap">In-Season</span>')}</div></div>`;
+            // Sorting by In-Season with superflex QB prices in use (round 12): say why QBs sort above their In-Season ranks.
+            if (sortSeason && priced && league.roster.some(p => p.pos === 'QB')) {
+                html += `<div class="mls-roster-sort-note" data-sf-qb-sort-note>Your <span class="mls-nowrap">In-Season</span> rankings look 1QB, so QBs sort at your dynasty rankings' superflex prices. Tap a QB's ranks for what he counts as.</div>`;
+            }
         } else if (hasSeasonSlot(league) && State.rosRankings.length > 0) {
             // A dynasty or keeper league with no In-Season set shows only its dynasty ranks, as before S24. Say so, and how
             // to get both (owner's report: after restoring a backup the app opened on such a league, and both ranks, the
@@ -279,7 +293,7 @@ import { KEYS } from '../../shared/storage/keys.js';
                 // (.mls-meta-break), so every row has the same shape (round 3).
                 ranksHTML = `${rankMoveChip('season', p.cleanName)}${rankMoveChip('ros', p.cleanName)}`;
                 dualHTML = `<span class="mls-meta-break" aria-hidden="true"></span>
-                            ${dualRankBadge(p.pos, p.now, { rank: p.rosRank, tier: p.rosTier, posRank: p.posRank, posTier: p.posTier })}
+                            ${dualRankBadge(p.pos, p.now, { rank: p.rosRank, tier: p.rosTier, posRank: p.posRank, posTier: p.posTier }, pricedRankOf(p))}
                             ${gap ? rankGapChipMarkup(gap, rankGapTip(gap, p.pos, nowPos, laterPos)) : ''}`;
             }
             const byeWeek = getByeWeek(p.team, State.currentNflSeason);
