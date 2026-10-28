@@ -7058,3 +7058,8 @@ and, in a dynasty league, round 7's In-Season prices (borrowed from the priced l
 waiting, not superflex; `qbMarketNoteHTML`'s three states); spec (the switch on prices Lamar at the market's QB1, the
 note and Power Rankings say on and saved, 1QB market values wait, dynasty values in a redraft league wait, off from
 Power Rankings).
+
+**Checks (round 9).** Full `npm run check`: check-precache OK, 469 unit tests, Playwright 571 passed, 5 skipped, and only
+`visual.spec.mjs` failed, on the environment message (Chromium 153 here). Screenshots: the screenshot league is redraft
+and 1QB with no rankings, so none of rounds 6–9 shows there; only `mls-league-guide.png` changes (Guide sentences and
+legend lines), from the pull request's CI.
