@@ -7081,3 +7081,22 @@ the format warning said the redraft values don't fit a dynasty league, as it sho
 
 `CACHE_NAME` v2.8.123 → v2.8.124. Tests: the switch focused after flipping it in both places; a pick the market doesn't
 price said once, inside the one box, nothing loose under the market line. 24/24 in the S24 spec.
+
+### S24, round 11: my fifth review as a user; the owner took 2, 3 and 4
+
+Checked on the owner's backup: the gap chips across all 14 dynasty and keeper leagues (1–10 a league, mostly 2–5, and
+the flags held up: Hampton and Henderson Long-term > now, Metcalf, Jacobs and Diggs Now > long-term), the Roster tab at
+both widths, the keeper league's line, All My Leagues for Lamar Jackson, Export Trade with Power Rankings, the Guide.
+1. Not built (owner): "ROS Redraft" leaves out Jalen Hurts, Justin Herbert, Bo Nix and Baker Mayfield, so they read
+   Long-term > now; the owner confirmed that's the list's intent (injured or playing poorly).
+2. **Two-QB leagues were labelled "1QB"** (League of Ordinary Gentlemen starts QB, QB): the format label counted only a
+   SUPER_FLEX slot. It reads "2QB" now (`formatBadge` in leagues/sync.js; a re-sync updates a saved league). The market
+   format and the QB notes already counted two QB slots as superflex. Predates S24; CHANGELOG line.
+3. **Export Trade left in the superflex QB note** ("Your In-Season rankings look 1QB…"), which is about your rankings,
+   not the trade; the export's clone drops it (`[data-sf-qb-note]`, trade/export.js), keeping the notes that explain
+   the totals, and drops the box if that leaves it empty.
+4. **The Guide's "Dynasty and keeper leagues" item** (step 3) was one 25-line paragraph on a phone; it's four short
+   sub-items now (two sets; Upload or Auto-Fetch into; both ranks and Sort by; the gap chip), same words.
+
+`CACHE_NAME` v2.8.124 → v2.8.125. Tests: the export's clone without the superflex note and with the pick note; a
+two-QB fixture league's label reads 2QB.

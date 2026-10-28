@@ -559,3 +559,36 @@ test('a pick missing from the market is said once, in the one notes box under th
     await expect(out.locator(':scope > .trade-verdict-note')).toHaveCount(0);
     await expectClean(page, state);
 });
+
+// Round 11: Export Trade leaves out the note about your own rankings' format; a two-QB league reads "2QB".
+test('Export Trade leaves out the superflex QB note, and keeps the notes about the totals', async ({ page }) => {
+    const { state, ids } = await setUp(page, 'both', { html2canvas: true });
+    await page.evaluate(async (id) => {
+        const { State } = await import('/js/mls/state.js');
+        const set = State.rankingSets.ros.find(s => s.id === id);
+        set.data = set.data.filter(p => !['jalenhurts', 'joeburrow'].includes(p.cleanName));
+        localStorage.setItem('mls_ranking_sets_ros', JSON.stringify(State.rankingSets.ros));
+    }, ids.season);
+    const reqs = (await fixture(page)).reqs || {};
+    await patchLeagues(page, { 'Fixture League': { reqs: { ...reqs, QB: 1, SFLEX: 1 } } });
+    await runTrade(page, ['Lamar Jackson'], ["Ja'Marr Chase", '2029 1st']);
+    await expect(page.locator('#tradeOutput [data-sf-qb-note]')).toHaveCount(1);
+    const download = page.waitForEvent('download');
+    await page.locator('#exportTradeBtn').click();
+    await download;
+    const text = await page.evaluate(() => window.__tradeCloneText);
+    expect(text).not.toContain('look 1QB');
+    expect(text).toContain("2029 1st has no value without Market Consensus data");
+    await expectClean(page, state);
+});
+
+test('a league that starts two QBs is labelled 2QB', async ({ page }) => {
+    await at375(page);
+    const state = await openApp(page, '/lineup/');
+    const league = JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/sleeper/league.json', import.meta.url)), 'utf8'));
+    league.roster_positions = ['QB', 'QB', ...league.roster_positions.filter(p => p !== 'QB' && p !== 'SUPER_FLEX')];
+    await page.route(/^https:\/\/api\.sleeper\.app\/v1\/league\/1000000000000000001$/, (route) => route.fulfill({ json: league }));
+    await seedMls(page);
+    expect((await fixture(page)).formatBadge).toMatch(/\b2QB\b/);
+    await expectClean(page, state);
+});

@@ -91,6 +91,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Leagues that start two QBs read "2QB"** in their format label (it said "1QB"; only a superflex slot counted).
+  Re-sync a league to update its label.
 - **Power Rankings after the trade reads shorter** in every league: Lineup, Rooms and Future as short labeled lines
   instead of sentences, with which rankings were used under "How this is worked out".
 - **Dynasty leagues: now and long-term side by side.** In a dynasty or keeper league with In-Season rankings, the

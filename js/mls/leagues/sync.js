@@ -568,7 +568,10 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
                 if (leagueData.settings.best_ball === 1) typeStr = "Best Ball";
                 let pprVal = leagueData.scoring_settings?.rec || 0;
                 let pprStr = pprVal === 1 ? "PPR" : (pprVal === 0.5 ? "Half-PPR" : "Std");
-                let isSF = leagueData.roster_positions?.includes("SUPER_FLEX") ? "SF" : "1QB";
+                // Two QB slots read "2QB" (S24, round 11: a two-QB keeper league was labelled "1QB"; the market and the
+                // QB notes already count it as superflex).
+                const qbSlots = (leagueData.roster_positions || []).filter(p => p === 'QB').length;
+                let isSF = leagueData.roster_positions?.includes("SUPER_FLEX") ? "SF" : (qbSlots >= 2 ? "2QB" : "1QB");
                 let tepVal = leagueData.scoring_settings?.bonus_rec_te || 0;
                 let tepStr = tepVal > 0 ? `TEP (+${tepVal})` : "";
                 formatBadge = `${typeStr} ${isSF} ${pprStr} ${tepStr}`.trim();

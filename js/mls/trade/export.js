@@ -222,6 +222,10 @@ export const exportTrade = async function() {
                 clone.querySelectorAll('.tooltip-text, .tooltip-icon').forEach(el => el.remove());
                 clone.querySelectorAll('.mls-dotted-underline').forEach(el => el.classList.remove('mls-dotted-underline'));
                 clone.querySelectorAll('.mls-trade-impact-about').forEach(el => el.remove());
+                // The note about your own rankings' format (S24, round 11) is for you, not the league chat; the notes
+                // explaining the totals stay. A box left empty goes too.
+                clone.querySelectorAll('[data-sf-qb-note]').forEach(el => el.remove());
+                clone.querySelectorAll('.mls-trade-tile-notes').forEach(el => { if (!el.children.length) el.remove(); });
                 clone.querySelectorAll('li .mls-trade-impact-help').forEach(el => el.closest('li').remove());
                 clone.querySelectorAll('.mls-trade-impact-notes').forEach(ul => { if (!ul.children.length) ul.remove(); });
                 clone.style.width = '480px';
