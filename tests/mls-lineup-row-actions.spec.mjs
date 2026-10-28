@@ -20,6 +20,10 @@ test('the projection, swap and lock stack on a phone and sit side by side on wid
             expect(swap.y).toBeGreaterThanOrEqual(pts.y + pts.height - 1);
             expect(lock.y).toBeGreaterThanOrEqual(swap.y + swap.height - 1);
             expect(actions.width).toBeLessThan(60);
+            // One centre line (round 15): the projection, swap and lock share it.
+            const mid = (b) => b.x + b.width / 2;
+            expect(Math.abs(mid(swap) - mid(pts))).toBeLessThan(1.5);
+            expect(Math.abs(mid(lock) - mid(swap))).toBeLessThan(1.5);
         } else {
             expect(Math.abs((swap.y + swap.height / 2) - (lock.y + lock.height / 2))).toBeLessThan(4);
             expect(swap.x).toBeGreaterThan(pts.x + pts.width - 1);

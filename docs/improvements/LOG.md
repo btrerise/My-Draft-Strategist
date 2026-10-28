@@ -7147,3 +7147,15 @@ ranked QB first).
 `CACHE_NAME` v2.8.127 → v2.8.128. Tests: no superflex note for a QB missing from the In-Season set, the Power Rankings
 note naming the dynasty set, the phone tiles' verdict on the right; `tests/mls-lineup-row-actions.spec.mjs` (stacked on a
 phone, in a row on desktop; fails on the old CSS).
+
+### S24, round 15: the Lineup column centred; Herbert in Draft Scouts of America; is the Trade Analyzer too busy?
+
+1. **The stacked Lineup column looked ragged** (owner): right-aligned, the "proj" caption, the bordered swap and the
+   borderless lock ended at one edge but looked uneven. I rendered three versions on the owner's league: as built,
+   centred, and projection on top with swap and lock side by side. Side by side is as wide as the old row, so
+   "Rhamondre Stevenson (11)" wrapped again. Owner chose **centred**. CSS only; the row-actions test checks the
+   shared centre line. `CACHE_NAME` v2.8.128 → v2.8.129.
+2. **"Herbert is unranked" in Power Rankings after the trade** (Draft Scouts of America, Herbert + 2028 1st for Burrow):
+   not a calculation bug. The league has "I'm competing" on, so Start and the rooms read the In-Season set ("ROS
+   Redraft"), which leaves Herbert out; the dynasty set has him #36. "Value by: Dynasty" only drives To make it fair.
+   Nothing on screen said so. Proposals to the owner in progress (below).

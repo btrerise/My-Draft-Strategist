@@ -521,9 +521,10 @@ button.close-chip {
 
     /* Points, swap and lock stacked in a narrow column on the right (improvements S24, round 14, owner's idea): side by
        side they took about 100px, which split names like "Rhamondre Stevenson (11)" onto two lines with room to spare.
-       Rows with a game-time or status badge keep their height; a bare two-line row grows to the column's height. */
-    .lineup-slot .mls-row-actions { flex-direction: column; align-items: flex-end; gap: 0.25rem; }
-    .lineup-slot .mls-pts { margin-right: 0; }
+       Rows with a game-time or status badge keep their height; a bare two-line row grows to the column's height.
+       Centred on one line (round 15, owner): right-aligned, the caption, the bordered swap and the borderless lock looked ragged. */
+    .lineup-slot .mls-row-actions { flex-direction: column; align-items: center; gap: 0.25rem; }
+    .lineup-slot .mls-pts { margin-right: 0; align-items: center; min-width: 0; }
 }
 /* Scout Tab Specific Styles */
 .scout-textarea { 
