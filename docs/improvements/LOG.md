@@ -7227,3 +7227,92 @@ CI's first run failed on exactly the three screenshots the LOG lists: `desktop/m
 1280x8332), `phone/mls-league-guide.png` (390x17549 → 390x18954; the Guide's new text) and `phone/mls-league-lineup.png`
 (390x2936 → 390x3338; the stacked, centred row column). Each `-expected.png` was byte-identical to the committed
 baseline; the `-actual.png` files from the run's `playwright-results` artifact are the new baselines.
+
+## S26 — A navigation rail on wider screens (Material 3)
+
+**User-visible effect.** Both apps' tab bar now takes one of three layouts, by window width (Material 3's window
+sizes):
+- **Phones (under 600px):** the bottom bar as before. Lineup Strategist's phone screens are pixel-identical to main's.
+- **Tablets (600 to 839px):** the bottom bar with each icon beside its name, the tabs centred, labels whole.
+- **Computers (840px and wider):** a 96px **navigation rail** at the left edge, each tab's icon with its name under it.
+  The green marker slides up and down beside the active tab. The **menu button moves from the header to the top of
+  the rail**, and opens the **expanded rail** over the page with a dimmed backdrop: every tab by name, then **"More"**
+  (the Guide, T-Score, the other app), the feedback form and Ko-fi. It closes when you choose an item, press Escape or
+  click outside, and focus goes back to the menu button. The header, every tab, toasts and dialogs sit clear of the rail.
+- **Draft Strategist's Setup is now the Dashboard**, the first tab in its bar and rail on every screen (with Lineup
+  Strategist's grid icon), so its bar has four tabs: Dashboard, Tracker, Team, Board. Text that said "the Setup tab"
+  says "the Dashboard" (empty states' "Go to Dashboard", two Sleeper toasts, the Guide, the shortcuts list). The
+  checklist keeps its name, "Setup Progress".
+
+**The owner's answers** (asked with screenshots of today and a mock-up at 1280, 1024, 768 and 375px):
+1. **Breakpoints: Material 3's** (rail from 840px, side-by-side items from 600px). The app's 768px breakpoint stays
+   where it is: it lays out the page content (cards, tables, slide vs. fade transitions), not the bar, and moving it
+   would change tablet layouts across both apps.
+2. **The menu goes into the rail** (Material 3: an expanded rail opens from a menu icon at its top), with two states,
+   collapsed and expanded. The collapsed rail holds the menu button and the tabs; **the Guide, T-Score and the other app
+   show only when it's expanded**, under "More". **Draft Strategist's Setup becomes "Dashboard"** and a tab in the bar and
+   the rail, for uniformity (owner: its Setup may be redone like Lineup Strategist's walkthrough with several drafts in one
+   place, which would make it more of a dashboard; the name can change later). The owner accepted the side effect: its
+   phone bar changes too.
+3. **The green sliding marker**, not Material 3's pill (owner likes the animation).
+4. **Both apps together**, through the shared CSS in css/base.css.
+5. **Widths from Material 3's current rail spec**: 96px collapsed; expanded 280px (in M3's 220–360, and the drawer's
+   existing width, which the Ko-fi button needs).
+- A. **Modal, not standard, for the expanded rail** (my recommendation, owner said go): it adds places you visit once
+  rather than navigate between, the pages are information-dense (M3's case for modal), and a standard rail would reflow
+  every page and need a saved setting per app. A standard rail from 1600px is an open follow-up (docs/TESTING.md).
+- C. **Phones and tablets keep the header's menu button and drawer as they are.** D. **Ko-fi stays at the foot of the
+  expanded rail.**
+
+**How it's built.**
+- **One set of tab buttons**, laid out three ways by CSS (css/base.css, "NAVIGATION RAIL AND TABLET BAR", at the end of
+  the file, and `body.has-nav-bar` on the two apps' pages so T-Score, which shares base.css, is untouched). `showTab`,
+  swipes, number keys, the drawer and the screen-reader announcement don't know which layout shows.
+- The `<nav class="nav-bar">` moved **before `<main>`** in both pages, so the rail comes after the header in reading
+  order (it's fixed-position, so phones look the same). The rail's menu button is the bar's first child, `hamburger-btn
+  nav-rail-menu`, not a `.nav-btn`, so the tab code and the marker never count it; it's hidden below 840px and the
+  header's is hidden from 840px. `toggleDrawer` (MLS) and `toggleMenu` (MDS) set `aria-expanded` on both buttons.
+- **The expanded rail is the existing drawer**, restyled from 840px: its logo row hides, its close button (a 48px
+  collapse icon, `.icon-collapse`, in place of the ✕) sits exactly where the rail's menu button is, and a
+  `.menu-section-label` "More" (hidden below 840px, `aria-hidden`) heads the Guide, T-Score and the other app.
+- **The marker** (`placeTabMarker`, js/shared/ui/viewTransition.js) measures along whichever way the bar runs (the
+  bar's `flex-direction`), setting left/width on the bar or top/height on the rail, and clearing the other pair so the
+  stylesheet's 3px thickness applies. Same numbers as before on the bottom bar. The ResizeObserver re-measures when the
+  bar turns into the rail. Its transition covers top and height too; Reduce Motion still keeps it still.
+- **`aria-current="page"`** on the active tab button (both apps, the drawer's too). Lineup Strategist's drawer now marks
+  the current tab however it was reached (it only followed drawer taps and swipes before), since on computers it's the
+  expanded rail.
+- **Draft Board:** its full-width breakout on desktop used `100vw`, which ran under the rail; it now subtracts
+  `--rail-inset` (96px beside the rail, 0 otherwise).
+- S16's transitions keep naming the bar (`vt-nav`), so the rail stays still while the page fades.
+- `tests/tools/css-compare.tool.mjs` clicks the visible menu button (the header's is hidden on its desktop width).
+- `CACHE_NAME` v2.8.132 → v2.8.133. No files added or removed.
+
+**Tests.** New `tests/nav-rail.spec.mjs` (both apps): at 375, 600, 700, 840, 1024 and 1280px, which layout the bar has
+(position, direction, the menu buttons, labels whole and 12px), every tab switching from it with `aria-current`, the
+marker by the active tab (centred along the bar, or beside it at the rail's edge), and nothing in the header or any tab
+(the Guide included) past the window's edge or under the rail, and no sideways scroll; the 839/840 boundary; the expanded
+rail (opens, marks the current tab, "More", the collapse button over the menu button, choosing a tab closes it, Escape
+closes it and returns focus); the keyboard (header, rail, page in reading order; Tab between items; Enter and Space
+select); Reduce Motion. `view-transitions.spec.mjs`: its marker check follows the rail, and Draft Strategist's marker now
+starts on the Dashboard. view-transitions, nav-rail and mls-keyboard also passed at 600, 700, 840 and 1024px (a
+throwaway config), except one test that fails the same way on main at 700px: "the header shows the whole league name
+when it fits, and ends a long one in '…'" assumes the long name is cut, and at 700px it fits.
+
+**Screenshots** (main and this branch rendered the same way here, compared with `npm run pxdiff`): 23 change, all by
+design, to take from CI:
+- **Every desktop PNG of both apps (15):** the rail at the left in place of the bottom bar, the page 96px narrower, and
+  no 70px space at the bottom for a bar: `mds-draft-board`, `mds-draft-team`, `mds-draft-tracker`, `mds-empty-board`,
+  `mds-empty-guide`, `mds-empty-setup`, `mds-empty-team`, `mds-empty-tracker`, `mls-empty-setup`, `mls-league-guide`,
+  `mls-league-lineup`, `mls-league-roster`, `mls-league-scoreboard`, `mls-league-scout`, `mls-league-setup`.
+- **Draft Strategist's phone PNGs (8):** the bar's new Dashboard tab (four tabs), "Go to Dashboard" in empty states,
+  and the Guide's wording: `mds-draft-board`, `mds-draft-team`, `mds-draft-tracker`, `mds-empty-board`, `mds-empty-guide`,
+  `mds-empty-setup`, `mds-empty-team`, `mds-empty-tracker`.
+- Unchanged: every Lineup Strategist phone PNG and all of T-Score's.
+
+**Left over.**
+- A standard (side-by-side) expanded rail from 1600px, where the page has room to spare (open follow-up in
+  docs/TESTING.md).
+- Draft Strategist's Dashboard is still the setup page; a redo like Lineup Strategist's walkthrough, with several
+  drafts in one place, is the owner's idea for later.
+- Phones and tablets keep the header's menu button and drawer (owner: maybe explore later).

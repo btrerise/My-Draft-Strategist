@@ -2342,7 +2342,8 @@ button.pos-filter {
      opens the drawer, restyled as the expanded rail (280px, over the page with a dimmed backdrop: M3's "modal"
      configuration); the header's own menu button hides. The marker slides up and down beside the active tab
      (placeTabMarker measures whichever way the bar runs). */
-/* --rail-inset: how far the rail pushes the page in (0 without it), for anything sized from the window's width. */
+/* --rail-inset: how far the rail pushes the page in (0 without it), for anything sized from the window's width
+   (set on body.has-nav-bar below). */
 :root { --rail-w: 96px; --rail-inset: 0px; }
 .nav-rail-menu,
 .menu-section-label,
@@ -2356,9 +2357,9 @@ button.pos-filter {
 }
 
 @media (min-width: 840px) {
-    :root { --rail-inset: var(--rail-w); }
-    body { padding-left: var(--rail-w); padding-bottom: 0; }
-    .header .hamburger-btn { display: none; }
+    /* Only the two apps have the bar (body.has-nav-bar); T-Score shares this stylesheet and keeps its own layout. */
+    body.has-nav-bar { --rail-inset: var(--rail-w); padding-left: var(--rail-w); padding-bottom: 0; }
+    .has-nav-bar .header .hamburger-btn { display: none; }
 
     .nav-bar {
         top: 0;
@@ -2381,11 +2382,11 @@ button.pos-filter {
     .nav-marker { width: 3px; height: 0; border-radius: 0 3px 3px 0; }
 
     /* The expanded rail: the drawer, opened from the rail's menu button, with its collapse button in the same spot. */
-    .hamburger-menu .menu-header { justify-content: flex-start; padding: 12px 24px; border-bottom: 0; }
-    .hamburger-menu .menu-logo-section { display: none; }
-    .close-menu-btn { width: 48px; height: 48px; }
-    .close-menu-btn .icon-close { display: none; }
-    .close-menu-btn .icon-collapse { display: block; }
+    .has-nav-bar .hamburger-menu .menu-header { justify-content: flex-start; padding: 12px 24px; border-bottom: 0; }
+    .has-nav-bar .hamburger-menu .menu-logo-section { display: none; }
+    .has-nav-bar .close-menu-btn { width: 48px; height: 48px; }
+    .has-nav-bar .close-menu-btn .icon-close { display: none; }
+    .has-nav-bar .close-menu-btn .icon-collapse { display: block; }
     .menu-section-label {
         display: block;
         margin: 0.75rem 0 0;
@@ -2400,7 +2401,7 @@ button.pos-filter {
     .menu-section-label + .nav-btn { margin-top: 0; }
 
     /* Fixed elements stay clear of the rail: toasts drop to the bottom (no bar there), dialogs centre on the page. */
-    .mds-toast { bottom: calc(24px + env(safe-area-inset-bottom)); }
-    .preview-overlay,
-    .mds-modal-overlay { padding-left: calc(1.5rem + var(--rail-w)); }
+    .has-nav-bar .mds-toast { bottom: calc(24px + env(safe-area-inset-bottom)); }
+    .has-nav-bar .preview-overlay,
+    .has-nav-bar .mds-modal-overlay { padding-left: calc(1.5rem + var(--rail-w)); }
 }
