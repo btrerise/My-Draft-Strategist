@@ -16,7 +16,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { roomsUseSeason, seasonSetFor } from '../rankings/season.js';
 import { showTab } from '../nav.js';
 import { activePowerRankings } from '../main.js';
-import { SF_QB_NOTE } from '../rankings/nowAndLater.js';
+import { isSuperflex, oneQbLook, oneQbRankingsNote, SF_QB_NOTE } from '../rankings/nowAndLater.js';
 
 // --- POSITIONAL POWER RANKINGS: ROSTER TAB CARD ---
 // Generated automatically (no Calculate button) every time the Roster tab renders -- see the
@@ -72,14 +72,26 @@ export const goToLeagueStyle = function() {
     }, 60));
 };
 
+function oneQbTableNote(ctx) {
+    const league = ctx.league;
+    if (!league || !ctx.source || ctx.source.source !== 'custom' || ctx.source.sfQbPrices || !isSuperflex(league.reqs)) return '';
+    const posMap = league.globalPosMap || {};
+    if (!(ctx.source.rankings || []).length || !oneQbLook(ctx.source.rankings, (c) => posMap[c]).oneQb) return '';
+    const word = getPowerLeagueKind(league) === 'dynasty' ? 'dynasty' : 'ROS';
+    return `<div class="mls-power-source-key is-warning" data-one-qb-note>${oneQbRankingsNote(word)} <button type="button" class="mls-btn-sm btn-link-inline" data-action="goToSeasonPicker">Change it above</button></div>`;
+}
+
 // The Roster tab's In-Season picker, opened, scrolled to and focused (improvements S24, round 6): the Trade Analyzer's notes
 // about In-Season rankings point here.
 export const goToSeasonPicker = function() {
     showTab('roster').then(() => setTimeout(() => {
         const card = document.getElementById('rosRankingsCard');
         if (card && !card.classList.contains('expanded')) card.querySelector(':scope > .rankings-card-header .rankings-card-toggle')?.click();
-        document.getElementById('seasonRankingsRow')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        document.getElementById('seasonRankingSetSelect')?.focus({ preventScroll: true });
+        // In a league with no In-Season slot (redraft), the league's own ROS set picker (round 8).
+        const row = document.getElementById('seasonRankingsRow');
+        const useSeason = row && !row.hidden;
+        (useSeason ? row : document.getElementById('rosRankingSetSelect'))?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById(useSeason ? 'seasonRankingSetSelect' : 'rosRankingSetSelect')?.focus({ preventScroll: true });
     }, 60));
 };
 
@@ -387,7 +399,10 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
     const seasonKey = seasonSourceKey(ctx.league, ctx.source, ctx.futureLabel);
     if (seasonKey) html += `<div class="mls-power-source-key">${seasonKey}</div>`;
     // Superflex QB prices for a 1QB-looking In-Season set (S24, round 7), under the line naming the sets.
-    if (ctx.source && ctx.source.sfQbPrices) html += `<div class="mls-power-source-key" data-sf-qb-note>${SF_QB_NOTE.replace('In-Season', '<span class="mls-nowrap">In-Season</span>')}</div>`;
+    // A superflex league whose own rankings look 1QB with no prices to borrow (round 8): the same note as the trade's.
+    const oneQb = oneQbTableNote(ctx);
+    if (oneQb) html += oneQb;
+    if (ctx.source && ctx.source.sfQbPrices) html += `<div class="mls-power-source-key" data-sf-qb-note>${SF_QB_NOTE.replaceAll('In-Season', '<span class="mls-nowrap">In-Season</span>')}</div>`;
 
     const notes = [];
     if (ctx.source && ctx.source.note) notes.push(escapeHtml(ctx.source.note));

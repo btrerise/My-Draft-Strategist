@@ -111,3 +111,8 @@ export function superflexQbPrices(reqs, seasonData, dynastyData, posOf) {
 
 // The note wherever the prices apply (the Trade Analyzer with a QB in the trade, Power Rankings).
 export const SF_QB_NOTE = "Your In-Season rankings look 1QB, so QBs are valued at your dynasty rankings' superflex QB prices, in your In-Season order.";
+
+// Round 8: a superflex league whose own rankings look 1QB where no superflex prices can be borrowed (a redraft league's ROS
+// set, or a dynasty set that looks 1QB too): only a note, with the way to fix it. setWord: "ROS", "dynasty".
+export const oneQbRankingsNote = (setWord) =>
+    `Your ${setWord} rankings look 1QB and this league is superflex, so QBs are valued low. Use a superflex set for this league.`;

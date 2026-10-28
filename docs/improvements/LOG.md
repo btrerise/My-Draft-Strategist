@@ -7003,3 +7003,31 @@ under the Power Rankings table; not superflex: the set as it is, no notes.
 **Left over.** The lineup with no Weekly set (S23: it reads the In-Season set) and the Waiver Wire's In-Season Rank
 still use the In-Season set as it is; both choose by position and FLEX ranks first, so a 1QB list mostly matters there
 for the superflex slot. Worth a look if a superflex lineup ever benches a QB it shouldn't.
+
+### S24, round 8: my third review as a user; the owner took all four, (a) for #1
+
+Checked on the owner's backup at 375px and 1280px: round 7's prices on May the Receptions (QB trades, the Power Rankings
+note, Sort by In-Season putting Lamar first), Gridiron Best Ball (1QB dynasty: untouched, as meant), LOOG (redraft).
+1. **Superflex redraft leagues on a 1QB ROS set** (the owner's LOOG, How I Met Your Punter, and League of Ordinary
+   Gentlemen played as redraft, all on "ROS Redraft"): no dynasty set to borrow prices from, so round 7 can't apply;
+   Drake Maye for Rashee Rice read Fair by your rankings while the market said Favors Them 68%. Owner's choice (a): a
+   note, amber, "Your ROS rankings look 1QB and this league is superflex, so QBs are valued low. Use a superflex set for
+   this league." with **Change on the Roster tab** (to the league's ROS set picker when it has no In-Season slot), in
+   the Trade Analyzer when a QB is in the trade, and under the Power Rankings table ("Change it above"). The same for a
+   dynasty league whose dynasty set looks 1QB ("Your dynasty rankings look 1QB…"), when round 7's prices aren't in
+   use. `oneQbRankingsNote` (rankings/nowAndLater.js), `oneQbNote` (trade/verdict.js), `oneQbTableNote`
+   (power/rosterCard.js); `goToSeasonPicker` falls back to the ROS set picker.
+2. **"To make it fair" called a trade fair when nothing in it had a value** by the picked set (Gridiron: two backup QBs
+   missing from "Dynasty 1QB"). It says "None of these players are in your dynasty rankings." now.
+3. **The notes under the Now / Long-term tiles** ("… isn't in your In-Season rankings, so he counts as 0", and the old
+   "Your Dynasty Rankings: none of the players entered were found…") were loose lines; they're one quiet box under the
+   tiles now (`.mls-trade-tile-notes`, also in Export Trade), and a missing tile says why: "None of these players are in
+   your dynasty rankings, so there's no Long-term verdict."
+4. **The superflex note broke "In-Season" at its hyphen** the second time it appeared; every one is kept whole now.
+
+`CACHE_NAME` v2.8.121 → v2.8.122; CHANGELOG line. Tests: spec cases for the redraft note (trade with and without a QB,
+the Power Rankings note, the button to the ROS picker, none when not superflex), the trade with no dynasty values (one
+tile, one notes box, make it fair's wording), and both "In-Season"s whole.
+
+**The owner's idea, to discuss: a toggle to bring in the market's QB prices** in these leagues (round 7's mechanism,
+with FantasyCalc's superflex list in place of a dynasty set). See the next entry once decided.

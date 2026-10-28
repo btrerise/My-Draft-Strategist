@@ -8,7 +8,7 @@ import { verdictFromValues } from './makeFair.js';
 import { marketFormatWarning } from '../main.js';
 import { getActiveLeague } from '../helpers.js';
 import { IN_SEASON, hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
-import { dualHeadline, dualVerdictNumbers, SF_QB_NOTE, superflexQbPrices } from '../rankings/nowAndLater.js';
+import { dualHeadline, dualVerdictNumbers, isSuperflex, oneQbLook, oneQbRankingsNote, SF_QB_NOTE, superflexQbPrices } from '../rankings/nowAndLater.js';
 
     // The active league's In-Season set when the Trade Analyzer shows two values and two verdicts (improvements
     // S24): a dynasty or keeper league with an In-Season set (S23) and its dynasty set loaded. null everywhere else,
@@ -67,7 +67,7 @@ import { dualHeadline, dualVerdictNumbers, SF_QB_NOTE, superflexQbPrices } from 
             const market = State.marketRankings.length > 0
                 ? renderTradeVerdict("Market Consensus", '', getResults, giveResults, "marketValue", "marketMatched", true, '', true) : null;
             verdictHTML = dualVerdictTiles(seasonSet, now, later, dualHeadline(both.now, both.later))
-                + sfQbNote(seasonSet, getResults, giveResults) + marketStrip(market) + marketAgeHTML();
+                + sfQbNote(seasonSet, getResults, giveResults) + oneQbNote(getResults, giveResults, seasonSet) + marketStrip(market) + marketAgeHTML();
             return verdictHTML || `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
         } else {
             yours = renderTradeVerdict(
@@ -84,7 +84,7 @@ import { dualHeadline, dualVerdictNumbers, SF_QB_NOTE, superflexQbPrices } from 
         // screen on desktop); stacked on phones (css/mls.css .trade-verdict-pair).
         verdictHTML = yours && market ? `<div class="trade-verdict-pair">${yours}${market}</div>` : yours + market;
 
-        verdictHTML += marketAgeHTML();
+        verdictHTML += oneQbNote(getResults, giveResults, null) + marketAgeHTML();
         // A dynasty or keeper league with no In-Season set (S24, owner's report): one verdict by your rankings, as before,
         // and a line saying how to get the this-season one beside it. On screen only (Export Trade doesn't pick it up).
         if (!seasonSet && yours && hasSeasonSlot(getActiveLeague())) {
@@ -124,7 +124,21 @@ import { dualHeadline, dualVerdictNumbers, SF_QB_NOTE, superflexQbPrices } from 
     function sfQbNote(seasonSet, getResults, giveResults) {
         if (!seasonSet.sfQbPrices) return '';
         if (!getResults.concat(giveResults).some(r => r.exportRow && r.exportRow.pos === 'QB')) return '';
-        return `<div class="mls-trade-season-hint" data-sf-qb-note><span>${SF_QB_NOTE.replace('In-Season', '<span class="mls-nowrap">In-Season</span>')}</span></div>`;
+        return `<div class="mls-trade-season-hint" data-sf-qb-note><span>${SF_QB_NOTE.replaceAll('In-Season', '<span class="mls-nowrap">In-Season</span>')}</span></div>`;
+    }
+
+    // A superflex league whose own rankings (the ROS slot: a redraft league's ROS set, a dynasty league's dynasty set) look
+    // 1QB, where no superflex prices are borrowed (round 8, the owner's choice (a)): a note with the way there, when a QB
+    // is in the trade. Not when round 7's prices are in use (they cover the In-Season side). On screen only.
+    function oneQbNote(getResults, giveResults, seasonSet) {
+        if (seasonSet && seasonSet.sfQbPrices) return '';
+        const league = getActiveLeague();
+        if (!league || !isSuperflex(league.reqs) || State.rosRankings.length === 0) return '';
+        if (!getResults.concat(giveResults).some(r => r.exportRow && r.exportRow.pos === 'QB')) return '';
+        const posMap = league.globalPosMap || {};
+        if (!oneQbLook(State.rosRankings, (c) => posMap[c]).oneQb) return '';
+        const word = hasSeasonSlot(league) ? 'dynasty' : 'ROS';
+        return `<div class="mls-trade-season-hint is-warning" data-one-qb-note><span>${oneQbRankingsNote(word)}</span> ${SEASON_PICKER_BTN.replace('Choose on the Roster tab', 'Change on the Roster tab')}</div>`;
     }
 
     const signedPts = (n) => `${n >= 0 ? '+' : '\u2212'}${Math.abs(n).toLocaleString()}`;
@@ -151,9 +165,15 @@ import { dualHeadline, dualVerdictNumbers, SF_QB_NOTE, superflexQbPrices } from 
         };
         const tiles = tile('is-now', 'Now', '<span class="mls-nowrap">In-Season</span>', `This season, by your In-Season rankings (${escapeHtml(seasonSet.name || '')}).`, now)
             + tile('is-later', '<span class="mls-nowrap">Long-term</span>', 'dynasty', 'The long run, by your dynasty rankings.', later);
-        const notes = [now, later].map(p => (p && (p.unmatchedNote || p.note)) || '').join('');
-        if (!tiles) return notes;
-        return `<div class="mls-trade-tiles" data-trade-verdict-dual role="group"${headline ? ` aria-label="${escapeHtml(headline)}"` : ''}>${tiles}</div>${notes}`;
+        // The notes under the tiles, in one quiet box (round 8: loose, they read like stray lines). A set that values
+        // nothing in the trade says which tile is missing and why.
+        const missing = (p, set, tileName) => p && !p.nums && p.note
+            ? `<div class="trade-verdict-note">None of these players are in your ${set} rankings, so there's no ${tileName} verdict.</div>` : '';
+        const notes = [now, later].map(p => (p && p.nums && p.unmatchedNote) || '').join('')
+            + missing(now, '<span class="mls-nowrap">In-Season</span>', 'Now') + missing(later, 'dynasty', '<span class="mls-nowrap">Long-term</span>');
+        const notesBox = notes ? `<div class="mls-trade-tile-notes" data-tile-notes>${notes}</div>` : '';
+        if (!tiles) return notesBox;
+        return `<div class="mls-trade-tiles" data-trade-verdict-dual role="group"${headline ? ` aria-label="${escapeHtml(headline)}"` : ''}>${tiles}</div>${notesBox}`;
     }
 
     // Market Consensus beside your two verdicts (S24, round 4): one muted line, there for comparison, so it doesn't draw

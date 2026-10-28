@@ -399,7 +399,8 @@ test('a superflex league with a 1QB-looking In-Season set prices QBs at the dyna
     await expect(lamar.locator('.mls-trade-row-meta')).toContainText('Now 13');
     await expect(page.locator("#tradeOutput .mls-trade-row").filter({ hasText: "Ja'Marr Chase" }).locator('.mls-trade-row-now')).toHaveText(`Now ${fmt(value(14))}`);
     await expect(note).toHaveText(NOTE);
-    await expect(page.locator('#tradeOutput [data-one-qb-warning]')).toHaveCount(0);
+    await expect(note.locator('.mls-nowrap')).toHaveCount(2); // both "In-Season"s kept whole (round 8)
+    await expect(page.locator('#tradeOutput [data-one-qb-note]')).toHaveCount(0); // the prices cover it
     // Power Rankings after the trade says so in "How this is worked out".
     await expect(page.locator('#tradeOutput [data-trade-impact] [data-about]').filter({ hasText: 'superflex QB prices' })).toHaveCount(1);
     // The market line's (i) sits beside its label (round 6), so a wrap never leaves it alone on a line.
@@ -419,5 +420,63 @@ test('a superflex league with a 1QB-looking In-Season set prices QBs at the dyna
     await expect(note).toHaveCount(0);
     await showTab(page, 'roster');
     await expect(page.locator('#powerRankingsOutput [data-sf-qb-note]')).toHaveCount(0);
+    await expectClean(page, state);
+});
+
+// Round 8: a superflex league whose own rankings look 1QB, with no prices to borrow (a redraft league's ROS set).
+test('a superflex redraft league with 1QB-looking ROS rankings says so, with the way to change them', async ({ page }) => {
+    const { state, ids } = await setUp(page, 'redraft');
+    await page.evaluate(async (id) => {
+        const { State } = await import('/js/mls/state.js');
+        const set = State.rankingSets.ros.find(s => s.id === id);
+        set.data = set.data.filter(p => !['jalenhurts', 'joeburrow'].includes(p.cleanName));
+        localStorage.setItem('mls_ranking_sets_ros', JSON.stringify(State.rankingSets.ros));
+    }, ids.season);
+    const reqs = (await fixture(page)).reqs || {};
+    await patchLeagues(page, { 'Fixture League': { rosRankingSetId: ids.season, reqs: { ...reqs, QB: 1, SFLEX: 1 } } });
+    const NOTE = 'Your ROS rankings look 1QB and this league is superflex, so QBs are valued low. Use a superflex set for this league.';
+
+    await runTrade(page, ['Lamar Jackson'], ["Ja'Marr Chase"]);
+    const note = page.locator('#tradeOutput [data-one-qb-note]');
+    await expect(note).toContainText(NOTE);
+    // No QB in the trade: nothing to say.
+    await runTrade(page, ['Nico Collins'], ["Ja'Marr Chase"]);
+    await expect(note).toHaveCount(0);
+    // The Power Rankings table says it too.
+    await showTab(page, 'roster');
+    await expect(page.locator('#powerRankingsOutput [data-one-qb-note]')).toContainText(NOTE);
+    // The Trade Analyzer's button: the Roster tab, at this league's ROS set picker (a redraft league has no In-Season slot).
+    await runTrade(page, ['Lamar Jackson'], ["Ja'Marr Chase"]);
+    await note.locator('[data-action="goToSeasonPicker"]').click();
+    await expect(page.locator('#rosterTab')).toHaveClass(/active/);
+    await expect(page.locator('#rosRankingSetSelect')).toBeFocused();
+    // Not superflex: none.
+    await patchLeagues(page, { 'Fixture League': { reqs: { ...reqs, QB: 1, SFLEX: 0 } } });
+    await runTrade(page, ['Lamar Jackson'], ["Ja'Marr Chase"]);
+    await expect(note).toHaveCount(0);
+    await expectClean(page, state);
+});
+
+// Round 8: a trade none of whose players are in the dynasty set.
+test('players missing from the dynasty set: no Long-term tile, one notes box saying why, and make it fair doesn\'t call it fair', async ({ page }) => {
+    const { state, ids } = await setUp(page);
+    await page.evaluate(async (id) => {
+        const { State } = await import('/js/mls/state.js');
+        const drop = (data) => data.filter(p => !['nicocollins', 'jamarrchase'].includes(p.cleanName));
+        const set = State.rankingSets.ros.find(s => s.id === id);
+        set.data = drop(set.data);
+        State.rosRankings = drop(State.rosRankings);
+        localStorage.setItem('mls_ranking_sets_ros', JSON.stringify(State.rankingSets.ros));
+    }, ids.dynasty);
+    await runTrade(page, ['Nico Collins'], ["Ja'Marr Chase"]);
+    const out = page.locator('#tradeOutput');
+    await expect(out.locator('.mls-trade-tile')).toHaveCount(1);
+    await expect(out.locator('.mls-trade-tile.is-now')).toHaveCount(1);
+    const notes = out.locator('[data-tile-notes]');
+    await expect(notes).toHaveCount(1);
+    await expect(notes).toContainText("None of these players are in your dynasty rankings, so there's no Long-term verdict.");
+    // Nothing loose between the tiles and the market line.
+    await expect(out.locator(':scope > .trade-verdict-note')).toHaveCount(0);
+    await expect(out.locator('[data-trade-fair] .mls-trade-fair-note')).toHaveText('None of these players are in your dynasty rankings.');
     await expectClean(page, state);
 });

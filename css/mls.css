@@ -2621,3 +2621,9 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
    with that badge don't clip. Always, not only while it's open: switching overflow on hover reflowed the row under the
    pointer, which ended the hover and flickered. min-width: 0 keeps the row's width as it was. */
 .mls-player-row-info:has(.mls-rank-dual-tip) { overflow: visible; min-width: 0; }
+/* The notes under the Now / Long-term tiles, in one quiet box (S24, round 8). */
+.mls-trade-tile-notes { margin-bottom: 0.6rem; padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); }
+.mls-trade-tile-notes .trade-verdict-note { margin: 0; font-size: 0.8rem; text-align: left; }
+.mls-trade-tile-notes .trade-verdict-note + .trade-verdict-note { margin-top: 0.3rem; }
+/* Power Rankings: the 1QB-rankings note in a superflex league (S24, round 8), amber like the Trade Analyzer's. */
+.mls-power-source-key.is-warning { color: #fcd34d; }

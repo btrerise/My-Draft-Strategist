@@ -114,10 +114,12 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
         if (!seasonSet) return '';
         const other = bySeason ? 'userValue' : 'seasonValue';
         if (!gapToClose(getResults.map(r => r[other]), giveResults.map(r => r[other]), waiver)) return '';
+        // Nothing in the trade has a value by the picked set (round 8): there's nothing to call fair.
+        const none = !verdictFromValues(getValues, giveValues, waiver);
         return `
     <section class="mls-trade-fair" data-trade-fair>
         ${basisSwitch}
-        <div class="mls-trade-fair-note">Fair by ${label} as it stands.</div>
+        <div class="mls-trade-fair-note">${none ? `None of these players are in ${label}.` : `Fair by ${label} as it stands.`}</div>
     </section>`;
     }
     const adder = gap.adder;

@@ -191,7 +191,7 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     const headline = dual ? null : tradeHeadline(value, impact.you);
     notes.unshift(about(via.startsWith('by ') ? `Ranked ${via}.` : `Which rankings: ${via}.`));
     // Superflex QB prices for a 1QB-looking In-Season set (round 7).
-    if (own && own.sfQbPrices) notes.splice(1, 0, about(SF_QB_NOTE));
+    if (own && own.sfQbPrices) notes.splice(1, 0, about(SF_QB_NOTE.replaceAll('In-Season', '<span class="mls-nowrap">In-Season</span>')));
     const summary = summaryLines(impact.you, impact.teams, { pct: !headline });
     const key = `1 = strongest of ${impact.teams}. <span class="mls-trade-rank-up">Green</span> better, <span class="mls-trade-rank-down">red</span> worse.`;
     let body = `
