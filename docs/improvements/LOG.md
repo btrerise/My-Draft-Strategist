@@ -6922,3 +6922,9 @@ at its centre (it fails with that rule removed).
   Manual leagues' "Your lineup after the trade" is unchanged. CHANGELOG line ("reads shorter in every league"), Guide.
 - `CACHE_NAME` v2.8.118 → v2.8.119. Tests: the tiles' phone layout (stacked, under 90px, verdict on the label's line)
   and desktop layout; `mls-trade-impact.spec.mjs` follows the lines, key and moved source line; unit for `pct`.
+
+**Checks (round 5).** Full `npm run check`: check-precache OK, 462 unit tests, Playwright 561 passed, 5 skipped, and
+only `visual.spec.mjs` failed, on the environment message (Chromium 153 here). Screenshots rendered here on main
+(1541b1b) and this branch: still only **`mls-league-guide.png`** changes (`desktop/` 1280×8122 → 1280×8447, `phone/`
+390×18492 → 390×19524: the legend lines and Guide sentences); the other 40 are pixel-identical. Both from the pull
+request's CI.
