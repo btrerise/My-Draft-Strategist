@@ -65,10 +65,14 @@ export function rankGapTip(kind, pos, nowPosRank, laterPosRank) {
     return `${lead} (In-Season ${pos}${nowPosRank}, dynasty ${pos}${laterPosRank}): ${tail}`;
 }
 
-// --- A 1QB IN-SEASON SET IN A SUPERFLEX LEAGUE (round 6) ---
-// Trade values come from overall ranks, and a 1QB list ranks QBs far lower overall than a superflex one (the owner's
-// "ROS Redraft": Lamar Jackson QB3 but #57), so in a superflex league its Now values undervalue every QB. A rankings set
-// stores no format, so it's judged by how many QBs its top 50 holds: superflex lists have about 12-16, 1QB lists 3-6.
+// --- A 1QB IN-SEASON SET IN A SUPERFLEX LEAGUE (rounds 6 and 7) ---
+// Trade values and Power Rankings' Start come from overall ranks, and a 1QB list ranks QBs far lower overall than a
+// superflex one (the owner's "ROS Redraft": Lamar Jackson QB3 but #57), so in a superflex league it undervalued every QB.
+// A rankings set stores no format, so it's judged by how many QBs its top 50 holds: superflex lists have about 12-16,
+// 1QB lists 3-6. Round 7 (owner: automatic, with a note): in that case each QB keeps his In-Season order among QBs but
+// takes the overall rank the dynasty set gives that QB spot (In-Season QB3 = the dynasty set's QB3, about #6), when the
+// dynasty set itself looks superflex. Only QBs, only superflex leagues: other positions and 1QB leagues read the
+// In-Season set as it is (applied everywhere it would copy the dynasty set's long-term pricing into "now").
 export const ONE_QB_TOP = 50;
 export const ONE_QB_MAX_QBS = 8;
 
@@ -86,3 +90,24 @@ export function oneQbLook(data, posOf) {
     top.forEach(p => { const pos = posOf(p.cleanName); if (!pos) return; known++; if (pos === 'QB') qbs++; });
     return { qbs, known, oneQb: known >= 20 && qbs * ONE_QB_TOP / known < ONE_QB_MAX_QBS };
 }
+
+// The In-Season list with superflex QB prices, or null when it doesn't apply (not superflex, the In-Season set doesn't
+// look 1QB, or the dynasty set doesn't look superflex either). posOf(cleanName) -> position. QB k of the In-Season set
+// takes the dynasty set's QB k overall rank; past the dynasty set's last QB, its last rank plus the average gap per spot.
+// Other players are untouched (same objects). A new array: callers index it as they would the set's data.
+export function superflexQbPrices(reqs, seasonData, dynastyData, posOf) {
+    if (!isSuperflex(reqs) || !Array.isArray(seasonData) || !Array.isArray(dynastyData)) return null;
+    if (!oneQbLook(seasonData, posOf).oneQb) return null;
+    const dynLook = oneQbLook(dynastyData, posOf);
+    if (dynLook.known < 20 || dynLook.oneQb) return null;
+    const qbs = (data) => data.filter(p => ranked(p.rank) && posOf(p.cleanName) === 'QB').sort((a, b) => a.rank - b.rank);
+    const seasonQbs = qbs(seasonData), dynRanks = qbs(dynastyData).map(p => p.rank);
+    if (!seasonQbs.length || !dynRanks.length) return null;
+    const last = dynRanks[dynRanks.length - 1];
+    const step = dynRanks.length > 1 ? Math.max(1, (last - dynRanks[0]) / (dynRanks.length - 1)) : 10;
+    const priced = new Map(seasonQbs.map((p, i) => [p.cleanName, i < dynRanks.length ? dynRanks[i] : Math.round(last + (i - dynRanks.length + 1) * step)]));
+    return seasonData.map(p => priced.has(p.cleanName) ? { ...p, rank: priced.get(p.cleanName), seasonRank: p.rank } : p);
+}
+
+// The note wherever the prices apply (the Trade Analyzer with a QB in the trade, Power Rankings).
+export const SF_QB_NOTE = "Your In-Season rankings look 1QB, so QBs are valued at your dynasty rankings' superflex QB prices, in your In-Season order.";

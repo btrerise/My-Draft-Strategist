@@ -375,9 +375,10 @@ test('the Trade Analyzer\'s In-Season note takes you to the In-Season picker', a
     await expectClean(page, state);
 });
 
-test('a superflex league with a 1QB-looking In-Season set warns when a QB is in the trade', async ({ page }) => {
+test('a superflex league with a 1QB-looking In-Season set prices QBs at the dynasty set\'s superflex prices, and says so', async ({ page }) => {
     const { state, ids } = await setUp(page);
-    // The In-Season set without Hurts and Burrow: 2 QBs among the fixture's known players reads as a 1QB list.
+    // The In-Season set without Hurts and Burrow: 2 QBs among the fixture's known players reads as a 1QB list; the dynasty
+    // set (4 QBs: Allen #13, Jackson #14, Hurts #18, Burrow #22) reads as superflex.
     await page.evaluate(async (id) => {
         const { State } = await import('/js/mls/state.js');
         const set = State.rankingSets.ros.find(s => s.id === id);
@@ -388,20 +389,35 @@ test('a superflex league with a 1QB-looking In-Season set warns when a QB is in 
     }, ids.season);
     const reqs = (await fixture(page)).reqs || {};
     await patchLeagues(page, { 'Fixture League': { reqs: { ...reqs, QB: 1, SFLEX: 1 } } });
-    const warning = page.locator('#tradeOutput [data-one-qb-warning]');
+    const note = page.locator('#tradeOutput [data-sf-qb-note]');
+    const NOTE = "Your In-Season rankings look 1QB, so QBs are valued at your dynasty rankings' superflex QB prices, in your In-Season order.";
 
+    // Lamar Jackson, In-Season QB1 (#7 in that set), takes the dynasty set's QB1 price (#13); Chase stays on his own rank.
     await runTrade(page, ['Lamar Jackson'], ["Ja'Marr Chase"]);
-    await expect(warning).toHaveCount(1);
-    await expect(warning).toContainText('Your In-Season rankings (Redraft ROS) look like a 1QB list (2 QBs in their top 50), and this league is superflex, so Now undervalues QBs.');
-    await expect(warning.locator('[data-action="goToSeasonPicker"]')).toHaveCount(1);
+    const lamar = page.locator('#tradeOutput .mls-trade-row').filter({ hasText: 'Lamar Jackson' });
+    await expect(lamar.locator('.mls-trade-row-now')).toHaveText(`Now ${fmt(value(13))}`);
+    await expect(lamar.locator('.mls-trade-row-meta')).toContainText('Now 13');
+    await expect(page.locator("#tradeOutput .mls-trade-row").filter({ hasText: "Ja'Marr Chase" }).locator('.mls-trade-row-now')).toHaveText(`Now ${fmt(value(14))}`);
+    await expect(note).toHaveText(NOTE);
+    await expect(page.locator('#tradeOutput [data-one-qb-warning]')).toHaveCount(0);
+    // Power Rankings after the trade says so in "How this is worked out".
+    await expect(page.locator('#tradeOutput [data-trade-impact] [data-about]').filter({ hasText: 'superflex QB prices' })).toHaveCount(1);
     // The market line's (i) sits beside its label (round 6), so a wrap never leaves it alone on a line.
     await expect(page.locator('#tradeOutput [data-trade-market-strip] .mls-trade-market-strip-head .tooltip-icon')).toHaveCount(1);
-    // No QB in the trade: no warning.
+    // No QB in the trade: no note (nothing it changes).
     await runTrade(page, ['Nico Collins'], ["Ja'Marr Chase"]);
-    await expect(warning).toHaveCount(0);
-    // Not superflex: none.
+    await expect(note).toHaveCount(0);
+
+    // The Roster tab's Power Rankings table says so under the line naming the sets.
+    await showTab(page, 'roster');
+    await expect(page.locator('#powerRankingsOutput [data-sf-qb-note]')).toHaveText(NOTE);
+
+    // Not superflex: the In-Season set as it is, no note.
     await patchLeagues(page, { 'Fixture League': { reqs: { ...reqs, QB: 1, SFLEX: 0 } } });
     await runTrade(page, ['Lamar Jackson'], ["Ja'Marr Chase"]);
-    await expect(warning).toHaveCount(0);
+    await expect(page.locator('#tradeOutput .mls-trade-row').filter({ hasText: 'Lamar Jackson' }).locator('.mls-trade-row-now')).toHaveText(`Now ${fmt(value(7))}`);
+    await expect(note).toHaveCount(0);
+    await showTab(page, 'roster');
+    await expect(page.locator('#powerRankingsOutput [data-sf-qb-note]')).toHaveCount(0);
     await expectClean(page, state);
 });

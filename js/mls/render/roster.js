@@ -16,7 +16,7 @@ import { posCountChipMarkup, rankBadgeParts, rankGapChipMarkup } from '../badges
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { ordinal } from '../week/scoreboard.js';
 import { hasSeasonSlot, seasonOffer, seasonSetFor } from '../rankings/season.js';
-import { rankGap, rankGapTip } from '../rankings/nowAndLater.js';
+import { rankGap, rankGapTip, superflexQbPrices } from '../rankings/nowAndLater.js';
 import { KEYS } from '../../shared/storage/keys.js';
 
     // --- POSITION COUNTS (improvements S9) ---
@@ -206,6 +206,11 @@ import { KEYS } from '../../shared/storage/keys.js';
         const seasonIndex = seasonSet ? rankingIndex(seasonSet.data) : null;
         const seasonDisplay = seasonSet ? leagueRankDisplayIndex(league, seasonSet.data, loadRosterTab) : null;
         const sortSeason = !!(seasonSet && league.rosterSortSeason);
+        // Sorting by In-Season in a superflex league with a 1QB-looking In-Season set uses superflex QB prices (round 7),
+        // as Start does; the badges still show the set's own ranks.
+        const posMap = league.globalPosMap || {};
+        const sortPriced = sortSeason ? superflexQbPrices(league.reqs, seasonSet.data, State.rosRankings, (c) => posMap[c] || league.roster.find(r => r.cleanName === c)?.pos) : null;
+        const sortIndex = sortPriced ? rankingIndex(sortPriced) : null;
         let displayRoster = league.roster.map(p => {
             const ros = ranksIn(rosIndex, rosDisplay, p.cleanName);
             return {
@@ -219,7 +224,7 @@ import { KEYS } from '../../shared/storage/keys.js';
         });
 
         const posOrder = { "QB": 1, "RB": 2, "WR": 3, "TE": 4, "K": 5, "DEF": 6 };
-        const sortRank = (p) => sortSeason ? p.now.rank : p.rosRank;
+        const sortRank = (p) => !sortSeason ? p.rosRank : sortIndex ? (sortIndex.get(p.cleanName)?.rank ?? 999) : p.now.rank;
         displayRoster.sort((a, b) => {
             if (sortRank(a) !== 999 || sortRank(b) !== 999) return sortRank(a) - sortRank(b);
             return (posOrder[a.pos] || 99) - (posOrder[b.pos] || 99);

@@ -123,3 +123,41 @@ test('oneQbLook: QBs in the top 50 decide, scaled to the positions known', () =>
     const shuffled = [...oneQb].reverse().concat([{ cleanName: 'x', rank: 999, pos: 'QB' }]);
     assert.equal(oneQbLook(shuffled, posOf(shuffled)).qbs, 5);
 });
+
+// Round 7: superflex QB prices for a 1QB-looking In-Season set.
+import { superflexQbPrices } from '../../js/mls/rankings/nowAndLater.js';
+test('superflexQbPrices: QBs keep their In-Season order and take the dynasty set\'s QB prices', () => {
+    // 60 players each; positions by name. In-Season: 1QB-style, QBs at 10, 30, 50 (q1..q3). Dynasty: superflex, QBs every 4th.
+    const pos = {};
+    const season = Array.from({ length: 60 }, (_, i) => {
+        const qb = [9, 29, 49].indexOf(i);
+        const cleanName = qb >= 0 ? `q${qb + 1}` : `s${i}`;
+        pos[cleanName] = qb >= 0 ? 'QB' : 'WR';
+        return { cleanName, rank: i + 1 };
+    });
+    const dynasty = Array.from({ length: 60 }, (_, i) => {
+        const cleanName = i % 4 === 0 ? `d${i}` : `e${i}`;
+        pos[cleanName] = i % 4 === 0 ? 'QB' : 'RB';
+        return { cleanName, rank: i + 1 };
+    });
+    const posOf = (c) => pos[c];
+    const sf = { QB: 1, SFLEX: 1 };
+    const priced = superflexQbPrices(sf, season, dynasty, posOf);
+    // QB1..QB3 of the In-Season set take the dynasty set's QB1..QB3 overall ranks (1, 5, 9).
+    assert.deepEqual(priced.filter(p => pos[p.cleanName] === 'QB').map(p => [p.cleanName, p.rank, p.seasonRank]), [['q1', 1, 10], ['q2', 5, 30], ['q3', 9, 50]]);
+    // Everyone else untouched, same objects.
+    assert.equal(priced[0], season[0]);
+    // Not superflex, or the In-Season set already superflex, or a 1QB-looking dynasty set: nothing to do.
+    assert.equal(superflexQbPrices({ QB: 1, SFLEX: 0 }, season, dynasty, posOf), null);
+    assert.equal(superflexQbPrices(sf, dynasty, dynasty, posOf), null);
+    assert.equal(superflexQbPrices(sf, season, season, posOf), null);
+});
+test('superflexQbPrices: In-Season QBs past the dynasty set\'s last QB continue at its average gap', () => {
+    const pos = {};
+    // In-Season: 4 QBs in the top 50 (1QB-style), 12 in all. Dynasty: 10 QBs at ranks 2, 4, ... 20 (superflex-style).
+    const seasonQbRanks = [10, 20, 30, 40, 51, 52, 53, 54, 55, 56, 57, 58];
+    const season = Array.from({ length: 60 }, (_, i) => { const qb = seasonQbRanks.includes(i + 1); const c = (qb ? 'q' : 'w') + i; pos[c] = qb ? 'QB' : 'WR'; return { cleanName: c, rank: i + 1 }; });
+    const dynasty = Array.from({ length: 60 }, (_, i) => { const qb = (i + 1) % 2 === 0 && i + 1 <= 20; const c = (qb ? 'dq' : 'r') + i; pos[c] = qb ? 'QB' : 'RB'; return { cleanName: c, rank: i + 1 }; });
+    const priced = superflexQbPrices({ QB: 2 }, season, dynasty, (c) => pos[c]);
+    assert.deepEqual(priced.filter(p => pos[p.cleanName] === 'QB').map(p => p.rank), [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]);
+});

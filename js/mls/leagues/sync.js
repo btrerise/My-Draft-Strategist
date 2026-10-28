@@ -26,6 +26,7 @@ import { showConfirm } from '../../shared/ui/confirm.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { withViewTransition } from '../../shared/ui/viewTransition.js';
 import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from '../rankings/season.js';
+import { superflexQbPrices } from '../rankings/nowAndLater.js';
 
     // --- LEAGUE & SYNC LOGIC ---
     export function refreshLeagueDropdown() {
@@ -176,11 +177,19 @@ import { resolveSeasonRankings, roomsUseSeason, seasonSetFor, seasonStamp } from
     // Power Rankings' sources for the active league, with your own rankings: Start from this season's
     // rankings, Ovr and the rooms from the dynasty (ROS) set unless "I'm competing" is on, and Future
     // from the dynasty set. Each is State.rosRankings when there's no In-Season set, so nothing changes then.
+    // In a superflex league whose In-Season set looks 1QB (improvements S24, round 7), Start (and the rooms with "I'm
+    // competing") read it with superflex QB prices, and sfQbPrices says so for the table's note.
     export function activePowerRankings() {
         const league = getActiveLeague();
-        const season = activeSeasonRankings();
+        let season = activeSeasonRankings();
         const dynasty = State.rosRankings.length > 0 ? State.rosRankings : season;
-        return { start: season, rooms: roomsUseSeason(league, State.rankingSets.ros) ? season : dynasty, future: dynasty };
+        let sfQbPrices = false;
+        if (league && season !== dynasty) {
+            const posMap = league.globalPosMap || {};
+            const priced = superflexQbPrices(league.reqs, season, dynasty, (c) => posMap[c]);
+            if (priced) { season = priced; sfQbPrices = true; }
+        }
+        return { start: season, rooms: roomsUseSeason(league, State.rankingSets.ros) ? season : dynasty, future: dynasty, sfQbPrices };
     }
 
     // `animate`: a switch you make yourself (the header's drop-down and arrows, a card's name, Switch on a

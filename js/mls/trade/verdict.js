@@ -8,14 +8,21 @@ import { verdictFromValues } from './makeFair.js';
 import { marketFormatWarning } from '../main.js';
 import { getActiveLeague } from '../helpers.js';
 import { IN_SEASON, hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
-import { dualHeadline, dualVerdictNumbers, isSuperflex, oneQbLook } from '../rankings/nowAndLater.js';
+import { dualHeadline, dualVerdictNumbers, SF_QB_NOTE, superflexQbPrices } from '../rankings/nowAndLater.js';
 
     // The active league's In-Season set when the Trade Analyzer shows two values and two verdicts (improvements
     // S24): a dynasty or keeper league with an In-Season set (S23) and its dynasty set loaded. null everywhere else,
     // and the Trade Analyzer looks exactly as before.
+    // In a superflex league whose In-Season set looks 1QB (round 7), its data comes back with superflex QB prices
+    // (rankings/nowAndLater.js superflexQbPrices) and sfQbPrices set, so every Now value, verdict and suggestion reads them.
     export function tradeSeasonSet() {
         if (State.rosRankings.length === 0) return null;
-        return seasonSetFor(getActiveLeague(), State.rankingSets.ros);
+        const league = getActiveLeague();
+        const set = seasonSetFor(league, State.rankingSets.ros);
+        if (!set) return null;
+        const posMap = league.globalPosMap || {};
+        const priced = superflexQbPrices(league.reqs, set.data, State.rosRankings, (c) => posMap[c]);
+        return priced ? { ...set, data: priced, sfQbPrices: true } : set;
     }
 
     const YOUR_METHOD = "This value isn't something you entered; it's estimated by converting your ROS rank into a point value on a 0-10,000 scale, weighted so top-ranked players are worth disproportionately more (rank #1 &asymp; 10,000, decaying ~1.8% per rank). This provides a way to compare players on your own board.";
@@ -60,7 +67,7 @@ import { dualHeadline, dualVerdictNumbers, isSuperflex, oneQbLook } from '../ran
             const market = State.marketRankings.length > 0
                 ? renderTradeVerdict("Market Consensus", '', getResults, giveResults, "marketValue", "marketMatched", true, '', true) : null;
             verdictHTML = dualVerdictTiles(seasonSet, now, later, dualHeadline(both.now, both.later))
-                + oneQbWarning(seasonSet, getResults, giveResults) + marketStrip(market) + marketAgeHTML();
+                + sfQbNote(seasonSet, getResults, giveResults) + marketStrip(market) + marketAgeHTML();
             return verdictHTML || `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
         } else {
             yours = renderTradeVerdict(
@@ -112,17 +119,12 @@ import { dualHeadline, dualVerdictNumbers, isSuperflex, oneQbLook } from '../ran
 
     const SEASON_PICKER_BTN = `<button type="button" class="mls-btn-sm btn-link-inline" data-action="goToSeasonPicker">Choose on the Roster tab</button>`;
 
-    // A superflex league whose In-Season set looks like a 1QB list (S24, round 6, the owner's choice (a)): its overall ranks
-    // put QBs far down, so the Now values undervalue them. Said only when a QB is in the trade, where it changes the
-    // verdict. Positions from the league's synced map (the top 50 are nearly always rostered). On screen only.
-    function oneQbWarning(seasonSet, getResults, giveResults) {
-        const league = getActiveLeague();
-        if (!league || !isSuperflex(league.reqs)) return '';
+    // Superflex QB prices in use (round 7; round 6 warned instead): a quiet note under the tiles, only when a QB is in the
+    // trade, where it changes the numbers. On screen only.
+    function sfQbNote(seasonSet, getResults, giveResults) {
+        if (!seasonSet.sfQbPrices) return '';
         if (!getResults.concat(giveResults).some(r => r.exportRow && r.exportRow.pos === 'QB')) return '';
-        const posMap = league.globalPosMap || {};
-        const look = oneQbLook(seasonSet.data, (c) => posMap[c]);
-        if (!look.oneQb) return '';
-        return `<div class="mls-trade-season-hint is-warning" data-one-qb-warning><span>Your <span class="mls-nowrap">In-Season</span> rankings (${escapeHtml(seasonSet.name || '')}) look like a 1QB list (${look.qbs} QB${look.qbs === 1 ? '' : 's'} in their top 50), and this league is superflex, so Now undervalues QBs. Use a superflex set as this league's <span class="mls-nowrap">In-Season</span> rankings.</span> ${SEASON_PICKER_BTN}</div>`;
+        return `<div class="mls-trade-season-hint" data-sf-qb-note><span>${SF_QB_NOTE.replace('In-Season', '<span class="mls-nowrap">In-Season</span>')}</span></div>`;
     }
 
     const signedPts = (n) => `${n >= 0 ? '+' : '\u2212'}${Math.abs(n).toLocaleString()}`;

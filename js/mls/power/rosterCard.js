@@ -16,6 +16,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { roomsUseSeason, seasonSetFor } from '../rankings/season.js';
 import { showTab } from '../nav.js';
 import { activePowerRankings } from '../main.js';
+import { SF_QB_NOTE } from '../rankings/nowAndLater.js';
 
 // --- POSITIONAL POWER RANKINGS: ROSTER TAB CARD ---
 // Generated automatically (no Calculate button) every time the Roster tab renders -- see the
@@ -38,7 +39,7 @@ function resolvePowerRankingsSource() {
     const wantMarket = State.powerSettings.source === 'market';
     const own = activePowerRankings();
     const mine = own.rooms, market = State.marketRankings;
-    const fromMine = (note) => ({ rankings: mine, start: own.start, future: own.future, source: 'custom', note });
+    const fromMine = (note) => ({ rankings: mine, start: own.start, future: own.future, source: 'custom', note, sfQbPrices: own.sfQbPrices });
     if (wantMarket) {
         if (market.length > 0) return { rankings: market, source: 'market', note: '' };
         if (mine.length > 0) return fromMine('No Market Consensus data loaded yet, so this uses your own rankings instead.');
@@ -385,6 +386,8 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
     // In a dynasty league with an In-Season set, which set gave each column, right under the table (S23).
     const seasonKey = seasonSourceKey(ctx.league, ctx.source, ctx.futureLabel);
     if (seasonKey) html += `<div class="mls-power-source-key">${seasonKey}</div>`;
+    // Superflex QB prices for a 1QB-looking In-Season set (S24, round 7), under the line naming the sets.
+    if (ctx.source && ctx.source.sfQbPrices) html += `<div class="mls-power-source-key" data-sf-qb-note>${SF_QB_NOTE.replace('In-Season', '<span class="mls-nowrap">In-Season</span>')}</div>`;
 
     const notes = [];
     if (ctx.source && ctx.source.note) notes.push(escapeHtml(ctx.source.note));

@@ -11,6 +11,7 @@ import { computePositionalPower, POWER_DEFAULT_REQS, POWER_POSITIONS } from '../
 import { futureRankText, futureMoreHTML, powerPicksNote, resolvePowerFuture, whenPowerAgesLoaded } from '../power/futureValue.js';
 import { getPowerLeagueKind } from '../power/directionLabels.js';
 import { activePowerRankings } from '../main.js';
+import { SF_QB_NOTE } from '../rankings/nowAndLater.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { getSleeperMetaByName, makeLeagueGetPos } from '../scout/waivers.js';
 import { buildRankDisplayIndex } from '../scout/waiverScanner.js';
@@ -189,6 +190,8 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     const dual = seasonValues && own;
     const headline = dual ? null : tradeHeadline(value, impact.you);
     notes.unshift(about(via.startsWith('by ') ? `Ranked ${via}.` : `Which rankings: ${via}.`));
+    // Superflex QB prices for a 1QB-looking In-Season set (round 7).
+    if (own && own.sfQbPrices) notes.splice(1, 0, about(SF_QB_NOTE));
     const summary = summaryLines(impact.you, impact.teams, { pct: !headline });
     const key = `1 = strongest of ${impact.teams}. <span class="mls-trade-rank-up">Green</span> better, <span class="mls-trade-rank-down">red</span> worse.`;
     let body = `

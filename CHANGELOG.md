@@ -105,7 +105,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   counts as far below it, so a startable player missing from the other set gets the chip too. A dynasty or keeper
   league with no In-Season rankings says so on the Roster tab and in the Trade Analyzer, with a **Use it here** for
   the set your redraft leagues use, and a button to the In-Season picker. In a superflex league whose In-Season set
-  looks like a 1QB list, a trade with a QB warns that Now undervalues QBs. Redraft leagues are unchanged.
+  looks like a 1QB list, QBs keep their In-Season order but are valued at your dynasty rankings' superflex QB prices
+  (Power Rankings' Start, the trade's Now values, To make it fair), with a note saying so. Redraft leagues are unchanged.
 - **The Scout tab follows a league switch made there.** Switching between a redraft and a dynasty league on the Scout
   tab left the Waiver Wire's Rank By on the old league's choices (ROS Rank, or Dynasty and In-Season Rank) until you
   left the tab and came back. Market Disconnect's report is also re-run for the new league, so who rosters each player

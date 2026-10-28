@@ -6962,6 +6962,44 @@ In-Season picker).
   shrink with an ellipsis and the full name in the row's title, or put the "Fair · 2% their way" line beside the value
   so the row stays two lines. Check against `rowOverlaps` in `tests/mls-trade-fair.spec.mjs` (names whole was a round 10
   and 14 choice there).
-- Power Rankings' **Start** in a superflex league is also scored from the In-Season set's overall ranks, so a 1QB
-  In-Season set undervalues QBs there too (S23). The warning above covers trades only; the same check could show on the
-  Power Rankings card.
+- ~~Power Rankings' Start in a superflex league with a 1QB In-Season set~~: done in round 7.
+
+### S24, round 7: superflex QB prices for a 1QB-looking In-Season set (owner: "automatic, with the note")
+
+**The question.** Round 6 found Power Rankings' Start reads the In-Season set's overall ranks too, so a 1QB set
+undervalues QBs there as it did in trades. The owner asked whether Start could go by position. Answer: position rank
+alone can't choose a superflex starter or set a value (QB5 and RB5 aren't worth the same), so something has to say
+what the Nth QB is worth in this format. I offered (a) every In-Season player priced by position on the dynasty set's
+scale, (b) only where the In-Season set's format looks different, (c) leave it. The owner leaned (b): (a) would carry
+the dynasty set's long-term pricing (young RBs and WRs over aging QBs and TEs) into "now" in every league, making 1QB
+dynasty and 1QB redraft the same. The owner asked about a toggle; I recommended automatic with a note (a toggle is hard
+to explain, the format is a fact the app can check, and S23's answer was a default per place). Owner: "Build it that way,
+automatic with the note." TE premium left out (a TEP list is hard to tell from a plain one).
+
+**What it does.** In a superflex league (a SFLEX slot or two QB slots) whose In-Season set looks 1QB (fewer than 8 QBs in
+its top 50, round 6's check) and whose dynasty set doesn't: each QB keeps his In-Season order among QBs and takes the
+overall rank the dynasty set gives that QB spot (In-Season QB3 = the dynasty set's QB3); past the dynasty set's last QB,
+its last rank plus the average gap. Other positions, 1QB leagues, redraft leagues and the Long-term side are unchanged.
+On the owner's May the Receptions: Lamar Jackson's Now value 3,616 → 8,492, and Chase for Lamar plus the 2029 1st reads
+Favors Them (−1,037) now as well as long-term, where it read "wins now" by +3,839.
+- `superflexQbPrices(reqs, seasonData, dynastyData, posOf)` and `SF_QB_NOTE` (rankings/nowAndLater.js, pure): a copy of
+  the In-Season list with the QBs re-ranked (`seasonRank` keeps the original), or null.
+- Where: `tradeSeasonSet()` (trade/verdict.js) returns the priced list with `sfQbPrices`, so the rows' Now values, the
+  Now tile, "To make it fair" on In-Season and the trade's Power Rankings read it; `activePowerRankings()`
+  (leagues/sync.js) gives Start (and the rooms with I'm competing) the priced list, so the table, labels, power strip and
+  Power Rankings after the trade follow; All My Leagues does the same per league (power/allLeagues.js); the Roster
+  tab's Sort by In-Season orders by it (the badges keep the set's own ranks).
+- The note, "Your In-Season rankings look 1QB, so QBs are valued at your dynasty rankings' superflex QB prices, in your
+  In-Season order.": under the trade's tiles when a QB is in the trade, in its "How this is worked out", and under the
+  Power Rankings table's source line. Round 6's warning is gone (the prices fix what it warned about).
+- `CACHE_NAME` v2.8.120 → v2.8.121; CHANGELOG line and Guide sentence updated.
+
+**Tests.** Unit: QBs take the dynasty QB prices in order, others untouched, nothing in a 1QB league or with a
+superflex-looking In-Season set or a 1QB-looking dynasty set, and the continuation past the dynasty set's last QB.
+Spec: the fixture as superflex with a 1QB-looking In-Season set: Lamar's Now value at the dynasty QB1 price, Chase's
+unchanged, the note under the tiles and in the trade's Power Rankings notes, none without a QB in the trade, the note
+under the Power Rankings table; not superflex: the set as it is, no notes.
+
+**Left over.** The lineup with no Weekly set (S23: it reads the In-Season set) and the Waiver Wire's In-Season Rank
+still use the In-Season set as it is; both choose by position and FLEX ranks first, so a 1QB list mostly matters there
+for the superflex slot. Worth a look if a superflex lineup ever benches a QB it shouldn't.
