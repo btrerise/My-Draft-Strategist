@@ -1070,6 +1070,7 @@ button.close-chip {
    analysis lists each player in (js/mls/scout/engine.js). */
 /* Receive and Give side by side from tablet width up, in the form and in the results (round 8); stacked on phones. */
 .mls-trade-sides { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1.5rem; }
+.mls-trade-pick-note { margin-top: 0.4rem; font-size: 0.75rem; color: var(--text-muted); }
 .mls-trade-side-title { font-weight: 700; margin: 1rem 0 0.5rem; }
 .mls-trade-side-get { color: #4ade80; }
 .mls-trade-side-give { color: #fca5a5; }

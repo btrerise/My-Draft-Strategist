@@ -160,7 +160,7 @@ function tradeExportHTML(data, verdictHTML, powerHTML) {
         <div class="mls-trade-export-asset">
             <span class="badge pos-badge ${escapeHtml(r.badge)} mls-pos-badge-sizing">${escapeHtml(r.pos)}</span>
             <span class="mls-trade-export-name">${escapeHtml(r.name)}</span>
-            <span class="mls-trade-export-val">${fmtValue(r.value, r.pos === 'Pick')}${r.valueFromMarket ? '<sup>*</sup>' : ''}</span>
+            <span class="mls-trade-export-val">${fmtValue(r.value, r.pos === 'Pick')}</span>
             ${data.dual ? `<span class="mls-trade-export-val mls-trade-export-mkt">${fmtValue(r.now, r.pos === 'Pick')}</span>` : ''}
             ${data.market ? `<span class="mls-trade-export-val mls-trade-export-mkt">${r.market == null ? '&ndash;' : r.market.toLocaleString('en-US')}</span>` : ''}
         </div>`).join('');
@@ -176,7 +176,7 @@ function tradeExportHTML(data, verdictHTML, powerHTML) {
         <div class="mls-trade-export-title">Trade${data.league ? ` &middot; ${escapeHtml(data.league)}` : ''}</div>
         ${side('You get', 'mls-trade-export-get', data.get)}
         ${side('You give', 'mls-trade-export-give', data.give)}
-        <div class="mls-trade-export-foot">${data.dual ? 'Dyn: estimated from my dynasty rankings, Now: from my In-Season rankings (0-10,000).' : 'Value: estimated from my ROS rankings (0-10,000).'}${data.market ? ' Mkt: market consensus.' : ''}${marketPick ? ' * Draft pick: market value.' : ''} UR: unranked.${data.get.concat(data.give).some(r => r.pos === 'Pick' && r.value == null) ? ' &ndash;: no market value loaded for the pick.' : ''}</div>
+        <div class="mls-trade-export-foot">${data.dual ? 'Dyn: estimated from my dynasty rankings, Now: from my In-Season rankings (0-10,000).' : 'Value: estimated from my ROS rankings (0-10,000).'}${data.market ? ' Mkt: market consensus.' : ''}${marketPick ? ' Draft picks: market value.' : ''} UR: unranked.${data.get.concat(data.give).some(r => r.pos === 'Pick' && r.value == null) ? ' &ndash;: no market value loaded for the pick.' : ''}</div>
         ${verdictHTML}
         ${powerHTML}`;
 }

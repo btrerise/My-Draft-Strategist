@@ -295,14 +295,16 @@ import { normalizeName } from '../../shared/names.js';
                     `Wk ${wRank}`
                 ];
                 // "Dyn" before the dynasty value in a league with both sets (round 3: unlabeled, it read as the only value).
+                // A pick's market value carries no "*" since S24 round 18 (a hover title phones never showed, and "*" on the
+                // verdict cards means "see the note"): a line under the two sides says so instead.
                 const valueText = userValueObj
-                    ? `${seasonIndex ? '<span class="mls-trade-row-dyn">Dyn</span>' : ''}${userValueObj.value.toLocaleString()}${userValueObj.fromMarket ? '<sup title="Market value: your ROS rankings have no draft picks">*</sup>' : ''}`
+                    ? `${seasonIndex ? '<span class="mls-trade-row-dyn">Dyn</span>' : ''}${userValueObj.value.toLocaleString()}`
                     : `<span class="mls-trade-row-ur">${isPick ? '&ndash;' : 'UR'}</span>`;
                 // A pick's value comes from market data only (round 6): say so where the dash is.
                 if (isPick && !userValueObj) rankBits.push(State.marketRankings.length > 0 ? 'Not in market data' : 'Needs market data');
                 // The In-Season value under the dynasty one (S24), the market's under both.
                 const now = seasonIndex
-                    ? `<span class="mls-trade-row-now">Now ${seasonValueObj ? `${seasonValueObj.value.toLocaleString()}${seasonValueObj.fromMarket ? '*' : ''}` : (isPick ? '&ndash;' : 'UR')}</span>` : '';
+                    ? `<span class="mls-trade-row-now">Now ${seasonValueObj ? seasonValueObj.value.toLocaleString() : (isPick ? '&ndash;' : 'UR')}</span>` : '';
                 const mkt = State.marketRankings.length > 0
                     ? `<span class="mls-trade-row-mkt">Mkt ${marketValueObj ? marketValueObj.value.toLocaleString() : '&ndash;'}</span>` : '';
                 return {
@@ -420,6 +422,10 @@ import { normalizeName } from '../../shared/names.js';
                 html += `</div>`;
             }
             html += `</div>`;
+            // Picks valued by the market (round 18): said once, under the two sides.
+            if (getResults.concat(giveResults).some(r => r.exportRow && r.exportRow.valueFromMarket)) {
+                html += `<div class="mls-trade-pick-note" data-pick-note>Picks are valued by Market Consensus: your rankings don't rank picks.</div>`;
+            }
             html += moreAnalysisHTML(league, !!(fairHTML || impactHTML)) + fairHTML + impactHTML;
 
             // Export Trade (trade/export.js), at the bottom of the card: an image of the assets with their

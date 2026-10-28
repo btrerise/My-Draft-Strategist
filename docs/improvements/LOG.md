@@ -7209,3 +7209,14 @@ note). Screenshots: none of the tabs' baselines show a trade, so only the Guide'
 `CACHE_NAME` v2.8.130 → v2.8.131. Tests: the marks (Now only for a player missing from the In-Season set; *, †, ‡ and a
 "*†‡" note for a pick the market lacks; none without notes); the superflex note's text now starts with "*"; the export
 keeps "*† 2029 1st".
+
+### S24, round 18: a pick's market value said in words, not "*"
+
+Owner took round 17's finding. A pick's value from Market Consensus ("Dyn 1,847*", "Now 1,847*") loses its "*" (on Dyn it
+was a hover title phones never showed; on Now nothing explained it; and "*" on the verdict cards now means "see the
+note"). Instead one muted line under the two sides, when a pick in the trade is valued that way: "Picks are valued by
+Market Consensus: your rankings don't rank picks." (`data-pick-note`, scout/engine.js). Export Trade's image drops its
+pick "*" too, and its footnote reads "Draft picks: market value." (the image also carries the card marks). To make it
+fair keeps its own "2027 1st*", explained in its box right under it. Predates S24 (picks from the market, S13).
+`CACHE_NAME` v2.8.131 → v2.8.132. Test: in mls-trade-impact.spec.mjs, a pick the market prices shows its value without
+"*" and the line (fails on round 17's code: "5,905*"); no line while the pick has no value.

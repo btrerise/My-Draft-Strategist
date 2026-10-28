@@ -424,6 +424,16 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await expect(out.locator('.mls-trade-market-age')).toHaveText('Market values: Updated today.');
         await expect(out.locator('.mls-trade-market-age')).not.toHaveClass(/is-stale/);
         expect(await noSideScroll(page)).toBe(true);
+        await expect(out.locator('[data-pick-note]')).toHaveCount(0); // the pick has no value yet
+        // The market prices the pick: its value is the market's, said once under the two sides, with no "*" on the
+        // value (improvements S24, round 18: "*" on the verdict cards means "see the note").
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.marketRankings = [...State.marketRankings, { name: '2027 1st', cleanName: '2027 1st', marketVal: 30, pos: '' }];
+        });
+        await analyze(page);
+        await expect(pickRow.locator('.mls-trade-row-value .mls-stat-value')).toHaveText(Math.round(10000 * Math.pow(0.982, 29)).toLocaleString('en-US'));
+        await expect(out.locator('[data-pick-note]')).toHaveText("Picks are valued by Market Consensus: your rankings don't rank picks.");
         await expectClean(page, state);
     });
 
