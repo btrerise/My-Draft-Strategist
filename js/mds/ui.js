@@ -10,7 +10,7 @@ import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { renderBadgeLegend } from './legend.js';
 import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/viewTransition.js';
-import { closeMenuOnBack, menuClosed, menuOpened } from '../shared/ui/navMenu.js';
+import { closeMenuOnBack, menuClosed, menuOpened, setBackdrop } from '../shared/ui/navMenu.js';
 
     // --- UI HELPERS ---
     // Generic debounce: delays calling fn until `wait` ms have passed since the last call.
@@ -44,7 +44,7 @@ import { closeMenuOnBack, menuClosed, menuOpened } from '../shared/ui/navMenu.js
     if (!menu || !overlay) return Promise.resolve();
     
     const isOpen = menu.classList.toggle('open');
-    overlay.style.display = isOpen ? 'block' : 'none';
+    setBackdrop(overlay, isOpen);
     
     // Announce the new state to screen readers
     hamburgerBtns.forEach(btn => btn.setAttribute('aria-expanded', isOpen));

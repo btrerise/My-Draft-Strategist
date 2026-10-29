@@ -46,6 +46,24 @@ export function menuClosed() {
     });
 }
 
+/**
+ * Shows or hides the menu's backdrop. It fades (css/base.css, `.menu-overlay.open`) rather than appearing at once: a
+ * whole page dimming and blurring in one frame, while the menu has barely started to move, read as a jolt
+ * (improvements S26). It's display:none while hidden, so it isn't laid out or blurred then; hiding waits for the fade.
+ */
+export function setBackdrop(overlay, open) {
+    clearTimeout(overlay._hideTimer);
+    if (open) {
+        overlay.style.display = 'block';
+        overlay.classList.add('open'); // @starting-style fades it in from display:none
+        return;
+    }
+    overlay.classList.remove('open');
+    const ms = parseFloat(getComputedStyle(overlay).transitionDuration) * 1000 || 0;
+    if (!ms) { overlay.style.display = 'none'; return; }
+    overlay._hideTimer = setTimeout(() => { if (!overlay.classList.contains('open')) overlay.style.display = 'none'; }, ms);
+}
+
 window.addEventListener('popstate', (e) => {
     if (pendingPops.length) {
         e.stopImmediatePropagation();

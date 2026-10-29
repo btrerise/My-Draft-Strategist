@@ -7379,3 +7379,25 @@ the 15 desktop PNGs of both apps listed above (round 1), and **all 15 phone PNGs
 `mls-league-scout`, `mls-league-setup`) only in the bottom bar's strip (64px bar, 24px icons), and Draft Strategist's 8
 as in round 1 plus the same bar change. This replaces round 1's "Lineup Strategist's phones identical": the owner chose
 Material 3's sizes on phones too. T-Score's PNGs are unchanged.
+
+### S26, round 3: a smoother expanding rail
+
+Owner: the expanding rail "appears a bit stuttered". Headless Chromium can't show it (no GPU: 27 even frames either way,
+and traces too small to compare), so the fix follows the three causes in the code:
+1. **The reveal animated `clip-path`**, which Chromium redraws on the main thread every frame. It's now two opposite
+   transforms: the panel slides in from `translateX(96px - 100%)` while its children start `translateX(280px - 96px)` the
+   other way, with the same timing, so they cancel: the edge moves out from the rail, the contents stay put. Transforms
+   run on the GPU.
+2. **The backdrop appeared all at once**: the whole page dimmed and blurred in the first frame while the panel had
+   barely moved. It now fades with the menu (`setBackdrop` in js/shared/ui/navMenu.js toggles `.menu-overlay.open`;
+   `@starting-style` fades it in from `display: none`; hiding waits for the fade, `pointer-events: none` meanwhile).
+   Both apps, every width (phones' backdrop fades too).
+3. **The timing**: Material 3's emphasized curve at 300ms put nearly all the movement in the first frames. Now Material 3's
+   motion tokens: open 400ms emphasized decelerate `cubic-bezier(0.05, 0.7, 0.1, 1)`, close 200ms emphasized accelerate
+   `cubic-bezier(0.3, 0, 0.8, 0.15)`; the backdrop 400ms in, 200ms out. Reduce Motion: no transitions.
+
+A filmstrip (frames at 0, 10, 20, 35, 50 and 100% of the animation, before and after) went to the owner. `CACHE_NAME`
+v2.8.134 → v2.8.135. Test (nav-rail.spec.mjs, replacing round 2's clip-path check): closed, the panel's right edge is the
+rail's; paused halfway, the edge is between 96 and 280px, the icons are already where the rail's are, the backdrop's
+opacity is between 0 and 1, and nothing animates but transforms and opacity; open, the edge is at 280px; closing, the
+backdrop goes. Screenshots: none show the menu, so the list in round 2 stands (30).

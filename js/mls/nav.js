@@ -8,7 +8,7 @@ import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { renderBadgeLegend } from './legend.js';
 import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/viewTransition.js';
 import { syncTradePicker } from './trade/picker.js';
-import { closeMenuOnBack, menuClosed, menuOpened } from '../shared/ui/navMenu.js';
+import { closeMenuOnBack, menuClosed, menuOpened, setBackdrop } from '../shared/ui/navMenu.js';
 
     // --- DRAWER & SWIPE LOGIC ---
     // Focus trap instance for the drawer -- created lazily on first open rather than at
@@ -27,7 +27,7 @@ import { closeMenuOnBack, menuClosed, menuOpened } from '../shared/ui/navMenu.js
         if (!drawer || !overlay) return Promise.resolve();
 
         const isOpen = drawer.classList.toggle('open');
-        overlay.style.display = isOpen ? 'block' : 'none';
+        setBackdrop(overlay, isOpen);
 
         // Announce the new state to screen readers
         hamburgerBtns.forEach(btn => btn.setAttribute('aria-expanded', isOpen));

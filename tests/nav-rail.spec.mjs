@@ -330,21 +330,47 @@ for (const app of APPS) {
             expect(rows).toEqual([56]);
         });
 
-        test('the expanded rail grows out of the rail: its icons sit where the rail\'s are', async ({ page }) => {
+        test('the expanded rail grows out of the rail: its edge moves, its icons stay where the rail\'s are, the backdrop fades', async ({ page }) => {
             await page.setViewportSize({ width: 1280, height: 800 });
             await openApp(page, app.path);
             const icons = (sel) => page.evaluate((s) => [...document.querySelectorAll(s)].map(b => {
                 const r = b.querySelector('svg').getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top)];
             }), sel);
             const rail = await icons('.nav-bar .nav-btn');
+            const menuIcons = app.tabs.map(t => `.hamburger-menu .nav-btn[data-tab="${t}"]`).join(', ');
             const drawer = page.locator('.hamburger-menu');
-            // Closed, it's clipped to the rail's width (and hidden), so it opens outwards from there.
-            expect(await drawer.evaluate(d => getComputedStyle(d).clipPath)).toMatch(/^inset\(0px (184px|calc\(100% - 96px\)) 0px 0px\)$/);
-            await page.locator('.nav-bar .nav-rail-menu').click();
+            // Closed, its right edge is the rail's (and it's hidden), so it opens outwards from there.
+            expect(await drawer.evaluate(d => Math.round(d.getBoundingClientRect().right))).toBe(96);
+
+            // Halfway through opening (its transitions paused there; the page's looping pulses aren't touched): the edge is between the rail and the open width,
+            // the icons already where the rail's are, and nothing animates but transforms and the backdrop's opacity,
+            // which the browser can run on the GPU (clip-path, round 2, redrew the panel every frame).
+            await page.evaluate(() => {
+                document.querySelector('.nav-bar .nav-rail-menu').click();
+                for (const a of document.getAnimations().filter(t => t.transitionProperty)) { a.pause(); a.currentTime = 200; }
+            });
+            const mid = await page.evaluate(() => ({
+                right: document.querySelector('.hamburger-menu').getBoundingClientRect().right,
+                props: [...new Set(document.getAnimations().filter(t => t.transitionProperty).map(a => a.transitionProperty))].sort(),
+                backdrop: Number(getComputedStyle(document.querySelector('.menu-overlay')).opacity),
+            }));
+            expect(mid.right).toBeGreaterThan(96);
+            expect(mid.right).toBeLessThan(280);
+            expect(mid.props.filter(p => p !== 'transform' && p !== 'opacity')).toEqual([]);
+            expect(mid.backdrop).toBeGreaterThan(0);
+            expect(mid.backdrop).toBeLessThan(1);
+            expect(await icons(menuIcons)).toEqual(rail);
+
+            await page.evaluate(() => document.getAnimations().filter(t => t.transitionProperty).forEach(a => a.finish()));
             await expect(drawer).toHaveClass(/\bopen\b/);
-            await expect.poll(() => drawer.evaluate(d => getComputedStyle(d).clipPath)).toMatch(/^inset\(0px -32px 0px 0px\)$/);
-            const expanded = await icons(app.tabs.map(t => `.hamburger-menu .nav-btn[data-tab="${t}"]`).join(', '));
-            expect(expanded).toEqual(rail);
+            await expect.poll(() => drawer.evaluate(d => Math.round(d.getBoundingClientRect().right))).toBe(280);
+            expect(await icons(menuIcons)).toEqual(rail);
+
+            // Closing: the backdrop fades out, then leaves the layout.
+            await page.keyboard.press('Escape');
+            const backdrop = page.locator('.menu-overlay');
+            await expect(backdrop).toBeHidden();
+            await expect.poll(() => drawer.evaluate(d => Math.round(d.getBoundingClientRect().right))).toBe(96);
         });
 
         test('the menu uses the tabs\' short names, at every width', async ({ page }) => {

@@ -2388,17 +2388,22 @@ button.pos-filter {
     .nav-marker { width: 3px; height: 0; border-radius: 0 3px 3px 0; }
 
     /* The expanded rail: the drawer, opened from the rail's menu button, with its collapse button in the same spot.
-       It grows out of the collapsed rail (Material 3: the two transform into each other): it's revealed from the
-       rail's width outwards instead of sliding in from off-screen, and its rows' icons sit where the rail's are
-       (36px from the edge, 56px apart from 94px down), so only the labels move. */
-    .has-nav-bar .hamburger-menu {
-        transform: none;
-        clip-path: inset(0 calc(100% - var(--rail-w)) 0 0);
-        transition: clip-path 0.3s cubic-bezier(0.2, 0, 0, 1), visibility 0s linear 0.3s;
+       It grows out of the collapsed rail (Material 3: the two transform into each other): its right edge moves out from
+       the rail's while what's in it stays put, and its rows' icons sit where the rail's are (36px from the edge, 56px
+       apart from 94px down), so only the labels appear. Done with two opposite transforms (the panel from 184px left,
+       its contents from 184px right, same timing, so they cancel), which the browser animates on the GPU; animating
+       clip-path redrew the panel on the main thread every frame and stuttered. Material 3's motion: 400ms emphasized
+       decelerate to open, 200ms emphasized accelerate to close. */
+    .has-nav-bar .hamburger-menu,
+    .has-nav-bar .hamburger-menu > * {
+        transition: transform 200ms cubic-bezier(0.3, 0, 0.8, 0.15), visibility 0s linear 200ms;
     }
-    .has-nav-bar .hamburger-menu.open {
-        clip-path: inset(0 -32px 0 0); /* past the right edge, so its shadow shows */
-        transition: clip-path 0.3s cubic-bezier(0.2, 0, 0, 1), visibility 0s linear 0s;
+    .has-nav-bar .hamburger-menu { transform: translateX(calc(var(--rail-w) - 100%)); }
+    .has-nav-bar .hamburger-menu > * { transform: translateX(calc(280px - var(--rail-w))); }
+    .has-nav-bar .hamburger-menu.open,
+    .has-nav-bar .hamburger-menu.open > * {
+        transform: none;
+        transition: transform 400ms cubic-bezier(0.05, 0.7, 0.1, 1), visibility 0s linear 0s;
     }
     .has-nav-bar .hamburger-menu .menu-nav-links { padding-top: 6px; }
     .has-nav-bar .hamburger-menu .nav-btn { padding-left: 33px; } /* + the 3px edge: icons 36px in, as on the rail */
@@ -2429,7 +2434,15 @@ button.pos-filter {
 /* The menu's rows (the expanded rail on computers, the drawer on phones and tablets): Material 3's 56dp rows, 24dp icons
    (the markup's) and a 14px label (improvements S26). Lineup and Draft Strategist only; T-Score's menu is its own. */
 .has-nav-bar .hamburger-menu .nav-btn { min-height: 56px; padding-top: 0; padding-bottom: 0; font-size: 0.875rem; }
+/* The menu's backdrop fades in and out with the menu (setBackdrop, js/shared/ui/navMenu.js) instead of dimming and
+   blurring the whole page in one frame (improvements S26). */
+.has-nav-bar .menu-overlay { opacity: 0; pointer-events: none; transition: opacity 200ms linear; }
+.has-nav-bar .menu-overlay.open { opacity: 1; pointer-events: auto; transition-duration: 400ms; }
+@starting-style { .has-nav-bar .menu-overlay.open { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
     .has-nav-bar .hamburger-menu,
-    .has-nav-bar .hamburger-menu.open { transition: none; }
+    .has-nav-bar .hamburger-menu.open,
+    .has-nav-bar .hamburger-menu > *,
+    .has-nav-bar .menu-overlay,
+    .has-nav-bar .menu-overlay.open { transition: none; }
 }
