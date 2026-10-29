@@ -11,7 +11,7 @@ import { byeWarningMarkup, slotLabelMarkup } from './badges.js';
     // player, on every render.
     export function renderFantasyRoster(playerById) {
         if (State.players.length === 0) {
-            return `<div class="empty-state-card"><p>Load rankings on the Setup tab to start building your roster.</p><button class="btn btn-primary empty-state-cta" data-action="showTab" data-tab="setup">Go to Setup</button></div>`;
+            return `<div class="empty-state-card"><p>Load rankings on the Dashboard to start building your roster.</p><button class="btn btn-primary empty-state-cta" data-action="showTab" data-tab="setup">Go to Dashboard</button></div>`;
         }
 
         let draft = getActiveDraft();

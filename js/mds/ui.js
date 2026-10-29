@@ -10,6 +10,7 @@ import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { renderBadgeLegend } from './legend.js';
 import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/viewTransition.js';
+import { closeMenuOnBack, menuClosed, menuOpened, setBackdrop } from '../shared/ui/navMenu.js';
 
     // --- UI HELPERS ---
     // Generic debounce: delays calling fn until `wait` ms have passed since the last call.
@@ -32,29 +33,38 @@ import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/v
     // returns focus to the hamburger button.
     let menuFocusTrap = null;
 
-    export const toggleMenu = function() {
+    // Opening adds a history entry so Back closes the menu (js/shared/ui/navMenu.js, improvements S26). Closing
+    // returns a promise that resolves once that entry is gone; `fromBack` is the close Back itself caused.
+    export const toggleMenu = function(fromBack = false) {
     const menu = document.getElementById('hamburgerMenu');
     const overlay = document.getElementById('menuOverlay');
-    const hamburgerBtn = document.querySelector('.hamburger-btn'); // Grab the button
+    // The header's menu button, and the navigation rail's on computers (improvements S26).
+    const hamburgerBtns = document.querySelectorAll('.hamburger-btn');
     
-    if (!menu || !overlay) return;
+    if (!menu || !overlay) return Promise.resolve();
     
     const isOpen = menu.classList.toggle('open');
-    overlay.style.display = isOpen ? 'block' : 'none';
+    setBackdrop(overlay, isOpen);
     
     // Announce the new state to screen readers
-    if (hamburgerBtn) {
-        hamburgerBtn.setAttribute('aria-expanded', isOpen);
-    }
+    hamburgerBtns.forEach(btn => btn.setAttribute('aria-expanded', isOpen));
 
     if (isOpen) {
         menuFocusTrap = createFocusTrap(menu);
         menuFocusTrap.activate();
-    } else if (menuFocusTrap) {
+        menuOpened();
+        return Promise.resolve();
+    }
+    if (menuFocusTrap) {
         menuFocusTrap.deactivate();
         menuFocusTrap = null;
     }
+    return fromBack === true ? Promise.resolve() : menuClosed();
 };
+closeMenuOnBack(() => {
+    const menu = document.getElementById('hamburgerMenu');
+    if (menu && menu.classList.contains('open')) toggleMenu(true);
+});
 
     // The tab bar's order, Guide last: a transition slides forward or back by it (improvements S16).
     const TAB_ORDER = ['setup', 'tracker', 'team', 'board', 'guide'];
@@ -64,6 +74,9 @@ import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/v
     // resolves once the new tab is showing and its work below has run. `instant` (page load)
     // switches without a transition.
     export const showTab = function(tabId, skipHistory = false, { instant = false } = {}) {
+        // From the menu: it closes first, and its history entry comes off before the tab's goes on (improvements S26).
+        const menu = document.getElementById('hamburgerMenu');
+        if (menu && menu.classList.contains('open')) return toggleMenu().then(() => showTab(tabId, skipHistory, { instant }));
         const activeEl = document.querySelector('.tab-content.active');
         const fromId = activeEl ? activeEl.id.replace(/Tab$/, '') : '';
         return withViewTransition(() => applyTab(tabId, skipHistory), { kind: 'tab', direction: tabDirection(TAB_ORDER, fromId, tabId), instant });
@@ -74,13 +87,11 @@ import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/v
     const targetTab = document.getElementById(tabId + 'Tab');
     if (targetTab) targetTab.classList.add('active');
 
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
     document.querySelectorAll(`.hamburger-menu .nav-btn[data-target="${tabId}"], .nav-bar .nav-btn[data-target="${tabId}"]`)
-        .forEach(btn => btn.classList.add('active'));
+        .forEach(btn => { btn.classList.add('active'); btn.setAttribute('aria-current', 'page'); });
     placeTabMarker();
 
-    const menu = document.getElementById('hamburgerMenu');
-    if (menu && menu.classList.contains('open')) toggleMenu();
 
     if (['tracker', 'team', 'board'].includes(tabId)) renderBoard();
     else updateSetupGuidance(); // the logo pulse depends on the tab (8A); renderBoard runs it on the others

@@ -19,7 +19,7 @@ import { headshotHTML } from './headshots.js';
 
         let draft = getActiveDraft();
         if (!draft) {
-            container.innerHTML = `<div class="empty-state-card"><p>Select or create a draft on Setup to view the grid.</p></div>`;
+            container.innerHTML = `<div class="empty-state-card"><p>Select or create a draft on the Dashboard to view the grid.</p></div>`;
             return;
         }
 

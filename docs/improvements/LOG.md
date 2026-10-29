@@ -7227,3 +7227,237 @@ CI's first run failed on exactly the three screenshots the LOG lists: `desktop/m
 1280x8332), `phone/mls-league-guide.png` (390x17549 → 390x18954; the Guide's new text) and `phone/mls-league-lineup.png`
 (390x2936 → 390x3338; the stacked, centred row column). Each `-expected.png` was byte-identical to the committed
 baseline; the `-actual.png` files from the run's `playwright-results` artifact are the new baselines.
+
+## S26 — A navigation rail on wider screens (Material 3)
+
+**User-visible effect.** Both apps' tab bar now takes one of three layouts, by window width (Material 3's window
+sizes):
+- **Phones (under 600px):** the bottom bar as before. Lineup Strategist's phone screens are pixel-identical to main's.
+- **Tablets (600 to 839px):** the bottom bar with each icon beside its name, the tabs centred, labels whole.
+- **Computers (840px and wider):** a 96px **navigation rail** at the left edge, each tab's icon with its name under it.
+  The green marker slides up and down beside the active tab. The **menu button moves from the header to the top of
+  the rail**, and opens the **expanded rail** over the page with a dimmed backdrop: every tab by name, then **"More"**
+  (the Guide, T-Score, the other app), the feedback form and Ko-fi. It closes when you choose an item, press Escape or
+  click outside, and focus goes back to the menu button. The header, every tab, toasts and dialogs sit clear of the rail.
+- **Draft Strategist's Setup is now the Dashboard**, the first tab in its bar and rail on every screen (with Lineup
+  Strategist's grid icon), so its bar has four tabs: Dashboard, Tracker, Team, Board. Text that said "the Setup tab"
+  says "the Dashboard" (empty states' "Go to Dashboard", two Sleeper toasts, the Guide, the shortcuts list). The
+  checklist keeps its name, "Setup Progress".
+
+**The owner's answers** (asked with screenshots of today and a mock-up at 1280, 1024, 768 and 375px):
+1. **Breakpoints: Material 3's** (rail from 840px, side-by-side items from 600px). The app's 768px breakpoint stays
+   where it is: it lays out the page content (cards, tables, slide vs. fade transitions), not the bar, and moving it
+   would change tablet layouts across both apps.
+2. **The menu goes into the rail** (Material 3: an expanded rail opens from a menu icon at its top), with two states,
+   collapsed and expanded. The collapsed rail holds the menu button and the tabs; **the Guide, T-Score and the other app
+   show only when it's expanded**, under "More". **Draft Strategist's Setup becomes "Dashboard"** and a tab in the bar and
+   the rail, for uniformity (owner: its Setup may be redone like Lineup Strategist's walkthrough with several drafts in one
+   place, which would make it more of a dashboard; the name can change later). The owner accepted the side effect: its
+   phone bar changes too.
+3. **The green sliding marker**, not Material 3's pill (owner likes the animation).
+4. **Both apps together**, through the shared CSS in css/base.css.
+5. **Widths from Material 3's current rail spec**: 96px collapsed; expanded 280px (in M3's 220–360, and the drawer's
+   existing width, which the Ko-fi button needs).
+- A. **Modal, not standard, for the expanded rail** (my recommendation, owner said go): it adds places you visit once
+  rather than navigate between, the pages are information-dense (M3's case for modal), and a standard rail would reflow
+  every page and need a saved setting per app. A standard rail from 1600px is an open follow-up (docs/TESTING.md).
+- C. **Phones and tablets keep the header's menu button and drawer as they are.** D. **Ko-fi stays at the foot of the
+  expanded rail.**
+
+**How it's built.**
+- **One set of tab buttons**, laid out three ways by CSS (css/base.css, "NAVIGATION RAIL AND TABLET BAR", at the end of
+  the file, and `body.has-nav-bar` on the two apps' pages so T-Score, which shares base.css, is untouched). `showTab`,
+  swipes, number keys, the drawer and the screen-reader announcement don't know which layout shows.
+- The `<nav class="nav-bar">` moved **before `<main>`** in both pages, so the rail comes after the header in reading
+  order (it's fixed-position, so phones look the same). The rail's menu button is the bar's first child, `hamburger-btn
+  nav-rail-menu`, not a `.nav-btn`, so the tab code and the marker never count it; it's hidden below 840px and the
+  header's is hidden from 840px. `toggleDrawer` (MLS) and `toggleMenu` (MDS) set `aria-expanded` on both buttons.
+- **The expanded rail is the existing drawer**, restyled from 840px: its logo row hides, its close button (a 48px
+  collapse icon, `.icon-collapse`, in place of the ✕) sits exactly where the rail's menu button is, and a
+  `.menu-section-label` "More" (hidden below 840px, `aria-hidden`) heads the Guide, T-Score and the other app.
+- **The marker** (`placeTabMarker`, js/shared/ui/viewTransition.js) measures along whichever way the bar runs (the
+  bar's `flex-direction`), setting left/width on the bar or top/height on the rail, and clearing the other pair so the
+  stylesheet's 3px thickness applies. Same numbers as before on the bottom bar. The ResizeObserver re-measures when the
+  bar turns into the rail. Its transition covers top and height too; Reduce Motion still keeps it still.
+- **`aria-current="page"`** on the active tab button (both apps, the drawer's too). Lineup Strategist's drawer now marks
+  the current tab however it was reached (it only followed drawer taps and swipes before), since on computers it's the
+  expanded rail.
+- **Draft Board:** its full-width breakout on desktop used `100vw`, which ran under the rail; it now subtracts
+  `--rail-inset` (96px beside the rail, 0 otherwise).
+- S16's transitions keep naming the bar (`vt-nav`), so the rail stays still while the page fades.
+- `tests/tools/css-compare.tool.mjs` clicks the visible menu button (the header's is hidden on its desktop width).
+- `CACHE_NAME` v2.8.132 → v2.8.133. No files added or removed.
+
+**Tests.** New `tests/nav-rail.spec.mjs` (both apps): at 375, 600, 700, 840, 1024 and 1280px, which layout the bar has
+(position, direction, the menu buttons, labels whole and 12px), every tab switching from it with `aria-current`, the
+marker by the active tab (centred along the bar, or beside it at the rail's edge), and nothing in the header or any tab
+(the Guide included) past the window's edge or under the rail, and no sideways scroll; the 839/840 boundary; the expanded
+rail (opens, marks the current tab, "More", the collapse button over the menu button, choosing a tab closes it, Escape
+closes it and returns focus); the keyboard (header, rail, page in reading order; Tab between items; Enter and Space
+select); Reduce Motion. `view-transitions.spec.mjs`: its marker check follows the rail, and Draft Strategist's marker now
+starts on the Dashboard. view-transitions, nav-rail and mls-keyboard also passed at 600, 700, 840 and 1024px (a
+throwaway config), except one test that fails the same way on main at 700px: "the header shows the whole league name
+when it fits, and ends a long one in '…'" assumes the long name is cut, and at 700px it fits.
+
+**Screenshots** (main and this branch rendered the same way here, compared with `npm run pxdiff`): 23 change, all by
+design, to take from CI:
+- **Every desktop PNG of both apps (15):** the rail at the left in place of the bottom bar, the page 96px narrower, and
+  no 70px space at the bottom for a bar: `mds-draft-board`, `mds-draft-team`, `mds-draft-tracker`, `mds-empty-board`,
+  `mds-empty-guide`, `mds-empty-setup`, `mds-empty-team`, `mds-empty-tracker`, `mls-empty-setup`, `mls-league-guide`,
+  `mls-league-lineup`, `mls-league-roster`, `mls-league-scoreboard`, `mls-league-scout`, `mls-league-setup`.
+- **Draft Strategist's phone PNGs (8):** the bar's new Dashboard tab (four tabs), "Go to Dashboard" in empty states,
+  and the Guide's wording: `mds-draft-board`, `mds-draft-team`, `mds-draft-tracker`, `mds-empty-board`, `mds-empty-guide`,
+  `mds-empty-setup`, `mds-empty-team`, `mds-empty-tracker`.
+- Unchanged: every Lineup Strategist phone PNG and all of T-Score's.
+
+**Left over.**
+- A standard (side-by-side) expanded rail from 1600px, where the page has room to spare (open follow-up in
+  docs/TESTING.md).
+- Draft Strategist's Dashboard is still the setup page; a redo like Lineup Strategist's walkthrough, with several
+  drafts in one place, is the owner's idea for later.
+- Phones and tablets keep the header's menu button and drawer (owner: maybe explore later).
+
+### S26, round 2: a Material 3 review of the rail, and the owner's answers
+
+The owner asked for a "Material 3 Review" of the rail. m3.material.io renders with JavaScript (a plain fetch got only
+the page title), so I read its Navigation rail pages (Overview, Guidelines, Specs, Accessibility) and the Navigation
+bar's Specs in headless Chromium, and measured the rail at 1280px. **It met** Material 3 on: window sizes (bar under 600,
+rail from 840, never both); the leading edge, fixed while scrolling, never hidden; the menu at the top opening the
+expanded rail, whose icon turns into a collapse icon in the same spot; secondary destinations under a section header;
+a modal expanded rail for information-dense pages; 96px collapsed (M3 Expressive's; the 80px baseline rail is "no longer
+recommended") and 280px expanded (220–360); full-width targets; one-word labels; a heavier icon for the active tab (M3's
+rule for icons with no filled version) with a bold label in a contrasting color; inactive labels at about 7.5:1; Tab,
+Enter and Space; `aria-current`; the focus trap. **Differences the owner chose** (kept): the green sliding bar instead
+of M3's pill; a bar, not a rail, on tablets (the rail page: "in medium windows with few destinations, consider using a
+navigation bar instead").
+
+**The owner's answers** to the findings, all built:
+1. **Labels at 2x text** (a defect): "Dashboard" and "Scoreboard" were cut at the rail's edge and the rail scrolled
+   sideways. M3: the full label stays visible up to 2x, wrapping or hyphenating is fine. On the rail, labels may now
+   break onto two lines (`overflow-wrap: anywhere; hyphens: auto`, line height in em so the lines grow with the text),
+   and the two long ones carry a soft hyphen (`Dash&shy;board`, `Score&shy;board` in the markup) so they break as "Dash- / board"
+   (Linux Chromium has no hyphenation dictionary). Invisible at normal size. The Lineup Strategist announcement strips
+   the soft hyphen. The marker's ResizeObserver also watches each item now, since bigger text makes an item taller
+   without resizing the rail.
+2. **The menu uses the tabs' short names, at every width** (owner: phones too): Lineup Strategist's Active Roster,
+   Lineup Optimizer, Scout & Waivers, User Guide and T-Score Methodology are now Roster, Lineup, Scout, Guide, T-Score;
+   Draft Strategist's Draft Board, User Guide and T-Score Methodology are Board, Guide, T-Score. The other app's link
+   keeps its name. (M3: the collapsed and expanded rails "match visually and can transition into each other".)
+3. **Arrow keys** (M3: Tab or the arrows move between items): Up/Down/Left/Right move focus to the next or previous item
+   in the bar, the rail and the menu's list, wrapping round; Home and End go to the ends. Focus only; Enter or Space
+   selects. Ignored with a modifier (Shift+arrows still cycle leagues).
+4. **The expanded rail grows out of the rail** (M3: the two transform into each other): from 840px the drawer no longer
+   slides in from off-screen; it's revealed from the rail's width outwards (`clip-path`, 0.3s, none with Reduce
+   Motion), and its rows' icons sit exactly where the rail's are (36px in; rows 56px apart from 94px down, matching the
+   rail's items, which are now 56px apart from 88px with no gap), so only the labels change.
+5. **Sizes, Material 3's** (owner: "do it all", phones included; the navigation bar spec gives a 24dp icon, 4dp from icon
+   to label, a 64dp bar): 24px icons in the bar, the rail and the menu (were 22px and 20px); 4px from icon to label; 16px
+   label line height; the phone bar 64px tall (was 73px: 3px + 56px items + 4px, plus its 1px border); the tablet bar's
+   items 56px; the rail's items 56px; the menu's rows 56px with a 14px label (were 47px and 16px); the "More" header 12px
+   above, 8px below.
+6. **Back closes the menu** (M3: Back dismisses a modal expanded rail): new `js/shared/ui/navMenu.js` (in
+   `PRECACHE_ASSETS`). Opening the menu pushes a history entry (same URL and tab, marked `menu`), so Back takes it off
+   and closes the menu, leaving the tab and address alone. Closing it any other way (its button, Escape, the backdrop,
+   choosing a tab) calls `history.back()` and swallows that pop; a tab chosen from the menu waits for it
+   (`toggleDrawer`/`toggleMenu` now return a promise; Draft Strategist's `showTab` closes an open menu first), so Back
+   after choosing a tab returns to the tab before, not to the open menu. The module's popstate listener is registered
+   before each app's (imported by `js/mls/nav.js` and `js/mds/ui.js`) and stops the app's from seeing the pops it handles.
+   Phones' and tablets' menu too (the same drawer).
+- Left as is (owner): the feedback form in the expanded rail. Not taken up: dropping the rail's shadow (M3 uses a
+  divider, elevation only over sideways-scrolling content).
+
+`CACHE_NAME` v2.8.133 → v2.8.134. Tests (nav-rail.spec.mjs): arrow keys in the rail, the bar and the menu (wrap, Home,
+End, focus only); Back at 1280 and 375px (closes the menu and keeps the tab; Escape leaves no entry; Back after choosing a
+tab from the menu returns to the tab before; it fails on the round-1 code, where Back switched tab and left the menu
+open); labels whole at 2x text with the marker still by the tab; the sizes at 375, 700 and 1280px; the expanded rail's
+clip and its icons at the rail's; the short names at 375 and 1280px. Full check: precache OK, 469 unit tests, 617
+Playwright passed; only `visual.spec.mjs` fails here (this container's Chromium).
+
+**Screenshots** (main and this branch rendered the same way, `npm run pxdiff`): now **30 change**, all to take from CI:
+the 15 desktop PNGs of both apps listed above (round 1), and **all 15 phone PNGs of both apps**: Lineup Strategist's 7
+(`mls-empty-setup`, `mls-league-guide`, `mls-league-lineup`, `mls-league-roster`, `mls-league-scoreboard`,
+`mls-league-scout`, `mls-league-setup`) only in the bottom bar's strip (64px bar, 24px icons), and Draft Strategist's 8
+as in round 1 plus the same bar change. This replaces round 1's "Lineup Strategist's phones identical": the owner chose
+Material 3's sizes on phones too. T-Score's PNGs are unchanged.
+
+### S26, round 3: a smoother expanding rail
+
+Owner: the expanding rail "appears a bit stuttered". Headless Chromium can't show it (no GPU: 27 even frames either way,
+and traces too small to compare), so the fix follows the three causes in the code:
+1. **The reveal animated `clip-path`**, which Chromium redraws on the main thread every frame. It's now two opposite
+   transforms: the panel slides in from `translateX(96px - 100%)` while its children start `translateX(280px - 96px)` the
+   other way, with the same timing, so they cancel: the edge moves out from the rail, the contents stay put. Transforms
+   run on the GPU.
+2. **The backdrop appeared all at once**: the whole page dimmed and blurred in the first frame while the panel had
+   barely moved. It now fades with the menu (`setBackdrop` in js/shared/ui/navMenu.js toggles `.menu-overlay.open`;
+   `@starting-style` fades it in from `display: none`; hiding waits for the fade, `pointer-events: none` meanwhile).
+   Both apps, every width (phones' backdrop fades too).
+3. **The timing**: Material 3's emphasized curve at 300ms put nearly all the movement in the first frames. Now Material 3's
+   motion tokens: open 400ms emphasized decelerate `cubic-bezier(0.05, 0.7, 0.1, 1)`, close 200ms emphasized accelerate
+   `cubic-bezier(0.3, 0, 0.8, 0.15)`; the backdrop 400ms in, 200ms out. Reduce Motion: no transitions.
+
+A filmstrip (frames at 0, 10, 20, 35, 50 and 100% of the animation, before and after) went to the owner. `CACHE_NAME`
+v2.8.134 → v2.8.135. Test (nav-rail.spec.mjs, replacing round 2's clip-path check): closed, the panel's right edge is the
+rail's; paused halfway, the edge is between 96 and 280px, the icons are already where the rail's are, the backdrop's
+opacity is between 0 and 1, and nothing animates but transforms and opacity; open, the edge is at 280px; closing, the
+backdrop goes. Screenshots: none show the menu, so the list in round 2 stands (30).
+
+### S26, round 4: Material 3's item heights
+
+Owner: the items "feel scrunched up at the top"; are their heights Material 3's? They weren't. From Material 3's
+measurement image (collapsed rail: 96dp wide, items 68dp apart: a 64dp item, then 4dp; inside an item 6dp, the 32dp
+indicator round the 24dp icon, 4dp, the 16dp label, 6dp; expanded rows 56dp) and the navigation bar's spec (the same
+6/32/4/16/6 in a 64dp bar), round 2 had 56px items with no gap and 4px from icon to label. Without a pill, the indicator's
+4dp round the icon becomes space: 10px above the icon, 8px from icon to label, 6px below the label.
+- **Rail**: items 64px (`padding: 10px 4px 6px`, 8px icon to label), 4px apart, the first at 92px (icon at 102px).
+- **Phone bar**: 64px with the same 10 / 24 / 8 / 16 / 6 (it had 4px from icon to label and 10px below the label).
+- **Tablet bar**: 64px (items 60px, 18px above and below the icon), 4px from icon to label (Material 3's for side by
+  side).
+- **The active icon no longer lifts 2px** (S16's touch, phones and tablets): Material 3 keeps it in place (its heavier
+  stroke and color mark it), and the lift took 2px from the space above it.
+- **The expanded rail**: its rows stay Material 3's 56px, so they no longer line up with the rail's 68px spacing. They
+  start where the rail's items are (each row `translateY(n x 12px)`, `--rail-row` by `:nth-child`) and close up as the
+  menu opens, with the same transform timing, so nothing jumps; the first row's icon is at the rail's first (102px).
+- **Fix**: Reduce Motion now stops the menu's movement too. Round 3's rule lost to the `.open` rules' higher specificity.
+
+The rail's color: the owner asked whether its lighter navy (the bottom bar's card navy, `rgba(19, 27, 44, 0.85)`) next
+to the header's darker page navy (`rgba(10, 14, 23, 0.85)`) is intentional. It isn't a Material 3 choice: the rail kept the
+phone bar's background. Material 3 allows either (the container fill is optional; without it, keep a divider). Options
+(today's card navy, or the header's navy for the bar and the rail) went to the owner with screenshots; see round 5.
+
+`CACHE_NAME` v2.8.135 → v2.8.136. Tests (nav-rail.spec.mjs): the sizes test measures 10 above the icon, 8 to the label, 6
+below in a 64px phone bar; a 64px tablet bar with 4px icon to label; 64px rail items 68px apart; 56px menu rows 56px apart.
+The opening test checks the menu's icons start exactly at the rail's and end in its column, 56px apart. A new test checks
+that nothing moves or fades with Reduce Motion. Screenshots: the 30 already listed (every PNG of both apps shows the bar).
+
+### S26, round 5: the header's navy, and no slide back on closing
+
+- **The rail and the bottom bar use the header's navy** (`rgba(10, 14, 23, 0.85)`, was the card navy `rgba(19, 27,
+  44, 0.85)`), owner's choice (B) from round 4's screenshots: the header, the bar and the rail read as one frame, the
+  cards as the lighter layer, the divider lines between. Phones too for now: the owner half wants the phone bar as it
+  was and will confirm after trying it (it may be habit). Going back on phones only is one rule under 840px.
+- **The expanded rail's rows don't slide back on closing** (owner: nice on the way in, not on the way out): while the
+  menu closes they stay where they are (`transition: transform 0s linear 200ms`), and reset to the rail's spacing once
+  it's hidden, ready for the next opening.
+
+`CACHE_NAME` v2.8.136 → v2.8.137. Tests (nav-rail.spec.mjs): the bar's and the header's backgrounds are the same color at
+375, 700 and 1280px; halfway through closing, the panel is part-way closed and the rows haven't moved (fails with round
+4's reverse slide). Screenshots: the bar's new color is in every PNG of both apps, all already in the list of 30.
+
+### S26: the owner's sign-off, and a site-wide Material 3 review to come
+
+- The owner tried round 5 ("Looks great"): the header's navy stays on the phone bar too.
+- **Wanted next (owner): a Material 3 review of the whole site**, both apps and T-Score, as this card did for the
+  navigation (round 2): every component (buttons, cards, chips, dialogs, menus, lists, text fields, switches,
+  segmented buttons, toasts as snackbars, tooltips), type scale, color roles and contrast, spacing, states (hover, focus,
+  pressed), motion and accessibility, against m3.material.io's Guidelines, Specs and Accessibility pages. Read them
+  in headless Chromium (a plain fetch gets only the page title; round 2 has how). Report findings with what meets,
+  what differs on purpose and what to fix, and let the owner pick, as here. Not a card in the runbook yet; listed
+  under "Open follow-ups" in docs/TESTING.md.
+
+### S26: screenshot baselines from CI (PR #211)
+
+CI's first run (40896926210) failed only in `visual.spec.mjs`, on exactly the 30 PNGs listed in round 2: every desktop
+and phone PNG of both apps. Each `-expected.png` was byte-identical to the committed baseline, and the phone diffs sit in
+the bottom bar's strip (plus Draft Strategist's "Go to Dashboard" buttons and its Guide's text), as rendered here. The
+`-actual.png` files from the run's `playwright-results` artifact are the new baselines. T-Score's are unchanged.

@@ -36,12 +36,17 @@ const tapTabs = (page, tabs) => page.evaluate((ids) => {
     return before;
 }, tabs);
 
-// The marker's middle ends over the active tab's middle (it slides there, so this waits for it).
+// The marker's middle ends by the active tab's middle (it slides there, so this waits for it): along the bottom bar,
+// or down the navigation rail on wider screens (improvements S26).
 async function expectMarkerUnder(page, tab) {
     await expect.poll(() => page.evaluate((t) => {
-        const marker = document.querySelector('.nav-bar .nav-marker');
+        const bar = document.querySelector('.nav-bar');
+        const marker = bar.querySelector('.nav-marker');
         const m = marker.getBoundingClientRect();
-        const b = document.querySelector(`.nav-bar .nav-btn[data-target="${t}"]`).getBoundingClientRect();
+        const b = bar.querySelector(`.nav-btn[data-target="${t}"]`).getBoundingClientRect();
+        if (getComputedStyle(bar).flexDirection.startsWith('column')) {
+            return !marker.hidden && m.height > 0 && Math.abs((m.top + m.height / 2) - (b.top + b.height / 2)) < 2;
+        }
         return !marker.hidden && m.width > 0 && Math.abs((m.left + m.width / 2) - (b.left + b.width / 2)) < 2;
     }, tab)).toBe(true);
 }
@@ -251,8 +256,8 @@ test.describe('Draft Strategist', () => {
     test('tab switches animate and rapid taps end on the last tab', async ({ page }) => {
         await countTransitions(page);
         const state = await openApp(page, '/');
-        // Setup isn't in Draft Strategist's tab bar, so no marker there.
-        await expect(page.locator('.nav-bar .nav-marker')).toBeHidden();
+        // The Dashboard (Setup) is the first tab in the bar since improvements S26, so the marker starts there.
+        await expectMarkerUnder(page, 'setup');
         const historyBefore = await tapTabs(page, ['tracker', 'team', 'board']);
         await transitionsDone(page);
         expect(await activeTabs(page)).toEqual(['boardTab']);

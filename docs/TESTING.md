@@ -307,6 +307,14 @@ done or dropped, remove its line here in the same change. Background for each is
 
 **Wanted by the owner, not scheduled yet** (improvements S21)
 - An Export for the Roster tab: the roster as an image (and maybe as text), like the Lineup tab's.
+- A standard expanded navigation rail on very wide windows (improvements S26): from about 1600px the page (1200px at most)
+  has room beside a 280px rail, so the expanded rail could sit beside the page and stay open (Material 3's "standard"
+  configuration) instead of over it. It needs a remembered open/closed setting per app (a `keys.js` key each).
+- Draft Strategist's Dashboard (the Setup tab, renamed in improvements S26) redone like Lineup Strategist's: a setup
+  walkthrough and several drafts in one place.
+- A Material 3 review of the whole site (owner, improvements S26): both apps and T-Score, every component, type, color,
+  spacing, states, motion and accessibility, against m3.material.io, reported for the owner to pick from as S26's
+  round 2 did for the navigation (its LOG entry has how to read the site's pages).
 
 **Small polish, one session each**
 - One naming pattern for exported files (owner, improvements S22 round 4). The Scoreboard's is

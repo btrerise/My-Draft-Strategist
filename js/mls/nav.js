@@ -8,6 +8,7 @@ import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { renderBadgeLegend } from './legend.js';
 import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/viewTransition.js';
 import { syncTradePicker } from './trade/picker.js';
+import { closeMenuOnBack, menuClosed, menuOpened, setBackdrop } from '../shared/ui/navMenu.js';
 
     // --- DRAWER & SWIPE LOGIC ---
     // Focus trap instance for the drawer -- created lazily on first open rather than at
@@ -15,20 +16,21 @@ import { syncTradePicker } from './trade/picker.js';
     // it's an import since refactor 5D, and creating it on first use is still fine).
     let drawerFocusTrap = null;
 
-    export const toggleDrawer = function() {
+    // Opening adds a history entry so Back closes the drawer (js/shared/ui/navMenu.js, improvements S26). Closing
+    // returns a promise that resolves once that entry is gone; `fromBack` is the close Back itself caused.
+    export const toggleDrawer = function(fromBack = false) {
         const drawer = document.getElementById('drawer');
         const overlay = document.getElementById('drawerOverlay');
-        const hamburgerBtn = document.querySelector('.hamburger-btn');
+        // The header's menu button, and the navigation rail's on computers (improvements S26).
+        const hamburgerBtns = document.querySelectorAll('.hamburger-btn');
 
-        if (!drawer || !overlay) return;
+        if (!drawer || !overlay) return Promise.resolve();
 
         const isOpen = drawer.classList.toggle('open');
-        overlay.style.display = isOpen ? 'block' : 'none';
+        setBackdrop(overlay, isOpen);
 
         // Announce the new state to screen readers
-        if (hamburgerBtn) {
-            hamburgerBtn.setAttribute('aria-expanded', isOpen);
-        }
+        hamburgerBtns.forEach(btn => btn.setAttribute('aria-expanded', isOpen));
 
         if (isOpen) {
             // No onEscape here: the existing document-level Escape handler below already
@@ -37,19 +39,24 @@ import { syncTradePicker } from './trade/picker.js';
             // through the trap itself would just be two paths to the same toggle.
             drawerFocusTrap = createFocusTrap(drawer);
             drawerFocusTrap.activate();
-        } else if (drawerFocusTrap) {
+            menuOpened();
+            return Promise.resolve();
+        }
+        if (drawerFocusTrap) {
             drawerFocusTrap.deactivate();
             drawerFocusTrap = null;
         }
+        return fromBack === true ? Promise.resolve() : menuClosed();
     };
+    closeMenuOnBack(() => {
+        const drawer = document.getElementById('drawer');
+        if (drawer && drawer.classList.contains('open')) toggleDrawer(true);
+    });
 
+    // The tab switch waits for the drawer's history entry to come off, so its own entry follows the page you were on.
     export const navigateFromDrawer = function(tabId) {
-        document.querySelectorAll('.hamburger-menu .nav-btn').forEach(l => l.classList.remove('active-link'));
-        const targetBtn = document.querySelector(`.hamburger-menu .nav-btn[data-drawer-target="${tabId}"]`);
-        if (targetBtn) targetBtn.classList.add('active-link');
-        
-        toggleDrawer();
-        showTab(tabId);
+        updateDrawerActiveState(tabId);
+        return toggleDrawer().then(() => showTab(tabId));
     };
 
     const mainAppEl = document.getElementById('mainApp');
@@ -84,21 +91,19 @@ import { syncTradePicker } from './trade/picker.js';
         if (State.touchEndX < State.touchStartX - swipeThreshold) {
             if (currentIdx < tabs.length - 1) {
                 showTab(tabs[currentIdx + 1]);
-                updateDrawerActiveState(tabs[currentIdx + 1]);
             }
         }
         if (State.touchEndX > State.touchStartX + swipeThreshold) {
             if (currentIdx > 0) {
                 showTab(tabs[currentIdx - 1]);
-                updateDrawerActiveState(tabs[currentIdx - 1]);
             }
         }
     }
 
     export function updateDrawerActiveState(tabId) {
-        document.querySelectorAll('.hamburger-menu .nav-btn').forEach(l => l.classList.remove('active-link'));
+        document.querySelectorAll('.hamburger-menu .nav-btn').forEach(l => { l.classList.remove('active-link'); l.removeAttribute('aria-current'); });
         const targetBtn = document.querySelector(`.hamburger-menu .nav-btn[data-drawer-target="${tabId}"]`);
-        if (targetBtn) targetBtn.classList.add('active-link');
+        if (targetBtn) { targetBtn.classList.add('active-link'); targetBtn.setAttribute('aria-current', 'page'); }
     }
 
     // --- NAVIGATION LOGIC ---
@@ -121,10 +126,13 @@ import { syncTradePicker } from './trade/picker.js';
         const targetTab = document.getElementById(tabId + 'Tab');
         if (targetTab) targetTab.classList.add('active');
 
-        document.querySelectorAll('.nav-bar .nav-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.nav-bar .nav-btn').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
         const activeNavBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);
-        if (activeNavBtn) activeNavBtn.classList.add('active');
+        if (activeNavBtn) { activeNavBtn.classList.add('active'); activeNavBtn.setAttribute('aria-current', 'page'); }
         placeTabMarker();
+        // The drawer marks the tab too, whichever way it was reached: on computers it's the expanded navigation rail
+        // (improvements S26), which shows where you are.
+        updateDrawerActiveState(tabId);
 
         // Announced to screen readers via the aria-live region in index.html -- covers every
         // way a tab can change (swipe, number-key shortcuts, hamburger menu, browser back/
@@ -134,7 +142,7 @@ import { syncTradePicker } from './trade/picker.js';
         const announcer = document.getElementById('tabChangeAnnouncer');
         if (announcer && activeNavBtn) {
             const label = activeNavBtn.querySelector('span');
-            if (label) announcer.textContent = `${label.textContent} tab`;
+            if (label) announcer.textContent = `${label.textContent.replace(/\u00AD/g, '')} tab`; // without the label's soft hyphen (S26)
         }
 
         if (tabId === 'lineup') optimizeLineup(false);

@@ -63,7 +63,7 @@
 }
 </script>
 </head>
-<body>
+<body class="has-nav-bar">
 <!-- Targets #mainApp (not #main): js/mls/nav.js looks up #mainApp for swipe handling. -->
 <a href="#mainApp" class="skip-link">Skip to content</a>
 
@@ -82,38 +82,41 @@
             <span>Menu</span>
         </div>
         <button class="close-menu-btn" data-action="toggleDrawer" aria-label="Close Menu">
-            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <svg class="icon-close" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <!-- On computers the drawer is the expanded navigation rail, and this collapses it (improvements S26). -->
+            <svg class="icon-collapse" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="15" y2="6"></line><line x1="3" y1="12" x2="13" y2="12"></line><line x1="3" y1="18" x2="15" y2="18"></line><polyline points="21 9 18 12 21 15"></polyline></svg>
         </button>
     </div>
     
     <div class="menu-nav-links">
         <button class="nav-btn" data-drawer-target="setup" data-action="navigateFromDrawer" data-tab="setup">
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             Dashboard
         </button>
         <button class="nav-btn" data-drawer-target="roster" data-action="navigateFromDrawer" data-tab="roster">
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 10h6"></path><path d="M9 18h6"></path></svg>
-            Active Roster
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 10h6"></path><path d="M9 18h6"></path></svg>
+            Roster
         </button>
         <button class="nav-btn" data-drawer-target="lineup" data-action="navigateFromDrawer" data-tab="lineup">
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-            Lineup Optimizer
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Lineup
         </button>
         <button class="nav-btn" data-drawer-target="scoreboard" data-action="navigateFromDrawer" data-tab="scoreboard">
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="12" rx="2"></rect><path d="M6.5 6.5h2.5v5H6.5z"></path><path d="M15 6.5h2.5v5H15z"></path><line x1="12" y1="8" x2="12" y2="8.01"></line><line x1="12" y1="10" x2="12" y2="10.01"></line><line x1="8" y1="15" x2="8" y2="21"></line><line x1="16" y1="15" x2="16" y2="21"></line></svg>
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="12" rx="2"></rect><path d="M6.5 6.5h2.5v5H6.5z"></path><path d="M15 6.5h2.5v5H15z"></path><line x1="12" y1="8" x2="12" y2="8.01"></line><line x1="12" y1="10" x2="12" y2="10.01"></line><line x1="8" y1="15" x2="8" y2="21"></line><line x1="16" y1="15" x2="16" y2="21"></line></svg>
             Scoreboard
         </button>
         <button class="nav-btn" data-drawer-target="scout" data-action="navigateFromDrawer" data-tab="scout">
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            Scout & Waivers
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            Scout
         </button>
+        <div class="menu-section-label" aria-hidden="true">More</div>
         <button class="nav-btn" data-drawer-target="guide" data-action="navigateFromDrawer" data-tab="guide">
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-            User Guide
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            Guide
         </button>
         <a href="../t-score/" class="nav-btn">
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
-            T-Score Methodology
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>
+            T-Score
         </a>
         <a href="../index.html" class="nav-btn premium-link-btn">
             My Draft Strategist 
@@ -163,6 +166,36 @@
             </div>
         </div>
     </header>
+
+<!-- BOTTOM HYBRID NAVIGATION: the bottom bar on phones and tablets, the navigation rail on computers (improvements S26).
+     Before <main> so the rail is reached in reading order. -->
+<nav class="nav-bar" aria-label="Lineup Bottom Navigation">
+    <!-- The navigation rail's menu button (computers only, css/base.css): opens the drawer as the expanded rail.
+         Not a .nav-btn, so the tab code and the marker never count it. -->
+    <button class="hamburger-btn nav-rail-menu" data-action="toggleDrawer" aria-label="Toggle Menu" aria-expanded="false">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+    </button>
+    <button class="nav-btn active" data-target="setup" data-action="showTab" data-tab="setup" aria-current="page">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <span>Dash&shy;board</span>
+    </button>
+    <button class="nav-btn" data-target="roster" data-action="showTab" data-tab="roster">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 10h6"></path><path d="M9 18h6"></path></svg>
+        <span>Roster</span>
+    </button>
+    <button class="nav-btn" data-target="lineup" data-action="showTab" data-tab="lineup">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>Lineup</span>
+    </button>
+    <button class="nav-btn" data-target="scoreboard" data-action="showTab" data-tab="scoreboard">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="12" rx="2"></rect><path d="M6.5 6.5h2.5v5H6.5z"></path><path d="M15 6.5h2.5v5H15z"></path><line x1="12" y1="8" x2="12" y2="8.01"></line><line x1="12" y1="10" x2="12" y2="10.01"></line><line x1="8" y1="15" x2="8" y2="21"></line><line x1="16" y1="15" x2="16" y2="21"></line></svg>
+        <span>Score&shy;board</span>
+    </button>
+    <button class="nav-btn" data-target="scout" data-action="showTab" data-tab="scout">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <span>Scout</span>
+    </button>
+</nav>
 
 <main id="mainApp">
     <h1 class="sr-only">My Lineup Strategist</h1>
@@ -1584,29 +1617,6 @@
     </div> <!-- Closes .container (was previously left unclosed) -->
 </main> <!-- Closes #mainApp -->
 
-<!-- BOTTOM HYBRID NAVIGATION -->
-<nav class="nav-bar" aria-label="Lineup Bottom Navigation">
-    <button class="nav-btn active" data-target="setup" data-action="showTab" data-tab="setup">
-        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-        <span>Dashboard</span>
-    </button>
-    <button class="nav-btn" data-target="roster" data-action="showTab" data-tab="roster">
-        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 10h6"></path><path d="M9 18h6"></path></svg>
-        <span>Roster</span>
-    </button>
-    <button class="nav-btn" data-target="lineup" data-action="showTab" data-tab="lineup">
-        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-        <span>Lineup</span>
-    </button>
-    <button class="nav-btn" data-target="scoreboard" data-action="showTab" data-tab="scoreboard">
-        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="12" rx="2"></rect><path d="M6.5 6.5h2.5v5H6.5z"></path><path d="M15 6.5h2.5v5H15z"></path><line x1="12" y1="8" x2="12" y2="8.01"></line><line x1="12" y1="10" x2="12" y2="10.01"></line><line x1="8" y1="15" x2="8" y2="21"></line><line x1="16" y1="15" x2="16" y2="21"></line></svg>
-        <span>Scoreboard</span>
-    </button>
-    <button class="nav-btn" data-target="scout" data-action="showTab" data-tab="scout">
-        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        <span>Scout</span>
-    </button>
-</nav>
 
 <!-- Rankings Upload Preview Modal (shared by ROS & Weekly uploads) -->
 <div id="rankingsPreviewOverlay" class="preview-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="rankingsPreviewTitle">

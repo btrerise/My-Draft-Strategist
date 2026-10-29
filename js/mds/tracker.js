@@ -302,11 +302,11 @@ import { STACK_BADGE_HTML, tierChipMarkup, tScoreBadgeMarkup, valueBadgeMarkup }
         if (State.players.length === 0) {
             if (tierTrackerElEarly) tierTrackerElEarly.innerHTML = '';
             if (poolEl) {
-                poolEl.innerHTML = `<div class="empty-state-card"><p>Load rankings on the Setup tab to see your player pool here.</p><button class="btn btn-primary empty-state-cta" data-action="showTab" data-tab="setup">Go to Setup</button></div>`;
+                poolEl.innerHTML = `<div class="empty-state-card"><p>Load rankings on the Dashboard to see your player pool here.</p><button class="btn btn-primary empty-state-cta" data-action="showTab" data-tab="setup">Go to Dashboard</button></div>`;
             }
             if (myTeamEl) myTeamEl.innerHTML = renderFantasyRoster();
             if (otherEl) {
-                otherEl.innerHTML = `<div class="empty-state-card"><p>Drafted players from other teams will show up here once you're synced or tracking picks.</p><button class="btn btn-primary empty-state-cta" data-action="showTab" data-tab="setup">Go to Setup</button></div>`;
+                otherEl.innerHTML = `<div class="empty-state-card"><p>Drafted players from other teams will show up here once you're synced or tracking picks.</p><button class="btn btn-primary empty-state-cta" data-action="showTab" data-tab="setup">Go to Dashboard</button></div>`;
             }
             const limitsBodyElEmpty = document.getElementById('limitsBody');
             if (limitsBodyElEmpty) {

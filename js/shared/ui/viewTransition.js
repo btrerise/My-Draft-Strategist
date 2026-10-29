@@ -88,18 +88,33 @@ export function vtName(prefix, id) {
     return prefix + String(id).replace(/[^a-zA-Z0-9-]/g, c => '_' + c.charCodeAt(0).toString(16).padStart(4, '0'));
 }
 
-// Where the marker sits under each tab-bar button: half the button's width, centered. Measured once, then
-// again only when the bar changes size (a ResizeObserver, which also sees a desktop scrollbar come or go,
-// which no resize event reports). The buttons don't move otherwise, and measuring on every switch read the
-// layout just after showTab had shown the new tab, so the browser laid the whole new tab out an extra time in
+// Where the marker sits by each tab-bar button: half the button's length, centered along the way the bar runs (across
+// the bottom bar, or down the navigation rail on wider screens, improvements S26). Measured once, then again only when
+// the bar changes size (a ResizeObserver, which also sees a desktop scrollbar come or go, which no resize event reports,
+// and the bar turning into the rail at its breakpoint). The buttons don't move otherwise, and measuring on every switch
+// read the layout just after showTab had shown the new tab, so the browser laid the whole new tab out an extra time in
 // the middle of the switch (improvements S17).
 let markerSpots = null;
+let markerVertical = false;
 function measureMarkerSpots(bar) {
     markerSpots = new Map();
+    markerVertical = getComputedStyle(bar).flexDirection.startsWith('column');
     for (const btn of bar.querySelectorAll('.nav-btn')) {
-        const w = Math.round(btn.offsetWidth * 0.5);
-        markerSpots.set(btn, { w, x: Math.round(btn.offsetLeft + (btn.offsetWidth - w) / 2) });
+        const size = markerVertical ? btn.offsetHeight : btn.offsetWidth;
+        const start = markerVertical ? btn.offsetTop : btn.offsetLeft;
+        const len = Math.round(size * 0.5);
+        markerSpots.set(btn, { len, at: Math.round(start + (size - len) / 2) });
     }
+}
+
+// Puts the marker at a spot: left and width along the bar, top and height down the rail. The other two are cleared, so
+// the stylesheet's thickness and edge for that layout apply.
+function setMarkerSpot(marker, { len, at }) {
+    const [pos, size, offPos, offSize] = markerVertical ? ['top', 'height', 'left', 'width'] : ['left', 'width', 'top', 'height'];
+    marker.style[size] = `${len}px`;
+    marker.style[pos] = `${at}px`;
+    marker.style[offSize] = '';
+    marker.style[offPos] = '';
 }
 
 // The tab bar's marker (owner's choice, S16): a short green bar above the active tab, which slides to
@@ -114,8 +129,11 @@ export function placeTabMarker(measureNow = false) {
     if (!markerObserved) {
         markerObserved = true;
         if (typeof ResizeObserver === 'function') {
-            // Runs after the browser's own layout, so reading the sizes there costs nothing extra.
-            new ResizeObserver(() => { markerSpots = null; placeTabMarker(true); }).observe(bar);
+            // Runs after the browser's own layout, so reading the sizes there costs nothing extra. The buttons too: on
+            // the rail a bigger text size makes an item taller without the rail changing size (improvements S26).
+            const observer = new ResizeObserver(() => { markerSpots = null; placeTabMarker(true); });
+            observer.observe(bar);
+            bar.querySelectorAll('.nav-btn').forEach(btn => observer.observe(btn));
             return;
         }
         window.addEventListener('resize', () => { markerSpots = null; placeTabMarker(true); });
@@ -126,18 +144,16 @@ export function placeTabMarker(measureNow = false) {
         if (!measureNow) return; // not measured yet: the observer's first report places it
         measureMarkerSpots(bar);
     }
-    const { w, x } = (active && markerSpots.get(active)) || { w: 0, x: 0 };
+    const spot = (active && markerSpots.get(active)) || { len: 0, at: 0 };
     let marker = bar.querySelector('.nav-marker');
     if (!marker) {
         // Positioned before it's added, so the first one starts in place instead of sliding in.
         marker = document.createElement('span');
         marker.className = 'nav-marker';
         marker.setAttribute('aria-hidden', 'true');
-        marker.style.width = `${w}px`;
-        marker.style.left = `${x}px`;
+        setMarkerSpot(marker, spot);
         bar.appendChild(marker);
     }
     marker.hidden = !active;
-    marker.style.width = `${w}px`;
-    marker.style.left = `${x}px`;
+    setMarkerSpot(marker, spot);
 }
