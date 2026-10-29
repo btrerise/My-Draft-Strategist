@@ -594,8 +594,9 @@ html { scroll-padding-top: 5rem; }
     display: flex; 
     justify-content: space-around; 
     
-    /* CRITICAL: env() adds padding for the iPhone/Android home swipe bar */
-    padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom)); 
+    /* CRITICAL: env() adds padding for the iPhone/Android home swipe bar. The 1px border, 3px, 56px items and 4px:
+       Material 3's 64dp bar (improvements S26). */
+    padding: 3px 0.5rem calc(4px + env(safe-area-inset-bottom)); 
     z-index: 98; 
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
     transform: translateZ(0); /* Forces iOS hardware acceleration */
@@ -608,13 +609,14 @@ html { scroll-padding-top: 5rem; }
     display: flex;
     flex-direction: column; /* Stacks the icon above the text */
     align-items: center;
-    gap: 0.3rem;
+    gap: 4px; /* Material 3: 4dp between icon and label, a 24dp icon (the markup's), a 12/16 label (improvements S26) */
     font-size: 0.75rem; /* Smaller text for mobile tabs */
+    line-height: 1.3334; /* 16px at 12px, and it grows with the text */
     color: var(--text-muted); 
     font-weight: 500; 
     /* Little padding at the sides: with five tabs a label like "Scoreboard" needs nearly the whole fifth of a phone,
        and Material 3 says not to wrap, cut or shrink labels (improvements S21). The whole fifth is still the tap area. */
-    padding: 0.5rem 2px; 
+    padding: 6px 2px; 
     white-space: nowrap;
     cursor: pointer; 
     flex: 1; 
@@ -2352,7 +2354,7 @@ button.pos-filter {
 @media (min-width: 600px) and (max-width: 839px) {
     .nav-bar { justify-content: center; gap: 4px; padding-left: 16px; padding-right: 16px; }
     /* Equal widths (the marker and the bold label, as on phones), sized for "Scoreboard" in bold beside its icon. */
-    .nav-bar .nav-btn { flex: 0 1 8.5rem; flex-direction: row; justify-content: center; gap: 0.5rem; padding: 0.75rem 4px; }
+    .nav-bar .nav-btn { flex: 0 1 8.5rem; flex-direction: row; justify-content: center; padding: 16px 4px; }
     .nav-bar .nav-btn.active svg { transform: none; }
 }
 
@@ -2367,7 +2369,7 @@ button.pos-filter {
         width: var(--rail-w);
         flex-direction: column;
         justify-content: flex-start;
-        gap: 12px;
+        gap: 0;
         padding: 12px 0 calc(1rem + env(safe-area-inset-bottom));
         border-top: 0;
         border-right: 1px solid var(--border);
@@ -2375,13 +2377,31 @@ button.pos-filter {
         overflow-y: auto;
         overscroll-behavior: contain;
     }
-    .nav-rail-menu { display: flex; align-self: center; flex: 0 0 auto; width: 48px; height: 48px; margin-bottom: 20px; }
-    .nav-bar .nav-btn { flex: 0 0 auto; padding: 0.5rem 4px; border-radius: 0; }
+    .nav-rail-menu { display: flex; align-self: center; flex: 0 0 auto; width: 48px; height: 48px; margin-bottom: 28px; }
+    /* 56px items one after another from 88px down, so each icon sits exactly where the expanded rail's row puts it. */
+    .nav-bar .nav-btn { flex: 0 0 auto; padding: 6px 4px; border-radius: 0; white-space: normal; }
+    /* Material 3: the whole label stays visible at up to 2x text size; it may break onto two lines ("Dash-board")
+       rather than be cut. At normal size every label fits on one line. */
+    .nav-bar .nav-btn span { max-width: 100%; text-align: center; overflow-wrap: anywhere; hyphens: auto; }
     .nav-bar .nav-btn.active svg { transform: none; }
     /* Beside the active tab, at the rail's left edge (top and height set by placeTabMarker). */
     .nav-marker { width: 3px; height: 0; border-radius: 0 3px 3px 0; }
 
-    /* The expanded rail: the drawer, opened from the rail's menu button, with its collapse button in the same spot. */
+    /* The expanded rail: the drawer, opened from the rail's menu button, with its collapse button in the same spot.
+       It grows out of the collapsed rail (Material 3: the two transform into each other): it's revealed from the
+       rail's width outwards instead of sliding in from off-screen, and its rows' icons sit where the rail's are
+       (36px from the edge, 56px apart from 94px down), so only the labels move. */
+    .has-nav-bar .hamburger-menu {
+        transform: none;
+        clip-path: inset(0 calc(100% - var(--rail-w)) 0 0);
+        transition: clip-path 0.3s cubic-bezier(0.2, 0, 0, 1), visibility 0s linear 0.3s;
+    }
+    .has-nav-bar .hamburger-menu.open {
+        clip-path: inset(0 -32px 0 0); /* past the right edge, so its shadow shows */
+        transition: clip-path 0.3s cubic-bezier(0.2, 0, 0, 1), visibility 0s linear 0s;
+    }
+    .has-nav-bar .hamburger-menu .menu-nav-links { padding-top: 6px; }
+    .has-nav-bar .hamburger-menu .nav-btn { padding-left: 33px; } /* + the 3px edge: icons 36px in, as on the rail */
     .has-nav-bar .hamburger-menu .menu-header { justify-content: flex-start; padding: 12px 24px; border-bottom: 0; }
     .has-nav-bar .hamburger-menu .menu-logo-section { display: none; }
     .has-nav-bar .close-menu-btn { width: 48px; height: 48px; }
@@ -2390,7 +2410,7 @@ button.pos-filter {
     .menu-section-label {
         display: block;
         margin: 0.75rem 0 0;
-        padding: 0.85rem 1.5rem 0.5rem;
+        padding: 12px 1.5rem 8px; /* Material 3's section header: 12 above, 8 below */
         border-top: 1px solid var(--border);
         font-size: 0.75rem;
         font-weight: 600;
@@ -2404,4 +2424,12 @@ button.pos-filter {
     .has-nav-bar .mds-toast { bottom: calc(24px + env(safe-area-inset-bottom)); }
     .has-nav-bar .preview-overlay,
     .has-nav-bar .mds-modal-overlay { padding-left: calc(1.5rem + var(--rail-w)); }
+}
+
+/* The menu's rows (the expanded rail on computers, the drawer on phones and tablets): Material 3's 56dp rows, 24dp icons
+   (the markup's) and a 14px label (improvements S26). Lineup and Draft Strategist only; T-Score's menu is its own. */
+.has-nav-bar .hamburger-menu .nav-btn { min-height: 56px; padding-top: 0; padding-bottom: 0; font-size: 0.875rem; }
+@media (prefers-reduced-motion: reduce) {
+    .has-nav-bar .hamburger-menu,
+    .has-nav-bar .hamburger-menu.open { transition: none; }
 }

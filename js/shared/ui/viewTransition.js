@@ -129,8 +129,11 @@ export function placeTabMarker(measureNow = false) {
     if (!markerObserved) {
         markerObserved = true;
         if (typeof ResizeObserver === 'function') {
-            // Runs after the browser's own layout, so reading the sizes there costs nothing extra.
-            new ResizeObserver(() => { markerSpots = null; placeTabMarker(true); }).observe(bar);
+            // Runs after the browser's own layout, so reading the sizes there costs nothing extra. The buttons too: on
+            // the rail a bigger text size makes an item taller without the rail changing size (improvements S26).
+            const observer = new ResizeObserver(() => { markerSpots = null; placeTabMarker(true); });
+            observer.observe(bar);
+            bar.querySelectorAll('.nav-btn').forEach(btn => observer.observe(btn));
             return;
         }
         window.addEventListener('resize', () => { markerSpots = null; placeTabMarker(true); });

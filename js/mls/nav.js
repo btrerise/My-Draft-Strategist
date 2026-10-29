@@ -8,6 +8,7 @@ import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { renderBadgeLegend } from './legend.js';
 import { placeTabMarker, tabDirection, withViewTransition } from '../shared/ui/viewTransition.js';
 import { syncTradePicker } from './trade/picker.js';
+import { closeMenuOnBack, menuClosed, menuOpened } from '../shared/ui/navMenu.js';
 
     // --- DRAWER & SWIPE LOGIC ---
     // Focus trap instance for the drawer -- created lazily on first open rather than at
@@ -15,13 +16,15 @@ import { syncTradePicker } from './trade/picker.js';
     // it's an import since refactor 5D, and creating it on first use is still fine).
     let drawerFocusTrap = null;
 
-    export const toggleDrawer = function() {
+    // Opening adds a history entry so Back closes the drawer (js/shared/ui/navMenu.js, improvements S26). Closing
+    // returns a promise that resolves once that entry is gone; `fromBack` is the close Back itself caused.
+    export const toggleDrawer = function(fromBack = false) {
         const drawer = document.getElementById('drawer');
         const overlay = document.getElementById('drawerOverlay');
         // The header's menu button, and the navigation rail's on computers (improvements S26).
         const hamburgerBtns = document.querySelectorAll('.hamburger-btn');
 
-        if (!drawer || !overlay) return;
+        if (!drawer || !overlay) return Promise.resolve();
 
         const isOpen = drawer.classList.toggle('open');
         overlay.style.display = isOpen ? 'block' : 'none';
@@ -36,16 +39,24 @@ import { syncTradePicker } from './trade/picker.js';
             // through the trap itself would just be two paths to the same toggle.
             drawerFocusTrap = createFocusTrap(drawer);
             drawerFocusTrap.activate();
-        } else if (drawerFocusTrap) {
+            menuOpened();
+            return Promise.resolve();
+        }
+        if (drawerFocusTrap) {
             drawerFocusTrap.deactivate();
             drawerFocusTrap = null;
         }
+        return fromBack === true ? Promise.resolve() : menuClosed();
     };
+    closeMenuOnBack(() => {
+        const drawer = document.getElementById('drawer');
+        if (drawer && drawer.classList.contains('open')) toggleDrawer(true);
+    });
 
+    // The tab switch waits for the drawer's history entry to come off, so its own entry follows the page you were on.
     export const navigateFromDrawer = function(tabId) {
         updateDrawerActiveState(tabId);
-        toggleDrawer();
-        showTab(tabId);
+        return toggleDrawer().then(() => showTab(tabId));
     };
 
     const mainAppEl = document.getElementById('mainApp');
@@ -131,7 +142,7 @@ import { syncTradePicker } from './trade/picker.js';
         const announcer = document.getElementById('tabChangeAnnouncer');
         if (announcer && activeNavBtn) {
             const label = activeNavBtn.querySelector('span');
-            if (label) announcer.textContent = `${label.textContent} tab`;
+            if (label) announcer.textContent = `${label.textContent.replace(/\u00AD/g, '')} tab`; // without the label's soft hyphen (S26)
         }
 
         if (tabId === 'lineup') optimizeLineup(false);

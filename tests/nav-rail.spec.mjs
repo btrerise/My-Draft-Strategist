@@ -3,16 +3,20 @@
 // computers (840px and up), whose menu button opens the drawer as the expanded rail. One set of buttons, laid out by
 // CSS. Checked in both apps at 375, 600, 700, 840, 1024 and 1280px: which layout the bar has, every tab switching from it, the marker
 // by the active tab, and nothing running past the window's edge (or under the rail); then the 839/840 boundary, the
-// expanded rail, the keyboard, and Reduce Motion.
+// expanded rail, the keyboard, and Reduce Motion. Then what a Material 3 review of the rail added: arrow keys, Back
+// closing the menu, labels kept whole at 2x text, Material 3's sizes, the expanded rail's icons where the rail's are,
+// and the menu using the tabs' short names.
 import { test, expect } from '@playwright/test';
 import { openApp, seedMds, seedMls, loadMlsRankings, transitionsDone, showTab } from './helpers.mjs';
 
 const RAIL_W = 96;
 
 const APPS = [
-    { name: 'Draft Strategist', path: '/', tabs: ['setup', 'tracker', 'team', 'board'], seed: seedMds },
+    { name: 'Draft Strategist', path: '/', tabs: ['setup', 'tracker', 'team', 'board'], seed: seedMds,
+        menuNames: ['Dashboard', 'Tracker', 'Team', 'Board', 'Guide', 'T-Score', 'My Lineup Strategist'] },
     { name: 'Lineup Strategist', path: '/lineup/', tabs: ['setup', 'roster', 'lineup', 'scoreboard', 'scout'],
-        seed: async (page) => { await seedMls(page); await loadMlsRankings(page); } },
+        seed: async (page) => { await seedMls(page); await loadMlsRankings(page); },
+        menuNames: ['Dashboard', 'Roster', 'Lineup', 'Scoreboard', 'Scout', 'Guide', 'T-Score', 'My Draft Strategist'] },
 ];
 
 // Each width runs in the desktop project only (it sets its own viewport); the phone project's touch adds nothing here.
@@ -75,6 +79,11 @@ async function expectMarkerBy(page, tab, kind) {
         return m.width > 0 && m.height === 3 && Math.abs((m.left + m.width / 2) - (b.left + b.width / 2)) < 2
             ? 'ok' : JSON.stringify({ m, b });
     }, [tab, kind === 'rail'])).toBe('ok');
+}
+
+async function btnClick(page, tab) {
+    await page.locator(`.nav-bar .nav-btn[data-target="${tab}"]`).click();
+    await transitionsDone(page);
 }
 
 // Anything in the header or the open tab that runs past the window's right edge, or (beside the rail) under it.
@@ -213,6 +222,138 @@ for (const app of APPS) {
             await page.locator(`.nav-bar .nav-btn[data-target="${app.tabs[1]}"]`).click();
             await expectMarkerBy(page, app.tabs[1], 'rail');
             expect(await page.locator('.nav-bar .nav-marker').evaluate(m => getComputedStyle(m).transitionDuration)).toBe('0s');
+        });
+
+        test('arrow keys move between items in the rail, the bar and the menu; Home and End jump to the ends', async ({ page }) => {
+            const btn = (t) => page.locator(`.nav-bar .nav-btn[data-target="${t}"]`);
+            const last = app.tabs[app.tabs.length - 1];
+            for (const [width, next, prev] of [[1280, 'ArrowDown', 'ArrowUp'], [375, 'ArrowRight', 'ArrowLeft']]) {
+                await page.setViewportSize({ width, height: 800 });
+                await openApp(page, app.path);
+                await btn(app.tabs[0]).focus();
+                await page.keyboard.press(next);
+                await expect(btn(app.tabs[1])).toBeFocused();
+                await page.keyboard.press(prev);
+                await page.keyboard.press(prev); // wraps round to the last
+                await expect(btn(last)).toBeFocused();
+                await page.keyboard.press('Home');
+                await expect(btn(app.tabs[0])).toBeFocused();
+                await page.keyboard.press('End');
+                await expect(btn(last)).toBeFocused();
+                // Moving focus doesn't select: still on the first tab until Enter.
+                await expect(page.locator(`#${app.tabs[0]}Tab`)).toHaveClass(/\bactive\b/);
+                await page.keyboard.press('Enter');
+                await transitionsDone(page);
+                await expect(page.locator(`#${last}Tab`)).toHaveClass(/\bactive\b/);
+            }
+            // In the open menu, Down goes from one row to the next.
+            await page.setViewportSize({ width: 1280, height: 800 });
+            await page.locator('.nav-bar .nav-rail-menu').click();
+            const rows = page.locator('.hamburger-menu .menu-nav-links .nav-btn');
+            await rows.nth(0).focus();
+            await page.keyboard.press('ArrowDown');
+            await expect(rows.nth(1)).toBeFocused();
+        });
+
+        for (const width of [1280, 375]) {
+            test(`${width}px: Back closes the menu and stays on the tab; a tab chosen from the menu is one step back from the last`, async ({ page }) => {
+                await page.setViewportSize({ width, height: 800 });
+                await openApp(page, app.path);
+                const drawer = page.locator('.hamburger-menu');
+                const open = () => page.locator(width >= 840 ? '.nav-bar .nav-rail-menu' : '.header .hamburger-btn').click();
+                await btnClick(page, app.tabs[1]);
+                const before = await page.evaluate(() => history.length);
+
+                // Back with the menu open closes it, and the tab and address stay.
+                await open();
+                await expect(drawer).toHaveClass(/\bopen\b/);
+                await page.goBack({ waitUntil: 'commit' }).catch(() => {});
+                await expect(drawer).not.toHaveClass(/\bopen\b/);
+                await transitionsDone(page);
+                await expect(page.locator(`#${app.tabs[1]}Tab`)).toHaveClass(/\bactive\b/);
+                expect(new URL(page.url()).hash).toBe(`#${app.tabs[1]}`);
+
+                // Closing it another way (Escape) leaves history as it was.
+                await open();
+                await page.keyboard.press('Escape');
+                await expect(drawer).not.toHaveClass(/\bopen\b/);
+                await expect.poll(() => page.evaluate(() => history.state && history.state.menu)).toBeFalsy();
+
+                // Choosing a tab from the menu: Back then returns to the tab before it, not to the open menu.
+                await open();
+                await drawer.locator(`.nav-btn[data-tab="${app.tabs[2]}"]`).click();
+                await expect(drawer).not.toHaveClass(/\bopen\b/);
+                await transitionsDone(page);
+                await expect(page.locator(`#${app.tabs[2]}Tab`)).toHaveClass(/\bactive\b/);
+                expect(await page.evaluate(() => history.length)).toBe(before + 1);
+                await page.goBack({ waitUntil: 'commit' }).catch(() => {});
+                await transitionsDone(page);
+                await expect(page.locator(`#${app.tabs[1]}Tab`)).toHaveClass(/\bactive\b/);
+                await expect(drawer).not.toHaveClass(/\bopen\b/);
+            });
+        }
+
+        test('at 2x text the rail\'s labels stay whole (on two lines if need be) and the marker still finds the tab', async ({ page }) => {
+            await page.setViewportSize({ width: 1280, height: 900 });
+            await openApp(page, app.path);
+            await page.addStyleTag({ content: 'html { font-size: 200%; }' });
+            const out = await page.evaluate(() => {
+                const bar = document.querySelector('.nav-bar');
+                const r = bar.getBoundingClientRect();
+                return { sideways: bar.scrollWidth > bar.clientWidth,
+                    outside: [...bar.querySelectorAll('.nav-btn span')].filter(s => { const b = s.getBoundingClientRect(); return b.left < r.left || b.right > r.right; }).map(s => s.textContent) };
+            });
+            expect(out).toEqual({ sideways: false, outside: [] });
+            await btnClick(page, app.tabs[app.tabs.length - 1]);
+            await expectMarkerBy(page, app.tabs[app.tabs.length - 1], 'rail');
+        });
+
+        test('Material 3 sizes: 24px icons, 4px to the label, a 64px bar, 56px rail items and menu rows', async ({ page }) => {
+            for (const width of [375, 700, 1280]) {
+                await page.setViewportSize({ width, height: 800 });
+                await openApp(page, app.path);
+                const m = await page.evaluate(() => {
+                    const bar = document.querySelector('.nav-bar');
+                    const btns = [...bar.querySelectorAll('.nav-btn')];
+                    return { bar: bar.getBoundingClientRect().height, icons: [...new Set(btns.map(b => b.querySelector('svg').getBoundingClientRect().width))],
+                        gap: getComputedStyle(btns[0]).rowGap, heights: [...new Set(btns.map(b => b.getBoundingClientRect().height))],
+                        menuIcons: [...new Set([...document.querySelectorAll('.hamburger-menu .menu-nav-links .nav-btn svg:first-child')].map(s => s.getAttribute('width')))] };
+                });
+                expect(m.icons).toEqual([24]);
+                expect(m.gap).toBe('4px');
+                if (width < 840) expect(m.bar).toBe(64);
+                else expect(m.heights).toEqual([56]);
+                expect(m.menuIcons.filter(w => w !== '24' && w !== '16')).toEqual([]); // 16: the other app's arrow
+            }
+            await page.locator('.nav-bar .nav-rail-menu').click();
+            const rows = await page.locator('.hamburger-menu .menu-nav-links .nav-btn').evaluateAll(bs => [...new Set(bs.map(b => b.getBoundingClientRect().height))]);
+            expect(rows).toEqual([56]);
+        });
+
+        test('the expanded rail grows out of the rail: its icons sit where the rail\'s are', async ({ page }) => {
+            await page.setViewportSize({ width: 1280, height: 800 });
+            await openApp(page, app.path);
+            const icons = (sel) => page.evaluate((s) => [...document.querySelectorAll(s)].map(b => {
+                const r = b.querySelector('svg').getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top)];
+            }), sel);
+            const rail = await icons('.nav-bar .nav-btn');
+            const drawer = page.locator('.hamburger-menu');
+            // Closed, it's clipped to the rail's width (and hidden), so it opens outwards from there.
+            expect(await drawer.evaluate(d => getComputedStyle(d).clipPath)).toMatch(/^inset\(0px (184px|calc\(100% - 96px\)) 0px 0px\)$/);
+            await page.locator('.nav-bar .nav-rail-menu').click();
+            await expect(drawer).toHaveClass(/\bopen\b/);
+            await expect.poll(() => drawer.evaluate(d => getComputedStyle(d).clipPath)).toMatch(/^inset\(0px -32px 0px 0px\)$/);
+            const expanded = await icons(app.tabs.map(t => `.hamburger-menu .nav-btn[data-tab="${t}"]`).join(', '));
+            expect(expanded).toEqual(rail);
+        });
+
+        test('the menu uses the tabs\' short names, at every width', async ({ page }) => {
+            for (const width of [375, 1280]) {
+                await page.setViewportSize({ width, height: 800 });
+                await openApp(page, app.path);
+                const names = await page.locator('.hamburger-menu .menu-nav-links .nav-btn').evaluateAll(bs => bs.map(b => b.textContent.trim()));
+                expect(names).toEqual(app.menuNames);
+            }
         });
     });
 }
