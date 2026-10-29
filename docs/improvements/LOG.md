@@ -7454,3 +7454,10 @@ that nothing moves or fades with Reduce Motion. Screenshots: the 30 already list
   in headless Chromium (a plain fetch gets only the page title; round 2 has how). Report findings with what meets,
   what differs on purpose and what to fix, and let the owner pick, as here. Not a card in the runbook yet; listed
   under "Open follow-ups" in docs/TESTING.md.
+
+### S26: screenshot baselines from CI (PR #211)
+
+CI's first run (40896926210) failed only in `visual.spec.mjs`, on exactly the 30 PNGs listed in round 2: every desktop
+and phone PNG of both apps. Each `-expected.png` was byte-identical to the committed baseline, and the phone diffs sit in
+the bottom bar's strip (plus Draft Strategist's "Go to Dashboard" buttons and its Guide's text), as rendered here. The
+`-actual.png` files from the run's `playwright-results` artifact are the new baselines. T-Score's are unchanged.
