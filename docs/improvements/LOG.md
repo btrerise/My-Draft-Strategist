@@ -7316,3 +7316,66 @@ design, to take from CI:
 - Draft Strategist's Dashboard is still the setup page; a redo like Lineup Strategist's walkthrough, with several
   drafts in one place, is the owner's idea for later.
 - Phones and tablets keep the header's menu button and drawer (owner: maybe explore later).
+
+### S26, round 2: a Material 3 review of the rail, and the owner's answers
+
+The owner asked for a "Material 3 Review" of the rail. m3.material.io renders with JavaScript (a plain fetch got only
+the page title), so I read its Navigation rail pages (Overview, Guidelines, Specs, Accessibility) and the Navigation
+bar's Specs in headless Chromium, and measured the rail at 1280px. **It met** Material 3 on: window sizes (bar under 600,
+rail from 840, never both); the leading edge, fixed while scrolling, never hidden; the menu at the top opening the
+expanded rail, whose icon turns into a collapse icon in the same spot; secondary destinations under a section header;
+a modal expanded rail for information-dense pages; 96px collapsed (M3 Expressive's; the 80px baseline rail is "no longer
+recommended") and 280px expanded (220–360); full-width targets; one-word labels; a heavier icon for the active tab (M3's
+rule for icons with no filled version) with a bold label in a contrasting color; inactive labels at about 7.5:1; Tab,
+Enter and Space; `aria-current`; the focus trap. **Differences the owner chose** (kept): the green sliding bar instead
+of M3's pill; a bar, not a rail, on tablets (the rail page: "in medium windows with few destinations, consider using a
+navigation bar instead").
+
+**The owner's answers** to the findings, all built:
+1. **Labels at 2x text** (a defect): "Dashboard" and "Scoreboard" were cut at the rail's edge and the rail scrolled
+   sideways. M3: the full label stays visible up to 2x, wrapping or hyphenating is fine. On the rail, labels may now
+   break onto two lines (`overflow-wrap: anywhere; hyphens: auto`, line height in em so the lines grow with the text),
+   and the two long ones carry a soft hyphen (`Dash&shy;board`, `Score&shy;board` in the markup) so they break as "Dash- / board"
+   (Linux Chromium has no hyphenation dictionary). Invisible at normal size. The Lineup Strategist announcement strips
+   the soft hyphen. The marker's ResizeObserver also watches each item now, since bigger text makes an item taller
+   without resizing the rail.
+2. **The menu uses the tabs' short names, at every width** (owner: phones too): Lineup Strategist's Active Roster,
+   Lineup Optimizer, Scout & Waivers, User Guide and T-Score Methodology are now Roster, Lineup, Scout, Guide, T-Score;
+   Draft Strategist's Draft Board, User Guide and T-Score Methodology are Board, Guide, T-Score. The other app's link
+   keeps its name. (M3: the collapsed and expanded rails "match visually and can transition into each other".)
+3. **Arrow keys** (M3: Tab or the arrows move between items): Up/Down/Left/Right move focus to the next or previous item
+   in the bar, the rail and the menu's list, wrapping round; Home and End go to the ends. Focus only; Enter or Space
+   selects. Ignored with a modifier (Shift+arrows still cycle leagues).
+4. **The expanded rail grows out of the rail** (M3: the two transform into each other): from 840px the drawer no longer
+   slides in from off-screen; it's revealed from the rail's width outwards (`clip-path`, 0.3s, none with Reduce
+   Motion), and its rows' icons sit exactly where the rail's are (36px in; rows 56px apart from 94px down, matching the
+   rail's items, which are now 56px apart from 88px with no gap), so only the labels change.
+5. **Sizes, Material 3's** (owner: "do it all", phones included; the navigation bar spec gives a 24dp icon, 4dp from icon
+   to label, a 64dp bar): 24px icons in the bar, the rail and the menu (were 22px and 20px); 4px from icon to label; 16px
+   label line height; the phone bar 64px tall (was 73px: 3px + 56px items + 4px, plus its 1px border); the tablet bar's
+   items 56px; the rail's items 56px; the menu's rows 56px with a 14px label (were 47px and 16px); the "More" header 12px
+   above, 8px below.
+6. **Back closes the menu** (M3: Back dismisses a modal expanded rail): new `js/shared/ui/navMenu.js` (in
+   `PRECACHE_ASSETS`). Opening the menu pushes a history entry (same URL and tab, marked `menu`), so Back takes it off
+   and closes the menu, leaving the tab and address alone. Closing it any other way (its button, Escape, the backdrop,
+   choosing a tab) calls `history.back()` and swallows that pop; a tab chosen from the menu waits for it
+   (`toggleDrawer`/`toggleMenu` now return a promise; Draft Strategist's `showTab` closes an open menu first), so Back
+   after choosing a tab returns to the tab before, not to the open menu. The module's popstate listener is registered
+   before each app's (imported by `js/mls/nav.js` and `js/mds/ui.js`) and stops the app's from seeing the pops it handles.
+   Phones' and tablets' menu too (the same drawer).
+- Left as is (owner): the feedback form in the expanded rail. Not taken up: dropping the rail's shadow (M3 uses a
+  divider, elevation only over sideways-scrolling content).
+
+`CACHE_NAME` v2.8.133 → v2.8.134. Tests (nav-rail.spec.mjs): arrow keys in the rail, the bar and the menu (wrap, Home,
+End, focus only); Back at 1280 and 375px (closes the menu and keeps the tab; Escape leaves no entry; Back after choosing a
+tab from the menu returns to the tab before; it fails on the round-1 code, where Back switched tab and left the menu
+open); labels whole at 2x text with the marker still by the tab; the sizes at 375, 700 and 1280px; the expanded rail's
+clip and its icons at the rail's; the short names at 375 and 1280px. Full check: precache OK, 469 unit tests, 617
+Playwright passed; only `visual.spec.mjs` fails here (this container's Chromium).
+
+**Screenshots** (main and this branch rendered the same way, `npm run pxdiff`): now **30 change**, all to take from CI:
+the 15 desktop PNGs of both apps listed above (round 1), and **all 15 phone PNGs of both apps**: Lineup Strategist's 7
+(`mls-empty-setup`, `mls-league-guide`, `mls-league-lineup`, `mls-league-roster`, `mls-league-scoreboard`,
+`mls-league-scout`, `mls-league-setup`) only in the bottom bar's strip (64px bar, 24px icons), and Draft Strategist's 8
+as in round 1 plus the same bar change. This replaces round 1's "Lineup Strategist's phones identical": the owner chose
+Material 3's sizes on phones too. T-Score's PNGs are unchanged.
