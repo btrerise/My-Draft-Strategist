@@ -7443,3 +7443,14 @@ that nothing moves or fades with Reduce Motion. Screenshots: the 30 already list
 `CACHE_NAME` v2.8.136 → v2.8.137. Tests (nav-rail.spec.mjs): the bar's and the header's backgrounds are the same color at
 375, 700 and 1280px; halfway through closing, the panel is part-way closed and the rows haven't moved (fails with round
 4's reverse slide). Screenshots: the bar's new color is in every PNG of both apps, all already in the list of 30.
+
+### S26: the owner's sign-off, and a site-wide Material 3 review to come
+
+- The owner tried round 5 ("Looks great"): the header's navy stays on the phone bar too.
+- **Wanted next (owner): a Material 3 review of the whole site**, both apps and T-Score, as this card did for the
+  navigation (round 2): every component (buttons, cards, chips, dialogs, menus, lists, text fields, switches,
+  segmented buttons, toasts as snackbars, tooltips), type scale, color roles and contrast, spacing, states (hover, focus,
+  pressed), motion and accessibility, against m3.material.io's Guidelines, Specs and Accessibility pages. Read them
+  in headless Chromium (a plain fetch gets only the page title; round 2 has how). Report findings with what meets,
+  what differs on purpose and what to fix, and let the owner pick, as here. Not a card in the runbook yet; listed
+  under "Open follow-ups" in docs/TESTING.md.
