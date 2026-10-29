@@ -594,9 +594,9 @@ html { scroll-padding-top: 5rem; }
     display: flex; 
     justify-content: space-around; 
     
-    /* CRITICAL: env() adds padding for the iPhone/Android home swipe bar. The 1px border, 3px, 56px items and 4px:
-       Material 3's 64dp bar (improvements S26). */
-    padding: 3px 0.5rem calc(4px + env(safe-area-inset-bottom)); 
+    /* CRITICAL: env() adds padding for the iPhone/Android home swipe bar. The 1px border, 3px and 60px items: Material
+       3's 64dp bar (improvements S26). */
+    padding: 3px 0.5rem env(safe-area-inset-bottom); 
     z-index: 98; 
     box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
     transform: translateZ(0); /* Forces iOS hardware acceleration */
@@ -609,7 +609,10 @@ html { scroll-padding-top: 5rem; }
     display: flex;
     flex-direction: column; /* Stacks the icon above the text */
     align-items: center;
-    gap: 4px; /* Material 3: 4dp between icon and label, a 24dp icon (the markup's), a 12/16 label (improvements S26) */
+    /* Material 3 (improvements S26): a 24dp icon (the markup's) in a 32dp-tall indicator, 4dp from it to a 12/16 label,
+       6dp above and below. Our indicator is the green marker, not a pill, so that's 10px above the icon (padding plus
+       the bar's), 8px to the label and 6px below it. */
+    gap: 8px;
     font-size: 0.75rem; /* Smaller text for mobile tabs */
     line-height: 1.3334; /* 16px at 12px, and it grows with the text */
     color: var(--text-muted); 
@@ -655,7 +658,8 @@ html { scroll-padding-top: 5rem; }
 .nav-bar .nav-btn.active svg { stroke-width: 2.6; }
 
 .nav-bar .nav-btn.active svg {
-    transform: translateY(-2px); /* Lifts the icon slightly instead of using a hard border */
+    /* No lift: Material 3 keeps the active icon in place (its heavier stroke and color mark it), and the 2px lift ate
+       into the space above it (improvements S26). */
     filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.3));
 }
 
@@ -2354,8 +2358,7 @@ button.pos-filter {
 @media (min-width: 600px) and (max-width: 839px) {
     .nav-bar { justify-content: center; gap: 4px; padding-left: 16px; padding-right: 16px; }
     /* Equal widths (the marker and the bold label, as on phones), sized for "Scoreboard" in bold beside its icon. */
-    .nav-bar .nav-btn { flex: 0 1 8.5rem; flex-direction: row; justify-content: center; padding: 16px 4px; }
-    .nav-bar .nav-btn.active svg { transform: none; }
+    .nav-bar .nav-btn { flex: 0 1 8.5rem; flex-direction: row; justify-content: center; gap: 4px; padding: 18px 4px; } /* M3: 4dp from icon to label; the 64dp bar */
 }
 
 @media (min-width: 840px) {
@@ -2369,7 +2372,7 @@ button.pos-filter {
         width: var(--rail-w);
         flex-direction: column;
         justify-content: flex-start;
-        gap: 0;
+        gap: 4px; /* Material 3: 4dp between items */
         padding: 12px 0 calc(1rem + env(safe-area-inset-bottom));
         border-top: 0;
         border-right: 1px solid var(--border);
@@ -2378,19 +2381,19 @@ button.pos-filter {
         overscroll-behavior: contain;
     }
     .nav-rail-menu { display: flex; align-self: center; flex: 0 0 auto; width: 48px; height: 48px; margin-bottom: 28px; }
-    /* 56px items one after another from 88px down, so each icon sits exactly where the expanded rail's row puts it. */
-    .nav-bar .nav-btn { flex: 0 0 auto; padding: 6px 4px; border-radius: 0; white-space: normal; }
+    /* Material 3's collapsed rail: 64dp items 4dp apart (6dp, the 32dp indicator round the 24dp icon, 4dp, the 16dp
+       label, 6dp), from 88px down. */
+    .nav-bar .nav-btn { flex: 0 0 auto; padding: 10px 4px 6px; border-radius: 0; white-space: normal; }
     /* Material 3: the whole label stays visible at up to 2x text size; it may break onto two lines ("Dash-board")
        rather than be cut. At normal size every label fits on one line. */
     .nav-bar .nav-btn span { max-width: 100%; text-align: center; overflow-wrap: anywhere; hyphens: auto; }
-    .nav-bar .nav-btn.active svg { transform: none; }
     /* Beside the active tab, at the rail's left edge (top and height set by placeTabMarker). */
     .nav-marker { width: 3px; height: 0; border-radius: 0 3px 3px 0; }
 
     /* The expanded rail: the drawer, opened from the rail's menu button, with its collapse button in the same spot.
        It grows out of the collapsed rail (Material 3: the two transform into each other): its right edge moves out from
-       the rail's while what's in it stays put, and its rows' icons sit where the rail's are (36px from the edge, 56px
-       apart from 94px down), so only the labels appear. Done with two opposite transforms (the panel from 184px left,
+       the rail's while what's in it stays put, its icons are 36px in like the rail's, and its 56px rows (Material 3's)
+       start where the rail's 68px-apart items are and close up as it opens (--rail-row below), so nothing jumps. Done with two opposite transforms (the panel from 184px left,
        its contents from 184px right, same timing, so they cancel), which the browser animates on the GPU; animating
        clip-path redrew the panel on the main thread every frame and stuttered. Material 3's motion: 400ms emphasized
        decelerate to open, 200ms emphasized accelerate to close. */
@@ -2405,7 +2408,19 @@ button.pos-filter {
         transform: none;
         transition: transform 400ms cubic-bezier(0.05, 0.7, 0.1, 1), visibility 0s linear 0s;
     }
-    .has-nav-bar .hamburger-menu .menu-nav-links { padding-top: 6px; }
+    .has-nav-bar .hamburger-menu .menu-nav-links { padding-top: 14px; } /* the first icon at 102px, as on the rail */
+    .has-nav-bar .hamburger-menu .menu-nav-links > * {
+        transform: translateY(calc(var(--rail-row, 4) * 12px)); /* 68px - 56px per row above it */
+        transition: transform 200ms cubic-bezier(0.3, 0, 0.8, 0.15);
+    }
+    .has-nav-bar .hamburger-menu.open .menu-nav-links > * {
+        transform: none;
+        transition: transform 400ms cubic-bezier(0.05, 0.7, 0.1, 1);
+    }
+    .has-nav-bar .menu-nav-links > :nth-child(1) { --rail-row: 0; }
+    .has-nav-bar .menu-nav-links > :nth-child(2) { --rail-row: 1; }
+    .has-nav-bar .menu-nav-links > :nth-child(3) { --rail-row: 2; }
+    .has-nav-bar .menu-nav-links > :nth-child(4) { --rail-row: 3; }
     .has-nav-bar .hamburger-menu .nav-btn { padding-left: 33px; } /* + the 3px edge: icons 36px in, as on the rail */
     .has-nav-bar .hamburger-menu .menu-header { justify-content: flex-start; padding: 12px 24px; border-bottom: 0; }
     .has-nav-bar .hamburger-menu .menu-logo-section { display: none; }
@@ -2443,6 +2458,9 @@ button.pos-filter {
     .has-nav-bar .hamburger-menu,
     .has-nav-bar .hamburger-menu.open,
     .has-nav-bar .hamburger-menu > *,
+    .has-nav-bar .hamburger-menu.open > *,
+    .has-nav-bar .hamburger-menu .menu-nav-links > *,
+    .has-nav-bar .hamburger-menu.open .menu-nav-links > *,
     .has-nav-bar .menu-overlay,
     .has-nav-bar .menu-overlay.open { transition: none; }
 }

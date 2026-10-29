@@ -7401,3 +7401,31 @@ v2.8.134 → v2.8.135. Test (nav-rail.spec.mjs, replacing round 2's clip-path ch
 rail's; paused halfway, the edge is between 96 and 280px, the icons are already where the rail's are, the backdrop's
 opacity is between 0 and 1, and nothing animates but transforms and opacity; open, the edge is at 280px; closing, the
 backdrop goes. Screenshots: none show the menu, so the list in round 2 stands (30).
+
+### S26, round 4: Material 3's item heights
+
+Owner: the items "feel scrunched up at the top"; are their heights Material 3's? They weren't. From Material 3's
+measurement image (collapsed rail: 96dp wide, items 68dp apart: a 64dp item, then 4dp; inside an item 6dp, the 32dp
+indicator round the 24dp icon, 4dp, the 16dp label, 6dp; expanded rows 56dp) and the navigation bar's spec (the same
+6/32/4/16/6 in a 64dp bar), round 2 had 56px items with no gap and 4px from icon to label. Without a pill, the indicator's
+4dp round the icon becomes space: 10px above the icon, 8px from icon to label, 6px below the label.
+- **Rail**: items 64px (`padding: 10px 4px 6px`, 8px icon to label), 4px apart, the first at 92px (icon at 102px).
+- **Phone bar**: 64px with the same 10 / 24 / 8 / 16 / 6 (it had 4px from icon to label and 10px below the label).
+- **Tablet bar**: 64px (items 60px, 18px above and below the icon), 4px from icon to label (Material 3's for side by
+  side).
+- **The active icon no longer lifts 2px** (S16's touch, phones and tablets): Material 3 keeps it in place (its heavier
+  stroke and color mark it), and the lift took 2px from the space above it.
+- **The expanded rail**: its rows stay Material 3's 56px, so they no longer line up with the rail's 68px spacing. They
+  start where the rail's items are (each row `translateY(n x 12px)`, `--rail-row` by `:nth-child`) and close up as the
+  menu opens, with the same transform timing, so nothing jumps; the first row's icon is at the rail's first (102px).
+- **Fix**: Reduce Motion now stops the menu's movement too. Round 3's rule lost to the `.open` rules' higher specificity.
+
+The rail's color: the owner asked whether its lighter navy (the bottom bar's card navy, `rgba(19, 27, 44, 0.85)`) next
+to the header's darker page navy (`rgba(10, 14, 23, 0.85)`) is intentional. It isn't a Material 3 choice: the rail kept the
+phone bar's background. Material 3 allows either (the container fill is optional; without it, keep a divider). Options
+(today's card navy, or the header's navy for the bar and the rail) went to the owner with screenshots; see round 5.
+
+`CACHE_NAME` v2.8.135 → v2.8.136. Tests (nav-rail.spec.mjs): the sizes test measures 10 above the icon, 8 to the label, 6
+below in a 64px phone bar; a 64px tablet bar with 4px icon to label; 64px rail items 68px apart; 56px menu rows 56px apart.
+The opening test checks the menu's icons start exactly at the rail's and end in its column, 56px apart. A new test checks
+that nothing moves or fades with Reduce Motion. Screenshots: the 30 already listed (every PNG of both apps shows the bar).

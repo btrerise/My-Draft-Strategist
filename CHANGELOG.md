@@ -20,8 +20,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   down. The menu button moves to the top of the rail; it opens the full menu (every tab by name, then the Guide,
   T-Score and Lineup Strategist under "More") over the page. On tablets (600 to 839px) the bottom bar shows each icon
   beside its name. Phones keep the bottom bar as before.
-- **The tab bar and menu follow Material 3 more closely.** Slightly larger tab icons, and a slightly slimmer bottom bar
-  on phones. The menu uses the tabs' short names (Guide, T-Score, Board), with roomier rows. On a computer the expanded menu grows smoothly
+- **The tab bar and menu follow Material 3 more closely.** Slightly larger tab icons with more room around them,
+  and a slightly slimmer bottom bar on phones; the active tab's icon no longer lifts. The menu uses the tabs' short names (Guide, T-Score, Board), with roomier rows. On a computer the expanded menu grows smoothly
   out of the rail, its icons staying where they were, and the page behind it dims gradually instead of all at once. With the menu open, the browser's Back button closes it instead of
   leaving the tab. The arrow keys move between tabs in the bar, the rail and the menu (Home and End jump to the ends).
   With larger text the rail's names break onto a second line instead of being cut off.
@@ -110,8 +110,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   down. The menu button moves to the top of the rail; it opens the full menu (every tab by name, then the Guide,
   T-Score and Draft Strategist under "More") over the page, with the tab you're on marked. On tablets (600 to 839px)
   the bottom bar shows each icon beside its name. Phones keep the bottom bar as before.
-- **The tab bar and menu follow Material 3 more closely.** Slightly larger tab icons, and a slightly slimmer bottom bar
-  on phones. The menu uses the tabs' short names (Roster, Lineup, Scout, Guide, T-Score), with roomier rows. On a computer the expanded menu grows smoothly
+- **The tab bar and menu follow Material 3 more closely.** Slightly larger tab icons with more room around them,
+  and a slightly slimmer bottom bar on phones; the active tab's icon no longer lifts. The menu uses the tabs' short names (Roster, Lineup, Scout, Guide, T-Score), with roomier rows. On a computer the expanded menu grows smoothly
   out of the rail, its icons staying where they were, and the page behind it dims gradually instead of all at once. With the menu open, the browser's Back button closes it instead of
   leaving the tab. The arrow keys move between tabs in the bar, the rail and the menu (Home and End jump to the ends).
   With larger text the rail's names break onto a second line instead of being cut off.

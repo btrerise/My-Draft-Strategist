@@ -308,29 +308,40 @@ for (const app of APPS) {
             await expectMarkerBy(page, app.tabs[app.tabs.length - 1], 'rail');
         });
 
-        test('Material 3 sizes: 24px icons, 4px to the label, a 64px bar, 56px rail items and menu rows', async ({ page }) => {
+        test('Material 3 sizes: 24px icons; 64px bars; 64px rail items 4px apart; 56px menu rows', async ({ page }) => {
             for (const width of [375, 700, 1280]) {
                 await page.setViewportSize({ width, height: 800 });
                 await openApp(page, app.path);
                 const m = await page.evaluate(() => {
                     const bar = document.querySelector('.nav-bar');
                     const btns = [...bar.querySelectorAll('.nav-btn')];
-                    return { bar: bar.getBoundingClientRect().height, icons: [...new Set(btns.map(b => b.querySelector('svg').getBoundingClientRect().width))],
-                        gap: getComputedStyle(btns[0]).rowGap, heights: [...new Set(btns.map(b => b.getBoundingClientRect().height))],
+                    const r = (e) => e.getBoundingClientRect();
+                    const b0 = btns[0], icon = r(b0.querySelector('svg')), label = r(b0.querySelector('span'));
+                    return { bar: r(bar).height, icons: [...new Set(btns.map(b => r(b.querySelector('svg')).width))],
+                        heights: [...new Set(btns.map(b => Math.round(r(b).height)))],
+                        pitch: Math.round(r(btns[1]).top - r(b0).top),
+                        aboveIcon: Math.round(icon.top - r(bar).top), iconToLabel: Math.round(label.top - icon.bottom),
+                        belowLabel: Math.round(r(b0).bottom - label.bottom), sideGap: Math.round(label.left - icon.right),
                         menuIcons: [...new Set([...document.querySelectorAll('.hamburger-menu .menu-nav-links .nav-btn svg:first-child')].map(s => s.getAttribute('width')))] };
                 });
                 expect(m.icons).toEqual([24]);
-                expect(m.gap).toBe('4px');
-                if (width < 840) expect(m.bar).toBe(64);
-                else expect(m.heights).toEqual([56]);
                 expect(m.menuIcons.filter(w => w !== '24' && w !== '16')).toEqual([]); // 16: the other app's arrow
+                if (width < 600) {
+                    // M3's bar: 6dp, a 32dp indicator round the icon, 4dp, the 16dp label, 6dp.
+                    expect(m).toMatchObject({ bar: 64, aboveIcon: 10, iconToLabel: 8, belowLabel: 6 });
+                } else if (width < 840) {
+                    expect(m).toMatchObject({ bar: 64, sideGap: 4 });
+                } else {
+                    expect(m).toMatchObject({ heights: [64], pitch: 68, iconToLabel: 8, belowLabel: 6 });
+                }
             }
             await page.locator('.nav-bar .nav-rail-menu').click();
-            const rows = await page.locator('.hamburger-menu .menu-nav-links .nav-btn').evaluateAll(bs => [...new Set(bs.map(b => b.getBoundingClientRect().height))]);
-            expect(rows).toEqual([56]);
+            const rows = page.locator('.hamburger-menu .menu-nav-links .nav-btn');
+            await expect.poll(() => rows.evaluateAll(bs => [...new Set(bs.map(b => b.getBoundingClientRect().height))])).toEqual([56]);
+            await expect.poll(() => rows.evaluateAll(bs => Math.round(bs[1].getBoundingClientRect().top - bs[0].getBoundingClientRect().top))).toBe(56);
         });
 
-        test('the expanded rail grows out of the rail: its edge moves, its icons stay where the rail\'s are, the backdrop fades', async ({ page }) => {
+        test('the expanded rail grows out of the rail: its edge moves, its icons start where the rail\'s are, the backdrop fades', async ({ page }) => {
             await page.setViewportSize({ width: 1280, height: 800 });
             await openApp(page, app.path);
             const icons = (sel) => page.evaluate((s) => [...document.querySelectorAll(s)].map(b => {
@@ -341,14 +352,21 @@ for (const app of APPS) {
             const drawer = page.locator('.hamburger-menu');
             // Closed, its right edge is the rail's (and it's hidden), so it opens outwards from there.
             expect(await drawer.evaluate(d => Math.round(d.getBoundingClientRect().right))).toBe(96);
+            const pauseAt = (ms) => page.evaluate((t) => {
+                const d = document.querySelector('.hamburger-menu');
+                [d, ...d.querySelectorAll('*'), document.querySelector('.menu-overlay')].forEach(e => getComputedStyle(e).transform);
+                for (const a of document.getAnimations().filter(x => x.transitionProperty)) { a.pause(); a.currentTime = t; }
+            }, ms);
 
-            // Halfway through opening (its transitions paused there; the page's looping pulses aren't touched): the edge is between the rail and the open width,
-            // the icons already where the rail's are, and nothing animates but transforms and the backdrop's opacity,
-            // which the browser can run on the GPU (clip-path, round 2, redrew the panel every frame).
-            await page.evaluate(() => {
-                document.querySelector('.nav-bar .nav-rail-menu').click();
-                for (const a of document.getAnimations().filter(t => t.transitionProperty)) { a.pause(); a.currentTime = 200; }
-            });
+            // At the start of opening, the menu's icons are exactly where the rail's are (its rows close up from there).
+            await page.evaluate(() => document.querySelector('.nav-bar .nav-rail-menu').click());
+            await pauseAt(0);
+            expect(await icons(menuIcons)).toEqual(rail);
+
+            // Halfway: the edge is between the rail and the open width, the backdrop part-faded, and nothing animates
+            // but transforms and the backdrop's opacity, which the browser runs on the GPU (clip-path, round 2, redrew the
+            // panel every frame). The page's looping pulses aren't touched.
+            await pauseAt(200);
             const mid = await page.evaluate(() => ({
                 right: document.querySelector('.hamburger-menu').getBoundingClientRect().right,
                 props: [...new Set(document.getAnimations().filter(t => t.transitionProperty).map(a => a.transitionProperty))].sort(),
@@ -359,18 +377,29 @@ for (const app of APPS) {
             expect(mid.props.filter(p => p !== 'transform' && p !== 'opacity')).toEqual([]);
             expect(mid.backdrop).toBeGreaterThan(0);
             expect(mid.backdrop).toBeLessThan(1);
-            expect(await icons(menuIcons)).toEqual(rail);
 
+            // Open: 280px wide, the icons in the rail's column, the first where the rail's first is, the rest 56px apart.
             await page.evaluate(() => document.getAnimations().filter(t => t.transitionProperty).forEach(a => a.finish()));
             await expect(drawer).toHaveClass(/\bopen\b/);
             await expect.poll(() => drawer.evaluate(d => Math.round(d.getBoundingClientRect().right))).toBe(280);
-            expect(await icons(menuIcons)).toEqual(rail);
+            const open = await icons(menuIcons);
+            expect(open.map(([x]) => x)).toEqual(rail.map(([x]) => x));
+            expect(open.map(([, y]) => y)).toEqual(rail.map((_, i) => rail[0][1] + 56 * i));
 
             // Closing: the backdrop fades out, then leaves the layout.
             await page.keyboard.press('Escape');
-            const backdrop = page.locator('.menu-overlay');
-            await expect(backdrop).toBeHidden();
+            await expect(page.locator('.menu-overlay')).toBeHidden();
             await expect.poll(() => drawer.evaluate(d => Math.round(d.getBoundingClientRect().right))).toBe(96);
+        });
+
+        test('Reduce Motion: the expanded rail and its backdrop appear without moving or fading', async ({ page }) => {
+            await page.emulateMedia({ reducedMotion: 'reduce' });
+            await page.setViewportSize({ width: 1280, height: 800 });
+            await openApp(page, app.path);
+            await page.locator('.nav-bar .nav-rail-menu').click();
+            // Nothing moves or fades (the buttons' color changes aren't motion).
+            expect(await page.evaluate(() => document.getAnimations().map(a => a.transitionProperty).filter(p => p === 'transform' || p === 'opacity'))).toEqual([]);
+            expect(await page.locator('.hamburger-menu').evaluate(d => Math.round(d.getBoundingClientRect().right))).toBe(280);
         });
 
         test('the menu uses the tabs\' short names, at every width', async ({ page }) => {
