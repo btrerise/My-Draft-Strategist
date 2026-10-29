@@ -586,7 +586,9 @@ html { scroll-padding-top: 5rem; }
     left: 0; 
     right: 0; 
     /* Glassmorphism to match the top header */
-    background: rgba(19, 27, 44, 0.85); 
+    /* The header's navy (improvements S26, owner's choice): the header, the bar and the rail read as one frame, with the
+       cards the lighter layer. Was the card navy, rgba(19, 27, 44, 0.85). */
+    background: rgba(10, 14, 23, 0.85); 
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     
@@ -2411,7 +2413,9 @@ button.pos-filter {
     .has-nav-bar .hamburger-menu .menu-nav-links { padding-top: 14px; } /* the first icon at 102px, as on the rail */
     .has-nav-bar .hamburger-menu .menu-nav-links > * {
         transform: translateY(calc(var(--rail-row, 4) * 12px)); /* 68px - 56px per row above it */
-        transition: transform 200ms cubic-bezier(0.3, 0, 0.8, 0.15);
+        /* Only on the way out (owner): closing, the rows stay put while the panel slides away, and move back to the
+           rail's spacing once it's hidden, ready for the next opening. */
+        transition: transform 0s linear 200ms;
     }
     .has-nav-bar .hamburger-menu.open .menu-nav-links > * {
         transform: none;

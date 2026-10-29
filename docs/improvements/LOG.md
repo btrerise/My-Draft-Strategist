@@ -7429,3 +7429,17 @@ phone bar's background. Material 3 allows either (the container fill is optional
 below in a 64px phone bar; a 64px tablet bar with 4px icon to label; 64px rail items 68px apart; 56px menu rows 56px apart.
 The opening test checks the menu's icons start exactly at the rail's and end in its column, 56px apart. A new test checks
 that nothing moves or fades with Reduce Motion. Screenshots: the 30 already listed (every PNG of both apps shows the bar).
+
+### S26, round 5: the header's navy, and no slide back on closing
+
+- **The rail and the bottom bar use the header's navy** (`rgba(10, 14, 23, 0.85)`, was the card navy `rgba(19, 27,
+  44, 0.85)`), owner's choice (B) from round 4's screenshots: the header, the bar and the rail read as one frame, the
+  cards as the lighter layer, the divider lines between. Phones too for now: the owner half wants the phone bar as it
+  was and will confirm after trying it (it may be habit). Going back on phones only is one rule under 840px.
+- **The expanded rail's rows don't slide back on closing** (owner: nice on the way in, not on the way out): while the
+  menu closes they stay where they are (`transition: transform 0s linear 200ms`), and reset to the rail's spacing once
+  it's hidden, ready for the next opening.
+
+`CACHE_NAME` v2.8.136 → v2.8.137. Tests (nav-rail.spec.mjs): the bar's and the header's backgrounds are the same color at
+375, 700 and 1280px; halfway through closing, the panel is part-way closed and the rows haven't moved (fails with round
+4's reverse slide). Screenshots: the bar's new color is in every PNG of both apps, all already in the list of 30.

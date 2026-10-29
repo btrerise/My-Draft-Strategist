@@ -325,6 +325,9 @@ for (const app of APPS) {
                         menuIcons: [...new Set([...document.querySelectorAll('.hamburger-menu .menu-nav-links .nav-btn svg:first-child')].map(s => s.getAttribute('width')))] };
                 });
                 expect(m.icons).toEqual([24]);
+                // The header's navy, on the rail and the bottom bar alike (owner's choice).
+                expect(await page.evaluate(() => [document.querySelector('.nav-bar'), document.querySelector('.header')].map(e => getComputedStyle(e).backgroundColor)))
+                    .toEqual(['rgba(10, 14, 23, 0.85)', 'rgba(10, 14, 23, 0.85)']);
                 expect(m.menuIcons.filter(w => w !== '24' && w !== '16')).toEqual([]); // 16: the other app's arrow
                 if (width < 600) {
                     // M3's bar: 6dp, a 32dp indicator round the icon, 4dp, the 16dp label, 6dp.
@@ -386,8 +389,13 @@ for (const app of APPS) {
             expect(open.map(([x]) => x)).toEqual(rail.map(([x]) => x));
             expect(open.map(([, y]) => y)).toEqual(rail.map((_, i) => rail[0][1] + 56 * i));
 
-            // Closing: the backdrop fades out, then leaves the layout.
+            // Closing: the rows don't slide back (owner: only on the way in). Halfway through, the panel is part-way
+            // closed and the icons haven't moved; the backdrop fades out, then leaves the layout.
             await page.keyboard.press('Escape');
+            await pauseAt(100);
+            expect(await drawer.evaluate(d => d.getBoundingClientRect().right)).toBeLessThan(280);
+            expect((await icons(menuIcons)).map(([, y]) => y)).toEqual(open.map(([, y]) => y));
+            await page.evaluate(() => document.getAnimations().filter(t => t.transitionProperty).forEach(a => a.play()));
             await expect(page.locator('.menu-overlay')).toBeHidden();
             await expect.poll(() => drawer.evaluate(d => Math.round(d.getBoundingClientRect().right))).toBe(96);
         });
