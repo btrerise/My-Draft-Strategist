@@ -1,5 +1,6 @@
 // Added in improvements S2 (renaming a ranking set). An ES module: the code that uses it imports it.
 import { createFocusTrap } from './focusTrap.js';
+import { watchModal } from './modalLayout.js';
 
 // --- SHARED IN-APP TEXT-INPUT DIALOG ---
 // showPrompt() is showConfirm's (js/shared/ui/confirm.js) sibling for questions that need a
@@ -24,9 +25,11 @@ function buildPromptDialog() {
     overlay.innerHTML = `
         <form class="mds-modal mds-prompt-modal" novalidate>
             <h3 id="mds-prompt-title"></h3>
-            <label for="mds-prompt-input" id="mds-prompt-label" class="mds-prompt-label"></label>
-            <input type="text" id="mds-prompt-input" class="form-input" autocomplete="off" aria-describedby="mds-prompt-msg">
-            <p id="mds-prompt-msg" class="mds-prompt-msg" aria-live="polite"></p>
+            <div class="mds-modal-body">
+                <label for="mds-prompt-input" id="mds-prompt-label" class="mds-prompt-label"></label>
+                <input type="text" id="mds-prompt-input" class="form-input" autocomplete="off" aria-describedby="mds-prompt-msg">
+                <p id="mds-prompt-msg" class="mds-prompt-msg" aria-live="polite"></p>
+            </div>
             <div class="mds-modal-actions">
                 <button type="button" class="btn btn-secondary" data-prompt-action="cancel"></button>
                 <button type="submit" class="btn btn-primary" data-prompt-action="ok"></button>
@@ -88,6 +91,8 @@ export const showPrompt = function(label, options = {}) {
 
     promptDialogOpen = true;
     overlay.style.display = 'flex';
+    // The pinned button row, and the card fitted above the on-screen keyboard (improvements F10).
+    const stopLayout = watchModal(overlay);
 
     return new Promise(resolve => {
         let trap = null;
@@ -96,6 +101,7 @@ export const showPrompt = function(label, options = {}) {
             if (!promptDialogOpen) return;
             promptDialogOpen = false;
             overlay.style.display = 'none';
+            stopLayout();
             form.removeEventListener('submit', onSubmit);
             inputEl.removeEventListener('input', onInput);
             cancelBtn.removeEventListener('click', onCancel);

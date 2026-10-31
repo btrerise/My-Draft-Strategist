@@ -6,6 +6,7 @@
 // picker (js/mls/rankings/), MDS's pool (js/mds/import.js).
 import { escapeHtml } from '../html.js';
 import { createFocusTrap } from '../ui/focusTrap.js';
+import { watchModal } from '../ui/modalLayout.js';
 
 // --- UPLOAD PREVIEW HELPERS ---
 // "Marquise Brown, Gabe Davis and 4 more." -- capped so a badly-matched file doesn't push
@@ -27,10 +28,14 @@ export function formatUnmatchedNames(names, max = 6) {
 // whatever had it before open() (createFocusTrap, js/shared/ui/focusTrap.js).
 export function createPreviewShell(getOverlay, { onEscape } = {}) {
     let focusTrap = null;
+    let stopLayout = null;
     return {
         open() {
             const overlay = getOverlay();
             if (overlay) overlay.style.display = 'flex';
+            // The pinned button row and the on-screen keyboard (improvements F10).
+            if (stopLayout) stopLayout();
+            stopLayout = watchModal(overlay);
 
             if (overlay) {
                 focusTrap = createFocusTrap(overlay, { onEscape });
@@ -40,6 +45,7 @@ export function createPreviewShell(getOverlay, { onEscape } = {}) {
         close() {
             const overlay = getOverlay();
             if (overlay) overlay.style.display = 'none';
+            if (stopLayout) { stopLayout(); stopLayout = null; }
             if (focusTrap) { focusTrap.deactivate(); focusTrap = null; }
         }
     };

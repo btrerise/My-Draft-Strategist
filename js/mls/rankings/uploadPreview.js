@@ -183,6 +183,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
             if (target && target.mode === 'replace') {
                 const leagueNote = target.slot === 'season'
                     ? escapeHtml(seasonUseNote(target))
+                    : target.useNote ? escapeHtml(target.useNote)
                     : target.leagueCount === 1 ? 'Used by 1 league.' : `Used by ${target.leagueCount} leagues.`;
                 targetEl.innerHTML = `Replaces ${target.slot === 'season' ? 'your In-Season set' : 'the saved set'} <strong>${escapeHtml(target.name)}</strong>` +
                     `${target.playerCount ? ` (${target.playerCount} player${target.playerCount === 1 ? '' : 's'})` : ''}. ` +

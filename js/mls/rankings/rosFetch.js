@@ -66,6 +66,8 @@ import { showToast } from '../../shared/ui/toast.js';
             if (target.mode === 'replace') {
                 const leagueNote = target.slot === 'season'
                     ? seasonUseNote(target)
+                    // "It is used by 4 leagues, and as In-Season rankings in 2 dynasty leagues." (improvements F10)
+                    : target.useNote ? `It is ${target.useNote.charAt(0).toLowerCase()}${target.useNote.slice(1)}`
                     : target.leagueCount === 1 ? 'It is used by 1 league.' : `It is used by ${target.leagueCount} leagues.`;
                 const what = target.slot === 'season' ? `your ${IN_SEASON} set` : 'the saved set';
                 const confirmed = await showConfirm(

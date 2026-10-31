@@ -15,6 +15,9 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **The upload preview's buttons stay in reach.** When the rankings preview is taller than the screen, its middle
+  scrolls and Cancel and Save stay at the bottom of the window, with a line above them while there's more below. The
+  same goes for every confirm and rename window. Short windows look as before.
 - **A navigation rail on computers.** On a window 840px or wider, the tabs sit in a column at the left edge (icons with
   their names underneath) instead of a bar along the bottom, and the green bar beside the active tab slides up and
   down. The menu button moves to the top of the rail; it opens the full menu (every tab by name, then the Guide,
@@ -106,6 +109,18 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Replace Set without scrolling.** In the rankings upload preview, the "Also use this set in" list and the notes
+  above it scroll, and Cancel and Replace Set stay at the bottom of the window, so on a phone with many leagues you no
+  longer scroll the whole list to reach them. A line above the buttons shows while there's more below. The league
+  picker, confirm and rename windows work the same way, and they fit above the phone's keyboard and toolbars. Short
+  windows look as before.
+- **The red box counts every league a replace changes.** Replacing a rankings set now also counts the dynasty and
+  keeper leagues using it as In-Season rankings, which change too: "Used by 4 leagues, and as In-Season rankings in 2
+  dynasty leagues." A dynasty set says so ("Used as dynasty rankings in 3 dynasty leagues"), and a group with a keeper
+  league says "dynasty or keeper". Auto-Fetch's Replace confirm says the same.
+- **The "Also use this set in" list says when a dynasty league already uses the set as In-Season rankings**
+  ("In-Season already · dynasty: Dynasty SF"), so checking it, which makes the set its dynasty rankings too, isn't a
+  surprise.
 - **A navigation rail on computers.** On a window 840px or wider, the five tabs sit in a column at the left edge (icons
   with their names underneath) instead of a bar along the bottom, and the green bar beside the active tab slides up and
   down. The menu button moves to the top of the rail; it opens the full menu (every tab by name, then the Guide,

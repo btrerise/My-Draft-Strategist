@@ -1,5 +1,6 @@
 // Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
 import { createFocusTrap } from './focusTrap.js';
+import { watchModal } from './modalLayout.js';
 
 // --- SHARED IN-APP CONFIRM DIALOG ---
 // showConfirm() replaces window.confirm() across all three pages. Native confirm()
@@ -49,7 +50,7 @@ function buildConfirmDialog() {
     overlay.innerHTML = `
         <div class="mds-modal mds-confirm-modal">
             <h3 id="mds-confirm-title"></h3>
-            <div id="mds-confirm-body" class="mds-confirm-body"></div>
+            <div id="mds-confirm-body" class="mds-confirm-body mds-modal-body"></div>
             <div class="mds-modal-actions">
                 <button type="button" class="btn btn-secondary" data-confirm-action="cancel"></button>
                 <button type="button" class="btn" data-confirm-action="ok"></button>
@@ -91,6 +92,7 @@ export const showConfirm = function(message, options = {}) {
 
     confirmDialogOpen = true;
     overlay.style.display = 'flex';
+    const stopLayout = watchModal(overlay); // the pinned button row (improvements F10)
 
     return new Promise(resolve => {
         let trap = null;
@@ -99,6 +101,7 @@ export const showConfirm = function(message, options = {}) {
             if (!confirmDialogOpen) return;
             confirmDialogOpen = false;
             overlay.style.display = 'none';
+            stopLayout();
             cancelBtn.removeEventListener('click', onCancel);
             okBtn.removeEventListener('click', onOk);
             overlay.removeEventListener('mousedown', onBackdrop);

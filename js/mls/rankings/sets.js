@@ -10,11 +10,12 @@ import { setRankingsCardExpanded, updateRankingsMetaDisplay } from './engine.js'
 import { loadRosterTab, optimizeLineup } from '../main.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { createFocusTrap } from '../../shared/ui/focusTrap.js';
+import { watchModal } from '../../shared/ui/modalLayout.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { showConfirm } from '../../shared/ui/confirm.js';
 import { showPrompt } from '../../shared/ui/prompt.js';
 import { noteNewRankingsSet, noteRankingsReplace } from './changeSummary.js';
-import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonOffer, seasonSetFor, setUsage } from './season.js';
+import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, rosSetUseNote, seasonOffer, seasonSetFor, setUsage } from './season.js';
 
     // --- NAMED RANKING SETS ---
     // Rankings are now named, reusable sets that a league REFERENCES (by id) rather than owns
@@ -56,7 +57,10 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
                     id: existing.id,
                     name: existing.name,
                     playerCount: Array.isArray(existing.data) ? existing.data.length : 0,
-                    leagueCount: State.leagues.filter(l => l[cfg.leagueSetIdKey] === existing.id).length
+                    leagueCount: State.leagues.filter(l => l[cfg.leagueSetIdKey] === existing.id).length,
+                    // A ROS set can also be dynasty leagues' In-Season set, and replacing it changes those too
+                    // (improvements F10): "Used by 4 leagues, and as In-Season rankings in 2 dynasty leagues."
+                    useNote: type === 'ros' ? rosSetUseNote(existing.id, State.leagues) : null
                 };
             }
         }
@@ -314,11 +318,15 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
             const locked = isActive || ownDynasty || (onSet && !allowRemove);
             if (!locked) selectableCount++;
             const seasonNow = isSeason ? seasonSetFor(l, State.rankingSets.ros) : null;
+            // A dynasty league reading this set as In-Season already (improvements F10): checking it makes the set its
+            // dynasty set too, so the row says both rather than just "Currently: <dynasty set>".
+            const seasonAlready = !isSeason && type === 'ros' && !!setId && !onSet && seasonSetFor(l, State.rankingSets.ros)?.id === setId;
             const note = isActive ? 'This league'
                 : ownDynasty ? 'Its dynasty rankings already'
                 // The Season dialog's checked rows need no note: the checkmark says it (round 9; it repeated on every row).
                 : onSet ? (isSeason ? '' : 'Already using this set')
                 : isSeason ? (seasonNow ? `In-Season now: ${seasonNow.name}` : 'No In-Season set (uses its dynasty rankings)')
+                : seasonAlready ? `In-Season already · dynasty: ${describeLeagueRankings(type, l)}`
                 : `Currently: ${describeLeagueRankings(type, l)}`;
             return `
                 <label class="mls-league-picker-row${locked ? ' is-locked' : ''}">
@@ -402,6 +410,7 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
 
         leaguePickerOpen = true;
         overlay.style.display = 'flex';
+        const stopLayout = watchModal(overlay); // the pinned button row (improvements F10)
 
         return new Promise(resolve => {
             let trap = null;
@@ -409,6 +418,7 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, seasonO
                 if (!leaguePickerOpen) return;
                 leaguePickerOpen = false;
                 overlay.style.display = 'none';
+                stopLayout();
                 okBtn.removeEventListener('click', onOk);
                 cancelBtn.removeEventListener('click', onCancel);
                 overlay.removeEventListener('mousedown', onBackdrop);
