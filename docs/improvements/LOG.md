@@ -7744,3 +7744,112 @@ around "Week 2 Matchups" (on CI's fonts the phone's "starts soon" fits beside th
 the rest moved down by that paragraph's new lines and then by step 4's new sentence (desktop +69 then +92px, ±1px
 subpixel; phone +276 then +346px). The run's `-actual.png` files are the new baselines: `desktop/` and `phone/`
 `mls-league-scoreboard.png` and `mls-league-guide.png`.
+
+## M1 — A Material 3 review of the whole site (research)
+
+**What changed.** No app code, CSS or screenshots. New **docs/improvements/material3-review.md** (not served code, so
+`PRECACHE_ASSETS` and `CACHE_NAME` stay) with 13 screenshots in **docs/improvements/material3/**: what already meets
+Material 3, then 14 ranked, sized proposals, each with what Material 3 says (linked), what the site does now (a
+screenshot), the files, the screenshots it would re-take, app by app or site-wide, and overlaps with open cards.
+
+**How.** All 82 m3.material.io pages needed (Guidelines, Specs and Accessibility of 22 components, plus type, color,
+elevation, shape, motion, states, layout and contrast) read in headless Chromium the way S26 did; the session's network
+allowed it. A throwaway Playwright script (not committed) walked every tab of both apps and T-Score at 375, 768 and
+1280px with the fixture data, measuring target sizes, keyboard focus rings, font sizes, transitions, corner radii and text
+contrast, and opened the toasts, the confirm and prompt dialogs and the upload preview.
+
+**Main findings.** Navigation (S21, S26), dark surfaces, dialog structure (F10, merged in #212) and Reduce Motion already
+meet. Off: controls under 48px on every tab (the Lineup row's swap 30x23 and lock 26x21, Taken / Pick 30px tall, 18px "i"
+icons); focus rings are the browser's default on most buttons and faint on text fields; hover lifts the button instead of a
+state layer; toasts go after 3.5s, bounce in and sit over open dialogs; selection in chips and segmented buttons is shown
+by color only; 35 font sizes in the CSS, nine under 11px on screen; ten different transition curves; a few text colors
+under 4.5:1 (T-Score's labels, the injury badge, DEF text).
+
+**Overlaps.** S15 splits into proposal 2 (focus) and 6 (contrast); proposal 1's lineup-row part folds into S32, which
+should also offer a modal bottom sheet for the row's extras on phones; proposal 8 (motion tokens) pairs with S18; F10's
+pinned buttons are done.
+
+**The owner's picks** (after reading the ranked list): "Do 1+2+3 together, 4+8, 5+12 as suggested. For the rest,
+combine where it best makes sense, either because they're related, or because approximate size means they can go in
+one session easily enough." All 14 proposals become cards; the next runbook update adds them:
+
+- **M2 = 1 + 2 + 3: touch, focus and feedback** (~25k tok, site-wide, 0 to 4 screenshots). 48px targets, one green
+  focus ring (2px on text fields), state layers for hover and press. Replaces S15's focus half. The Lineup row's swap and
+  lock spacing goes to S32.
+- **M3 = 4 + 8: messages and motion** (~16k tok, site-wide, 0 screenshots). Toasts as snackbars, plus Material 3's
+  motion tokens for every transition. Run before S18 so S18 uses the tokens, or in the same stretch, but not alongside it:
+  both edit css/base.css's transitions.
+- **M4 = 5 + 12: selection controls** (~16k tok, 16 to 18 screenshots). Checks on selected chips and segments (40px
+  segments), and switches at Material 3's size with a check. Both apps' Guide legends where a chip's look changes.
+- **M5 = 7 + 13: dialogs and form errors** (~20k tok, 0 screenshots). Grouped because both are about telling you what's
+  happening where you are: dialog headlines that name the action, a full-screen upload preview on phones, and errors
+  under the field in both apps' Sleeper forms.
+- **M6 = 6 + 10: contrast, and T-Score's tabs** (~18k tok, ~20 screenshots). Grouped because the contrast failures are
+  mostly T-Score's labels and both re-take T-Score's 12 PNGs, so they're re-taken once. Takes S15's contrast half, so
+  with M2, **S15 is fully covered and can come off the runbook**.
+- **M7 = 9 for T-Score and Draft Strategist: the type scale** (~25k tok, 28 screenshots). The tokens go into
+  css/base.css here; T-Score's stylesheet is small, so the two pages fit one session. Checks every tab at 2x text.
+- **M8 = 9 for Lineup Strategist** (~20k tok, 14 screenshots). Standalone: the biggest stylesheet (299 of the site's 434 font-size rules) and
+  it waits for S32, which redoes the phone rows' text. Uses M7's tokens, so after M7.
+- **M9 = 11 + 14: button emphasis and corners** (~20k tok, most screenshots). Grouped because both re-style buttons
+  across every screen and both change the identity a little, so the card shows mock-ups and **asks the owner first**
+  (which colored buttons lose their fill; 6 to 8px corners). Last, after the type cards, so screenshots are re-taken once
+  more at most.
+
+**Runbook updated** (2026-11-01): cards M2 to M9 added (M2, M3 and M5 in the January step; M4, M6 and M7 in a new
+"Before spring" step, one at a time; M8 and M9 with the spring and summer work), each needing M1's branch merged since
+its prompt points to the review; S15 shown under Completed as "covered by M2 and M6"; S32's scope names the bottom sheet
+and the row's 48px targets; F10 marked merged (#212); the lanes and parallel notes no longer mention S15. The follow-up
+line in docs/TESTING.md is removed.
+
+**Left over.** Pages at 200% text are checked in M7 and M8.
+
+### M1, round 2: the rest of Material 3
+
+The owner asked for a second pass "from a different lens": beyond the tangible fixes in round 1, where else could the
+rest of Material 3 improve the site's look and feel without changing its identity. Research only.
+
+**What changed.** New **docs/improvements/material3-review-2.md** (linked from the first review) with five more
+screenshots in docs/improvements/material3/ (the Dashboard, Lineup, Tracker, Scout and T-Score Top-50 at 1280px). Read
+in headless Chromium: the Expressive announcement, the components round 1 skipped (button groups, split button,
+toolbars, loading indicator, search, side sheets, FABs, app bars, carousel, navigation drawer) and the Expressive
+changes to cards, lists, badges and progress; color roles (surface containers), elevation, shape, motion specs (springs
+and their web curves), icons, editorial type; canonical layouts, scaffold, the writing style guide.
+
+**Findings.**
+- **Three corrections to written cards**: M3 should use Expressive's web spring curves (spatial ones overshoot a little
+  on purpose; round 1 quoted the baseline easing page, which Material 3 now says is no longer maintained), so the
+  toast's "no bounce" becomes a smaller, quicker bounce if the owner agrees; M4 should use Expressive's connected button
+  group (which replaces segmented buttons: the selected one changes shape and color) and make the site's three looks for
+  that control one; M2 can offer Expressive's pressed shape morph (corners tighten) beside the state layer.
+- **Nine new proposals (15 to 23)**: the badge legend in a side or bottom sheet instead of a trip to the Guide (and a
+  shared sheet S32 can reuse); badges on the navigation (lineups that need you, on the clock); progress and loading
+  indicators; two panes on wide screens (the Tracker with your team beside it, and others); surface tones instead of
+  boxes in boxes; one or two hero moments; sentence case (fold into M7 and M8); a button group and split button for the
+  Lineup card (fold into M9); search bars.
+- Looked at and not proposed: FABs, toolbars, carousel, pickers, the abstract shape library, Material Symbols, flexible
+  app bars, dynamic color.
+
+**The owner's picks:** "Yes to changing M2, M3, and M4. I want 15-23; group multiple together where it makes sense, and
+fold into existing cards if it makes sense at all. Please also feel free to re-order the priority based on estimated
+positive impact the change would have. Also, I'm OK making changes mid-season; this season is kind of a Beta
+development phase more-so than a fully released product." So:
+
+- **Corrections, all accepted:** M2 offers Expressive's pressed shape morph (corners tighten about 2px) beside the state
+  layer; M3 uses Expressive's web curves (spatial ones overshoot a little; the toast's entrance is the owner's call: a
+  small bounce or none); M4 becomes Expressive's connected button group, one look for every segmented control on the
+  three pages (Lineup Strategist's segments, T-Score's WR / RB pills), with the check optional.
+- **Folded into existing cards:** 17 (progress and loading indicators) into **M3** (both are about how the app shows
+  it's working, and the loading shape uses M3's motion tokens; M3 grows to ~24k); 23 (search bars) into **M5** (text
+  fields; ~26k); 21 (sentence case) into **M7** and **M8**, which re-take the same screenshots anyway (~30k and ~26k);
+  22 (button group and Share split button) into **M9**, whose corners (14) moved to M14.
+- **New cards:** **M10** navigation badges and hero moments (16 + 20: both rest on "a lineup needs you" and "you're on
+  the clock"; ~20k); **M11** the badge legend in a sheet (15; builds the shared sheet, so **S32 now needs M11**; ~12k);
+  **M12** two panes on wide screens for Lineup Strategist and **M13** for Draft Strategist (18, one per app; ~20k and
+  ~16k); **M14** surface tones and corners (19 + 14: both change every container and the identity a little, so one
+  card with mock-ups first; ~25k; M9 now follows it).
+- **Order, by expected impact** (owner: changes mid-season are fine, this season is a beta): weeks 10–11 add **M2**
+  (felt on every tap) and **M11**; weeks 12–13 add **M10** beside S30, with S32 after M11; the playoffs start with
+  **M3**, then S18 on its motion tokens; January **M5** and **M12** beside S25; February–March **M4**, **M6**, **M7**
+  one at a time; spring and summer **M13** before draft season, then **M8**, **M14** and **M9**. Runbook updated the
+  same day (version 33): those cards, S28 marked merged (#213), S32's need on M11.
