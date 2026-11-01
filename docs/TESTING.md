@@ -312,9 +312,8 @@ done or dropped, remove its line here in the same change. Background for each is
   configuration) instead of over it. It needs a remembered open/closed setting per app (a `keys.js` key each).
 - Draft Strategist's Dashboard (the Setup tab, renamed in improvements S26) redone like Lineup Strategist's: a setup
   walkthrough and several drafts in one place.
-- Material 3 proposals not yet picked (improvements M1): `docs/improvements/material3-review.md` lists 14 ranked, sized
-  changes (48px targets, one focus ring, state layers, snackbar timing, checks on selected chips, contrast, motion and type
-  tokens, ...). The ones the owner picks become runbook cards M2 onward; the rest stay there as options.
+- Material 3 (improvements M1): the owner picked every proposal in `docs/improvements/material3-review.md`, grouped
+  into runbook cards M2 to M9 (LOG.md, under M1). Remove this line once the runbook lists them.
 
 **Small polish, one session each**
 - One naming pattern for exported files (owner, improvements S22 round 4). The Scoreboard's is

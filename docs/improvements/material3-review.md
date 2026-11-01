@@ -1,7 +1,8 @@
 # A Material 3 review of the whole site (improvements M1)
 
 Research only: nothing in the apps changed. This is the list of proposed changes for the owner to pick from. The ones
-picked become runbook cards M2 onward (the owner's picks are in [LOG.md](LOG.md), under M1).
+picked become runbook cards M2 onward. **The owner took all of them, grouped into M2 to M9: see "The owner's picks"
+below** (also in [LOG.md](LOG.md), under M1).
 
 **What was reviewed.** Draft Strategist (`/`), Lineup Strategist (`/lineup/`) and T-Score (`/t-score/`), every tab, at
 375, 768 and 1280px wide, with the tests' fixture data (the Sleeper fixture league synced, the 24-player rankings loaded
@@ -67,6 +68,32 @@ sheets").
 Suggested grouping if the owner wants fewer cards: **1 + 2 + 3** (one "touch, focus and feedback" card, ~25k tok, it
 replaces S15's focus half), **4 + 8** (one motion-and-messages card, fits beside S18), **5 + 12** (selection controls),
 **6** absorbs the rest of S15.
+
+### The owner's picks: cards M2 to M9
+
+- **M2 = 1 + 2 + 3: touch, focus and feedback** (~25k tok, site-wide, 0 to 4 screenshots). 48px targets, one green
+  focus ring (2px on text fields), state layers for hover and press. Replaces S15's focus half. The Lineup row's swap and
+  lock spacing goes to S32.
+- **M3 = 4 + 8: messages and motion** (~16k tok, site-wide, 0 screenshots). Toasts as snackbars, plus Material 3's
+  motion tokens for every transition. Run before S18 so S18 uses the tokens, or in the same stretch, but not alongside it:
+  both edit css/base.css's transitions.
+- **M4 = 5 + 12: selection controls** (~16k tok, 16 to 18 screenshots). Checks on selected chips and segments (40px
+  segments), and switches at Material 3's size with a check. Both apps' Guide legends where a chip's look changes.
+- **M5 = 7 + 13: dialogs and form errors** (~20k tok, 0 screenshots). Grouped because both are about telling you what's
+  happening where you are: dialog headlines that name the action, a full-screen upload preview on phones, and errors
+  under the field in both apps' Sleeper forms.
+- **M6 = 6 + 10: contrast, and T-Score's tabs** (~18k tok, ~20 screenshots). Grouped because the contrast failures are
+  mostly T-Score's labels and both re-take T-Score's 12 PNGs, so they're re-taken once. Takes S15's contrast half, so
+  with M2, **S15 is fully covered and can come off the runbook**.
+- **M7 = 9 for T-Score and Draft Strategist: the type scale** (~25k tok, 28 screenshots). The tokens go into
+  css/base.css here; T-Score's stylesheet is small, so the two pages fit one session. Checks every tab at 2x text.
+- **M8 = 9 for Lineup Strategist** (~20k tok, 14 screenshots). Standalone: the biggest stylesheet (299 of the site's 434 font-size rules) and
+  it waits for S32, which redoes the phone rows' text. Uses M7's tokens, so after M7.
+- **M9 = 11 + 14: button emphasis and corners** (~20k tok, most screenshots). Grouped because both re-style buttons
+  across every screen and both change the identity a little, so the card shows mock-ups and **asks the owner first**
+  (which colored buttons lose their fill; 6 to 8px corners). Last, after the type cards, so screenshots are re-taken once
+  more at most.
+
 
 ---
 
