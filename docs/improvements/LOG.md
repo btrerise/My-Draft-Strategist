@@ -7671,3 +7671,41 @@ mvp-lvp and smoke again: 82 passed.
 - A past week's MVPs & LVPs need that week's ESPN scoreboard to call LVPs ("games over"); if it doesn't load, LVPs stay
   empty for that week while the record still reads Final.
 - Open follow-ups this touched: none of the existing ones.
+
+### S28, round 2: the owner's questions, and a review as a user
+
+**The LVP note.** The owner asked why I'd noted that a past week's LVPs need its ESPN scoreboard, since they worked in
+their testing. They do: the app fetches each week's scoreboard. The note was about the failure case only: an LVP needs
+his game "over" (`state === 'post'`, playerRecap.js), so if that one request fails, every state is unknown and the LVP
+list is empty beside a Final pill. Fixed (owner: yes): `recapInput` gives a past week's teams `post` where the
+scoreboard has no state. Spec `mls-mvp-lvp.spec.mjs`, "an earlier week's LVPs show even without its ESPN scoreboard"
+(ESPN aborted for week 1); it fails with the fix taken out (no LVPs) and passes with it.
+
+**Review as a user** (rendered at both widths), and what the owner picked to fix (all of it):
+1. "Rebuilding 1–0" alone read like a fourth kind of league → **both halves always show** once any dynasty or keeper
+   league is in the record, 0–0 included ("Competing 0–0 | Rebuilding 1–0"); in Export Recap's image too.
+2. Getting back to this week took a tap per week → **"Back to week N"** (`.mls-week-back`, `scoreboardThisWeek`), a small
+   green link after the arrows on a past week only; focus goes to Previous and the announcer reads the week.
+3. The card shrank to "Loading matchups…" and grew back on each step → **the last week drawn stays up, dimmed and
+   inert** (`.mls-week-body.is-stale`, `view.lastBody`) under the new title until the new week arrives. A first load
+   draws as before. An empty draw made before the load starts never replaces the last real body (the first try did,
+   and the spec caught it).
+4. The arrows' 32px tap targets → a **48px tap area** (`::before`, inset −0.5rem) without making the header taller.
+5. "Week 1 is over: every result is final." repeated the pill → **no foot line for a past week** (and not the "Sleeper
+   can still correct stats" line either).
+Then the two things that caught my eye (owner: follow up after the fixes; done):
+- **MVPs & LVPs no longer repeats the Provisional / Final pill** the header shows a line above.
+- **"$ Paid" stays together** in the paid hint on phones (`mls-nowrap`).
+
+**Merge.** F10 (btrerise/My-Draft-Strategist#212) merged to main during this round; merged in (LOG and CHANGELOG
+conflicts: both kept, F10's LOG entry first). Main's `CACHE_NAME` is v2.8.138 too, so this branch is now **v2.8.139**.
+
+**Tests.** `mls-this-week.spec.mjs`: "Back to week 2" there on week 1, gone on week 2, one tap back (and the announcer);
+"stepping to a week still loading keeps the last week's tiles, dimmed" (week 1's matchups held until released: inert,
+two old tiles, then Final and no stale body); no foot line on a past week; the splits with Competing 0–0. `mls-mvp-lvp`:
+no pill on the MVPs & LVPs line (Provisional in the header); the image has Competing 0–0 and Rebuilding 1–0; the LVP test
+above.
+
+**Screenshots.** Still the same four as round 1 (the Scoreboard and the Guide, both widths); round 2 changes nothing
+else in them except the Guide's "Back to week N" sentence (the screenshot Scoreboard is before kickoff: no back link, no
+split, no MVPs). Take all four from CI.

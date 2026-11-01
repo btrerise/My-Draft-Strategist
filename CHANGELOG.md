@@ -111,12 +111,16 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A tidier Scoreboard.** MVPs & LVPs no longer repeat the Provisional / Final pill the header already shows, and the
+  hint about marking paid leagues no longer splits "$ Paid" across two lines on phones.
 - **Look back at earlier weeks on the Scoreboard.** Arrows beside the title (‹ Week 7 Recap ›) step back a week at a
   time, down to week 1, and forward again to this week. An earlier week shows its own matchups, scores and MVPs & LVPs,
-  and reads Final. Leaving the Scoreboard goes back to this week; the Dashboard's line and the Lineup tab's matchup stay
-  on this week throughout.
+  and reads Final. "Back to week N" beside the title returns in one tap, and so does leaving the Scoreboard; the
+  Dashboard's line and the Lineup tab's matchup stay on this week throughout. While a week loads, the last one stays
+  on screen, dimmed, instead of the card shrinking and growing back.
 - **Competing / Rebuilding in the Scoreboard's record.** Beside Redraft / Dynasty, your dynasty and keeper leagues are
-  split by the Roster tab's "I'm competing this year" switch (off counts as Rebuilding), in the record line and in
+  split by the Roster tab's "I'm competing this year" switch (off counts as Rebuilding; both halves always show, 0–0
+  included), in the record line and in
   Export Recap's image. The switch now shows in every dynasty and keeper league so each one can be set; without an
   In-Season set it only sorts the league on the Scoreboard.
 - **Replace Set without scrolling.** In the rankings upload preview, the middle scrolls (one scroll: the "Also use

@@ -1921,7 +1921,14 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 /* With the arrows the heading is wider than a phone's row: it shrinks (the summary wraps under the title) rather than
    pushing (i) and Refresh onto a line of their own. */
 .mls-week-head .mls-week-heading { flex-basis: 0; }
-.mls-week-step { display: inline-flex; align-items: center; justify-content: center; min-width: 2rem; min-height: 2rem; border-radius: 50%; color: var(--primary-green); cursor: pointer; }
+.mls-week-step { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 2rem; min-height: 2rem; border-radius: 50%; color: var(--primary-green); cursor: pointer; }
+/* A 48px tap area (round 2, Material's minimum) around the 32px button, without making the header taller. */
+.mls-week-step::before { content: ''; position: absolute; inset: -0.5rem; }
+/* "Back to week 9" on a past week: a small text link after the arrows. */
+.mls-week-back { color: var(--primary-green); font-size: 0.8rem; font-weight: 600; cursor: pointer; padding: 0.2rem 0.1rem; white-space: nowrap; }
+.mls-week-back:hover { text-decoration: underline; }
+/* The last week drawn, dimmed while the chosen one loads. */
+.mls-week-body.is-stale { opacity: 0.45; transition: opacity 0.15s; pointer-events: none; }
 .mls-week-step:hover:not(:disabled) { background: var(--bg-hover, rgba(127, 127, 127, 0.12)); }
 .mls-week-step:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
 .mls-week-step:disabled { color: var(--text-muted); opacity: 0.4; cursor: default; }

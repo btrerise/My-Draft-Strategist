@@ -52,7 +52,7 @@ import { loadRosterTab, setRosterPosFilter, setRosterSort } from './render/roste
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
 import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeaguePaid, toggleLeagueReorder, withCardsTransition } from './render/leagueCards.js';
-import { dismissPaidHint, exportScoreboard, leaveScoreboardWeek, refreshThisWeek, renderThisWeek, showAllRecap, showAllSwings, stepScoreboardWeek, toggleWeekFold } from './week/thisWeek.js';
+import { dismissPaidHint, exportScoreboard, leaveScoreboardWeek, refreshThisWeek, renderThisWeek, scoreboardThisWeek, showAllRecap, showAllSwings, stepScoreboardWeek, toggleWeekFold } from './week/thisWeek.js';
 import { resetRecapLines, saveRecapLines } from './week/recapLines.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
@@ -137,6 +137,7 @@ const clickActions = {
     refreshThisWeek() { refreshThisWeek({ force: true }); },
     // The Scoreboard's ‹ › (improvements S28)
     stepScoreboardWeek() { stepScoreboardWeek(Number(this.dataset.step)); },
+    scoreboardThisWeek() { scoreboardThisWeek(); },
     dismissPaidHint() { dismissPaidHint(); },
     showAllSwings() { showAllSwings(); },
     // The Scoreboard's folds (MVPs & LVPs, Still in play) and Show all (week/thisWeek.js, improvements S22), and the

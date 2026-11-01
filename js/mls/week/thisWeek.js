@@ -71,7 +71,7 @@ const TOOLTIP = [
 // --- What this card last loaded (in memory) ---
 // loads: per week, when it last loaded and which leagues' fetches failed then. chances: the swing matchups' win chances,
 // for chancesWeek only. chosen: the week picked with the Scoreboard's arrows (S28), null for this week.
-const view = { loads: new Map(), loading: null, chances: new Map(), chancesWeek: null, chancesKey: '', allSwingsWeek: null, chosen: null };
+const view = { loads: new Map(), loading: null, chances: new Map(), chancesWeek: null, chancesKey: '', allSwingsWeek: null, chosen: null, lastBody: null };
 const failedFor = (week) => (view.loads.get(week) || {}).failed || new Map();
 const chanceOf = (ctx, leagueId) => view.chancesWeek === ctx.week ? view.chances.get(leagueId) : undefined;
 // Each week's player stats from Sleeper (S22, round 8): each player's points on the MVPs & LVPs scale, loaded with the
@@ -496,7 +496,9 @@ function splitGroups(m) {
     const direction = (r) => leagueDirection(getPowerLeagueKind(r.league), !!r.league.powerCompeting);
     const has = {
         Paid: h2h.some(r => r.league.paid), Free: h2h.some(r => !r.league.paid), Redraft: h2h.some(r => !isDynasty(r)), Dynasty: h2h.some(isDynasty),
-        Competing: h2h.some(r => direction(r) === 'competing'), Rebuilding: h2h.some(r => direction(r) === 'rebuilding'),
+        // Both halves once any dynasty or keeper league is in it, 0–0 included (owner, S28 round 2: "Rebuilding 1–0" on
+        // its own read as a fourth kind of league, not a split of your dynasty leagues).
+        Competing: h2h.some(r => direction(r) != null), Rebuilding: h2h.some(r => direction(r) != null),
     };
     const medians = callable.filter(r => r.res.median);
     const medRec = { W: medians.filter(r => r.res.median.above).length, L: medians.filter(r => !r.res.median.above).length, T: 0 };
@@ -586,6 +588,16 @@ function focusStep(step) {
     const target = keep && !keep.disabled ? keep : btn(-step);
     if (target) target.focus();
 }
+// "Back to week 9" beside a past week's title (S28 round 2): one tap rather than one per week.
+export function scoreboardThisWeek() {
+    if (view.chosen == null) return Promise.resolve();
+    view.chosen = null;
+    renderThisWeek();
+    const done = refreshThisWeek();
+    announceWeek();
+    document.querySelector('#thisWeekCard .mls-week-step[data-step="-1"]')?.focus();
+    return done;
+}
 export function leaveScoreboardWeek() {
     if (view.chosen == null) return;
     view.chosen = null;
@@ -619,8 +631,10 @@ function renderScoreboard(m) {
         const off = stepWeek(ctx.week, dir, ctx.last) == null;
         return `<button type="button" class="btn-bare mls-week-step" data-action="stepScoreboardWeek" data-step="${dir}" aria-label="${label}"${off ? ' disabled' : ''}>${icon}</button>`;
     };
+    const home = ctx.chosen ? weekCtx({ scoreboard: false }).week : null;
+    const backHTML = home != null ? `<button type="button" class="btn-bare mls-week-back" data-action="scoreboardThisWeek">Back to week ${home}</button>` : '';
     const head = `<header class="mls-week-head">
-        <div class="mls-week-heading"><span class="mls-week-nav">${step(-1, 'Previous week', PREV_ICON)}<h3 class="mls-week-title">${titleText(m)}</h3>${step(1, 'Next week', NEXT_ICON)}</span><span class="mls-week-summary">${summaryText(m)}</span></div>
+        <div class="mls-week-heading"><span class="mls-week-nav">${step(-1, 'Previous week', PREV_ICON)}<h3 class="mls-week-title">${titleText(m)}</h3>${step(1, 'Next week', NEXT_ICON)}</span>${backHTML}<span class="mls-week-summary">${summaryText(m)}</span></div>
         ${info}
         <span class="mls-week-actions">${started && listed.length ? weekStatusMarkup(final) : ''}${refreshBtn}</span>
     </header>`;
@@ -642,7 +656,7 @@ function renderScoreboard(m) {
         parts.push(`<div class="mls-week-splits-row">${groups.join('')}</div>`);
         // What the groups mean (keeper with redraft, Median only where it's played) is in the header's info tip
         // (owner, round 11: four lines of helper text on a phone before the first tile).
-        if (!anyPaid && !paidHintDismissed()) parts.push(`<p class="mls-week-splits mls-week-hint"><span class="text-helper">Mark the leagues you pay for (Dashboard, Edit, then $ Paid) to split paid and free.</span><button type="button" class="btn-bare mls-week-hint-close" data-action="dismissPaidHint" aria-label="Dismiss this hint">✕</button></p>`);
+        if (!anyPaid && !paidHintDismissed()) parts.push(`<p class="mls-week-splits mls-week-hint"><span class="text-helper">Mark the leagues you pay for (Dashboard, Edit, then <span class="mls-nowrap">$ Paid</span>) to split paid and free.</span><button type="button" class="btn-bare mls-week-hint-close" data-action="dismissPaidHint" aria-label="Dismiss this hint">✕</button></p>`);
         // Biggest win and worst loss (owner, S22 round 4): under the record, where the week's headline is, rather than
         // below the tiles (19 of them run about 1,700px on a phone). Among matchups already settled (all, once final).
         // Only with two or more to compare (S22 round 10): with one league, it repeated the only tile.
@@ -696,9 +710,9 @@ function renderScoreboard(m) {
     const failed = sleeperLeagues.filter(l => failedFor(ctx.week).get(l.leagueId));
     if (failed.length) notes.push(`<li class="mls-week-failed">Couldn't load from Sleeper: ${failed.map(leagueName).join(', ')}. Tap Refresh to try again.</li>`);
     if (notes.length) parts.push(`<ul class="mls-week-notes">${notes.join('')}</ul>`);
-    if (ctx.past && listed.length) parts.push(`<p class="text-helper mls-week-foot">Week ${ctx.week} is over: every result is final.</p>`);
-    else if (started && listed.length && !Object.keys(ctx.games).length) parts.push(`<p class="text-helper mls-week-foot">Game status didn't load, so everyone still counts as live.</p>`);
-    else if (final) parts.push(`<p class="text-helper mls-week-foot">Every game is final. Sleeper can still correct stats in the next few days.</p>`);
+    // A past week: nothing at the foot (round 2: "Week 1 is over" repeated the Final pill, and stat corrections are long done).
+    if (!ctx.past && started && listed.length && !Object.keys(ctx.games).length) parts.push(`<p class="text-helper mls-week-foot">Game status didn't load, so everyone still counts as live.</p>`);
+    else if (!ctx.past && final) parts.push(`<p class="text-helper mls-week-foot">Every game is final. Sleeper can still correct stats in the next few days.</p>`);
     // Export Recap (S22, rounds 2-3): a summary image for a group chat, once there are scores to sum up. The same
     // purple camera button at the bottom of its card as Export Trade.
     if (started && listed.length) parts.push(`<div class="mls-week-export"><button type="button" id="exportScoreboardBtn" class="btn btn-purple" data-action="exportScoreboard" title="Save a summary of your week (record, MVPs and LVPs) as an image">${CAMERA_ICON}<span class="mls-week-export-label">Export Recap</span></button></div>`);
@@ -706,7 +720,17 @@ function renderScoreboard(m) {
     // A redraw keeps focus on the week's arrow it was on (S28): the card's HTML is replaced, buttons and all.
     const active = document.activeElement;
     const focused = active && el.contains(active) && active.classList.contains('mls-week-step') ? Number(active.dataset.step) : null;
-    el.innerHTML = `${head}<div class="mls-week-body">${parts.join('')}</div>`;
+    // While another week loads, the last week drawn stays up, dimmed and inert, under the new week's title (round 2: the
+    // card shrank to "Loading matchups…" and grew back on each step). Only for a week change; a first load draws as before.
+    const waiting = m.pending && !listed.length;
+    let body = parts.join('');
+    if (waiting && view.lastBody && view.lastBody.week !== ctx.week) {
+        body = view.lastBody.html;
+        el.innerHTML = `${head}<div class="mls-week-body is-stale" inert aria-hidden="true">${body}</div>`;
+    } else {
+        if (!waiting) view.lastBody = { week: ctx.week, html: body };
+        el.innerHTML = `${head}<div class="mls-week-body">${body}</div>`;
+    }
     if (focused) focusStep(focused);
 }
 
@@ -884,7 +908,10 @@ function recapInput(ctx) {
         Object.keys(players).forEach(id => { const s = stats[id]; if (s && typeof s[key] === 'number') points[id] = s[key]; });
         verdict = { points };
     }
-    return { leagues, players, games: ctx.games, byeTeams, lines, verdict };
+    // A past week is over (S28 round 2): every game counts as final, even if that week's ESPN scoreboard didn't load, so
+    // the LVPs (who need "game over") match the Final pill.
+    const games = ctx.past ? { ...Object.fromEntries(Object.values(players).filter(p => p.team).map(p => [p.team, { state: 'post' }])), ...ctx.games } : ctx.games;
+    return { leagues, players, games, byeTeams, lines, verdict };
 }
 
 const recapName = (r) => `<span class="mls-recap-name">${escapeHtml(r.name)} <span class="mls-week-pos">${escapeHtml(r.pos)}</span></span>`;
@@ -923,7 +950,8 @@ function recapHTML(m) {
     const rc = buildPlayerRecap(recapInput(ctx));
     if (!rc.leagueCount) return '';
     const summary = `${rc.mvps.length} MVP${rc.mvps.length === 1 ? '' : 's'} · ${rc.lvps.length} LVP${rc.lvps.length === 1 ? '' : 's'}`;
-    const head = `<span class="mls-recap-title">MVPs &amp; LVPs</span><span class="mls-week-summary">${summary}</span>${weekStatusMarkup(m.final)}`;
+    // No Provisional / Final pill of its own (S28 round 2): the card's header has it, a line above.
+    const head = `<span class="mls-recap-title">MVPs &amp; LVPs</span><span class="mls-week-summary">${summary}</span>`;
 
     const lines = getRecapLines();
     const offSleeper = (State.leagues || []).filter(l => !isSleeperLeague(l)).length;
