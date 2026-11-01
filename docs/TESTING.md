@@ -312,8 +312,6 @@ done or dropped, remove its line here in the same change. Background for each is
   configuration) instead of over it. It needs a remembered open/closed setting per app (a `keys.js` key each).
 - Draft Strategist's Dashboard (the Setup tab, renamed in improvements S26) redone like Lineup Strategist's: a setup
   walkthrough and several drafts in one place.
-- Material 3 (improvements M1): the owner picked every proposal in `docs/improvements/material3-review.md`, grouped
-  into runbook cards M2 to M9 (LOG.md, under M1). Remove this line once the runbook lists them.
 
 **Small polish, one session each**
 - One naming pattern for exported files (owner, improvements S22 round 4). The Scoreboard's is

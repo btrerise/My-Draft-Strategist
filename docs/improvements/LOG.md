@@ -7641,5 +7641,10 @@ one session easily enough." All 14 proposals become cards; the next runbook upda
   (which colored buttons lose their fill; 6 to 8px corners). Last, after the type cards, so screenshots are re-taken once
   more at most.
 
-**Left over.** The runbook update (cards M2 to M9, S15 removed or marked "covered by M2 and M6", S32's note about the
-bottom sheet and the row's 48px targets). Pages at 200% text are checked in M7 and M8.
+**Runbook updated** (2026-11-01): cards M2 to M9 added (M2, M3 and M5 in the January step; M4, M6 and M7 in a new
+"Before spring" step, one at a time; M8 and M9 with the spring and summer work), each needing M1's branch merged since
+its prompt points to the review; S15 shown under Completed as "covered by M2 and M6"; S32's scope names the bottom sheet
+and the row's 48px targets; F10 marked merged (#212); the lanes and parallel notes no longer mention S15. The follow-up
+line in docs/TESTING.md is removed.
+
+**Left over.** Pages at 200% text are checked in M7 and M8.
