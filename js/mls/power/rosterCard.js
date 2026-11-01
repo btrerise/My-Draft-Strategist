@@ -107,8 +107,8 @@ export const setPowerCompeting = function(checked) {
 
 // The switch shows in every dynasty and keeper league, whatever the source (improvements S28, the owner's choice: so each
 // can be set for the Scoreboard's Competing / Rebuilding record). It moves Ovr and the position rooms only with an
-// In-Season set and your own rankings as the source (Market Consensus scores every column alike); elsewhere its line
-// says it only sorts the league on the Scoreboard.
+// In-Season set and your own rankings as the source (Market Consensus scores every column alike); either way its line
+// says what on and off mean on the Scoreboard.
 function renderCompetingSwitch(league, src) {
     const wrap = document.getElementById('powerCompetingWrap');
     if (!wrap) return;
@@ -119,9 +119,9 @@ function renderCompetingSwitch(league, src) {
     const moves = show && !!seasonSetFor(league, State.rankingSets.ros) && !!src && src.source === 'custom';
     const desc = document.getElementById('powerCompetingDesc');
     if (desc) {
-        desc.innerHTML = moves
-            ? 'Ovr and position rooms use your <span class="mls-nowrap">In-Season</span> rankings.'
-            : 'Counts this league as Competing on the Scoreboard. With an <span class="mls-nowrap">In-Season</span> set and your own rankings, Ovr and position rooms use them too.';
+        // S28 round 3 (owner): say what off means, in one line where that's all it does.
+        const board = 'On: Competing on the Scoreboard. Off: Rebuilding.';
+        desc.innerHTML = moves ? `Ovr and position rooms use your <span class="mls-nowrap">In-Season</span> rankings. ${board}` : board;
     }
 }
 

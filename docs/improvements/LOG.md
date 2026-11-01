@@ -7709,3 +7709,28 @@ above.
 **Screenshots.** Still the same four as round 1 (the Scoreboard and the Guide, both widths); round 2 changes nothing
 else in them except the Guide's "Back to week N" sentence (the screenshot Scoreboard is before kickoff: no back link, no
 split, no MVPs). Take all four from CI.
+
+### S28, round 3: a second review as a user
+
+Rendered this time: keyboard focus on the arrows (a clean ring, not clipped), the Roster tab's switch in a dynasty league
+without an In-Season set, the Dashboard on a phone, and Tuesday (recap week 2, app week 3). The owner picked:
+1. **A past week shows results only** (owner: 1(a)). Its tiles and Biggest win / Worst loss opened that league's Lineup
+   tab, which shows this week's lineup and matchup: a mismatch. Now they're `div.is-static` (no `data-action`, no ›, no
+   hover or pointer); this week's are buttons as before. **Owner's note for later:** possibly let the Lineup tab show
+   past weeks so these could open again; not needed now (added under "Open follow-ups" in docs/TESTING.md, "Wanted by
+   the owner, not scheduled yet").
+2. **Tuesday's ›** reaches the app's own week when it's ahead of the recap (`last` in `weekCtx` = the latest of the recap
+   week, `State.currentNflWeek` and `?week=`): next week's matchups, which the Lineup tab is already on, with "Back to
+   week 2". Any other day nothing changes (the two weeks are the same).
+3. **The switch's line says what off means**: "On: Competing on the Scoreboard. Off: Rebuilding." Where the switch also
+   moves Ovr and the rooms (an In-Season set and your own rankings), today's sentence and then that one.
+4. **"In -Season"** (the gap after the hyphen I'd flagged): not in the markup (a plain hyphen) and not CSS. It's this
+   container's fallback font, which the tests use because they block Outfit. With Outfit loaded (unrouting the font as
+   `fonts.spec.mjs` does, `document.fonts.check('12px Outfit')` true) it renders "In-Season" with no gap, and Outfit is
+   what users get (self-hosted and preloaded since S17). Nothing to change.
+
+Tests: `mls-this-week.spec.mjs`: on week 1 the tiles are `.is-static`, no button or › in tiles or extremes, and this
+week's tiles are buttons again; the Tuesday test steps › to week 3 (› then disabled), "Back to week 2" returns; the
+switch's new line. `mls-season-rankings.spec.mjs`: both wordings of the line. Screenshots: only the Guide's text changes
+again (the screenshot league is redraft, so no switch; the Scoreboard screenshot is this week's, before kickoff); still
+the same four PNGs to take from CI.

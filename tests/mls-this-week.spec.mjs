@@ -402,6 +402,14 @@ test.describe('This week: every league\'s matchup', () => {
         expect(weeks.recap).toBe(2);
         // Week 2's matchups stayed out of the Lineup tab's cache, which is for week 3.
         expect(weeks.lineupCache).not.toContain(2);
+        // › reaches the app's week (round 3): next week's matchups, which the Lineup tab is already on; Back returns.
+        await expect(card(page).locator('.mls-week-step[data-step="1"]')).toBeEnabled();
+        await card(page).locator('.mls-week-step[data-step="1"]').click();
+        await expect(card(page).locator('.mls-week-title')).toHaveText(/^Week 3 /);
+        await expect(card(page).locator('.mls-week-step[data-step="1"]')).toBeDisabled();
+        await expect(card(page).locator('.mls-week-back')).toHaveText('Back to week 2');
+        await card(page).locator('.mls-week-back').click();
+        await expect(card(page).locator('.mls-week-title')).toHaveText('Week 2 Recap');
         await showTab(page, 'setup');
         await expect(page.locator('#weekSummaryLine')).toContainText('Week 2 Recap');
         await expectClean(page, state);
@@ -447,6 +455,10 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(card(page).locator('.mls-week-chance, .mls-week-tile-chance')).toHaveCount(0);
         // No foot line for a past week (round 2: it repeated the pill).
         await expect(card(page).locator('.mls-week-foot')).toHaveCount(0);
+        // Results only (round 3): a past week's tiles and biggest win / worst loss open nothing (the Lineup tab is this week's).
+        await expect(tiles(page).locator('.mls-week-tile-btn.is-static')).toHaveCount(2);
+        await expect(card(page).locator('.mls-week-tile button, .mls-week-extremes button, .mls-week-tile-go')).toHaveCount(0);
+        await expect(card(page).locator('.mls-week-extreme.is-static')).toHaveCount(1); // 2–0: a biggest win, no worst loss
         // Fixture League's week-1 file: Jefferson's 20 in, so 118.0 (98.0 in week 2's).
         await expect(pts(tiles(page).filter({ has: page.locator('.mls-week-name', { hasText: /^Fixture League$/ }) }))).toHaveText(['118.0', '110.0']);
         // Screen readers hear the week; focus moves to the arrow that's still enabled.
@@ -465,6 +477,7 @@ test.describe('This week: every league\'s matchup', () => {
         await step(page, 1).click();
         await expect(title).toHaveText('Week 2 Recap');
         await expect(back).toHaveCount(0);
+        await expect(tiles(page).locator('button.mls-week-tile-btn')).toHaveCount(2); // this week's open the lineup again
         await expect(card(page).locator('.mls-week-head .mls-week-status')).toHaveText('Provisional');
         await expect(card(page).locator('.mls-week-swing')).toHaveCount(1);
         // Back again inside 2 minutes: week 1 from memory, no second fetch; then "Back to week 2" in one tap.
@@ -539,7 +552,7 @@ test.describe('This week: every league\'s matchup', () => {
         await page.selectOption('#headerLeagueSelect', FIXTURE_LEAGUE2_ID);
         await showTab(page, 'roster');
         await expect(page.locator('#powerCompetingWrap')).toBeVisible();
-        await expect(page.locator('#powerCompetingDesc')).toHaveText(/Counts this league as Competing on the Scoreboard/);
+        await expect(page.locator('#powerCompetingDesc')).toHaveText('On: Competing on the Scoreboard. Off: Rebuilding.');
         await page.locator('#powerCompeting').check();
         await showTab(page, 'scoreboard');
         await expect(splits).toHaveText(['Redraft 0–1', 'Dynasty 1–0', 'Competing 1–0', 'Rebuilding 0–0']);

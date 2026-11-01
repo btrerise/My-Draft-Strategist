@@ -314,6 +314,9 @@ done or dropped, remove its line here in the same change. Background for each is
 - A Material 3 review of the whole site (owner, improvements S26): both apps and T-Score, every component, type, color,
   spacing, states, motion and accessibility, against m3.material.io, reported for the owner to pick from as S26's
   round 2 did for the navigation (its LOG entry has how to read the site's pages).
+- Past weeks on the Lineup tab (owner, improvements S28 round 3; "possibly, not needed now"): the Scoreboard shows
+  earlier weeks, but its tiles open nothing on a past week, because the Lineup tab only knows this week. Letting the
+  Lineup tab show a past week's lineup and points (read-only) would let those tiles open it again.
 
 **Small polish, one session each**
 - One naming pattern for exported files (owner, improvements S22 round 4). The Scoreboard's is

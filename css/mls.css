@@ -2571,6 +2571,9 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .mls-week-extreme { display: flex; align-items: baseline; gap: 0.5rem; min-width: 0; padding: 0.35rem 0.55rem; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .mls-week-extreme:hover { background: rgba(255, 255, 255, 0.04); }
 .mls-week-extreme:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
+/* A past week's tiles and extremes show results only (S28 round 3): no pointer, no hover. */
+.mls-week-tile-btn.is-static, .mls-week-extreme.is-static { cursor: default; }
+.mls-week-tile-btn.is-static:hover, .mls-week-extreme.is-static:hover { background: rgba(0, 0, 0, 0.15); }
 .mls-week-extreme.is-win { border-left-color: #10b981; }
 .mls-week-extreme.is-loss { border-left-color: #ef4444; }
 .mls-week-extreme-label { flex-shrink: 0; font-size: 0.72rem; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-muted); }

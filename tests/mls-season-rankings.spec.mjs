@@ -101,7 +101,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await expect(page.locator('#rosterList .mls-roster-source')).toHaveCount(0);
         await expect(page.locator('#rosterPowerStrip')).not.toContainText('In-Season');
         await expect(page.locator('#powerCompetingWrap')).toBeVisible();
-        await expect(page.locator('#powerCompetingDesc')).toHaveText(/^Counts this league as Competing on the Scoreboard\./);
+        await expect(page.locator('#powerCompetingDesc')).toHaveText('On: Competing on the Scoreboard. Off: Rebuilding.');
 
         // The Season set alone as the league's rankings, for comparison (then back to the dynasty set).
         await patchLeagues(page, { 'Fixture League': { rosRankingSetId: ids.season } });
@@ -158,7 +158,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
 
         // I'm competing: Ovr and the rooms by In-Season too, Future still dynasty. Saved on the league.
         await expect(page.locator('#powerCompetingWrap')).toBeVisible();
-        await expect(page.locator('#powerCompetingDesc')).toHaveText('Ovr and position rooms use your In-Season rankings.');
+        await expect(page.locator('#powerCompetingDesc')).toHaveText('Ovr and position rooms use your In-Season rankings. On: Competing on the Scoreboard. Off: Rebuilding.');
         await page.locator('#powerCompeting').check();
         const competing = await powerTable(page);
         for (const owner of ['You', 'Rival']) {

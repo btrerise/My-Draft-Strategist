@@ -101,7 +101,9 @@ function weekCtx({ scoreboard = true } = {}) {
     const current = State.recapNflWeek ?? live;
     const home = asked ?? current;
     const target = scoreboard && view.chosen != null ? view.chosen : home;
-    const last = current == null ? null : Math.max(current, asked ?? 0);
+    // The latest week the arrows reach: this week's recap, or the app's own week when that's ahead of it (S28 round 3:
+    // on Tuesday › shows next week's matchups, which the Lineup tab is already on), or the address's week if later.
+    const last = current == null ? null : Math.max(current, live ?? 0, asked ?? 0);
     const about = { season, asked: asked != null && target === asked, past: target != null && current != null && target < current, last, chosen: target !== home };
     if (target != null && live != null && target !== live) {
         const o = otherWeeks.get(target);
@@ -476,12 +478,16 @@ function tileHTML(r, started, ctx) {
     const sep = '<span class="mls-week-tile-sep"> · </span>';
     const line = (items) => items.length ? `<span class="mls-week-tile-line">${items.join(sep)}</span>` : '';
     const foot = line([lead, ...status].filter(Boolean)) + line(context);
-    return `<li class="mls-week-tile is-${tone}">
-        <button type="button" class="mls-week-tile-btn" data-action="openLeagueLineup" data-league-id="${escapeHtml(l.leagueId)}" aria-label="${leagueName(l)}: open its lineup">
-            <span class="mls-week-tile-top"><span class="mls-week-name">${leagueName(l)}</span>${l.paid ? ' ' + paidBadgeMarkup() : ''}</span>
+    const inner = `<span class="mls-week-tile-top"><span class="mls-week-name">${leagueName(l)}</span>${l.paid ? ' ' + paidBadgeMarkup() : ''}</span>
             <span class="mls-week-tile-pts is-you">${youPts}</span>
             <span class="mls-week-tile-who">${oppLabel}</span><span class="mls-week-tile-pts">${oppPts}</span>
-            <span class="mls-week-tile-foot"><span class="mls-week-tile-notes">${foot}</span>${TILE_ARROW}</span>
+            <span class="mls-week-tile-foot"><span class="mls-week-tile-notes">${foot}</span>${ctx.past ? '' : TILE_ARROW}</span>`;
+    // A past week's tile shows the result only (S28 round 3, owner): the Lineup tab it would open is this week's, so the
+    // tap led somewhere that didn't match the tile.
+    if (ctx.past) return `<li class="mls-week-tile is-${tone}"><div class="mls-week-tile-btn is-static">${inner}</div></li>`;
+    return `<li class="mls-week-tile is-${tone}">
+        <button type="button" class="mls-week-tile-btn" data-action="openLeagueLineup" data-league-id="${escapeHtml(l.leagueId)}" aria-label="${leagueName(l)}: open its lineup">
+            ${inner}
         </button>
     </li>`;
 }
@@ -519,9 +525,13 @@ export function weekExtremes(callable, final) {
     const pick = (result, better) => settled.filter(r => r.res.result === result).reduce((a, r) => (!a || better(r.res.margin, a.res.margin) ? r : a), null);
     return { win: pick('W', (a, b) => a > b), loss: pick('L', (a, b) => a < b) };
 }
-function extremesHTML(callable, final) {
+function extremesHTML(callable, final, ctx) {
     const { win, loss } = weekExtremes(callable, final);
-    const item = (r, label, tone) => `<button type="button" class="btn-bare mls-week-extreme is-${tone}" data-action="openLeagueLineup" data-league-id="${escapeHtml(r.league.leagueId)}" aria-label="${label}: ${leagueName(r.league)}, ${signed(r.res.margin)}. Open its lineup">
+    // A past week: results only, like its tiles (S28 round 3).
+    const still = (r, label, tone) => `<div class="mls-week-extreme is-${tone} is-static">
+        <span class="mls-week-extreme-label">${label}</span><span class="mls-week-name">${leagueName(r.league)}</span><span class="mls-week-tile-margin${r.res.margin < 0 ? ' is-behind' : ''}">${signed(r.res.margin)}</span>
+    </div>`;
+    const item = ctx.past ? still : (r, label, tone) => `<button type="button" class="btn-bare mls-week-extreme is-${tone}" data-action="openLeagueLineup" data-league-id="${escapeHtml(r.league.leagueId)}" aria-label="${label}: ${leagueName(r.league)}, ${signed(r.res.margin)}. Open its lineup">
         <span class="mls-week-extreme-label">${label}</span><span class="mls-week-name">${leagueName(r.league)}</span><span class="mls-week-tile-margin${r.res.margin < 0 ? ' is-behind' : ''}">${signed(r.res.margin)}</span>
     </button>`;
     const items = [win && item(win, 'Biggest win', 'win'), loss && item(loss, 'Worst loss', 'loss')].filter(Boolean);
@@ -660,7 +670,7 @@ function renderScoreboard(m) {
         // Biggest win and worst loss (owner, S22 round 4): under the record, where the week's headline is, rather than
         // below the tiles (19 of them run about 1,700px on a phone). Among matchups already settled (all, once final).
         // Only with two or more to compare (S22 round 10): with one league, it repeated the only tile.
-        if (callable.length >= 2) parts.push(extremesHTML(callable, final));
+        if (callable.length >= 2) parts.push(extremesHTML(callable, final, ctx));
         const swings = callable.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: chanceOf(ctx, r.league.leagueId) ?? null, trailReach: trailReachOf(r.res) }))
             .sort(swingOrder);
         if (swings.length) {
