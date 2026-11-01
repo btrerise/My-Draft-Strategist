@@ -1,5 +1,5 @@
 // Refactor 8C: the rankings upload preview. processData (js/mds/import.js) parses a file or a
-// paste, then hands the players here instead of loading them; "Looks Good, Save It" (or
+// paste, then hands the players here instead of loading them; "Save" (or
 // "Replace Rankings") loads them, Cancel drops them and leaves the current pool as it was.
 // Quick-Start (js/mds/market.js) skips the preview. The window's open / close and the name-list
 // wording are shared with Lineup Strategist (js/shared/rankings/uploadPreview.js), and so are its
@@ -95,7 +95,7 @@ import { State } from './state.js';
         const confirmBtn = document.getElementById('rankingsPreviewConfirmBtn');
         if (confirmBtn) {
             confirmBtn.className = isReplace ? 'btn btn-danger' : 'btn btn-primary';
-            confirmBtn.textContent = isReplace ? 'Replace Rankings' : 'Looks Good, Save It';
+            confirmBtn.textContent = isReplace ? 'Replace' : 'Save';
         }
 
         previewShell.open();

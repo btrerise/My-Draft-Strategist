@@ -7530,3 +7530,52 @@ played as redraft, a league whose In-Season is its own dynasty set.
 - On a 375px phone "Replace Set" wraps onto two lines in its half-width button (as on main).
 - A toast shown just before the preview opens (e.g. after the previous upload) can sit over the pinned buttons for its
   few seconds; it did over the old position too. Not changed here.
+
+### F10, round 2: the owner's review as a user (owner: "do 1-5, and fix the items around the dialog too")
+
+I walked through the whole upload at 375×667 and 1280×900 (replace, new set, Choose leagues, Auto-Fetch) and reported
+what felt clunky; the owner asked for all of it.
+
+**The dialog** (all in the shared rules, so both previews and the league picker; 3 and 4 also the confirm and prompt):
+1. **One scroll.** Inside a dialog the league list no longer has its own 240px scroll (`.preview-body
+   .mls-league-picker-list` in css/mls.css): round 1 had made it a scroll inside a scroll, and on desktop it was
+   squeezed to about two rows.
+2. **What saving does comes first.** `#rankingsPreviewTarget` moved right under the count in both pages (it was last,
+   below the fold on a phone). Lineup Strategist's "Position ranks will be derived" is one line ("The app works out
+   position ranks (WR1, RB2, …) from the file's order. Fine to save.") with the old text behind a `<details>` "Why?",
+   which scrolls itself into view when opened. Draft Strategist's note is unchanged (its wording is out of scope).
+   Every block in the preview now has a 1rem gap under it (`.preview-unmatched`, `.preview-derived`), so whichever is
+   last sits 1rem above the buttons.
+3. **One-line buttons.** Dialog buttons have half the usual side padding, and the long labels are shorter: Lineup
+   Strategist's "Looks Good, Save It" → "Save Set" ("Replace Set" stays); Draft Strategist's "Looks Good, Save It" →
+   "Save" and "Replace Rankings" → "Replace" (the owner approved the shorter labels for both).
+4. **A line under the title** while the middle is scrolled (`.is-scrolled-down` on the card, from `watchModal`; the
+   title's 0.5rem gap is padding on the card's colour now, drawn above the body). Both lines use a new
+   `--modal-edge` (#334155) instead of `--border`, which was too faint on a phone. Each opening starts at the top.
+5. **Wider on computers:** `.preview-modal` is 520px at most (was 400px); the confirm and prompt cards stay 400px.
+
+**Around the dialog** (the ROS and Weekly rankings cards):
+- **"+ Create New Set" picked:** a line under New Set Name says "Your next upload or Auto-Fetch saves a new set. This
+  league stays on "ROS Redraft" until then." (`updateNewSetHint` in sets.js; "Your next upload" on the Weekly card;
+  hidden when the league has no set). It answers the drop-down reading "+ Create New Set" while the header names
+  another set.
+- **Rename is icon-only under 480px** (`.mls-rename-label`; the buttons have an `aria-label`), so the drop-down shows
+  "ROS Redraft (24 players)" instead of "ROS Redraft (24 pla…".
+- **Auto-Fetch's settings are folded** into `<details id="rosAutoFetchSettings">` with a summary line ("Settings
+  FantasyCalc · Redraft · 1QB · Full PPR", "· TEP" when on), filled by `applyMarketSettingsToUI` (js/mls/settings.js).
+  Closed by default at every width; the Auto-Fetch button stays outside it.
+- Two things I reported in the review turned out not to be bugs, so nothing changed: "Uploaded Successfully!" hides
+  itself after 2.5 s (my screenshot was taken within that time), and "Choose leagues…" is hidden while "+ Create New
+  Set" is picked (the refusal toast came from my test calling the function directly).
+
+**Tests.** `mls-replace-set-dialog.spec.mjs`, round 2 block: the list has no scroll of its own; the body's order starts
+count → target → list; the short note and "Why?"; both buttons one line and the same height; the title line after
+scrolling; 520px on desktop, 327px at 375; "Save Set" for a new set and a reopened preview at the top; the new-set
+hint; Rename's accessible name and icon-only on a phone; the settings summary following a change.
+`mls-rankings-change.spec.mjs` and `mds-upload-preview.spec.mjs` expect the new labels.
+
+**Screenshots.** Rendered main and this branch the same way here: only `desktop/mls-league-roster.png` and
+`phone/mls-league-roster.png` change (the ROS card is open there, and the folded settings make the page 200px
+shorter). They aren't re-taken here (this container's Chromium can't match CI's): take them from the PR's CI run as
+"Accepting an intended visual change" says. Every other PNG is identical. `CACHE_NAME` stays v2.8.138 (one bump per
+branch, still above main's v2.8.137).

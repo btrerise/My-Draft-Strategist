@@ -43,6 +43,9 @@
     --text-main: #f3f4f6; 
     --text-muted: #9ca3af;
     --border: #1f2937;
+    /* The line where a dialog's scrolling middle meets its pinned title or buttons (improvements F10): --border is
+       too faint to see on a phone. */
+    --modal-edge: #334155;
 
     /* Premium Accents (Desaturated for better contrast) */
     --primary-green: #10b981; 
@@ -351,9 +354,28 @@ html { scroll-padding-top: 5rem; }
 .preview-actions,
 .mds-modal-actions { flex: none; }
 
+/* The upload previews and the league picker are wider on computers (improvements F10, round 2): 400px squeezed the
+   league rows. Phones are narrower than either, so they're unchanged. The confirm and prompt cards stay 400px. */
+.preview-modal { max-width: 520px; }
+
+/* The title is the top edge of the scrolling middle: its 0.5rem gap is padding on the card's colour (was a margin),
+   drawn above the body, so content scrolled up passes under it. With content above the fold (watchModal's
+   .is-scrolled-down) it gets the same line as the pinned button row. */
+.preview-modal > h3,
+.mds-modal > h3 {
+    position: relative;
+    z-index: 1;
+    padding-bottom: 0.5rem;
+    background: var(--card-bg);
+}
+.preview-modal.is-scrolled-down > h3,
+.mds-modal.is-scrolled-down > h3 {
+    box-shadow: 0 1px 0 var(--modal-edge), 0 10px 12px -10px rgba(0, 0, 0, 0.6);
+}
+
 .preview-modal h3,
 .mds-modal h3 {
-    margin: 0 0 0.5rem 0;
+    margin: 0; /* its 0.5rem gap below is padding now (see above) */
     font-size: 1.1rem;
 }
 
@@ -367,6 +389,9 @@ html { scroll-padding-top: 5rem; }
 .mds-modal-actions .btn {
     width: auto;
     flex: 1;
+    /* Half the usual side padding, so two labels fit one line each in a phone's half-width buttons (F10, round 2). */
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
 }
 
 /* --- SHARED IN-APP CONFIRM DIALOG (showConfirm in js/shared/ui/confirm.js) --- */
@@ -429,7 +454,7 @@ html { scroll-padding-top: 5rem; }
     position: relative;
     margin-top: calc(var(--actions-gap) - 0.75rem - 1px);
     padding-top: 0.75rem;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--modal-edge);
     background: var(--card-bg);
     box-shadow: 0 -10px 12px -10px rgba(0, 0, 0, 0.6);
 }
@@ -2163,11 +2188,15 @@ a.nav-btn,
    .scout-result-card: those are single-line summaries, while each of these carries a variable
    number of league rows and needs a header/body split to stay readable at five-plus leagues. */
 /* Unmatched-name warning inside the rankings upload preview modal (see openRankingsPreview). */
-.preview-unmatched { background: rgba(252, 165, 165, 0.08); border: 1px solid var(--avoid-border); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
+.preview-unmatched { background: rgba(252, 165, 165, 0.08); border: 1px solid var(--avoid-border); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; margin-bottom: 1rem; text-align: left; }
 .preview-unmatched-title { color: #fca5a5; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
 .preview-unmatched-list { font-size: 0.82rem; color: var(--text-main); line-height: 1.45; }
 .preview-unmatched-hint { font-size: 0.75rem; color: var(--text-muted); line-height: 1.45; margin: 0.4rem 0 0; }
-.preview-derived { background: rgba(147, 197, 253, 0.08); border: 1px solid var(--dart-border, rgba(147, 197, 253, 0.35)); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
+.preview-derived { background: rgba(147, 197, 253, 0.08); border: 1px solid var(--dart-border, rgba(147, 197, 253, 0.35)); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; margin-bottom: 1rem; text-align: left; }
+/* "Why?" under the derived-ranks note (Lineup Strategist, improvements F10 round 2): the long explanation, folded. */
+.preview-derived-more { margin-top: 0.3rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; }
+.preview-derived-more > summary { cursor: pointer; color: #93c5fd; font-weight: 600; width: fit-content; }
+.preview-derived-detail { margin: 0.3rem 0 0; }
 .preview-derived-title { color: #93c5fd; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
 .preview-derived-body { font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; margin: 0; }
 

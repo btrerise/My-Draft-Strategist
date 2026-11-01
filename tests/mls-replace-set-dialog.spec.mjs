@@ -215,3 +215,82 @@ test.describe('the pinned button row in the shared dialogs', () => {
         await expectClean(page, state);
     });
 });
+
+// Round 2 (the owner's review as a user): one scroll, the destination first, a short note, one-line buttons, a line
+// under the title, a wider dialog on computers; and around it on the card: which set the league keeps while "+ Create
+// New Set" is picked, an icon-only Rename on phones, and Auto-Fetch's settings folded.
+test.describe('the upload preview and the rankings card, round 2', () => {
+    test('one scroll, the destination right under the count, a short derived note, one-line buttons', async ({ page }) => {
+        const { state } = await setUp(page);
+        const phone = test.info().project.name === 'phone';
+        if (phone) await page.setViewportSize({ width: 375, height: 667 });
+        const overlay = await openReplacePreview(page);
+        // The league list has no scroll of its own: the dialog's middle is the only one.
+        const list = overlay.locator('.mls-league-picker-list');
+        expect(await list.evaluate((l) => l.scrollHeight - l.clientHeight)).toBe(0);
+        // What saving does comes first, under "24 players parsed".
+        const order = await overlay.locator('.preview-body').evaluate((b) => [...b.children].filter(c => c.offsetParent).map(c => c.id || c.className));
+        expect(order.slice(0, 3)).toEqual(['rankingsPreviewCount', 'rankingsPreviewTarget', 'rankingsPreviewList']);
+        // The derived-ranks note is one line; the rest is behind "Why?".
+        const derived = page.locator('#rankingsPreviewDerived');
+        await expect(derived.locator('.preview-derived-body')).toHaveText("The app works out position ranks (WR1, RB2, …) from the file's order. Fine to save.");
+        await expect(derived.locator('.preview-derived-detail')).toBeHidden();
+        await derived.getByText('Why?').click();
+        await expect(derived.locator('.preview-derived-detail')).toContainText('This file has no positional rank column');
+        // Both buttons on one line, the same height.
+        const [cancel, replace] = await Promise.all([overlay.getByRole('button', { name: 'Cancel' }).boundingBox(), page.locator('#rankingsPreviewConfirmBtn').boundingBox()]);
+        expect(replace.height).toBe(cancel.height);
+        expect(replace.height).toBeLessThan(50);
+        // The line under the title shows once the middle is scrolled.
+        const modal = overlay.locator('.preview-modal');
+        await overlay.locator('.preview-body').evaluate((b) => { b.scrollTop = 0; b.dispatchEvent(new Event('scroll')); });
+        await expect(modal).not.toHaveClass(/is-scrolled-down/);
+        await overlay.locator('.preview-body').evaluate((b) => { b.scrollTop = 200; });
+        await expect(modal).toHaveClass(/is-scrolled-down/);
+        // 520px on a computer, the phone's width less the margins on a phone.
+        expect((await modal.boundingBox()).width).toBe(phone ? 327 : 520);
+        await overlay.getByRole('button', { name: 'Cancel' }).click();
+        await expect(overlay).toBeHidden();
+        // A new set: "Save Set".
+        await openRosCard(page);
+        await page.locator('#rosRankingSetSelect').selectOption('__new__');
+        await page.setInputFiles('#rosFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(RANKINGS_CSV) });
+        await expect(overlay).toBeVisible();
+        await expect(page.locator('#rankingsPreviewConfirmBtn')).toHaveText('Save Set');
+        // Reopened, it starts at the top.
+        expect(await overlay.locator('.preview-body').evaluate((b) => b.scrollTop)).toBe(0);
+        await overlay.getByRole('button', { name: 'Cancel' }).click();
+        await expectClean(page, state);
+    });
+
+    test('"+ Create New Set" says which set the league keeps until the upload', async ({ page }) => {
+        const { state } = await setUp(page);
+        await openRosCard(page);
+        const hint = page.locator('#rosNewSetHint');
+        await expect(hint).toBeHidden();
+        await page.locator('#rosRankingSetSelect').selectOption('__new__');
+        await expect(hint).toHaveText('Your next upload or Auto-Fetch saves a new set. This league stays on "ROS Redraft" until then.');
+        await page.locator('#rosRankingSetSelect').selectOption({ label: 'ROS Redraft (24 players)' });
+        await expect(hint).toBeHidden();
+        await expectClean(page, state);
+    });
+
+    test("Rename is its pencil on a phone; Auto-Fetch's settings fold behind a summary", async ({ page }) => {
+        const { state } = await setUp(page);
+        const phone = test.info().project.name === 'phone';
+        if (phone) await page.setViewportSize({ width: 375, height: 667 });
+        await openRosCard(page);
+        const rename = page.locator('#rosRenameSetBtn');
+        await expect(rename).toHaveAccessibleName('Rename this ranking set');
+        await expect(rename.locator('.mls-rename-label')).toBeVisible({ visible: !phone });
+        const settings = page.locator('#rosAutoFetchSettings');
+        await expect(page.locator('#rosMarketSummary')).toHaveText('FantasyCalc · Redraft · 1QB · Full PPR');
+        await expect(page.locator('#rosMarketType')).toBeHidden();
+        await settings.locator('summary').click();
+        await page.locator('#rosMarketQbs').selectOption('2');
+        await page.locator('#rosMarketTep').check();
+        await expect(page.locator('#rosMarketSummary')).toHaveText('FantasyCalc · Redraft · Superflex · Full PPR · TEP');
+        await expect(page.locator('#autoFetchRosBtn')).toBeVisible();
+        await expectClean(page, state);
+    });
+});

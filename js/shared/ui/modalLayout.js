@@ -6,7 +6,8 @@
 //
 // watchModal(overlay) runs while a dialog is open and does two things CSS can't do on every browser:
 //   * marks the button row .is-scrolled-under while there's more content below the fold (a line and a shadow above
-//     the buttons, so it reads as pinned rather than as the end of the content);
+//     the buttons, so it reads as pinned rather than as the end of the content), and the card .is-scrolled-down
+//     once the middle is scrolled (the same line under the title, round 2);
 //   * fits the overlay to the part of the window the person can see when that's smaller than the window, which is
 //     what an on-screen keyboard does on phones (iOS Safari and Chrome on Android shrink only the "visual viewport").
 //     The card then sizes to that band (max-height: 100% of the overlay), so the field and the buttons stay above
@@ -22,9 +23,11 @@ export function watchModal(overlay) {
     const stops = [];
 
     if (body && actions) {
+        body.scrollTop = 0; // each opening starts at the top, not where the last one was left
         const update = () => {
             const below = body.scrollHeight - body.scrollTop - body.clientHeight;
             actions.classList.toggle('is-scrolled-under', below > 1);
+            body.parentElement.classList.toggle('is-scrolled-down', body.scrollTop > 1);
         };
         body.addEventListener('scroll', update, { passive: true });
         stops.push(() => body.removeEventListener('scroll', update));
@@ -39,7 +42,10 @@ export function watchModal(overlay) {
             stops.push(() => { ro.disconnect(); if (mo) mo.disconnect(); });
         }
         update();
-        stops.push(() => actions.classList.remove('is-scrolled-under'));
+        stops.push(() => {
+            actions.classList.remove('is-scrolled-under');
+            body.parentElement.classList.remove('is-scrolled-down');
+        });
     }
 
     const vv = typeof window !== 'undefined' ? window.visualViewport : null;

@@ -161,10 +161,28 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, rosSetU
         const nameWrap = document.getElementById(cfg.nameInputWrapId);
         if (nameWrap) nameWrap.style.display = (selectedVal === '__new__') ? 'flex' : 'none';
         showSavedSetButtons(cfg, selectedVal !== '__new__' && selectedVal !== '__legacy__');
+        updateNewSetHint(type);
 
         updateRankingSetHeader(type);
         updateSetLeaguesRow(type);
         if (type === 'ros') populateSeasonPicker();
+    }
+
+    // Under "New Set Name" while "+ Create New Set" is picked (improvements F10, round 2): picking it changes nothing
+    // until a file is saved, but the drop-down then reads "+ Create New Set" while the header still names the league's
+    // set, so say which one the league keeps until then. Empty (hidden) when the league has no set yet.
+    function updateNewSetHint(type) {
+        const cfg = RANKING_TYPE_CONFIG[type];
+        const wrap = document.getElementById(cfg.nameInputWrapId);
+        const hint = wrap && wrap.querySelector('.mls-new-set-hint');
+        if (!hint) return;
+        const league = getActiveLeague();
+        const current = league ? describeLeagueRankings(type, league) : 'No set';
+        const how = type === 'ros' ? 'Your next upload or Auto-Fetch' : 'Your next upload';
+        hint.textContent = current === 'No set'
+            ? ''
+            : `${how} saves a new set. This league stays on "${current}" until then.`;
+        hint.hidden = !hint.textContent;
     }
 
     // Rename and Delete act on a saved set, so they show only while one is selected: not for
@@ -238,6 +256,7 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, rosSetU
         if (val === '__new__') {
             if (nameWrap) nameWrap.style.display = 'flex';
             showSavedSetButtons(cfg, false);
+            updateNewSetHint(type);
             updateSetLeaguesRow(type);
             if (type === 'ros') updateUploadTarget();
             return; // don't touch State yet -- wait for an actual upload/fetch to create the set

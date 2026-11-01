@@ -76,7 +76,7 @@ async function upload(page, t, csv, { expectReplace, alsoLeague } = {}) {
     await page.setInputFiles(t.input, { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
     const overlay = page.locator('#rankingsPreviewOverlay');
     await expect(overlay).toBeVisible();
-    await expect(page.locator('#rankingsPreviewConfirmBtn')).toHaveText(expectReplace ? 'Replace Set' : 'Looks Good, Save It');
+    await expect(page.locator('#rankingsPreviewConfirmBtn')).toHaveText(expectReplace ? 'Replace Set' : 'Save Set');
     if (alsoLeague) await page.locator('#rankingsPreviewLeagues label').filter({ hasText: alsoLeague }).locator('input').check();
     await page.locator('#rankingsPreviewConfirmBtn').click();
     await expect(overlay).toBeHidden();
