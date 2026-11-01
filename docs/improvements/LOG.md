@@ -7744,3 +7744,61 @@ around "Week 2 Matchups" (on CI's fonts the phone's "starts soon" fits beside th
 the rest moved down by that paragraph's new lines and then by step 4's new sentence (desktop +69 then +92px, ±1px
 subpixel; phone +276 then +346px). The run's `-actual.png` files are the new baselines: `desktop/` and `phone/`
 `mls-league-scoreboard.png` and `mls-league-guide.png`.
+
+## N1 — Research: what notifications would take on this site
+
+**What changed.** `docs/improvements/notifications.md` (new): what each of the three alerts takes with the site open
+and with it closed (web push on Cloudflare), a table of alert × open/closed with card counts and risks, the
+permission UX, privacy and upkeep, and cited sources. No app file changed: no served code, no `sw.js`, no CSS, so
+`CACHE_NAME` is untouched and nothing goes in `CHANGELOG.md`.
+
+**Main findings.**
+- Android Chrome only supports `registration.showNotification()` (the constructor throws), so the shared module always
+  goes through the service worker; a tap needs a `notificationclick` listener in `sw.js`, which has none today.
+- Chrome slows a hidden tab's chained timers to once a minute after 10 s to 5 min hidden and silent, so Draft
+  Strategist's 3 s live sync can notice a pick up to ~60 s late. Firefox (budget) and Safari (1 s alignment) are
+  milder; Safari needs a real test. Phones pause background pages, so open-site alerts are a computer feature.
+- iPhone/iPad: no notifications in a Safari tab; web push only after Add to Home Screen (iOS 16.4+; the manifest is
+  already `standalone`).
+- Closed-site alerts need a Worker with a Cron Trigger (Pages Functions have no cron), D1 or KV, VAPID keys and a
+  Web-Crypto push library. Cron runs once a minute at most; the free plan gives 10 ms CPU per run and 5 cron triggers.
+- A server can compute "on the clock" from Sleeper's small draft endpoints. Injury status lives only in Sleeper's
+  15 MB player file (once a day, too big for 10 ms CPU), so a closed-site starter alert would miss late scratches.
+  Rankings and the recommended lineup are browser-only, so no rankings alert can run closed.
+- "Rankings updated" has nothing to alert on: rankings change only when you upload or tap the ROS fetch button, and
+  the app already marks Weekly rankings older than 6 days in amber.
+
+**Owner's decision (2026-11-01).** Asked: only while open (recommended), also while closed, or a mix by trigger.
+**Answer: C, a mix by trigger.** Starter alerts while the site is open only; "on the clock" while open first, then
+also by web push when the site is closed. **N3: dropped**; N2's starter alert gets one line naming leagues whose
+Weekly rankings are stale (`getFreshness(…, 6)`, the league cards' rule).
+
+**The N cards after N1** (the runbook's prompts are older: where they differ, this entry wins):
+- **N2 — Shared notification module and the Lineup Strategist starter alert (site open).** As the runbook's card,
+  plus: always `registration.showNotification()`; add `notificationclick` to `sw.js` (focus or open the right page; a
+  middle-number `CACHE_NAME` bump); toast and title-flash fallbacks; the stale-Weekly-rankings line. Its asks stay
+  (Sleeper lineup or recommended, minutes before kickoff, Questionable), plus one: refresh injury statuses once before
+  each kickoff window (the 15 MB file, at most ~3 times on a Sunday) or use the last sync. Help text: works while
+  `/lineup/` is open on a computer.
+- **N3 — dropped.** Tick it done in the runbook with this note.
+- **N4 — Draft Strategist on the clock (site open).** As the runbook's card, plus: test whether a timer in a dedicated
+  Web Worker escapes Chrome's once-a-minute throttle (keep the 3 s timing either way); say how much clock is left from
+  the draft's `settings.pick_timer` and the last pick's time; help text says a hidden tab may notice a pick up to a
+  minute late. Needs N2.
+- **N5 (new) — Web push setup.** Needs N4. A Worker in its own folder (e.g. `workers/notify/`, `wrangler.toml`, the
+  repo's first deployed-with-wrangler code), D1 for subscriptions (push endpoint and keys, Sleeper user ID, draft
+  IDs, toggles, sent markers), subscribe/unsubscribe Pages Functions beside `functions/api/ffc/`, a Web-Crypto push
+  library, the VAPID private key as a Worker secret. **Asks you:** to create the Cloudflare resources and keys (the
+  session writes the steps, doesn't create them), free plan or $5/month. First re-check Cloudflare's limits on the
+  live pages (this session could only see them through search results).
+- **N6 (new) — Push in `sw.js` and Draft Strategist's Settings.** Needs N5. A `push` listener; an "Also alert me when
+  Draft Strategist is closed" toggle that subscribes (iPhone: explains Add to Home Screen); a privacy note in the Guide
+  (what's stored and how to delete it); Factory Reset and turning the toggle off unsubscribe; storage keys via
+  `keys.js`.
+- **N7 (new) — The draft poller.** Needs N6. The Worker's cron (once a minute) checks only subscribed drafts that are
+  live, alerts N picks ahead and on the clock once each, removes expired subscriptions (404/410), and stops when the
+  draft completes. Tests with a stubbed Sleeper, push service and clock.
+- Not planned: a closed-site starter alert (injury data too stale); revisit only if a better injury source turns up.
+
+**Left over.** Device tests the research couldn't settle: Safari's hidden-tab timing, and whether a Worker timer
+escapes Chrome's throttle (N4 checks it). The runbook page itself still shows the old N2–N4 prompts and no N5–N7.

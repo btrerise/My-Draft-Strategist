@@ -286,3 +286,9 @@ file, once-a-day cache), `js/mls/state.js` (`refreshGameTimes`, ESPN scoreboard)
 `issues.js` (`getLineupIssues`, `lineupIssueItems`), `js/mls/render/leagueCards.js` (Weekly rankings stale after 6
 days), `js/mls/rankings/rosFetch.js` (button-only ROS fetch), `manifest.json` (`display: standalone`), `sw.js` (no
 `push` or `notificationclick` listeners today), `functions/api/ffc/[format].js` (the one Pages Function, KV binding).
+
+## The owner's decision (2026-11-01)
+
+**C, a mix by trigger:** starter alerts only while the site is open (N2); "on the clock" while open (N4), then also
+by web push when closed (new cards N5 push setup, N6 `sw.js` push and Settings, N7 the draft poller). **N3 dropped**,
+with a stale-Weekly-rankings line in N2's alert. The cards in full are in `docs/improvements/LOG.md` under N1.
