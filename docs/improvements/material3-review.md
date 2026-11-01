@@ -2,6 +2,8 @@
 
 **Round 2**, the rest of Material 3 (Expressive, layouts, surfaces, writing), with three corrections to the cards below:
 [material3-review-2.md](material3-review-2.md).
+Since round 2, M9's corners moved to M14 (with surface tones), and M2, M3, M4, M5, M7, M8 and M9 grew; the runbook has
+the current cards.
 
 Research only: nothing in the apps changed. This is the list of proposed changes for the owner to pick from. The ones
 picked become runbook cards M2 onward. **The owner took all of them, grouped into M2 to M9: see "The owner's picks"

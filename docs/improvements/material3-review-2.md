@@ -33,6 +33,30 @@ one or two **hero moments**.
 Then every tab of both apps and T-Score was looked at again at 1280px (the round 1 screenshots and measurements, with the
 fixture data) with those tactics in mind.
 
+## The owner's picks
+
+All three corrections and all nine proposals, grouped into cards M10 to M14 or folded into M3, M5, M7, M8 and M9 (also in
+[LOG.md](LOG.md), under M1 round 2):
+
+- **Corrections, all accepted:** M2 offers Expressive's pressed shape morph (corners tighten about 2px) beside the state
+  layer; M3 uses Expressive's web curves (spatial ones overshoot a little; the toast's entrance is the owner's call: a
+  small bounce or none); M4 becomes Expressive's connected button group, one look for every segmented control on the
+  three pages (Lineup Strategist's segments, T-Score's WR / RB pills), with the check optional.
+- **Folded into existing cards:** 17 (progress and loading indicators) into **M3** (both are about how the app shows
+  it's working, and the loading shape uses M3's motion tokens; M3 grows to ~24k); 23 (search bars) into **M5** (text
+  fields; ~26k); 21 (sentence case) into **M7** and **M8**, which re-take the same screenshots anyway (~30k and ~26k);
+  22 (button group and Share split button) into **M9**, whose corners (14) moved to M14.
+- **New cards:** **M10** navigation badges and hero moments (16 + 20: both rest on "a lineup needs you" and "you're on
+  the clock"; ~20k); **M11** the badge legend in a sheet (15; builds the shared sheet, so **S32 now needs M11**; ~12k);
+  **M12** two panes on wide screens for Lineup Strategist and **M13** for Draft Strategist (18, one per app; ~20k and
+  ~16k); **M14** surface tones and corners (19 + 14: both change every container and the identity a little, so one
+  card with mock-ups first; ~25k; M9 now follows it).
+- **Order, by expected impact** (owner: changes mid-season are fine, this season is a beta): weeks 10–11 add **M2**
+  (felt on every tap) and **M11**; weeks 12–13 add **M10** beside S30, with S32 after M11; the playoffs start with
+  **M3**, then S18 on its motion tokens; January **M5** and **M12** beside S25; February–March **M4**, **M6**, **M7**
+  one at a time; spring and summer **M13** before draft season, then **M8**, **M14** and **M9**. Runbook updated the
+  same day (version 33): those cards, S28 marked merged (#213), S32's need on M11.
+
 ## First: three corrections to cards already written
 
 Round 1 read Material 3's baseline pages. Two of them have since been superseded by Expressive, and one card can use an
