@@ -7734,3 +7734,13 @@ week's tiles are buttons again; the Tuesday test steps › to week 3 (› then d
 switch's new line. `mls-season-rankings.spec.mjs`: both wordings of the line. Screenshots: only the Guide's text changes
 again (the screenshot league is redraft, so no switch; the Scoreboard screenshot is this week's, before kickoff); still
 the same four PNGs to take from CI.
+
+### S28: screenshot baselines from CI (PR #213)
+
+CI's first run (41279341100) failed only in `visual.spec.mjs` (657 passed, 41 skipped), on exactly the four PNGs listed
+above. Each `-expected.png` was byte-identical to the committed baseline. The new Scoreboard images show the arrows
+around "Week 2 Matchups" (on CI's fonts the phone's "starts soon" fits beside the title, and the desktop PNG stays
+1280×900). In the Guide, every changed row is accounted for: the rows above the Scoreboard paragraph are unchanged, and
+the rest moved down by that paragraph's new lines and then by step 4's new sentence (desktop +69 then +92px, ±1px
+subpixel; phone +276 then +346px). The run's `-actual.png` files are the new baselines: `desktop/` and `phone/`
+`mls-league-scoreboard.png` and `mls-league-guide.png`.
