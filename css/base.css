@@ -43,6 +43,9 @@
     --text-main: #f3f4f6; 
     --text-muted: #9ca3af;
     --border: #1f2937;
+    /* The line where a dialog's scrolling middle meets its pinned title or buttons (improvements F10): --border is
+       too faint to see on a phone. */
+    --modal-edge: #334155;
 
     /* Premium Accents (Desaturated for better contrast) */
     --primary-green: #10b981; 
@@ -305,9 +308,18 @@ html { scroll-padding-top: 5rem; }
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
+    /* Clear of a phone's notch and home bar (improvements F10). The pages use viewport-fit=cover. */
+    padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
+             max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
     overscroll-behavior: contain;
 }
 
+/* A column (improvements F10): the title, a middle that scrolls (.preview-body / .mds-modal-body) and the button row,
+   which stays at the bottom however long the middle gets. Before, the whole card scrolled as one block, and on a phone
+   with many leagues Cancel and Replace Set sat below the fold. Every width: it's the same dialog everywhere (owner).
+   A short dialog lays out exactly as before: nothing scrolls, and the body's padding is taken back by its margins.
+   max-height: dvh follows the phone's toolbars (vh is the fallback), and 100% is the overlay's height, which
+   watchModal (js/shared/ui/modalLayout.js) fits above an on-screen keyboard. */
 .preview-modal,
 .mds-modal {
     background: var(--card-bg);
@@ -317,14 +329,53 @@ html { scroll-padding-top: 5rem; }
     width: 100%;
     max-width: 400px;
     max-height: 85vh;
+    max-height: min(85dvh, 100%);
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
     padding: 1.5rem;
     overscroll-behavior: contain;
 }
 
+/* The scrolling middle reaches into the card's padding (negative margins, the same padding back), so a focus ring at
+   its edge isn't clipped and the content sits where it always did. */
+.preview-body,
+.mds-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin: -4px -1.5rem;
+    padding: 4px 1.5rem;
+}
+
+.preview-modal > h3,
+.mds-modal > h3,
+.preview-actions,
+.mds-modal-actions { flex: none; }
+
+/* The upload previews and the league picker are wider on computers (improvements F10, round 2): 400px squeezed the
+   league rows. Phones are narrower than either, so they're unchanged. The confirm and prompt cards stay 400px. */
+.preview-modal { max-width: 520px; }
+
+/* The title is the top edge of the scrolling middle: its 0.5rem gap is padding on the card's colour (was a margin),
+   drawn above the body, so content scrolled up passes under it. With content above the fold (watchModal's
+   .is-scrolled-down) it gets the same line as the pinned button row. */
+.preview-modal > h3,
+.mds-modal > h3 {
+    position: relative;
+    z-index: 1;
+    padding-bottom: 0.5rem;
+    background: var(--card-bg);
+}
+.preview-modal.is-scrolled-down > h3,
+.mds-modal.is-scrolled-down > h3 {
+    box-shadow: 0 1px 0 var(--modal-edge), 0 10px 12px -10px rgba(0, 0, 0, 0.6);
+}
+
 .preview-modal h3,
 .mds-modal h3 {
-    margin: 0 0 0.5rem 0;
+    margin: 0; /* its 0.5rem gap below is padding now (see above) */
     font-size: 1.1rem;
 }
 
@@ -338,6 +389,9 @@ html { scroll-padding-top: 5rem; }
 .mds-modal-actions .btn {
     width: auto;
     flex: 1;
+    /* Half the usual side padding, so two labels fit one line each in a phone's half-width buttons (F10, round 2). */
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
 }
 
 /* --- SHARED IN-APP CONFIRM DIALOG (showConfirm in js/shared/ui/confirm.js) --- */
@@ -369,7 +423,9 @@ html { scroll-padding-top: 5rem; }
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--text-main);
-    margin: 0.75rem 0 0.4rem 0;
+    /* 0.75rem below the title: the title's own 0.5rem plus this (they collapsed before the label moved into
+       .mds-modal-body, improvements F10). */
+    margin: 0.25rem 0 0.4rem 0;
 }
 
 .mds-prompt-msg {
@@ -385,6 +441,22 @@ html { scroll-padding-top: 5rem; }
 
 .mds-prompt-modal .mds-modal-actions {
     margin-top: 0.75rem;
+}
+
+/* While content sits under the pinned row (watchModal adds the class): a line and a shadow above the buttons, on the
+   card's colour so nothing shows between them. The band is padding taken back by a negative margin, so the buttons
+   don't move when it comes and goes. --actions-gap is each row's usual margin-top. */
+.preview-actions { --actions-gap: 0px; }
+.mds-modal-actions { --actions-gap: 1.25rem; }
+.mds-prompt-modal .mds-modal-actions { --actions-gap: 0.75rem; }
+.preview-actions.is-scrolled-under,
+.mds-modal-actions.is-scrolled-under {
+    position: relative;
+    margin-top: calc(var(--actions-gap) - 0.75rem - 1px);
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--modal-edge);
+    background: var(--card-bg);
+    box-shadow: 0 -10px 12px -10px rgba(0, 0, 0, 0.6);
 }
 
 .hamburger-menu.open { 
@@ -2116,11 +2188,15 @@ a.nav-btn,
    .scout-result-card: those are single-line summaries, while each of these carries a variable
    number of league rows and needs a header/body split to stay readable at five-plus leagues. */
 /* Unmatched-name warning inside the rankings upload preview modal (see openRankingsPreview). */
-.preview-unmatched { background: rgba(252, 165, 165, 0.08); border: 1px solid var(--avoid-border); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
+.preview-unmatched { background: rgba(252, 165, 165, 0.08); border: 1px solid var(--avoid-border); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; margin-bottom: 1rem; text-align: left; }
 .preview-unmatched-title { color: #fca5a5; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
 .preview-unmatched-list { font-size: 0.82rem; color: var(--text-main); line-height: 1.45; }
 .preview-unmatched-hint { font-size: 0.75rem; color: var(--text-muted); line-height: 1.45; margin: 0.4rem 0 0; }
-.preview-derived { background: rgba(147, 197, 253, 0.08); border: 1px solid var(--dart-border, rgba(147, 197, 253, 0.35)); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; text-align: left; }
+.preview-derived { background: rgba(147, 197, 253, 0.08); border: 1px solid var(--dart-border, rgba(147, 197, 253, 0.35)); border-radius: 6px; padding: 0.7rem 0.8rem; margin-top: 0.75rem; margin-bottom: 1rem; text-align: left; }
+/* "Why?" under the derived-ranks note (Lineup Strategist, improvements F10 round 2): the long explanation, folded. */
+.preview-derived-more { margin-top: 0.3rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; }
+.preview-derived-more > summary { cursor: pointer; color: #93c5fd; font-weight: 600; width: fit-content; }
+.preview-derived-detail { margin: 0.3rem 0 0; }
 .preview-derived-title { color: #93c5fd; font-weight: 700; font-size: 0.82rem; margin-bottom: 0.3rem; }
 .preview-derived-body { font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; margin: 0; }
 
@@ -2339,7 +2415,6 @@ button.pos-filter {
         .mds-toast, .mds-toast.show { transform: translateX(-50%); }
     }
 }
-
 
 /* --- NAVIGATION RAIL AND TABLET BAR (improvements S26, Material 3's window sizes) ---
    One set of tab buttons, laid out three ways by CSS alone, so showTab, swipes, number keys, the drawer and the

@@ -15,6 +15,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **The upload preview's buttons stay in reach.** When the rankings preview is taller than the screen, its middle
+  scrolls and Cancel and Save stay at the bottom of the window, with a line above them while there's more below (and
+  one under the title once you've scrolled). The same goes for every confirm and rename window.
+- **The upload preview says what saving does first**, right under the player count, and its buttons are shorter
+  ("Save", "Replace") so they fit on one line on a phone. On a computer the preview is a little wider.
 - **A navigation rail on computers.** On a window 840px or wider, the tabs sit in a column at the left edge (icons with
   their names underneath) instead of a bar along the bottom, and the green bar beside the active tab slides up and
   down. The menu button moves to the top of the rail; it opens the full menu (every tab by name, then the Guide,
@@ -114,6 +119,26 @@ What changed for users in each version of the two apps, in plain language. Newes
   split by the Roster tab's "I'm competing this year" switch (off counts as Rebuilding), in the record line and in
   Export Recap's image. The switch now shows in every dynasty and keeper league so each one can be set; without an
   In-Season set it only sorts the league on the Scoreboard.
+- **Replace Set without scrolling.** In the rankings upload preview, the middle scrolls (one scroll: the "Also use
+  this set in" list no longer scrolls on its own inside it), and Cancel and Replace Set stay at the bottom of the
+  window, so on a phone with many leagues you no longer scroll the whole list to reach them. Lines above the buttons
+  and under the title show while there's more to scroll. The league picker, confirm and rename windows work the same
+  way, and they fit above the phone's keyboard and toolbars.
+- **The upload preview reads in order of importance.** What saving does (the red "Replaces…" box, or "Saves as a new
+  set") comes right under the player count. The "Position ranks will be derived" note is one line, with the full
+  explanation behind "Why?". The buttons fit on one line on a phone ("Save Set" instead of "Looks Good, Save It"), and
+  on a computer the preview and the league picker are wider.
+- **The ROS and Weekly rankings cards.** With "+ Create New Set" picked, a line says the league keeps its current set
+  until your next upload saves the new one. On a phone, Rename is just its pencil, so the set's name has room in the
+  drop-down. Auto-Fetch's four settings are folded behind one line naming them ("Settings FantasyCalc · Redraft · 1QB
+  · Full PPR"); tap it to change them.
+- **The red box counts every league a replace changes.** Replacing a rankings set now also counts the dynasty and
+  keeper leagues using it as In-Season rankings, which change too: "Used by 4 leagues, and as In-Season rankings in 2
+  dynasty leagues." A dynasty set says so ("Used as dynasty rankings in 3 dynasty leagues"), and a group with a keeper
+  league says "dynasty or keeper". Auto-Fetch's Replace confirm says the same.
+- **The "Also use this set in" list says when a dynasty league already uses the set as In-Season rankings**
+  ("In-Season already · dynasty: Dynasty SF"), so checking it, which makes the set its dynasty rankings too, isn't a
+  surprise.
 - **A navigation rail on computers.** On a window 840px or wider, the five tabs sit in a column at the left edge (icons
   with their names underneath) instead of a bar along the bottom, and the green bar beside the active tab slides up and
   down. The menu button moves to the top of the rail; it opens the full menu (every tab by name, then the Guide,

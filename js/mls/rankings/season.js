@@ -73,6 +73,39 @@ export function setUsage(setId, leagues) {
     return { used, asSeason };
 }
 
+// Who replacing a ROS set changes (improvements F10), for the upload preview's red box and Auto-Fetch's confirm:
+// the redraft leagues using it, the dynasty and keeper leagues using it as their dynasty set, and those using it as
+// In-Season rankings. Before F10 the box counted only the ROS slot, so "Used by 6 leagues" left out the In-Season ones.
+//   "Used by 4 leagues."
+//   "Used by 4 leagues, and as In-Season rankings in 2 dynasty leagues."
+//   "Used as dynasty rankings in 3 dynasty or keeper leagues."
+// A group with a keeper league in it says "dynasty or keeper" ("keeper" when they all are; owner's choice).
+export function rosSetUse(setId, leagues) {
+    const use = { redraft: [], dynasty: [], season: [] };
+    (leagues || []).forEach(l => {
+        if (l.rosRankingSetId === setId) (hasSeasonSlot(l) ? use.dynasty : use.redraft).push(l);
+        else if (hasSeasonSlot(l) && l[SEASON_SET_KEY] === setId) use.season.push(l);
+    });
+    return use;
+}
+
+const isKeeper = (l) => l.leagueType === 'keeper' || (!l.leagueType && /^Keeper\b/.test(l.formatBadge || ''));
+const leaguesText = (n, kind) => `${n} ${kind ? kind + ' ' : ''}league${n === 1 ? '' : 's'}`;
+function dynastyKind(group) {
+    const keepers = group.filter(isKeeper).length;
+    return keepers === 0 ? 'dynasty' : keepers === group.length ? 'keeper' : 'dynasty or keeper';
+}
+
+export function rosSetUseNote(setId, leagues) {
+    const { redraft, dynasty, season } = rosSetUse(setId, leagues);
+    const parts = [];
+    if (redraft.length || (!dynasty.length && !season.length)) parts.push(`by ${leaguesText(redraft.length)}`);
+    if (dynasty.length) parts.push(`as dynasty rankings in ${leaguesText(dynasty.length, dynastyKind(dynasty))}`);
+    if (season.length) parts.push(`as ${IN_SEASON} rankings in ${leaguesText(season.length, dynastyKind(season))}`);
+    const last = parts.pop();
+    return `Used ${parts.length ? `${parts.join(', ')}, and ${last}` : last}.`;
+}
+
 // The set to offer an empty In-Season slot: the ROS set the most redraft leagues use (ties: the most
 // recently updated), or null when no redraft league has one. Never the league's own dynasty set.
 export function seasonOffer(league, leagues, rosSets) {
