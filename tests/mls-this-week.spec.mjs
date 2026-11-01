@@ -82,7 +82,8 @@ test.describe('This week: every league\'s matchup', () => {
 
         // No league is marked paid yet: a hint in place of the split.
         await expect(card(page)).toContainText('Mark the leagues you pay for');
-        await expect(card(page).locator('.mls-week-split')).toHaveText(['Redraft 0–1', 'Dynasty 1–0']);
+        // Second Fixture League is dynasty, with "I'm competing" off: Rebuilding, beside Competing 0–0 (S28).
+        await expect(card(page).locator('.mls-week-split')).toHaveText(['Redraft 0–1', 'Dynasty 1–0', 'Competing 0–0', 'Rebuilding 1–0']);
 
         // The swing: Fixture League, behind by 12, Jefferson still to play, Rival has nobody, and a win chance.
         const swing = card(page).locator('.mls-week-swing');
@@ -131,10 +132,10 @@ test.describe('This week: every league\'s matchup', () => {
         await page.locator(`[data-action="toggleLeaguePaid"][data-league-id="${FIXTURE_LEAGUE2_ID}"]`).click();
         await expect(page.locator(`[data-action="toggleLeaguePaid"][data-league-id="${FIXTURE_LEAGUE2_ID}"]`)).toHaveAttribute('aria-pressed', 'true');
         await showTab(page, 'scoreboard');
-        await expect(card(page).locator('.mls-week-split')).toHaveText(['Paid 1–0', 'Free 0–1', 'Redraft 0–1', 'Dynasty 1–0']);
-        // Two groups, each adding up to every league: stakes and format.
+        await expect(card(page).locator('.mls-week-split')).toHaveText(['Paid 1–0', 'Free 0–1', 'Redraft 0–1', 'Dynasty 1–0', 'Competing 0–0', 'Rebuilding 1–0']);
+        // Two groups, each adding up to every league (stakes and format), then the dynasty and keeper leagues by direction (S28).
         await expect(card(page).locator('.mls-week-split-group').first()).toHaveAttribute('aria-label', 'By stakes');
-        await expect(card(page).locator('.mls-week-split-group')).toHaveCount(2);
+        await expect(card(page).locator('.mls-week-split-group')).toHaveCount(3);
         await expect(tiles(page).nth(1).locator('.mls-paid-badge')).toHaveCount(1);
         await expect(page.locator('#leagueCards .mls-lc-card').filter({ hasText: 'Second Fixture League' }).locator('.mls-paid-badge')).toHaveCount(1);
 
@@ -243,7 +244,7 @@ test.describe('This week: every league\'s matchup', () => {
         // Fixture League (98 to 110, Jefferson to play) is too early; Second Fixture League is decided (Rival has
         // nobody left), and a known result counts however early.
         await expect(head).toContainText('Record 1–0 · 1 too early to call');
-        await expect(card(page).locator('.mls-week-split')).toHaveText(['Redraft 0–0', 'Dynasty 1–0']);
+        await expect(card(page).locator('.mls-week-split')).toHaveText(['Redraft 0–0', 'Dynasty 1–0', 'Competing 0–0', 'Rebuilding 1–0']);
         await expect(card(page).locator('.mls-week-swing')).toHaveCount(0);
         await expect(card(page).locator('.mls-week-decided').last()).toContainText('Too early to call: 1');
         // Too early: last, scores but no W/L or margin.
@@ -401,8 +402,170 @@ test.describe('This week: every league\'s matchup', () => {
         expect(weeks.recap).toBe(2);
         // Week 2's matchups stayed out of the Lineup tab's cache, which is for week 3.
         expect(weeks.lineupCache).not.toContain(2);
+        // › reaches the app's week (round 3): next week's matchups, which the Lineup tab is already on; Back returns.
+        await expect(card(page).locator('.mls-week-step[data-step="1"]')).toBeEnabled();
+        await card(page).locator('.mls-week-step[data-step="1"]').click();
+        await expect(card(page).locator('.mls-week-title')).toHaveText(/^Week 3 /);
+        await expect(card(page).locator('.mls-week-step[data-step="1"]')).toBeDisabled();
+        await expect(card(page).locator('.mls-week-back')).toHaveText('Back to week 2');
+        await card(page).locator('.mls-week-back').click();
+        await expect(card(page).locator('.mls-week-title')).toHaveText('Week 2 Recap');
         await showTab(page, 'setup');
         await expect(page.locator('#weekSummaryLine')).toContainText('Week 2 Recap');
+        await expectClean(page, state);
+    });
+
+    // S28: the week is a control on the Scoreboard (‹ Week 2 Recap ›). Week 1 here: Fixture League's final matchups and a
+    // scoreboard with Sunday night's game still 'pre', which a past week ignores (it's final); week 2 as everywhere else.
+    async function routeWeekOne(page, { empty = false } = {}) {
+        const asked = { espn: [], matchups: [] };
+        await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, route => {
+            const week = new URL(route.request().url()).searchParams.get('week');
+            asked.espn.push(week);
+            return route.fulfill({ json: scoreboard() }); // MIN's game 'pre' in either week
+        });
+        await page.route(new RegExp(`sleeper\\.app/v1/league/(${FIXTURE_LEAGUE_ID}|${FIXTURE_LEAGUE2_ID})/matchups/1$`), route => {
+            asked.matchups.push(route.request().url());
+            const own = route.request().url().includes(FIXTURE_LEAGUE_ID + '/');
+            if (empty) return route.fulfill({ json: [] });
+            return route.fulfill({ contentType: 'application/json', body: fixture(own ? 'league-matchups-final.json' : 'league2-matchups.json') });
+        });
+        return asked;
+    }
+    const step = (page, dir) => card(page).locator(`.mls-week-step[data-step="${dir}"]`);
+
+    test('the week\'s arrows: back to week 1 (final, its own matchups) and forward again; leaving the tab goes back to this week', async ({ page }) => {
+        const { state } = await setup(page);
+        const asked = await routeWeekOne(page);
+        const title = card(page).locator('.mls-week-title');
+        await expect(title).toHaveText('Week 2 Recap');
+        await expect(step(page, -1)).toHaveAttribute('aria-label', 'Previous week');
+        await expect(step(page, 1)).toHaveAttribute('aria-label', 'Next week');
+        await expect(step(page, 1)).toBeDisabled(); // this week
+        await expect(card(page).locator('.mls-week-swing')).toHaveCount(1);
+
+        await step(page, -1).click();
+        await expect(title).toHaveText('Week 1 Recap');
+        await expect(step(page, -1)).toBeDisabled(); // week 1
+        // Final, though its scoreboard still has a game 'pre': no Still in play, no win chance.
+        await expect(card(page).locator('.mls-week-head .mls-week-status')).toHaveText('Final');
+        await expect(card(page).locator('.mls-week-head')).toContainText('Record 2–0');
+        await expect(card(page).locator('.mls-week-head')).not.toContainText('still live');
+        await expect(card(page).locator('.mls-week-swing')).toHaveCount(0);
+        await expect(card(page).locator('.mls-week-chance, .mls-week-tile-chance')).toHaveCount(0);
+        // No foot line for a past week (round 2: it repeated the pill).
+        await expect(card(page).locator('.mls-week-foot')).toHaveCount(0);
+        // Results only (round 3): a past week's tiles and biggest win / worst loss open nothing (the Lineup tab is this week's).
+        await expect(tiles(page).locator('.mls-week-tile-btn.is-static')).toHaveCount(2);
+        await expect(card(page).locator('.mls-week-tile button, .mls-week-extremes button, .mls-week-tile-go')).toHaveCount(0);
+        await expect(card(page).locator('.mls-week-extreme.is-static')).toHaveCount(1); // 2–0: a biggest win, no worst loss
+        // Fixture League's week-1 file: Jefferson's 20 in, so 118.0 (98.0 in week 2's).
+        await expect(pts(tiles(page).filter({ has: page.locator('.mls-week-name', { hasText: /^Fixture League$/ }) }))).toHaveText(['118.0', '110.0']);
+        // Screen readers hear the week; focus moves to the arrow that's still enabled.
+        await expect(page.locator('#scoreboardWeekAnnouncer')).toHaveText('Week 1 Recap, final');
+        expect(await page.evaluate(() => document.activeElement && document.activeElement.dataset.step)).toBe('1');
+        expect(asked.espn).toContain('1');
+        expect(asked.matchups.length).toBe(2);
+        // The Dashboard's line and the Lineup strip stay on this week.
+        await expect(page.locator('#weekSummaryLine')).toContainText('Week 2 Recap');
+        // The app stays on Sleeper's week.
+        expect(await page.evaluate(async () => (await import('/js/mls/state.js')).State.currentNflWeek)).toBe(2);
+
+        // "Back to week 2" beside a past week's title; none on this week.
+        const back = card(page).locator('.mls-week-back');
+        await expect(back).toHaveText('Back to week 2');
+        await step(page, 1).click();
+        await expect(title).toHaveText('Week 2 Recap');
+        await expect(back).toHaveCount(0);
+        await expect(tiles(page).locator('button.mls-week-tile-btn')).toHaveCount(2); // this week's open the lineup again
+        await expect(card(page).locator('.mls-week-head .mls-week-status')).toHaveText('Provisional');
+        await expect(card(page).locator('.mls-week-swing')).toHaveCount(1);
+        // Back again inside 2 minutes: week 1 from memory, no second fetch; then "Back to week 2" in one tap.
+        await step(page, -1).click();
+        await expect(title).toHaveText('Week 1 Recap');
+        await expect(card(page).locator('.mls-week-head')).toContainText('Record 2–0');
+        expect(asked.matchups.length).toBe(2);
+        await back.click();
+        await expect(title).toHaveText('Week 2 Recap');
+        await expect(page.locator('#scoreboardWeekAnnouncer')).toHaveText('Week 2 Recap');
+        await step(page, -1).click();
+        await expect(title).toHaveText('Week 1 Recap');
+
+        // A swipe across the header still switches tabs (the arrows only take taps), and leaving the tab ends the choice.
+        await page.evaluate(() => {
+            const el = document.querySelector('#thisWeekCard .mls-week-step[data-step="1"]');
+            const touch = (x) => new Touch({ identifier: 1, target: el, screenX: x, clientX: x, screenY: 200, clientY: 200 });
+            el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, changedTouches: [touch(320)] }));
+            el.dispatchEvent(new TouchEvent('touchend', { bubbles: true, changedTouches: [touch(40)] }));
+        });
+        await expect(page.locator('#scoreboardTab')).not.toHaveClass(/\bactive\b/);
+        await showTab(page, 'scoreboard');
+        await expect(title).toHaveText('Week 2 Recap');
+        await expectClean(page, state);
+    });
+
+    // Round 2: while another week loads, the last one stays up, dimmed and inert, under the new title (no shrink and grow).
+    test('stepping to a week still loading keeps the last week\'s tiles, dimmed, until it arrives', async ({ page }) => {
+        const { state } = await setup(page);
+        let release;
+        const held = new Promise(r => { release = r; });
+        await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, route => route.fulfill({ json: scoreboard() }));
+        await page.route(new RegExp(`sleeper\\.app/v1/league/(${FIXTURE_LEAGUE_ID}|${FIXTURE_LEAGUE2_ID})/matchups/1$`), async route => {
+            await held;
+            return route.fulfill({ contentType: 'application/json', body: fixture(route.request().url().includes(FIXTURE_LEAGUE_ID + '/') ? 'league-matchups-final.json' : 'league2-matchups.json') });
+        });
+        await step(page, -1).click();
+        await expect(card(page).locator('.mls-week-title')).toHaveText('Week 1 Recap');
+        await expect(card(page).locator('.mls-week-head')).toContainText('Loading matchups');
+        const stale = card(page).locator('.mls-week-body.is-stale');
+        await expect(stale).toHaveAttribute('inert', '');
+        await expect(stale.locator('.mls-week-tile')).toHaveCount(2); // week 2's, still there
+        release();
+        await expect(card(page).locator('.mls-week-head .mls-week-status')).toHaveText('Final');
+        await expect(stale).toHaveCount(0);
+        await expect(tiles(page)).toHaveCount(2);
+        await expectClean(page, state);
+    });
+
+    test('a week with no matchups in any league says so', async ({ page }) => {
+        const { state } = await setup(page);
+        await routeWeekOne(page, { empty: true });
+        await step(page, -1).click();
+        await expect(card(page).locator('.mls-week-title')).toHaveText('Week 1 Recap');
+        await expect(card(page).locator('.mls-week-empty')).toHaveText('No matchups in week 1 in your Sleeper leagues.');
+        await expect(tiles(page)).toHaveCount(0);
+        await expect(card(page).locator('#exportScoreboardBtn')).toHaveCount(0);
+        await expect(card(page)).not.toContainText("Your team wasn't found");
+        await step(page, 1).click();
+        await expect(tiles(page)).toHaveCount(2);
+        await expectClean(page, state);
+    });
+
+    // S28 (the owner's choice): dynasty and keeper leagues split Competing / Rebuilding by the Roster tab's "I'm competing
+    // this year", which shows in every dynasty and keeper league now (Second Fixture League has no In-Season set).
+    test('Competing / Rebuilding: the dynasty league follows its Roster tab switch; the redraft league isn\'t in it', async ({ page }) => {
+        const { state } = await setup(page);
+        const splits = card(page).locator('.mls-week-split');
+        await expect(splits).toHaveText(['Redraft 0–1', 'Dynasty 1–0', 'Competing 0–0', 'Rebuilding 1–0']);
+        await expect(card(page).locator('.mls-week-split-group[aria-label="Dynasty and keeper, by direction"]')).toHaveCount(1);
+
+        await page.selectOption('#headerLeagueSelect', FIXTURE_LEAGUE2_ID);
+        await showTab(page, 'roster');
+        await expect(page.locator('#powerCompetingWrap')).toBeVisible();
+        await expect(page.locator('#powerCompetingDesc')).toHaveText('On: Competing on the Scoreboard. Off: Rebuilding.');
+        await page.locator('#powerCompeting').check();
+        await showTab(page, 'scoreboard');
+        await expect(splits).toHaveText(['Redraft 0–1', 'Dynasty 1–0', 'Competing 1–0', 'Rebuilding 0–0']);
+
+        await showTab(page, 'roster');
+        await page.locator('#powerCompeting').uncheck();
+        await showTab(page, 'scoreboard');
+        await expect(splits).toHaveText(['Redraft 0–1', 'Dynasty 1–0', 'Competing 0–0', 'Rebuilding 1–0']);
+
+        // The redraft league has no switch.
+        await page.selectOption('#headerLeagueSelect', FIXTURE_LEAGUE_ID);
+        await showTab(page, 'roster');
+        await expect(page.locator('#powerCompetingWrap')).toBeHidden();
         await expectClean(page, state);
     });
 

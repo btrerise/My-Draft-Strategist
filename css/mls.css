@@ -1916,6 +1916,22 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-head { display: flex; align-items: center; gap: 0.4rem 0.6rem; flex-wrap: wrap; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border); }
 .mls-week-heading { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.15rem 0.6rem; }
 .mls-week-title { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
+/* ‹ Week 7 Recap › (improvements S28): the week's arrows hug the title; a disabled one fades but keeps its place. */
+.mls-week-nav { display: inline-flex; align-items: center; gap: 0.15rem; margin-left: -0.35rem; }
+/* With the arrows the heading is wider than a phone's row: it shrinks (the summary wraps under the title) rather than
+   pushing (i) and Refresh onto a line of their own. */
+.mls-week-head .mls-week-heading { flex-basis: 0; }
+.mls-week-step { position: relative; display: inline-flex; align-items: center; justify-content: center; min-width: 2rem; min-height: 2rem; border-radius: 50%; color: var(--primary-green); cursor: pointer; }
+/* A 48px tap area (round 2, Material's minimum) around the 32px button, without making the header taller. */
+.mls-week-step::before { content: ''; position: absolute; inset: -0.5rem; }
+/* "Back to week 9" on a past week: a small text link after the arrows. */
+.mls-week-back { color: var(--primary-green); font-size: 0.8rem; font-weight: 600; cursor: pointer; padding: 0.2rem 0.1rem; white-space: nowrap; }
+.mls-week-back:hover { text-decoration: underline; }
+/* The last week drawn, dimmed while the chosen one loads. */
+.mls-week-body.is-stale { opacity: 0.45; transition: opacity 0.15s; pointer-events: none; }
+.mls-week-step:hover:not(:disabled) { background: var(--bg-hover, rgba(127, 127, 127, 0.12)); }
+.mls-week-step:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
+.mls-week-step:disabled { color: var(--text-muted); opacity: 0.4; cursor: default; }
 .mls-week-summary { font-size: 0.85rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .mls-week-info { flex-shrink: 0; }
 /* Provisional / Final and Refresh wrap together, so Refresh never sits on a line alone. */
@@ -2555,6 +2571,9 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .mls-week-extreme { display: flex; align-items: baseline; gap: 0.5rem; min-width: 0; padding: 0.35rem 0.55rem; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .mls-week-extreme:hover { background: rgba(255, 255, 255, 0.04); }
 .mls-week-extreme:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
+/* A past week's tiles and extremes show results only (S28 round 3): no pointer, no hover. */
+.mls-week-tile-btn.is-static, .mls-week-extreme.is-static { cursor: default; }
+.mls-week-tile-btn.is-static:hover, .mls-week-extreme.is-static:hover { background: rgba(0, 0, 0, 0.15); }
 .mls-week-extreme.is-win { border-left-color: #10b981; }
 .mls-week-extreme.is-loss { border-left-color: #ef4444; }
 .mls-week-extreme-label { flex-shrink: 0; font-size: 0.72rem; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-muted); }

@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {
     weekFromSearch, starterState, reachOf, sideSummary, classifyMatchup, resultOf, medianPlace, guillotinePlace, summarize, recordText,
     swingOrder, teamNamesFrom, playsMedian, isGuillotine, seasonRecord, ordinal, playedCount, tooEarlyToCall, MIN_PLAYED,
+    leagueDirection, stepWeek,
 } from '../../js/mls/week/scoreboard.js';
 
 const p = (pos, points, gameState, extra = {}) => ({ id: `${pos}${points}${gameState}`, name: pos, pos, team: 'MIN', points, gameState, onBye: false, out: false, ...extra });
@@ -86,6 +87,38 @@ test('the headline: W-L split paid / free and redraft / dynasty, keeper with red
     assert.equal(recordText(s.dynasty), '1–0');
     assert.equal(s.stillLive, 2);
     assert.equal(s.keeper, true);
+});
+
+// S28 (the owner's choice): dynasty and keeper leagues split by the Roster tab's "I'm competing this year"; on is
+// Competing, off (or never touched) Rebuilding; redraft leagues aren't in it.
+test('Competing / Rebuilding: dynasty and keeper leagues by the switch, off counting as Rebuilding; redraft left out', () => {
+    assert.equal(leagueDirection('dynasty', true), 'competing');
+    assert.equal(leagueDirection('dynasty', false), 'rebuilding');
+    assert.equal(leagueDirection('dynasty', undefined), 'rebuilding'); // never touched
+    assert.equal(leagueDirection('redraft', true), null); // a redraft league (or a keeper set to play as redraft)
+    const s = summarize([
+        { result: 'W', group: 'dynasty', direction: 'competing', status: 'done' },
+        { result: 'L', group: 'dynasty', direction: 'competing', status: 'done' },
+        { result: 'W', group: 'redraft', keeper: true, direction: 'rebuilding', status: 'done' }, // keeper: Redraft and Rebuilding
+        { result: 'T', group: 'dynasty', direction: 'rebuilding', status: 'swing' },
+        { result: 'W', group: 'redraft', direction: null, status: 'done' },
+        { result: 'L', group: 'dynasty', direction: 'competing', status: 'swing', early: true }, // too early: in no count
+    ]);
+    assert.equal(recordText(s.competing), '1–1');
+    assert.equal(recordText(s.rebuilding), '1–0–1');
+    assert.equal(recordText(s.redraft), '2–0');
+    assert.equal(recordText(s.dynasty), '1–1–1');
+    assert.equal(recordText(s.all), '3–1–1');
+    assert.equal(s.tooEarly, 1);
+});
+
+test('the Scoreboard\'s arrows: week 1 up to this week, nothing past either end', () => {
+    assert.equal(stepWeek(7, -1, 7), 6);
+    assert.equal(stepWeek(7, 1, 7), null); // this week: no Next
+    assert.equal(stepWeek(1, -1, 7), null); // week 1: no Previous
+    assert.equal(stepWeek(6, 1, 7), 7);
+    assert.equal(stepWeek(null, -1, 7), null);
+    assert.equal(stepWeek(3, 1, null), null);
 });
 
 test('swings: the most uncertain first by win chance, then the smallest gap', () => {

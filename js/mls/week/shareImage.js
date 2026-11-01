@@ -5,7 +5,7 @@
 // of leagues, one phone-width image:
 //     My Lineup Strategist · Week 7 Recap                      [Provisional]
 //     Record 12–7 · 2 still live
-//     Paid 4–2 | Free 8–5   Redraft 7–4 | Dynasty 5–3   Median 6–3
+//     Paid 4–2 | Free 8–5   Redraft 7–4 | Dynasty 5–3   Competing 3–1 | Rebuilding 2–2   Median 6–3
 //     MVPs               top 3: boomed X of N, points
 //     LVPs               top 3: started X of N, points
 //     19 Sleeper leagues · mydraftstrategist.com

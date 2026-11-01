@@ -92,12 +92,14 @@ async function openRecap(page) {
 }
 
 test.describe('Scoreboard: MVPs & LVPs', () => {
-    test('folded until opened: the counts and Provisional on its line; both tables and the extra lines inside', async ({ page }) => {
+    test('folded until opened: the counts on its line (the pill only in the card\'s header); both tables and the extra lines inside', async ({ page }) => {
         const state = await setup(page);
         const toggle = section(page).locator('.mls-week-fold-toggle');
         await expect(toggle).toContainText('MVPs & LVPs');
         await expect(toggle).toContainText('2 MVPs · 0 LVPs');
-        await expect(toggle.locator('.mls-week-status')).toHaveText('Provisional');
+        // No pill of its own since S28 round 2: the header's Provisional, a line above, says it.
+        await expect(toggle.locator('.mls-week-status')).toHaveCount(0);
+        await expect(page.locator('#thisWeekCard .mls-week-head .mls-week-status')).toHaveText('Provisional');
         await expect(section(page).locator('#mlsWeekFold-recap')).toBeHidden();
 
         await openRecap(page);
@@ -138,6 +140,26 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await expectClean(page, state);
     });
 
+    // S28 round 2: an earlier week is over, so its LVPs show even when that week's ESPN scoreboard doesn't load (before,
+    // every game's state was unknown, nobody's game was "final", and the LVP list stayed empty beside a Final pill).
+    test('an earlier week\'s LVPs show even without its ESPN scoreboard', async ({ page }) => {
+        const state = await setup(page, { league2Points: { 11604: 0, 6786: 8, 7547: 24 }, statsHalf: { 11604: 4, 7547: 21 } });
+        await page.route(/sleeper\.app\/v1\/stats\/nfl\/regular\/2026\/1$/, route => {
+            const data = JSON.parse(fixture('stats-2026-2.json'));
+            data['11604'] = { ...(data['11604'] || {}), pts_half_ppr: 4, pts_ppr: 5, pts_std: 3 };
+            return route.fulfill({ json: data });
+        });
+        await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard\?week=1&/, route => route.abort());
+        await page.locator('#thisWeekCard .mls-week-step[data-step="-1"]').click();
+        await expect(page.locator('#thisWeekCard .mls-week-title')).toHaveText('Week 1 Recap');
+        await expect(page.locator('#thisWeekCard .mls-week-head .mls-week-status')).toHaveText('Final');
+        await openRecap(page);
+        // Week 1 serves the same matchups here, with Jefferson's game never played (0.0): over, so he busted too.
+        await expect(rowsOf(page, 'lvp').locator('.mls-recap-name')).toHaveText(['Justin Jefferson WR', 'Brock Bowers TE']);
+        await expect(section(page)).not.toContainText('Still open');
+        await expectClean(page, state);
+    });
+
     test('a started zero, an LVP who started, a boom on the bench (not an MVP) and a worst benching by slot', async ({ page }) => {
         // Second Fixture League: Bowers (LV, final) on 0.0 in your lineup; Lamb 8 in FLEX while St. Brown (DET, final)
         // scored 24 on your bench. Half PPR: Bowers 4.0 (under TE's 5.5), St. Brown 21.0 (a boom).
@@ -174,7 +196,7 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await routeWeek(page, { matchups: 'final', minFinal: true, stats: 'final' });
         await page.locator('#thisWeekCard [data-action="refreshThisWeek"]').click();
         await expect(page.locator('#thisWeekCard .mls-week-head .mls-week-status')).toHaveText('Final');
-        await expect(section(page).locator('.mls-week-fold-toggle .mls-week-status')).toHaveText('Final');
+        await expect(section(page).locator('.mls-week-fold-toggle .mls-week-status')).toHaveCount(0);
         await openRecap(page);
         // Jefferson: 20.5 in half PPR after the MIN game, a boom, started in both.
         await expect(rowsOf(page, 'mvp').locator('.mls-recap-name')).toContainText(['Justin Jefferson WR']);
@@ -265,7 +287,7 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await btn.click();
         expect((await download).suggestedFilename()).toBe('Week_2_Recap_My_Lineup_Strategist.png');
         const text = (await page.evaluate(() => window.__shareText)).replace(/\s+/g, ' ');
-        for (const part of ['Week 2 Recap', 'Record 1–1 · 1 still live', 'Redraft 0–1', 'Dynasty 1–0',
+        for (const part of ['Week 2 Recap', 'Record 1–1 · 1 still live', 'Redraft 0–1', 'Dynasty 1–0', 'Competing 0–0', 'Rebuilding 1–0',
             'MVPs Josh Allen QB started 2 of 2 25.0', "Ja'Marr Chase WR started 2 of 2 21.0", '2 Sleeper leagues · Boom / Bust on Half PPR points · provisional']) {
             expect(text).toContain(part);
         }

@@ -7590,6 +7590,161 @@ branch, still above main's v2.8.137).
   375×480. Round 2 moved its content, and with CI's fonts it fits there, so nothing scrolled and the line didn't show
   (correctly). The window is 375×360 now, and the test first asserts that the middle overflows.
 
+## S28 — Week Recap: choose the week, and a Competing / Rebuilding split
+
+**User-visible effect.**
+- **The Scoreboard's week is a control.** Arrows around the title, "‹ Week 7 Recap ›" (real buttons labelled "Previous
+  week" and "Next week"), step back a week at a time to week 1 and forward again to this week's recap; each end's
+  arrow is disabled. An earlier week shows its own matchups, scores, tiles, biggest win / worst loss and MVPs & LVPs,
+  reads **Final** (no Still in play, no win chances, "Week 6 is over: every result is final." at the foot), and Export
+  Recap saves that week's image (`Week_6_Recap_…png`). A week with no matchups in any league says "No matchups in week N
+  in your Sleeper leagues." Screen readers hear the week ("Week 6 Recap, final"), focus stays on the arrow (or moves
+  to the other one at an end), and swiping between tabs works as before. Leaving the Scoreboard goes back to this week;
+  the Dashboard's line and the Lineup strip stay on this week throughout.
+- **Competing / Rebuilding in the record.** A third group beside Paid / Free and Redraft / Dynasty: your dynasty and
+  keeper leagues, Competing with the Roster tab's "I'm competing this year" on, Rebuilding otherwise. Shown only when
+  you have such a league; also in Export Recap's image (it draws the same groups) and the header's (i).
+- **The switch shows in every dynasty and keeper league**, whatever the Power Rankings source and with or without an
+  In-Season set. Where it changes nothing else, its line reads "Counts this league as Competing on the Scoreboard. With
+  an In-Season set and your own rankings, Ovr and position rooms use them too." The Suggested line still needs an
+  In-Season set, as before.
+- On phones the header's summary ("starts soon", "Record 9–6 · 2 still live") now wraps under the title, so (i) and
+  Refresh stay on the title's row.
+
+**Owner's decisions (asked before building).**
+1. The control: **arrows around the title**. The Dashboard's line and the Lineup strip **stay on this week**; the choice
+   lasts until you leave the tab, no storage key.
+2. Grouping: first **(c)** (on = Competing, off = Rebuilding, no switch = Not set), with **the switch shown in every
+   dynasty and keeper league**. Since that leaves no league without a switch, I asked again: **off (including never
+   touched) = Rebuilding**, two groups only; and the switch shows **whatever the source** (Market Consensus too).
+3. MVPs & LVPs already followed `?week=`, so they follow the arrows (no question needed).
+
+**What changed, and where.**
+- `js/mls/week/scoreboard.js`: `summarize` counts `competing` / `rebuilding` from each row's `direction`;
+  `leagueDirection(kind, competing)` (null for redraft, else by the switch); `stepWeek(week, step, last)` for the arrows.
+- `js/mls/week/thisWeek.js`: `weekCtx({ scoreboard })`: the Scoreboard reads `view.chosen` (the arrows' week), the
+  Dashboard line and strip this week (`renderThisWeek` builds a second model when they differ). `past` (before the
+  recap week) forces Final, every matchup done and no win chances; no projections are fetched for a past week. The
+  one-slot `other` cache became `otherWeeks` (a Map per week), and the load state (`view.loads`: loadedAt and failed
+  leagues), the win chances (`chancesWeek`) and the week stats are per week too, so each week keeps its own 2 minutes and
+  stepping back doesn't drop the recap week the Dashboard shows. A load that finishes after another week was chosen
+  starts that week's. `stepScoreboardWeek`, `leaveScoreboardWeek` (nav.js calls it on any other tab), focus kept across
+  the card's redraws, an `empty` row kind for Sleeper's `[]`. `splitGroups` adds "Dynasty and keeper, by direction". The
+  (i) mentions Competing / Rebuilding in the Record line (kept to one clause: a closed tooltip still takes layout, see
+  Screenshots).
+- `js/mls/power/rosterCard.js`: `renderCompetingSwitch` shows for `getPowerLeagueKind(league) === 'dynasty'` and words
+  `#powerCompetingDesc`; hidden for no league or a league that isn't fully synced (it used to keep the last league's state
+  there). `lineup/index.html`: `#powerCompetingDesc`, `#scoreboardWeekAnnouncer` (an `sr-only` live region beside the
+  card, which is redrawn whole), the Guide's Scoreboard and step 4 text. `css/mls.css`: `.mls-week-nav`, `.mls-week-step`,
+  the heading's flex-basis. `js/mls/main.js`: the `stepScoreboardWeek` action.
+- `?week=` still works (starts the Scoreboard on that week, with its notice); the arrows reach up to the later of this
+  week and the address's week. docs/TESTING.md's note on it updated.
+- `sw.js`: `CACHE_NAME` v2.8.137 → v2.8.138 (no file added). CHANGELOG: two lines under Lineup Strategist.
+
+**Tests.** Unit (`weekScoreboard.test.mjs`): the grouping (on, off, never touched, redraft, keeper in Redraft and
+Rebuilding, too early in no count) and `stepWeek`'s ends. `mls-this-week.spec.mjs`: back to week 1 (its own matchups,
+118.0 instead of 98.0; Final though its scoreboard has a game 'pre'; no swing or chance; the announcer; focus on Next;
+the Dashboard line on week 2; the app on week 2), forward to week 2 (Provisional, the swing back), back again with no
+second fetch, a swipe on the header switches tabs, and returning shows week 2; a week with no matchups (the message, no
+tiles, no export, no "team wasn't found"); Second Fixture League with the switch off (Rebuilding), on (Competing), off
+again, and the redraft league without a switch. Existing split assertions gain "Rebuilding 1–0" and a third group.
+`mls-season-rankings.spec.mjs`: the switch now shows in a dynasty league without an In-Season set, with the right line.
+
+**Screenshots.** Main and this branch rendered here and compared with `npm run pxdiff` (after stopping a leftover
+server from an interrupted run, which had been serving this branch to both): 38 identical, 4 differ, all by design:
+- `desktop/mls-league-scoreboard.png`, `phone/mls-league-scoreboard.png`: the arrows around "Week 2 Matchups" (Next
+  disabled); on phones "starts soon" under the title. The PNG grows (desktop 900 → 936px, phone 844 → 918px): the
+  32px arrow buttons, and the (i)'s one extra clause, since a closed tooltip still takes up layout on this short
+  pre-kickoff page (a first draft with two new tooltip lines made it 1038px).
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: the Guide's Scoreboard and step 4 text.
+Not re-taken here (this container renders with Chromium 1243, not CI's 1194): take the four from the pull request's CI
+run as docs/TESTING.md describes.
+
+**Checks.** check-precache OK; 471 unit tests pass; Playwright 625 passed, 41 skipped, only `visual.spec.mjs`
+failing on the environment message (as on main here); after the last CSS and tooltip edits, this-week, tooltips-onscreen,
+mvp-lvp and smoke again: 82 passed.
+
+**Left over.**
+- Re-take the four PNGs from CI.
+- The closed tooltip taking layout (it lengthens short pages such as the pre-kickoff Scoreboard) is a shared-tooltip
+  matter (`js/shared/ui/tooltips.js`, css/base.css), not changed here.
+- A past week's MVPs & LVPs need that week's ESPN scoreboard to call LVPs ("games over"); if it doesn't load, LVPs stay
+  empty for that week while the record still reads Final.
+- Open follow-ups this touched: none of the existing ones.
+
+### S28, round 2: the owner's questions, and a review as a user
+
+**The LVP note.** The owner asked why I'd noted that a past week's LVPs need its ESPN scoreboard, since they worked in
+their testing. They do: the app fetches each week's scoreboard. The note was about the failure case only: an LVP needs
+his game "over" (`state === 'post'`, playerRecap.js), so if that one request fails, every state is unknown and the LVP
+list is empty beside a Final pill. Fixed (owner: yes): `recapInput` gives a past week's teams `post` where the
+scoreboard has no state. Spec `mls-mvp-lvp.spec.mjs`, "an earlier week's LVPs show even without its ESPN scoreboard"
+(ESPN aborted for week 1); it fails with the fix taken out (no LVPs) and passes with it.
+
+**Review as a user** (rendered at both widths), and what the owner picked to fix (all of it):
+1. "Rebuilding 1–0" alone read like a fourth kind of league → **both halves always show** once any dynasty or keeper
+   league is in the record, 0–0 included ("Competing 0–0 | Rebuilding 1–0"); in Export Recap's image too.
+2. Getting back to this week took a tap per week → **"Back to week N"** (`.mls-week-back`, `scoreboardThisWeek`), a small
+   green link after the arrows on a past week only; focus goes to Previous and the announcer reads the week.
+3. The card shrank to "Loading matchups…" and grew back on each step → **the last week drawn stays up, dimmed and
+   inert** (`.mls-week-body.is-stale`, `view.lastBody`) under the new title until the new week arrives. A first load
+   draws as before. An empty draw made before the load starts never replaces the last real body (the first try did,
+   and the spec caught it).
+4. The arrows' 32px tap targets → a **48px tap area** (`::before`, inset −0.5rem) without making the header taller.
+5. "Week 1 is over: every result is final." repeated the pill → **no foot line for a past week** (and not the "Sleeper
+   can still correct stats" line either).
+Then the two things that caught my eye (owner: follow up after the fixes; done):
+- **MVPs & LVPs no longer repeats the Provisional / Final pill** the header shows a line above.
+- **"$ Paid" stays together** in the paid hint on phones (`mls-nowrap`).
+
+**Merge.** F10 (btrerise/My-Draft-Strategist#212) merged to main during this round; merged in (LOG and CHANGELOG
+conflicts: both kept, F10's LOG entry first). Main's `CACHE_NAME` is v2.8.138 too, so this branch is now **v2.8.139**.
+
+**Tests.** `mls-this-week.spec.mjs`: "Back to week 2" there on week 1, gone on week 2, one tap back (and the announcer);
+"stepping to a week still loading keeps the last week's tiles, dimmed" (week 1's matchups held until released: inert,
+two old tiles, then Final and no stale body); no foot line on a past week; the splits with Competing 0–0. `mls-mvp-lvp`:
+no pill on the MVPs & LVPs line (Provisional in the header); the image has Competing 0–0 and Rebuilding 1–0; the LVP test
+above.
+
+**Screenshots.** Still the same four as round 1 (the Scoreboard and the Guide, both widths); round 2 changes nothing
+else in them except the Guide's "Back to week N" sentence (the screenshot Scoreboard is before kickoff: no back link, no
+split, no MVPs). Take all four from CI.
+
+### S28, round 3: a second review as a user
+
+Rendered this time: keyboard focus on the arrows (a clean ring, not clipped), the Roster tab's switch in a dynasty league
+without an In-Season set, the Dashboard on a phone, and Tuesday (recap week 2, app week 3). The owner picked:
+1. **A past week shows results only** (owner: 1(a)). Its tiles and Biggest win / Worst loss opened that league's Lineup
+   tab, which shows this week's lineup and matchup: a mismatch. Now they're `div.is-static` (no `data-action`, no ›, no
+   hover or pointer); this week's are buttons as before. **Owner's note for later:** possibly let the Lineup tab show
+   past weeks so these could open again; not needed now (added under "Open follow-ups" in docs/TESTING.md, "Wanted by
+   the owner, not scheduled yet").
+2. **Tuesday's ›** reaches the app's own week when it's ahead of the recap (`last` in `weekCtx` = the latest of the recap
+   week, `State.currentNflWeek` and `?week=`): next week's matchups, which the Lineup tab is already on, with "Back to
+   week 2". Any other day nothing changes (the two weeks are the same).
+3. **The switch's line says what off means**: "On: Competing on the Scoreboard. Off: Rebuilding." Where the switch also
+   moves Ovr and the rooms (an In-Season set and your own rankings), today's sentence and then that one.
+4. **"In -Season"** (the gap after the hyphen I'd flagged): not in the markup (a plain hyphen) and not CSS. It's this
+   container's fallback font, which the tests use because they block Outfit. With Outfit loaded (unrouting the font as
+   `fonts.spec.mjs` does, `document.fonts.check('12px Outfit')` true) it renders "In-Season" with no gap, and Outfit is
+   what users get (self-hosted and preloaded since S17). Nothing to change.
+
+Tests: `mls-this-week.spec.mjs`: on week 1 the tiles are `.is-static`, no button or › in tiles or extremes, and this
+week's tiles are buttons again; the Tuesday test steps › to week 3 (› then disabled), "Back to week 2" returns; the
+switch's new line. `mls-season-rankings.spec.mjs`: both wordings of the line. Screenshots: only the Guide's text changes
+again (the screenshot league is redraft, so no switch; the Scoreboard screenshot is this week's, before kickoff); still
+the same four PNGs to take from CI.
+
+### S28: screenshot baselines from CI (PR #213)
+
+CI's first run (41279341100) failed only in `visual.spec.mjs` (657 passed, 41 skipped), on exactly the four PNGs listed
+above. Each `-expected.png` was byte-identical to the committed baseline. The new Scoreboard images show the arrows
+around "Week 2 Matchups" (on CI's fonts the phone's "starts soon" fits beside the title, and the desktop PNG stays
+1280×900). In the Guide, every changed row is accounted for: the rows above the Scoreboard paragraph are unchanged, and
+the rest moved down by that paragraph's new lines and then by step 4's new sentence (desktop +69 then +92px, ±1px
+subpixel; phone +276 then +346px). The run's `-actual.png` files are the new baselines: `desktop/` and `phone/`
+`mls-league-scoreboard.png` and `mls-league-guide.png`.
+
 ## M1 — A Material 3 review of the whole site (research)
 
 **What changed.** No app code, CSS or screenshots. New **docs/improvements/material3-review.md** (not served code, so
