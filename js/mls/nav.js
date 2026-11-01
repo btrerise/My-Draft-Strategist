@@ -2,7 +2,7 @@
 import { State } from './state.js';
 import { updatePulsePrompts } from './init.js';
 import { refreshLeagueDropdown } from './leagues/sync.js';
-import { loadRosterTab, onScoutTabShown, optimizeLineup, refreshThisWeek } from './main.js';
+import { leaveScoreboardWeek, loadRosterTab, onScoutTabShown, optimizeLineup, refreshThisWeek } from './main.js';
 import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { renderBadgeLegend } from './legend.js';
@@ -151,6 +151,8 @@ import { closeMenuOnBack, menuClosed, menuOpened, setBackdrop } from '../shared/
         if (tabId === 'scout') { onScoutTabShown(); syncTradePicker(); }
         // The Scoreboard (improvements S21) loads this week's matchups when shown (at most every 2 minutes).
         if (tabId === 'scoreboard') refreshThisWeek();
+        // A week chosen with the Scoreboard's arrows lasts until you leave the tab (S28, the owner's choice).
+        else leaveScoreboardWeek();
         // The Guide's badge legend is built the first time the Guide is shown (improvements S10).
         if (tabId === 'guide') renderBadgeLegend();
         window.scrollTo(0, 0);

@@ -13,8 +13,12 @@
 //
 // Owner's choices (S21): it loads when the Scoreboard, the Dashboard or the Lineup tab opens (reusing what it loaded in
 // the last 2 minutes) and with Refresh, never on a timer: run it before SNF, before MNF and after MNF. Matchups stay in
-// memory. For testing, /lineup/?week=6 shows another week (its own scoreboard and projections; nothing else in the app
-// changes), with a line saying so.
+// memory.
+// The week (S28, the owner's choice): arrows around the Scoreboard's title ("‹ Week 7 Recap ›") step back to earlier
+// weeks, each loaded with its own scoreboard and matchups (nothing else in the app changes), and kept 2 minutes like
+// this week's. A past week is final. The choice is in memory and lasts until you leave the Scoreboard tab; the
+// Dashboard's line and the Lineup strip stay on this week. /lineup/?week=6 still opens it on week 6 (the tests use it),
+// with a line saying so.
 //
 // Data: one GET /v1/league/<id>/matchups/<week> per Sleeper league, five at a time, for Sleeper's current `week`.
 // They go into State.lineupActualPoints, the Lineup tab's per-league, per-week cache (lineup/gameInfo.js), widened to
@@ -41,8 +45,9 @@ import { canViewTransition, withViewTransition } from '../../shared/ui/viewTrans
 import { showToast } from '../../shared/ui/toast.js';
 import {
     MIN_PLAYED, classifyMatchup, guillotinePlace, isGuillotine, medianPlace, ordinal, playsMedian, recordText, resultOf,
-    sideSummary, summarize, swingOrder, teamNamesFrom, tooEarlyToCall, weekFromSearch,
+    leagueDirection, sideSummary, stepWeek, summarize, swingOrder, teamNamesFrom, tooEarlyToCall, weekFromSearch,
 } from './scoreboard.js';
+import { getPowerLeagueKind } from '../power/directionLabels.js';
 
 const FRESH_MS = 2 * 60 * 1000;
 // How many matchups "Still in play" lists before "Show all".
@@ -53,7 +58,7 @@ const REFRESH_ICON = (spin) => `<svg aria-hidden="true" width="14" height="14" v
 // Short labelled lines, not one paragraph (owner, after the Thursday-night pass: on a phone it filled the screen).
 const TOOLTIP = [
     'Your matchup in every Sleeper league this week, from Sleeper\'s live scores.',
-    '<strong>Record:</strong> how each head-to-head matchup stands, once at least 4 players a side have played. Grouped Paid / Free (mark paid leagues with "$ Paid" under Edit on the Dashboard) and Redraft / Dynasty (keeper counts as Redraft). A guillotine league has no opponent, so it isn\'t in it.',
+    '<strong>Record:</strong> how each head-to-head matchup stands, once at least 4 players a side have played. Grouped Paid / Free (mark paid leagues with "$ Paid" under Edit on the Dashboard), Redraft / Dynasty (keeper counts as Redraft) and, for dynasty and keeper, Competing / Rebuilding (the Roster tab\'s "I\'m competing this year"). A guillotine league has no opponent, so it isn\'t in it.',
     '<strong>Median:</strong> your record against the league median, in the leagues that play one.',
     '<strong>Still in play:</strong> the side that\'s behind can still turn it around; your chance to win is the Matchup Simulator\'s (none for Best Ball).',
     '<strong>Effectively decided:</strong> the side that\'s behind has nobody left, or too little.',
@@ -64,33 +69,48 @@ const TOOLTIP = [
 ].join('<br><br>');
 
 // --- What this card last loaded (in memory) ---
-const view = { week: null, loadedAt: 0, loading: null, failed: new Map(), chances: new Map(), chancesKey: '', allSwingsWeek: null };
-// The week's player stats from Sleeper (S22, round 8): each player's points on the MVPs & LVPs scale, loaded with the
+// loads: per week, when it last loaded and which leagues' fetches failed then. chances: the swing matchups' win chances,
+// for chancesWeek only. chosen: the week picked with the Scoreboard's arrows (S28), null for this week.
+const view = { loads: new Map(), loading: null, chances: new Map(), chancesWeek: null, chancesKey: '', allSwingsWeek: null, chosen: null };
+const failedFor = (week) => (view.loads.get(week) || {}).failed || new Map();
+const chanceOf = (ctx, leagueId) => view.chancesWeek === ctx.week ? view.chances.get(leagueId) : undefined;
+// Each week's player stats from Sleeper (S22, round 8): each player's points on the MVPs & LVPs scale, loaded with the
 // matchups (and again with them), in memory only.
-const weekStats = { week: null, data: null };
+const weekStats = new Map();
 // Leagues synced before S21: their names, median and guillotine flags, read from Sleeper once per visit.
 const metaCache = new Map();
-// A week other than the app's current one (the recap week until Wednesday, or the address's ?week=), with its own
-// scoreboard, projections and matchups once loaded. Its matchups stay out of State.lineupActualPoints, the Lineup
-// tab's cache for the current week, so the two tabs don't keep replacing each other's.
-const other = { week: null, times: {}, games: {}, projections: null, matchups: new Map() };
+// Weeks other than the app's current one (the recap week until Wednesday, a week chosen with the arrows, or the
+// address's ?week=), each with its own scoreboard, projections and matchups once loaded. Their matchups stay out of
+// State.lineupActualPoints, the Lineup tab's cache for the current week, so the two tabs don't keep replacing each
+// other's; and one per week (S28), so stepping back a week doesn't drop the recap week the Dashboard shows.
+const otherWeeks = new Map();
+const otherWeek = (week) => {
+    if (!otherWeeks.has(week)) otherWeeks.set(week, { times: {}, games: {}, projections: null, matchups: new Map() });
+    return otherWeeks.get(week);
+};
 
-// The week this card shows and what it reads about it: the recap week (Sleeper's display_week, which stays on last
-// week through Tuesday; State.recapNflWeek), or the address's week. When that isn't the app's current week, it reads
-// its own (other) instead of the Lineup tab's.
-function weekCtx() {
+// The week a view shows and what it reads about it. This week: the recap week (Sleeper's display_week, which stays on
+// last week through Tuesday; State.recapNflWeek), or the address's week. The Scoreboard (scoreboard: true) shows the
+// week chosen with its arrows instead, when there is one. When the week isn't the app's current one, it reads its own
+// (otherWeeks) instead of the Lineup tab's. past: before the recap week, so final (S28). last: the latest week the
+// arrows reach.
+function weekCtx({ scoreboard = true } = {}) {
     const asked = typeof location !== 'undefined' ? weekFromSearch(location.search) : null;
     const season = State.currentNflSeason;
     const live = State.currentNflWeek;
-    const target = asked ?? State.recapNflWeek ?? live;
+    const current = State.recapNflWeek ?? live;
+    const home = asked ?? current;
+    const target = scoreboard && view.chosen != null ? view.chosen : home;
+    const last = current == null ? null : Math.max(current, asked ?? 0);
+    const about = { season, asked: asked != null && target === asked, past: target != null && current != null && target < current, last, chosen: target !== home };
     if (target != null && live != null && target !== live) {
-        const mine = other.week === target;
-        return { week: target, season, times: mine ? other.times : {}, games: mine ? other.games : {}, projections: mine ? other.projections : null, asked: asked != null, other: true };
+        const o = otherWeeks.get(target);
+        return { ...about, week: target, times: o ? o.times : {}, games: o ? o.games : {}, projections: o ? o.projections : null, other: true };
     }
     const week = live;
     return {
-        week, season, times: State.gameTimesByTeam, games: State.gamesByTeam,
-        projections: State.lineupProjections.week === week ? State.lineupProjections.data : null, asked: false, other: false,
+        ...about, week, times: State.gameTimesByTeam, games: State.gamesByTeam,
+        projections: State.lineupProjections.week === week ? State.lineupProjections.data : null, other: false,
     };
 }
 const kickedOff = (ctx, team) => {
@@ -98,15 +118,17 @@ const kickedOff = (ctx, team) => {
     return !isNaN(ms) && Date.now() >= ms;
 };
 
-// The address's week: its ESPN scoreboard and Sleeper projections (the app's own are for the current week).
-async function loadOtherWeek(week, season) {
-    if (other.week !== week) Object.assign(other, { week, times: {}, games: {}, projections: null, matchups: new Map() });
+// Another week's ESPN scoreboard and Sleeper projections (the app's own are for the current week). A past week has no
+// win chances, so no projections (S28).
+async function loadOtherWeek(week, season, past) {
+    const o = otherWeek(week);
     try {
         const res = await mdsFetch(`https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week=${week}&seasontype=2`);
         const parsed = parseEspnScoreboard(res.ok ? await res.json() : null);
-        if (parsed) { other.times = parsed.map; other.games = parsed.games; }
-    } catch (e) { /* game states stay unknown: everyone counts as live, and the card says so */ }
-    try { other.projections = (await getWeeklyProjections(season, week)) || null; } catch (e) { /* no win chances */ }
+        if (parsed) { o.times = parsed.map; o.games = parsed.games; }
+    } catch (e) { /* game states stay unknown: everyone counts as live (a past week still reads Final), and the card says so */ }
+    if (past) return;
+    try { o.projections = (await getWeeklyProjections(season, week)) || null; } catch (e) { /* no win chances */ }
 }
 
 function leagueMeta(l) {
@@ -199,7 +221,7 @@ function leagueResult(l, matchups, meta, base) {
 // --- Loading ---
 // A league's cached matchups for a week: the Lineup tab's cache for the current week, this card's own for any other.
 const cachedFor = (l, week) => {
-    const c = week === State.currentNflWeek ? State.lineupActualPoints[l.leagueId] : other.matchups.get(l.leagueId);
+    const c = week === State.currentNflWeek ? State.lineupActualPoints[l.leagueId] : (otherWeeks.get(week)?.matchups.get(l.leagueId));
     return c && c.week === week && Array.isArray(c.matchups) ? c : null;
 };
 const hasWeek = (l, week) => !!cachedFor(l, week);
@@ -208,13 +230,14 @@ const hasWeek = (l, week) => !!cachedFor(l, week);
 // loaded, fetches what's older than FRESH_MS (everything, with force), draws again, then adds the win chances.
 export function refreshThisWeek({ force = false } = {}) {
     const leagues = (State.leagues || []).filter(isSleeperLeague);
-    const { week, season, other: otherWeek } = weekCtx();
+    const { week, season, other: isOther, past } = weekCtx();
     if (!leagues.length || week == null) { renderThisWeek(); return Promise.resolve(); }
     if (view.loading) return view.loading;
-    // Loaded in the last 2 minutes, and every league has this week's matchups (or failed then): just redraw. A league
-    // added since is fetched.
-    const allIn = leagues.every(l => hasWeek(l, week) || view.failed.has(l.leagueId));
-    if (!force && allIn && view.week === week && Date.now() - view.loadedAt < FRESH_MS) { renderThisWeek(); return Promise.resolve(); }
+    // Loaded in the last 2 minutes, and every league has the week's matchups (or failed then): just redraw. A league
+    // added since is fetched. Each week keeps its own 2 minutes (S28), so stepping back and forth doesn't fetch again.
+    const load = view.loads.get(week);
+    const allIn = leagues.every(l => hasWeek(l, week) || failedFor(week).has(l.leagueId));
+    if (!force && allIn && load && Date.now() - load.loadedAt < FRESH_MS) { renderThisWeek(); return Promise.resolve(); }
 
     view.loading = (async () => {
         await null; // view.loading is set before the first draw below, which shows the spinner
@@ -222,9 +245,9 @@ export function refreshThisWeek({ force = false } = {}) {
             // A scoreboard that has a game under way and is a minute old is fetched again (gameStatusMayBeStale).
             if (force) State.gameTimesFetchedAt = 0;
             await Promise.all([
-                otherWeek ? loadOtherWeek(week, season) : Promise.all([refreshGameTimes(), ensureLineupProjections()]),
+                isOther ? loadOtherWeek(week, season, past) : Promise.all([refreshGameTimes(), ensureLineupProjections()]),
                 getSleeperPlayerMap().catch(() => null),
-                getLiveWeekStats(season, week).then(data => { weekStats.week = week; weekStats.data = data; }),
+                getLiveWeekStats(season, week).then(data => { weekStats.set(week, data); }),
             ]);
             const failed = new Map();
             await eachLimited(leagues, PARALLEL, async (l) => {
@@ -233,24 +256,23 @@ export function refreshThisWeek({ force = false } = {}) {
                 if (force || !fresh) {
                     try {
                         const got = await getSleeperMatchups(l.leagueId, week);
-                        if (otherWeek) other.matchups.set(l.leagueId, { week, matchups: Array.isArray(got) ? got : [], fetchedAt: Date.now() });
+                        if (isOther) otherWeek(week).matchups.set(l.leagueId, { week, matchups: Array.isArray(got) ? got : [], fetchedAt: Date.now() });
                         else storeLeagueMatchups(l, week, got);
                     } catch (e) {
                         failed.set(l.leagueId, true);
                     }
                 }
             });
-            view.failed = failed;
             await resolveForDraw();
-            view.week = week;
-            view.loadedAt = Date.now();
+            view.loads.set(week, { loadedAt: Date.now(), failed });
         } finally {
             view.loading = null;
         }
         renderThisWeek();
-        // A league added while this was loading gets its turn now.
-        if ((State.leagues || []).filter(isSleeperLeague).some(l => !hasWeek(l, week) && !view.failed.has(l.leagueId))) refreshThisWeek();
-        await addWinChances();
+        // A league added while this was loading, or another week chosen meanwhile, gets its turn now.
+        const now = weekCtx().week;
+        if (now !== week || (State.leagues || []).filter(isSleeperLeague).some(l => !hasWeek(l, week) && !failedFor(week).has(l.leagueId))) refreshThisWeek();
+        if (now === week) await addWinChances();
     })().catch(err => { console.warn('This week: matchups did not load.', err); view.loading = null; renderThisWeek(); });
     renderThisWeek();
     return view.loading;
@@ -259,6 +281,7 @@ export function refreshThisWeek({ force = false } = {}) {
 // The swing matchups' win chances, once per set of scores (a redraw with the same scores keeps them).
 async function addWinChances() {
     const ctx = weekCtx();
+    if (ctx.past) return; // a past week is final: nothing left to win (S28)
     const built = buildRows(ctx);
     if (!weekStarted(built.rows, ctx)) return;
     // Not for a matchup too early to call: a chance from one or two players' games says little (and saves the work).
@@ -270,6 +293,7 @@ async function addWinChances() {
     if (!swings.length || key === view.chancesKey) return;
     view.chancesKey = key;
     view.chances = new Map(); // last scores' percents don't stay up beside new scores
+    view.chancesWeek = ctx.week;
     // On a bye: left out like Out (no projection, so he'd count at his season average; Sunday live check).
     const toPlayers = (side) => side.starters.map(p => ({ id: p.id, pos: p.pos, team: p.team, actual: p.actual, shareLeft: p.shareLeft, projected: p.projected, excluded: p.out || p.onBye }));
     try {
@@ -290,8 +314,10 @@ function buildRows(ctx) {
         const cached = cachedFor(l, week);
         const matchups = cached ? cached.matchups : null;
         // A league whose last fetch failed keeps any scores it had (the note under the list names it).
-        if (view.failed.get(l.leagueId) && !matchups) { rows.push({ league: l, res: { kind: 'failed' } }); return; }
+        if (failedFor(week).get(l.leagueId) && !matchups) { rows.push({ league: l, res: { kind: 'failed' } }); return; }
         if (!matchups) { rows.push({ league: l, res: { kind: 'pending' } }); return; }
+        // Sleeper answers [] for a week the league had no games (S28: a week before the league started, say).
+        if (!matchups.length) { rows.push({ league: l, res: { kind: 'empty' } }); return; }
         if (!l.rosterId) { rows.push({ league: l, res: { kind: 'missing' } }); return; }
         const meta = resolvedMeta.get(l.leagueId) || (l.teamNames ? { teamNames: l.teamNames, median: l.medianMatch ?? null, guillotine: l.guillotine ?? null } : { teamNames: {}, median: null, guillotine: null });
         rows.push({ league: l, res: leagueResult(l, matchups, meta, base) });
@@ -343,6 +369,8 @@ const liveText = (players) => players.length > NAMES_UP_TO ? `${players.length} 
 // "Median: L (4th of 6)": the median game's result as it stands, and your place among every team's score (owner,
 // round 9). Before kickoff, just that the league plays it.
 const medianText = (med, started) => started ? `Median: ${med.above ? 'W' : 'L'} (${ordinal(med.rank)} of ${med.of})` : 'Plays the median';
+const PREV_ICON = `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>`;
+const NEXT_ICON = `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
 const TILE_ARROW = `<svg class="mls-week-tile-go" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
 
 function weekStarted(rows, ctx) {
@@ -359,8 +387,7 @@ function firstKickoffLabel(ctx) {
 }
 
 // Everything the three views draw from: the Scoreboard tab, the Dashboard's line and the Lineup tab's strip.
-function buildModel() {
-    const ctx = weekCtx();
+function buildModel(ctx = weekCtx()) {
     const sleeperLeagues = (State.leagues || []).filter(isSleeperLeague);
     if (!sleeperLeagues.length || ctx.week == null) return { ctx, sleeperLeagues, rows: [] };
     const { rows } = buildRows(ctx);
@@ -369,16 +396,23 @@ function buildModel() {
     // anyone on either side is mid-game (round 12): a live game can still swing more than any model of it allows.
     const midGame = (side) => side.starters.some(p => p.gameState === 'in');
     rows.forEach(r => {
-        if (r.res.kind !== 'h2h' || r.res.status !== 'swing') return;
+        if (r.res.kind !== 'h2h') return;
+        // A past week is final (S28): every matchup done, called, whatever the game states say (they're unknown when
+        // that week's scoreboard didn't load, which would leave everyone live).
+        if (ctx.past) { r.res = { ...r.res, status: 'done', early: false }; return; }
+        if (r.res.status !== 'swing') return;
         if (midGame(r.res.me) || midGame(r.res.them)) return;
-        const c = view.chances.get(r.league.leagueId);
+        const c = chanceOf(ctx, r.league.leagueId);
         if (c != null && (c < 0.5 || c > 99.5)) r.res = { ...r.res, status: 'decided', early: false, settledBySim: true };
     });
     const h2h = rows.filter(r => r.res.kind === 'h2h');
     const listed = rows.filter(r => r.res.kind === 'h2h' || r.res.kind === 'guillotine');
-    const started = weekStarted(rows, ctx);
-    const final = started && weekFinal(ctx);
-    const sum = summarize(h2h.map(r => ({ result: r.res.result, paid: !!r.league.paid, group: r.league.leagueType === 'dynasty' ? 'dynasty' : 'redraft', keeper: r.league.leagueType === 'keeper', status: r.res.status, early: r.res.early })));
+    const started = ctx.past || weekStarted(rows, ctx);
+    const final = ctx.past || (started && weekFinal(ctx));
+    const sum = summarize(h2h.map(r => ({
+        result: r.res.result, paid: !!r.league.paid, group: r.league.leagueType === 'dynasty' ? 'dynasty' : 'redraft', keeper: r.league.leagueType === 'keeper',
+        direction: leagueDirection(getPowerLeagueKind(r.league), !!r.league.powerCompeting), status: r.res.status, early: r.res.early,
+    })));
     const pending = rows.some(r => r.res.kind === 'pending');
     return { ctx, sleeperLeagues, rows, h2h, listed, started, final, sum, pending };
 }
@@ -403,7 +437,7 @@ function summaryText(m) {
 //     [W] +18.1 · Median: W (4th of 12)                 >
 // The name always starts at the tile's edge: the W/L sits with the margin at the foot (the edge's color says it too)
 // and the "$" after the name (owner, round 9: badges in front of the names made the tiles look uneven).
-function tileHTML(r, started) {
+function tileHTML(r, started, ctx) {
     const l = r.league, res = r.res;
     // The foot's two lines (round 12: one wrapping line left a "·" dangling at the end of it): the result and how it
     // stands now (chip, margin, then the win chance or who's left), and under it the league's context (the median,
@@ -433,7 +467,7 @@ function tileHTML(r, started) {
             chip = weekResultMarkup(res.result);
             youPts = fmt(res.me.points); oppPts = fmt(res.them.points); margin = res.margin;
             // A matchup still in play: its win chance beside the margin (owner, round 12, with the shorter list).
-            const chance = res.status === 'swing' ? view.chances.get(l.leagueId) : null;
+            const chance = res.status === 'swing' ? chanceOf(ctx, l.leagueId) : null;
             if (chance != null) status.push(`<span class="mls-week-tile-chance">${pctText(chance)} to win</span>`);
         } else if (res.median) context.push(medianText(res.median, started));
     }
@@ -459,13 +493,19 @@ function splitGroups(m) {
     const { h2h, sum } = m;
     const callable = h2h.filter(r => !r.res.early);
     const isDynasty = (r) => r.league.leagueType === 'dynasty';
-    const has = { Paid: h2h.some(r => r.league.paid), Free: h2h.some(r => !r.league.paid), Redraft: h2h.some(r => !isDynasty(r)), Dynasty: h2h.some(isDynasty) };
+    const direction = (r) => leagueDirection(getPowerLeagueKind(r.league), !!r.league.powerCompeting);
+    const has = {
+        Paid: h2h.some(r => r.league.paid), Free: h2h.some(r => !r.league.paid), Redraft: h2h.some(r => !isDynasty(r)), Dynasty: h2h.some(isDynasty),
+        Competing: h2h.some(r => direction(r) === 'competing'), Rebuilding: h2h.some(r => direction(r) === 'rebuilding'),
+    };
     const medians = callable.filter(r => r.res.median);
     const medRec = { W: medians.filter(r => r.res.median.above).length, L: medians.filter(r => !r.res.median.above).length, T: 0 };
     const anyPaid = m.sleeperLeagues.some(l => l.paid);
     return [
         ...(anyPaid ? [{ label: 'By stakes', parts: [['Paid', sum.paid], ['Free', sum.free]] }] : []),
         { label: 'By format', parts: [['Redraft', sum.redraft], ['Dynasty', sum.dynasty]] },
+        // Dynasty and keeper leagues only (S28), beside the format.
+        { label: 'Dynasty and keeper, by direction', parts: [['Competing', sum.competing], ['Rebuilding', sum.rebuilding]] },
         ...(medians.length ? [{ label: 'Against the median', parts: [['Median', medRec]] }] : []),
     ].map(g => ({ ...g, parts: g.parts.filter(([name]) => !(name in has) || has[name]) })).filter(g => g.parts.length);
 }
@@ -486,9 +526,9 @@ function extremesHTML(callable, final) {
     return items.length ? `<div class="mls-week-extremes">${items.join('')}</div>` : '';
 }
 
-function swingHTML(r) {
+function swingHTML(r, ctx) {
     const l = r.league, res = r.res;
-    const chance = view.chances.get(l.leagueId);
+    const chance = chanceOf(ctx, l.leagueId);
     return `<li class="mls-week-swing">
         <div class="mls-week-swing-head">
             <span class="mls-week-line-name">${l.paid ? paidBadgeMarkup() + ' ' : ''}<span class="mls-week-name">${leagueName(l)}</span></span>
@@ -502,11 +542,11 @@ function swingHTML(r) {
 
 // The order of the tiles: the matchups still in play first (most uncertain first), then the rest by how close they are.
 // Before kickoff, and once every game is final, your league order, as on the Dashboard (owner, round 9).
-function tileOrder(rows, started, final) {
+function tileOrder(rows, started, final, ctx) {
     if (!started || final) return rows;
     const gap = (r) => r.res.kind === 'guillotine' ? (r.res.place ? Math.abs(r.res.place.cushion) : Infinity) : Math.abs(r.res.margin);
     const swing = (r) => r.res.kind === 'h2h' && r.res.status === 'swing';
-    const withChance = (r) => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null, trailReach: trailReachOf(r.res) });
+    const withChance = (r) => ({ ...r, margin: r.res.margin, winChance: chanceOf(ctx, r.league.leagueId) ?? null, trailReach: trailReachOf(r.res) });
     const early = (r) => r.res.kind === 'h2h' && r.res.early;
     const swings = rows.filter(r => swing(r) && !early(r)).map(withChance).sort(swingOrder);
     const rest = rows.filter(r => !swing(r)).sort((a, b) => gap(a) - gap(b));
@@ -514,11 +554,47 @@ function tileOrder(rows, started, final) {
     return [...swings, ...rest, ...rows.filter(early)];
 }
 
+// The Scoreboard draws the week chosen with its arrows; the Dashboard's line and the Lineup strip stay on this week
+// (S28, the owner's choice), so they get their own model when the two differ.
 export function renderThisWeek() {
     const m = buildModel();
     renderScoreboard(m);
-    renderSummaryLine(m);
-    renderMatchupStrip(m);
+    const home = m.ctx.chosen ? buildModel(weekCtx({ scoreboard: false })) : m;
+    renderSummaryLine(home);
+    renderMatchupStrip(home);
+}
+
+// --- The Scoreboard's week (S28) ---
+// ‹ and ›: a step to an earlier or later week, between week 1 and this week's recap. In memory; leaving the tab
+// (nav.js) goes back to this week. The step's button keeps focus (the other one if it's now at the end), and the
+// announcer below the card (lineup/index.html) reads out the week for screen readers.
+export function stepScoreboardWeek(step) {
+    const ctx = weekCtx();
+    const next = stepWeek(ctx.week, step, ctx.last);
+    if (next == null) return Promise.resolve();
+    const home = weekCtx({ scoreboard: false }).week;
+    view.chosen = next === home ? null : next;
+    renderThisWeek(); // at once, from what's loaded (a load already under way for another week doesn't draw)
+    focusStep(step);
+    const done = refreshThisWeek();
+    announceWeek();
+    return done;
+}
+function focusStep(step) {
+    const btn = (dir) => document.querySelector(`#thisWeekCard .mls-week-step[data-step="${dir}"]`);
+    const keep = btn(step);
+    const target = keep && !keep.disabled ? keep : btn(-step);
+    if (target) target.focus();
+}
+export function leaveScoreboardWeek() {
+    if (view.chosen == null) return;
+    view.chosen = null;
+    renderThisWeek();
+}
+function announceWeek() {
+    const el = document.getElementById('scoreboardWeekAnnouncer');
+    const m = buildModel();
+    if (el && m.ctx.week != null) el.textContent = `${titleText(m)}${m.ctx.past ? ', final' : ''}`;
 }
 
 // The Scoreboard tab.
@@ -538,8 +614,13 @@ function renderScoreboard(m) {
         return;
     }
 
+    // ‹ Week 7 Recap › (S28): real buttons, disabled at week 1 and at this week.
+    const step = (dir, label, icon) => {
+        const off = stepWeek(ctx.week, dir, ctx.last) == null;
+        return `<button type="button" class="btn-bare mls-week-step" data-action="stepScoreboardWeek" data-step="${dir}" aria-label="${label}"${off ? ' disabled' : ''}>${icon}</button>`;
+    };
     const head = `<header class="mls-week-head">
-        <div class="mls-week-heading"><h3 class="mls-week-title">${titleText(m)}</h3><span class="mls-week-summary">${summaryText(m)}</span></div>
+        <div class="mls-week-heading"><span class="mls-week-nav">${step(-1, 'Previous week', PREV_ICON)}<h3 class="mls-week-title">${titleText(m)}</h3>${step(1, 'Next week', NEXT_ICON)}</span><span class="mls-week-summary">${summaryText(m)}</span></div>
         ${info}
         <span class="mls-week-actions">${started && listed.length ? weekStatusMarkup(final) : ''}${refreshBtn}</span>
     </header>`;
@@ -566,14 +647,14 @@ function renderScoreboard(m) {
         // below the tiles (19 of them run about 1,700px on a phone). Among matchups already settled (all, once final).
         // Only with two or more to compare (S22 round 10): with one league, it repeated the only tile.
         if (callable.length >= 2) parts.push(extremesHTML(callable, final));
-        const swings = callable.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: view.chances.get(r.league.leagueId) ?? null, trailReach: trailReachOf(r.res) }))
+        const swings = callable.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: chanceOf(ctx, r.league.leagueId) ?? null, trailReach: trailReachOf(r.res) }))
             .sort(swingOrder);
         if (swings.length) {
             // The most uncertain few, with "Show all" for the rest (owner, round 12: on a busy Sunday 14 of 20 were in
             // play, and the list repeated most of the tiles below it; the tiles carry each one's win chance too).
             const shown = view.allSwingsWeek === ctx.week ? swings : swings.slice(0, SWINGS_SHOWN);
             // Folds to its heading (owner, S22 round 3), remembered, with the chevron turning as on the Dashboard.
-            const body = [`<ul class="mls-week-swings">${shown.map(swingHTML).join('')}</ul>`];
+            const body = [`<ul class="mls-week-swings">${shown.map(r => swingHTML(r, ctx)).join('')}</ul>`];
             if (shown.length < swings.length) body.push(`<button type="button" class="btn-bare mls-week-show-all" data-action="showAllSwings">Show all ${swings.length}</button>`);
             // Once for the list, not under every Best Ball league (owner, after the Thursday-night pass).
             if (shown.some(r => r.res.bestBall)) body.push('<p class="mls-week-swing-note">Best Ball: anyone on the roster with a game left can still count.</p>');
@@ -592,8 +673,13 @@ function renderScoreboard(m) {
     if (started && sum.tooEarly) {
         parts.push(`<p class="mls-week-decided"><strong>Too early to call:</strong> ${sum.tooEarly} (fewer than ${MIN_PLAYED} players a side have played, so they're not in the Record yet)</p>`);
     }
+    // A week with no matchups in any of your leagues (S28: Sleeper answers [] for a week before a league's season).
+    const empty = rows.filter(r => r.res.kind === 'empty');
+    if (!listed.length && empty.length && !rows.some(r => r.res.kind === 'pending')) {
+        parts.push(`<p class="text-helper mls-week-empty">No matchups in week ${ctx.week} in your Sleeper leagues.</p>`);
+    }
     if (listed.length) {
-        parts.push(`<h4 class="mls-week-sub">${!started ? 'Your matchups' : (final ? 'Every league' : 'Every league, closest first')}</h4><ul class="mls-week-tiles">${tileOrder(listed, started, final).map(r => tileHTML(r, started)).join('')}</ul>`);
+        parts.push(`<h4 class="mls-week-sub">${!started ? 'Your matchups' : (final ? 'Every league' : 'Every league, closest first')}</h4><ul class="mls-week-tiles">${tileOrder(listed, started, final, ctx).map(r => tileHTML(r, started, ctx)).join('')}</ul>`);
     }
 
     // MVPs & LVPs once a game has kicked off (S22).
@@ -601,22 +687,27 @@ function renderScoreboard(m) {
 
     // Leagues without a matchup to show, and any that didn't load.
     const notes = [];
-    const nomatch = rows.filter(r => r.res.kind === 'nomatch');
+    const nomatch = rows.filter(r => r.res.kind === 'nomatch' || (listed.length && r.res.kind === 'empty'));
     if (nomatch.length) notes.push(`<li>No matchup this week: ${nomatch.map(r => leagueName(r.league)).join(', ')}</li>`);
     const missing = rows.filter(r => r.res.kind === 'missing');
     if (missing.length) notes.push(`<li>Your team wasn't found (sync the league again): ${missing.map(r => leagueName(r.league)).join(', ')}</li>`);
     const offSleeper = (State.leagues || []).filter(l => !isSleeperLeague(l)).length;
     if (offSleeper) notes.push(`<li>${offSleeper} manual league${offSleeper === 1 ? '' : 's'}: no Sleeper matchup to show</li>`);
-    const failed = sleeperLeagues.filter(l => view.failed.get(l.leagueId));
+    const failed = sleeperLeagues.filter(l => failedFor(ctx.week).get(l.leagueId));
     if (failed.length) notes.push(`<li class="mls-week-failed">Couldn't load from Sleeper: ${failed.map(leagueName).join(', ')}. Tap Refresh to try again.</li>`);
     if (notes.length) parts.push(`<ul class="mls-week-notes">${notes.join('')}</ul>`);
-    if (started && listed.length && !Object.keys(ctx.games).length) parts.push(`<p class="text-helper mls-week-foot">Game status didn't load, so everyone still counts as live.</p>`);
+    if (ctx.past && listed.length) parts.push(`<p class="text-helper mls-week-foot">Week ${ctx.week} is over: every result is final.</p>`);
+    else if (started && listed.length && !Object.keys(ctx.games).length) parts.push(`<p class="text-helper mls-week-foot">Game status didn't load, so everyone still counts as live.</p>`);
     else if (final) parts.push(`<p class="text-helper mls-week-foot">Every game is final. Sleeper can still correct stats in the next few days.</p>`);
     // Export Recap (S22, rounds 2-3): a summary image for a group chat, once there are scores to sum up. The same
     // purple camera button at the bottom of its card as Export Trade.
     if (started && listed.length) parts.push(`<div class="mls-week-export"><button type="button" id="exportScoreboardBtn" class="btn btn-purple" data-action="exportScoreboard" title="Save a summary of your week (record, MVPs and LVPs) as an image">${CAMERA_ICON}<span class="mls-week-export-label">Export Recap</span></button></div>`);
 
+    // A redraw keeps focus on the week's arrow it was on (S28): the card's HTML is replaced, buttons and all.
+    const active = document.activeElement;
+    const focused = active && el.contains(active) && active.classList.contains('mls-week-step') ? Number(active.dataset.step) : null;
     el.innerHTML = `${head}<div class="mls-week-body">${parts.join('')}</div>`;
+    if (focused) focusStep(focused);
 }
 
 const SCOREBOARD_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="12" rx="2"></rect><path d="M6.5 6.5h2.5v5H6.5z"></path><path d="M15 6.5h2.5v5H15z"></path><line x1="12" y1="8" x2="12" y2="8.01"></line><line x1="12" y1="10" x2="12" y2="10.01"></line><line x1="8" y1="15" x2="8" y2="21"></line><line x1="16" y1="15" x2="16" y2="21"></line></svg>`;
@@ -787,9 +878,10 @@ function recapInput(ctx) {
     // One verdict per player on the chosen scale (round 8), from this week's stats; without them, each league's points.
     const lines = getRecapLines();
     let verdict = null;
-    if (weekStats.week === ctx.week && weekStats.data) {
+    const stats = weekStats.get(ctx.week);
+    if (stats) {
         const key = RECAP_SCALES[lines.scale].key, points = {};
-        Object.keys(players).forEach(id => { const s = weekStats.data[id]; if (s && typeof s[key] === 'number') points[id] = s[key]; });
+        Object.keys(players).forEach(id => { const s = stats[id]; if (s && typeof s[key] === 'number') points[id] = s[key]; });
         verdict = { points };
     }
     return { leagues, players, games: ctx.games, byeTeams, lines, verdict };
@@ -913,7 +1005,7 @@ function renderMatchupStrip(m) {
             + `<span class="mls-strip-score"><strong>${fmt(res.me.points)}</strong>&ndash;${fmt(res.them.points)}</span>`;
         meta = `<span class="mls-strip-status">Too early to call</span>`;
     } else {
-        const chance = view.chances.get(r.league.leagueId);
+        const chance = chanceOf(m.ctx, r.league.leagueId);
         // The status, win chance and median: beside the score on wider screens, a line of their own on phones (the
         // owner, round 10: inline, they wrapped unevenly). A swing's live players get the line after.
         const status = res.status === 'swing'

@@ -1913,6 +1913,15 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 .mls-week-head { display: flex; align-items: center; gap: 0.4rem 0.6rem; flex-wrap: wrap; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border); }
 .mls-week-heading { flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0.15rem 0.6rem; }
 .mls-week-title { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
+/* ‹ Week 7 Recap › (improvements S28): the week's arrows hug the title; a disabled one fades but keeps its place. */
+.mls-week-nav { display: inline-flex; align-items: center; gap: 0.15rem; margin-left: -0.35rem; }
+/* With the arrows the heading is wider than a phone's row: it shrinks (the summary wraps under the title) rather than
+   pushing (i) and Refresh onto a line of their own. */
+.mls-week-head .mls-week-heading { flex-basis: 0; }
+.mls-week-step { display: inline-flex; align-items: center; justify-content: center; min-width: 2rem; min-height: 2rem; border-radius: 50%; color: var(--primary-green); cursor: pointer; }
+.mls-week-step:hover:not(:disabled) { background: var(--bg-hover, rgba(127, 127, 127, 0.12)); }
+.mls-week-step:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
+.mls-week-step:disabled { color: var(--text-muted); opacity: 0.4; cursor: default; }
 .mls-week-summary { font-size: 0.85rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .mls-week-info { flex-shrink: 0; }
 /* Provisional / Final and Refresh wrap together, so Refresh never sits on a line alone. */

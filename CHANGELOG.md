@@ -106,6 +106,14 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Look back at earlier weeks on the Scoreboard.** Arrows beside the title (‹ Week 7 Recap ›) step back a week at a
+  time, down to week 1, and forward again to this week. An earlier week shows its own matchups, scores and MVPs & LVPs,
+  and reads Final. Leaving the Scoreboard goes back to this week; the Dashboard's line and the Lineup tab's matchup stay
+  on this week throughout.
+- **Competing / Rebuilding in the Scoreboard's record.** Beside Redraft / Dynasty, your dynasty and keeper leagues are
+  split by the Roster tab's "I'm competing this year" switch (off counts as Rebuilding), in the record line and in
+  Export Recap's image. The switch now shows in every dynasty and keeper league so each one can be set; without an
+  In-Season set it only sorts the league on the Scoreboard.
 - **A navigation rail on computers.** On a window 840px or wider, the five tabs sit in a column at the left edge (icons
   with their names underneath) instead of a bar along the bottom, and the green bar beside the active tab slides up and
   down. The menu button moves to the top of the rail; it opens the full menu (every tab by name, then the Guide,
