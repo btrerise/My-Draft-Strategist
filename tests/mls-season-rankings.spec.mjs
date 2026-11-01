@@ -94,12 +94,14 @@ test.describe('In-Season rankings in a dynasty league', () => {
     test('Start and the labels follow the In-Season set, Future the dynasty set; "I\'m competing" moves the rooms', async ({ page }) => {
         const { state, ids } = await setUp(page);
 
-        // No In-Season set: every column by the dynasty set, no In-Season note, no switch.
+        // No In-Season set: every column by the dynasty set, no In-Season note. The switch shows (every dynasty league
+        // since S28, for the Scoreboard's Competing / Rebuilding), saying it only sorts the league there.
         const before = await powerTable(page);
         expect(before.key).toBe(''); // no key line without an In-Season set
         await expect(page.locator('#rosterList .mls-roster-source')).toHaveCount(0);
         await expect(page.locator('#rosterPowerStrip')).not.toContainText('In-Season');
-        await expect(page.locator('#powerCompetingWrap')).toBeHidden();
+        await expect(page.locator('#powerCompetingWrap')).toBeVisible();
+        await expect(page.locator('#powerCompetingDesc')).toHaveText('On: Competing on the Scoreboard. Off: Rebuilding.');
 
         // The Season set alone as the league's rankings, for comparison (then back to the dynasty set).
         await patchLeagues(page, { 'Fixture League': { rosRankingSetId: ids.season } });
@@ -156,6 +158,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
 
         // I'm competing: Ovr and the rooms by In-Season too, Future still dynasty. Saved on the league.
         await expect(page.locator('#powerCompetingWrap')).toBeVisible();
+        await expect(page.locator('#powerCompetingDesc')).toHaveText('Ovr and position rooms use your In-Season rankings. On: Competing on the Scoreboard. Off: Rebuilding.');
         await page.locator('#powerCompeting').check();
         const competing = await powerTable(page);
         for (const owner of ['You', 'Rival']) {
@@ -375,10 +378,11 @@ test.describe('In-Season rankings in a dynasty league', () => {
         await powerTable(page);
         await expect(line).toHaveText('Suggested: Rebuilding · from your roster; sync this league to add your record.');
 
-        // No In-Season set: no switch, no suggestion.
+        // No In-Season set: no suggestion; the switch stays (S28) for the Scoreboard.
         await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: null } });
         await powerTable(page);
-        await expect(page.locator('#powerCompetingWrap')).toBeHidden();
+        await expect(page.locator('#powerCompetingSuggestion')).toBeHidden();
+        await expect(page.locator('#powerCompetingWrap')).toBeVisible();
         await expectClean(page, state);
     });
 

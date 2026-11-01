@@ -105,15 +105,24 @@ export const setPowerCompeting = function(checked) {
     refreshPowerRankings();
 };
 
-// The switch shows only in a dynasty or keeper league with an In-Season set, and only with your own rankings
-// as the source (Market Consensus scores every column alike).
+// The switch shows in every dynasty and keeper league, whatever the source (improvements S28, the owner's choice: so each
+// can be set for the Scoreboard's Competing / Rebuilding record). It moves Ovr and the position rooms only with an
+// In-Season set and your own rankings as the source (Market Consensus scores every column alike); either way its line
+// says what on and off mean on the Scoreboard.
 function renderCompetingSwitch(league, src) {
     const wrap = document.getElementById('powerCompetingWrap');
     if (!wrap) return;
-    const show = !!league && !!seasonSetFor(league, State.rankingSets.ros) && !!src && src.source === 'custom';
+    const show = !!league && getPowerLeagueKind(league) === 'dynasty';
     wrap.style.display = show ? '' : 'none'; // .toggle-row sets display, which would beat [hidden]
     const box = document.getElementById('powerCompeting');
     if (box) box.checked = !!(league && league.powerCompeting);
+    const moves = show && !!seasonSetFor(league, State.rankingSets.ros) && !!src && src.source === 'custom';
+    const desc = document.getElementById('powerCompetingDesc');
+    if (desc) {
+        // S28 round 3 (owner): say what off means, in one line where that's all it does.
+        const board = 'On: Competing on the Scoreboard. Off: Rebuilding.';
+        desc.innerHTML = moves ? `Ovr and position rooms use your <span class="mls-nowrap">In-Season</span> rankings. ${board}` : board;
+    }
 }
 
 // The suggestion (S23, round 7; the owner's rule in directionLabels.js): your label, moved at most one step by your
@@ -215,10 +224,12 @@ export function refreshPowerRankings() {
     const league = getActiveLeague();
     renderKeeperStyleNote(league);
     if (!league) {
+        renderCompetingSwitch(null, null);
         showMessage('Select or sync a league on the Dashboard to see Positional Power Rankings.');
         return;
     }
     if (!isFullyMappedLeague(league) || !league.globalPosMap) {
+        renderCompetingSwitch(null, null); // not left showing from the last league
         showMessage("Power Rankings compare every team in the league, so they need a Sleeper-synced league. This league only knows your own roster.");
         return;
     }

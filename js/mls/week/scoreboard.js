@@ -110,21 +110,32 @@ export function guillotinePlace(myPoints, teams, myAlive = true) {
     return { rank, of, against: round1(lowestOther), cushion: round1(myPoints - lowestOther) };
 }
 
-// The headline: the W-L as it stands across head-to-head matchups, split paid / free and redraft / dynasty.
-// rows: [{ result: 'W' | 'L' | 'T', paid, group: 'redraft' | 'dynasty', keeper, status, early }]. Keeper counts with
-// redraft. A matchup too early to call (early) is left out of every count and counted in tooEarly instead.
+// The headline: the W-L as it stands across head-to-head matchups, split paid / free, redraft / dynasty and, for dynasty
+// and keeper leagues, competing / rebuilding.
+// rows: [{ result: 'W' | 'L' | 'T', paid, group: 'redraft' | 'dynasty', keeper, direction, status, early }]. Keeper
+// counts with redraft. direction: leagueDirection's ('competing' | 'rebuilding', or null for a redraft league, which
+// isn't in that split). A matchup too early to call (early) is left out of every count and counted in tooEarly instead.
 export function summarize(rows) {
     const blank = () => ({ W: 0, L: 0, T: 0 });
-    const out = { all: blank(), paid: blank(), free: blank(), redraft: blank(), dynasty: blank(), stillLive: 0, tooEarly: 0, keeper: false };
+    const out = { all: blank(), paid: blank(), free: blank(), redraft: blank(), dynasty: blank(), competing: blank(), rebuilding: blank(), stillLive: 0, tooEarly: 0, keeper: false };
     rows.forEach(r => {
         if (r.keeper) out.keeper = true;
         if (r.early) { out.tooEarly++; return; }
         out.all[r.result]++;
         out[r.paid ? 'paid' : 'free'][r.result]++;
         out[r.group === 'dynasty' ? 'dynasty' : 'redraft'][r.result]++;
+        if (r.direction === 'competing' || r.direction === 'rebuilding') out[r.direction][r.result]++;
         if (r.status === 'swing') out.stillLive++;
     });
     return out;
+}
+
+// Competing / Rebuilding (improvements S28, the owner's choice): a dynasty or keeper league (kind: the Power Rankings'
+// getPowerLeagueKind, so a keeper league set to play as redraft is out) is Competing with the Roster tab's "I'm
+// competing this year" on, and Rebuilding otherwise, including a league where it was never touched. Redraft: null.
+export function leagueDirection(kind, competing) {
+    if (kind !== 'dynasty') return null;
+    return competing ? 'competing' : 'rebuilding';
 }
 
 // "9–6", or "9–6–1" with a tie.
@@ -145,13 +156,21 @@ export function swingOrder(a, b) {
     return Math.abs(a.margin) - Math.abs(b.margin);
 }
 
-// The week in the address, for testing the card on another week: /lineup/?week=6 (improvements S21; the owner's
-// choice: unlikely anyone finds it, handy for checking a past week's recap). 1-18, else null.
+// The week in the address: /lineup/?week=6 opens the Scoreboard on week 6 (improvements S21, for testing; since S28 the
+// Scoreboard's arrows choose the week, and the tests still use this). 1-18, else null.
 export function weekFromSearch(search) {
     const raw = new URLSearchParams(search || '').get('week');
     if (raw == null || !/^\d{1,2}$/.test(raw)) return null;
     const n = Number(raw);
     return n >= 1 && n <= 18 ? n : null;
+}
+
+// The Scoreboard's arrows (S28): the week a step lands on, between week 1 and `last` (this week's recap, or the
+// address's week when that's later), or null when there's no week that way.
+export function stepWeek(week, step, last) {
+    if (week == null || last == null) return null;
+    const next = week + step;
+    return next >= 1 && next <= last ? next : null;
 }
 
 // --- FROM A SLEEPER SYNC (leagues/sync.js) ---
