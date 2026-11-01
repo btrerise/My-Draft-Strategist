@@ -7589,3 +7589,30 @@ branch, still above main's v2.8.137).
 - **A test of mine, not the app:** "Draft Strategist's upload preview in a short window" assumed the preview overflows
   375×480. Round 2 moved its content, and with CI's fonts it fits there, so nothing scrolled and the line didn't show
   (correctly). The window is 375×360 now, and the test first asserts that the middle overflows.
+
+## M1 — A Material 3 review of the whole site (research)
+
+**What changed.** No app code, CSS or screenshots. New **docs/improvements/material3-review.md** (not served code, so
+`PRECACHE_ASSETS` and `CACHE_NAME` stay) with 13 screenshots in **docs/improvements/material3/**: what already meets
+Material 3, then 14 ranked, sized proposals, each with what Material 3 says (linked), what the site does now (a
+screenshot), the files, the screenshots it would re-take, app by app or site-wide, and overlaps with open cards.
+
+**How.** All 82 m3.material.io pages needed (Guidelines, Specs and Accessibility of 22 components, plus type, color,
+elevation, shape, motion, states, layout and contrast) read in headless Chromium the way S26 did; the session's network
+allowed it. A throwaway Playwright script (not committed) walked every tab of both apps and T-Score at 375, 768 and
+1280px with the fixture data, measuring target sizes, keyboard focus rings, font sizes, transitions, corner radii and text
+contrast, and opened the toasts, the confirm and prompt dialogs and the upload preview.
+
+**Main findings.** Navigation (S21, S26), dark surfaces, dialog structure (F10, merged in #212) and Reduce Motion already
+meet. Off: controls under 48px on every tab (the Lineup row's swap 30x23 and lock 26x21, Taken / Pick 30px tall, 18px "i"
+icons); focus rings are the browser's default on most buttons and faint on text fields; hover lifts the button instead of a
+state layer; toasts go after 3.5s, bounce in and sit over open dialogs; selection in chips and segmented buttons is shown
+by color only; 35 font sizes in the CSS, nine under 11px on screen; ten different transition curves; a few text colors
+under 4.5:1 (T-Score's labels, the injury badge, DEF text).
+
+**Overlaps.** S15 splits into proposal 2 (focus) and 6 (contrast); proposal 1's lineup-row part folds into S32, which
+should also offer a modal bottom sheet for the row's extras on phones; proposal 8 (motion tokens) pairs with S18; F10's
+pinned buttons are done.
+
+**The owner's picks:** asked after pushing the review; recorded here when answered. The next runbook update turns them
+into cards M2 onward.
