@@ -7648,3 +7648,31 @@ and the row's 48px targets; F10 marked merged (#212); the lanes and parallel not
 line in docs/TESTING.md is removed.
 
 **Left over.** Pages at 200% text are checked in M7 and M8.
+
+### M1, round 2: the rest of Material 3
+
+The owner asked for a second pass "from a different lens": beyond the tangible fixes in round 1, where else could the
+rest of Material 3 improve the site's look and feel without changing its identity. Research only.
+
+**What changed.** New **docs/improvements/material3-review-2.md** (linked from the first review) with five more
+screenshots in docs/improvements/material3/ (the Dashboard, Lineup, Tracker, Scout and T-Score Top-50 at 1280px). Read
+in headless Chromium: the Expressive announcement, the components round 1 skipped (button groups, split button,
+toolbars, loading indicator, search, side sheets, FABs, app bars, carousel, navigation drawer) and the Expressive
+changes to cards, lists, badges and progress; color roles (surface containers), elevation, shape, motion specs (springs
+and their web curves), icons, editorial type; canonical layouts, scaffold, the writing style guide.
+
+**Findings.**
+- **Three corrections to written cards**: M3 should use Expressive's web spring curves (spatial ones overshoot a little
+  on purpose; round 1 quoted the baseline easing page, which Material 3 now says is no longer maintained), so the
+  toast's "no bounce" becomes a smaller, quicker bounce if the owner agrees; M4 should use Expressive's connected button
+  group (which replaces segmented buttons: the selected one changes shape and color) and make the site's three looks for
+  that control one; M2 can offer Expressive's pressed shape morph (corners tighten) beside the state layer.
+- **Nine new proposals (15 to 23)**: the badge legend in a side or bottom sheet instead of a trip to the Guide (and a
+  shared sheet S32 can reuse); badges on the navigation (lineups that need you, on the clock); progress and loading
+  indicators; two panes on wide screens (the Tracker with your team beside it, and others); surface tones instead of
+  boxes in boxes; one or two hero moments; sentence case (fold into M7 and M8); a button group and split button for the
+  Lineup card (fold into M9); search bars.
+- Looked at and not proposed: FABs, toolbars, carousel, pickers, the abstract shape library, Material Symbols, flexible
+  app bars, dynamic color.
+
+**The owner's picks:** asked; recorded here when answered.
