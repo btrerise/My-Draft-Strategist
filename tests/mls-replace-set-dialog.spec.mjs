@@ -154,12 +154,15 @@ test.describe('the Replace Set dialog', () => {
 test.describe('the pinned button row in the shared dialogs', () => {
     test("Draft Strategist's upload preview in a short window keeps its buttons in view", async ({ page }) => {
         const state = await openApp(page, '/');
-        await page.setViewportSize({ width: 375, height: 480 });
+        // Short enough that the preview overflows whatever fonts render it (at 480px CI's fonts fit it, round 2).
+        await page.setViewportSize({ width: 375, height: 360 });
         await page.fill('#csvPasteArea', RANKINGS_CSV);
         await page.getByRole('button', { name: 'Process Pasted Data' }).click();
         const overlay = page.locator('#rankingsPreviewOverlay');
         await expect(overlay).toBeVisible();
         expect(await inView(page.locator('#rankingsPreviewConfirmBtn'))).toBe(true);
+        const body = overlay.locator('.preview-body');
+        expect(await body.evaluate((b) => b.scrollHeight - b.clientHeight)).toBeGreaterThan(0);
         await expect(overlay.locator('.preview-actions')).toHaveClass(/is-scrolled-under/);
         await page.locator('#rankingsPreviewConfirmBtn').click();
         await expect(overlay).toBeHidden();

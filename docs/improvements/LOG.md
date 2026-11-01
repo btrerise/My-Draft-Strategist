@@ -7516,7 +7516,7 @@ From the owner's 2026-10-31 phone screenshot (replacing "ROS Redraft" from How I
 **Tests.** New `tests/mls-replace-set-dialog.spec.mjs`, nine leagues: at 375×667 Replace Set and Cancel are inside the
 window and uncovered without scrolling, the line shows and goes at the end, Replace Set works (failed on main); the red
 box with 2 redraft leagues and 2 In-Season dynasty leagues, and the picker's rows (failed on main); Auto-Fetch's
-confirm (failed on main); a dynasty set's box; Draft Strategist's preview in a 375×480 window; a short and a long
+confirm (failed on main); a dynasty set's box; Draft Strategist's preview in a 375×360 window; a short and a long
 confirm; the prompt with a stand-in visual viewport playing the keyboard (fitted to 337px, field and buttons inside;
 back to 667px when it closes). `tests/unit/seasonRankings.test.mjs`: every wording case, keeper groups, a keeper league
 played as redraft, a league whose In-Season is its own dynasty set.
@@ -7579,3 +7579,13 @@ hint; Rename's accessible name and icon-only on a phone; the settings summary fo
 shorter). They aren't re-taken here (this container's Chromium can't match CI's): take them from the PR's CI run as
 "Accepting an intended visual change" says. Every other PNG is identical. `CACHE_NAME` stays v2.8.138 (one bump per
 branch, still above main's v2.8.137).
+
+### F10: CI on PR #212 (run 41261044258)
+
+- **Screenshots:** failed only on the two expected PNGs, `desktop/mls-league-roster.png` and `phone/mls-league-roster.png`.
+  Each `-expected.png` was byte-identical to the committed baseline; the `-actual.png` differs only by the folded
+  Auto-Fetch settings (the page is 192px shorter with CI's fonts; the fixed tab bar and header land on other rows). The
+  `-actual.png` files are the new baselines.
+- **A test of mine, not the app:** "Draft Strategist's upload preview in a short window" assumed the preview overflows
+  375×480. Round 2 moved its content, and with CI's fonts it fits there, so nothing scrolled and the line didn't show
+  (correctly). The window is 375×360 now, and the test first asserts that the middle overflows.
