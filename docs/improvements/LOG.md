@@ -7461,3 +7461,131 @@ CI's first run (40896926210) failed only in `visual.spec.mjs`, on exactly the 30
 and phone PNG of both apps. Each `-expected.png` was byte-identical to the committed baseline, and the phone diffs sit in
 the bottom bar's strip (plus Draft Strategist's "Go to Dashboard" buttons and its Guide's text), as rendered here. The
 `-actual.png` files from the run's `playwright-results` artifact are the new baselines. T-Score's are unchanged.
+
+## F10 — Replace Set: the buttons in reach, and the red box counts every league using the set
+
+From the owner's 2026-10-31 phone screenshot (replacing "ROS Redraft" from How I Met Your Punter).
+
+**User-visible effect.**
+- **Pinned buttons.** The shared dialogs are a column: the title, a middle that scrolls, and the button row, which
+  stays at the bottom of the window. With content under it the row gets a line and a soft shadow above it (it goes
+  away once the middle is scrolled to its end). Before, the whole card scrolled as one block, so on a phone with many
+  leagues Cancel and Replace Set sat below the fold behind the whole "Also use this set in" list. Applies to Lineup
+  Strategist's upload preview and league picker, Draft Strategist's upload preview, and the shared confirm and prompt
+  dialogs (all three pages). Short dialogs measure identical to main, element by element (title, body, each button),
+  at 1280×900 and 390×844.
+- **Phones.** The card's height follows `dvh` (`85vh` fallback), so the browser's toolbars can't cover the buttons; the
+  overlay keeps clear of the notch and home bar (`env(safe-area-inset-*)`, the pages use `viewport-fit=cover`); and with
+  the on-screen keyboard up the overlay is fitted to the visible band (`window.visualViewport`), so the prompt's field
+  and its buttons stay above the keyboard (iOS Safari and Chrome on Android shrink only the visual viewport, which no
+  CSS unit follows).
+- **The red box** for a ROS replace now counts the dynasty and keeper leagues using the set as In-Season rankings,
+  which change too: "Used by 2 leagues, and as In-Season rankings in 2 dynasty leagues." It also names dynasty-set use
+  apart from redraft use. Auto-Fetch's Replace confirm says the same ("It is used by …"). Weekly sets and the
+  In-Season upload path (`seasonUseNote`) are unchanged.
+- **The "Also use this set in" list** (and "Choose leagues…" for a ROS set): a dynasty league already reading this set
+  as In-Season rankings reads "In-Season already · dynasty: Dynasty SF" instead of "Currently: Dynasty SF". Checking it
+  still makes the set its dynasty set (unchanged, as the card asked).
+
+**Owner's decisions (asked before building).**
+- Red box wording: the proposal, with "dynasty or keeper" spelled out where a keeper league is in a group. So:
+  redraft only "Used by 4 leagues." (as before); plus In-Season "Used by 4 leagues, and as In-Season rankings in 2
+  dynasty leagues."; a dynasty set "Used as dynasty rankings in 3 dynasty leagues."; mixed "Used by 1 league, and as
+  dynasty rankings in 3 dynasty leagues."; all three "Used by 1 league, as dynasty rankings in 1 dynasty league, and
+  as In-Season rankings in 1 keeper league." A group of keeper leagues only says "keeper", a mix "dynasty or keeper"
+  (my reading of "where a keeper league is among them"). A keeper league played as redraft counts as redraft.
+- The pinned row applies at every width (the same dialog everywhere).
+
+**Where.**
+- `css/base.css` (modal chrome): `.preview-modal` / `.mds-modal` become a flex column with `max-height: min(85dvh,
+  100%)`; new `.preview-body` / `.mds-modal-body` scroll (negative margins with the same padding back, so focus rings
+  at the edge aren't clipped and nothing moves); `.is-scrolled-under` on the button row draws the line (a band of
+  padding taken back by a negative margin, `--actions-gap` per row, so the buttons don't move when it toggles); the
+  overlay's padding respects the safe area. `.mds-prompt-label`'s top margin is 0.25rem: it used to collapse with the
+  title's 0.5rem, and inside the body it can't.
+- New `js/shared/ui/modalLayout.js` (`watchModal(overlay)`, in `PRECACHE_ASSETS`): toggles `.is-scrolled-under` (scroll,
+  ResizeObserver, MutationObserver) and fits the overlay to the visual viewport while a keyboard covers part of the
+  window; returns a stop function. Called by `createPreviewShell` (both previews), `openLeaguePickerDialog`,
+  `showConfirm` and `showPrompt`.
+- Markup: the previews (`index.html`, `lineup/index.html`) and the league picker wrap their middle in
+  `.preview-body`; the confirm's `#mds-confirm-body` also has `.mds-modal-body`; the prompt's label, field and message
+  sit in a `.mds-modal-body`.
+- Count: `rosSetUse` / `rosSetUseNote` in `js/mls/rankings/season.js` (pure); `resolveRankingsTarget` adds `useNote`
+  for a ROS replace; `uploadPreview.js` and `rosFetch.js` show it. Picker rows: `renderLeaguePicker` in `sets.js`.
+
+**Tests.** New `tests/mls-replace-set-dialog.spec.mjs`, nine leagues: at 375×667 Replace Set and Cancel are inside the
+window and uncovered without scrolling, the line shows and goes at the end, Replace Set works (failed on main); the red
+box with 2 redraft leagues and 2 In-Season dynasty leagues, and the picker's rows (failed on main); Auto-Fetch's
+confirm (failed on main); a dynasty set's box; Draft Strategist's preview in a 375×360 window; a short and a long
+confirm; the prompt with a stand-in visual viewport playing the keyboard (fitted to 337px, field and buttons inside;
+back to 667px when it closes). `tests/unit/seasonRankings.test.mjs`: every wording case, keeper groups, a keeper league
+played as redraft, a league whose In-Season is its own dynasty set.
+
+**Screenshots.** None re-taken: no baseline shows a dialog, and the short dialogs measure identical to main.
+`CACHE_NAME` v2.8.137 → v2.8.138.
+
+**Left over / notes.**
+- The title stays pinned at the top too; scrolled content is cut under it with no line. A matching line under the
+  title while scrolled down would be a small follow-up if wanted.
+- On a 375px phone "Replace Set" wraps onto two lines in its half-width button (as on main).
+- A toast shown just before the preview opens (e.g. after the previous upload) can sit over the pinned buttons for its
+  few seconds; it did over the old position too. Not changed here.
+
+### F10, round 2: the owner's review as a user (owner: "do 1-5, and fix the items around the dialog too")
+
+I walked through the whole upload at 375×667 and 1280×900 (replace, new set, Choose leagues, Auto-Fetch) and reported
+what felt clunky; the owner asked for all of it.
+
+**The dialog** (all in the shared rules, so both previews and the league picker; 3 and 4 also the confirm and prompt):
+1. **One scroll.** Inside a dialog the league list no longer has its own 240px scroll (`.preview-body
+   .mls-league-picker-list` in css/mls.css): round 1 had made it a scroll inside a scroll, and on desktop it was
+   squeezed to about two rows.
+2. **What saving does comes first.** `#rankingsPreviewTarget` moved right under the count in both pages (it was last,
+   below the fold on a phone). Lineup Strategist's "Position ranks will be derived" is one line ("The app works out
+   position ranks (WR1, RB2, …) from the file's order. Fine to save.") with the old text behind a `<details>` "Why?",
+   which scrolls itself into view when opened. Draft Strategist's note is unchanged (its wording is out of scope).
+   Every block in the preview now has a 1rem gap under it (`.preview-unmatched`, `.preview-derived`), so whichever is
+   last sits 1rem above the buttons.
+3. **One-line buttons.** Dialog buttons have half the usual side padding, and the long labels are shorter: Lineup
+   Strategist's "Looks Good, Save It" → "Save Set" ("Replace Set" stays); Draft Strategist's "Looks Good, Save It" →
+   "Save" and "Replace Rankings" → "Replace" (the owner approved the shorter labels for both).
+4. **A line under the title** while the middle is scrolled (`.is-scrolled-down` on the card, from `watchModal`; the
+   title's 0.5rem gap is padding on the card's colour now, drawn above the body). Both lines use a new
+   `--modal-edge` (#334155) instead of `--border`, which was too faint on a phone. Each opening starts at the top.
+5. **Wider on computers:** `.preview-modal` is 520px at most (was 400px); the confirm and prompt cards stay 400px.
+
+**Around the dialog** (the ROS and Weekly rankings cards):
+- **"+ Create New Set" picked:** a line under New Set Name says "Your next upload or Auto-Fetch saves a new set. This
+  league stays on "ROS Redraft" until then." (`updateNewSetHint` in sets.js; "Your next upload" on the Weekly card;
+  hidden when the league has no set). It answers the drop-down reading "+ Create New Set" while the header names
+  another set.
+- **Rename is icon-only under 480px** (`.mls-rename-label`; the buttons have an `aria-label`), so the drop-down shows
+  "ROS Redraft (24 players)" instead of "ROS Redraft (24 pla…".
+- **Auto-Fetch's settings are folded** into `<details id="rosAutoFetchSettings">` with a summary line ("Settings
+  FantasyCalc · Redraft · 1QB · Full PPR", "· TEP" when on), filled by `applyMarketSettingsToUI` (js/mls/settings.js).
+  Closed by default at every width; the Auto-Fetch button stays outside it.
+- Two things I reported in the review turned out not to be bugs, so nothing changed: "Uploaded Successfully!" hides
+  itself after 2.5 s (my screenshot was taken within that time), and "Choose leagues…" is hidden while "+ Create New
+  Set" is picked (the refusal toast came from my test calling the function directly).
+
+**Tests.** `mls-replace-set-dialog.spec.mjs`, round 2 block: the list has no scroll of its own; the body's order starts
+count → target → list; the short note and "Why?"; both buttons one line and the same height; the title line after
+scrolling; 520px on desktop, 327px at 375; "Save Set" for a new set and a reopened preview at the top; the new-set
+hint; Rename's accessible name and icon-only on a phone; the settings summary following a change.
+`mls-rankings-change.spec.mjs` and `mds-upload-preview.spec.mjs` expect the new labels.
+
+**Screenshots.** Rendered main and this branch the same way here: only `desktop/mls-league-roster.png` and
+`phone/mls-league-roster.png` change (the ROS card is open there, and the folded settings make the page 200px
+shorter). They aren't re-taken here (this container's Chromium can't match CI's): take them from the PR's CI run as
+"Accepting an intended visual change" says. Every other PNG is identical. `CACHE_NAME` stays v2.8.138 (one bump per
+branch, still above main's v2.8.137).
+
+### F10: CI on PR #212 (run 41261044258)
+
+- **Screenshots:** failed only on the two expected PNGs, `desktop/mls-league-roster.png` and `phone/mls-league-roster.png`.
+  Each `-expected.png` was byte-identical to the committed baseline; the `-actual.png` differs only by the folded
+  Auto-Fetch settings (the page is 192px shorter with CI's fonts; the fixed tab bar and header land on other rows). The
+  `-actual.png` files are the new baselines.
+- **A test of mine, not the app:** "Draft Strategist's upload preview in a short window" assumed the preview overflows
+  375×480. Round 2 moved its content, and with CI's fonts it fits there, so nothing scrolled and the line didn't show
+  (correctly). The window is 375×360 now, and the test first asserts that the middle overflows.

@@ -546,7 +546,7 @@
                 <div class="cluster cluster-sm">
                     <select id="rosRankingSetSelect" class="form-input" style="flex: 1;" data-action="onRankingSetSelectChange" data-type="ros" aria-label="Select ROS Ranking Set">
                     </select>
-                    <button id="rosRenameSetBtn" class="btn btn-secondary mls-btn-sm mls-rename-set-btn" style="display: none;" data-action="renameRankingSet" data-type="ros" title="Rename this ranking set"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>Rename</button>
+                    <button id="rosRenameSetBtn" class="btn btn-secondary mls-btn-sm mls-rename-set-btn" style="display: none;" data-action="renameRankingSet" data-type="ros" title="Rename this ranking set" aria-label="Rename this ranking set"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg><span class="mls-rename-label">Rename</span></button>
                     <button id="rosDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" data-action="deleteRankingSet" data-type="ros" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
             </div>
@@ -557,6 +557,9 @@
             <div id="rosNewSetNameWrap" class="input-group mb-3">
                 <label for="rosNewSetName">New Set Name (optional)</label>
                 <input type="text" id="rosNewSetName" class="form-input" maxlength="60" placeholder="e.g. Dynasty PPR 2026">
+                <!-- Says the league keeps its current set until the next upload saves the new one (improvements F10,
+                     round 2). Filled by updateNewSetHint (js/mls/rankings/sets.js). -->
+                <p id="rosNewSetHint" class="mls-new-set-hint" hidden></p>
             </div>
 
             <!-- Dynasty and keeper leagues only (improvements S23): a ROS set for this season's questions.
@@ -574,7 +577,7 @@
                     </div>
                     <div class="cluster cluster-sm">
                         <select id="seasonRankingSetSelect" class="form-input" style="flex: 1;" data-action="onSeasonSetChange" aria-label="Select In-Season Ranking Set"></select>
-                        <button id="seasonRenameSetBtn" class="btn btn-secondary mls-btn-sm mls-rename-set-btn" style="display: none;" data-action="renameRankingSet" data-type="ros" data-slot="season" title="Rename this In-Season set"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>Rename</button>
+                        <button id="seasonRenameSetBtn" class="btn btn-secondary mls-btn-sm mls-rename-set-btn" style="display: none;" data-action="renameRankingSet" data-type="ros" data-slot="season" title="Rename this In-Season set" aria-label="Rename this In-Season set"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg><span class="mls-rename-label">Rename</span></button>
                         <button id="seasonDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" data-action="deleteRankingSet" data-type="ros" data-slot="season" title="Delete this In-Season set" aria-label="Delete this In-Season set">✕</button>
                     </div>
                 </div>
@@ -635,50 +638,56 @@
                 <div class="divider-line"></div>
             </div>
 
-            <div class="input-group">
-                <label for="rosMarketSourceSelect">Market Source</label>
-                <select id="rosMarketSourceSelect" class="form-input" data-action="updateMarketSetting" data-setting="source" aria-label="Select Market Source">
-                    <option value="fantasycalc">FantasyCalc.com (Trade Value)</option>
-                </select>
-            </div>
-
-            <div class="settings-grid mb-2">
+            <!-- Folded (improvements F10, round 2): four settings made a long column on a phone, and they rarely
+                 change. The summary line names them (applyMarketSettingsToUI, js/mls/settings.js). Shared with the
+                 Scout tab's market settings. -->
+            <details id="rosAutoFetchSettings" class="mls-autofetch-settings mb-2">
+                <summary><span class="mls-autofetch-settings-label">Settings</span> <span id="rosMarketSummary" class="mls-autofetch-settings-values"></span></summary>
                 <div class="input-group">
-                    <label for="rosMarketType">League Type</label>
-                    <select id="rosMarketType" class="form-input" data-action="updateMarketSetting" data-setting="type" aria-label="League Type">
-                        <option value="redraft">Redraft</option>
-                        <option value="dynasty">Dynasty</option>
+                    <label for="rosMarketSourceSelect">Market Source</label>
+                    <select id="rosMarketSourceSelect" class="form-input" data-action="updateMarketSetting" data-setting="source" aria-label="Select Market Source">
+                        <option value="fantasycalc">FantasyCalc.com (Trade Value)</option>
                     </select>
                 </div>
-                <div class="input-group">
-                    <label for="rosMarketQbs">QB Format</label>
-                    <select id="rosMarketQbs" class="form-input" data-action="updateMarketSetting" data-setting="qbs" aria-label="QB Format">
-                        <option value="1">1QB</option>
-                        <option value="2">Superflex / 2QB</option>
-                    </select>
-                </div>
-            </div>
 
-            <div id="rosFantasycalcSpecificControls">
-                <div class="settings-grid mb-3" style="align-items: center;">
+                <div class="settings-grid mb-2">
                     <div class="input-group">
-                        <label for="rosMarketPpr">PPR Scoring</label>
-                        <select id="rosMarketPpr" class="form-input" data-action="updateMarketSetting" data-setting="ppr" aria-label="PPR Scoring">
-                            <option value="1">Full PPR (1.0)</option>
-                            <option value="0.5">Half PPR (0.5)</option>
-                            <option value="0">Standard (0)</option>
+                        <label for="rosMarketType">League Type</label>
+                        <select id="rosMarketType" class="form-input" data-action="updateMarketSetting" data-setting="type" aria-label="League Type">
+                            <option value="redraft">Redraft</option>
+                            <option value="dynasty">Dynasty</option>
                         </select>
                     </div>
-                    <div class="input-group input-group-end">
-                        <div class="toggle-row toggle-row-flush">
-                            <div class="toggle-info">
-                                <label class="toggle-title" for="rosMarketTep">TE Premium (TEP)</label>
+                    <div class="input-group">
+                        <label for="rosMarketQbs">QB Format</label>
+                        <select id="rosMarketQbs" class="form-input" data-action="updateMarketSetting" data-setting="qbs" aria-label="QB Format">
+                            <option value="1">1QB</option>
+                            <option value="2">Superflex / 2QB</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="rosFantasycalcSpecificControls">
+                    <div class="settings-grid mb-3" style="align-items: center;">
+                        <div class="input-group">
+                            <label for="rosMarketPpr">PPR Scoring</label>
+                            <select id="rosMarketPpr" class="form-input" data-action="updateMarketSetting" data-setting="ppr" aria-label="PPR Scoring">
+                                <option value="1">Full PPR (1.0)</option>
+                                <option value="0.5">Half PPR (0.5)</option>
+                                <option value="0">Standard (0)</option>
+                            </select>
+                        </div>
+                        <div class="input-group input-group-end">
+                            <div class="toggle-row toggle-row-flush">
+                                <div class="toggle-info">
+                                    <label class="toggle-title" for="rosMarketTep">TE Premium (TEP)</label>
+                                </div>
+                                <input type="checkbox" id="rosMarketTep" class="toggle-switch" data-action="updateMarketSettingChecked" data-setting="tep">
                             </div>
-                            <input type="checkbox" id="rosMarketTep" class="toggle-switch" data-action="updateMarketSettingChecked" data-setting="tep">
                         </div>
                     </div>
                 </div>
-            </div>
+            </details>
 
             <button id="autoFetchRosBtn" class="btn btn-secondary" style="width: 100%;" data-action="autoFetchRosRankings" title="Pulls market-consensus values from FantasyCalc. These settings are shared with the Scout tab's Trade Finder - changing them here updates them there too.">
                 <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
@@ -843,7 +852,7 @@
                 <div class="cluster cluster-sm">
                     <select id="weeklyRankingSetSelect" class="form-input" style="flex: 1;" data-action="onRankingSetSelectChange" data-type="weekly" aria-label="Select Weekly Ranking Set">
                     </select>
-                    <button id="weeklyRenameSetBtn" class="btn btn-secondary mls-btn-sm mls-rename-set-btn" style="display: none;" data-action="renameRankingSet" data-type="weekly" title="Rename this ranking set"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>Rename</button>
+                    <button id="weeklyRenameSetBtn" class="btn btn-secondary mls-btn-sm mls-rename-set-btn" style="display: none;" data-action="renameRankingSet" data-type="weekly" title="Rename this ranking set" aria-label="Rename this ranking set"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg><span class="mls-rename-label">Rename</span></button>
                     <button id="weeklyDeleteSetBtn" class="btn btn-danger mls-btn-sm" style="display: none; flex-shrink: 0;" data-action="deleteRankingSet" data-type="weekly" title="Delete this ranking set" aria-label="Delete this ranking set">✕</button>
                 </div>
             </div>
@@ -854,6 +863,9 @@
             <div id="weeklyNewSetNameWrap" class="input-group mb-3">
                 <label for="weeklyNewSetName">New Set Name (optional)</label>
                 <input type="text" id="weeklyNewSetName" class="form-input" maxlength="60" placeholder="e.g. Week 5 Rankings">
+                <!-- Says the league keeps its current set until the next upload saves the new one (improvements F10,
+                     round 2). Filled by updateNewSetHint (js/mls/rankings/sets.js). -->
+                <p id="weeklyNewSetHint" class="mls-new-set-hint" hidden></p>
             </div>
 
             <div id="weeklyMetaDisplay" class="weekly-meta-display"></div>
@@ -1622,35 +1634,43 @@
 <div id="rankingsPreviewOverlay" class="preview-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="rankingsPreviewTitle">
     <div class="preview-modal">
         <h3 id="rankingsPreviewTitle">Preview Rankings</h3>
-        <p id="rankingsPreviewCount" class="preview-count"></p>
-        <!-- Files that contributed no players (multi-file uploads) and workbook tabs skipped as
-             notes, each with the reason. Reuses the unmatched-names styling. Filled by
-             openRankingsPreview. -->
-        <div id="rankingsPreviewSkipped" class="preview-unmatched" style="display: none; margin-top: 0; margin-bottom: 0.75rem;">
-            <div class="preview-unmatched-title"></div>
-            <div class="preview-unmatched-list"></div>
-            <p class="preview-unmatched-hint">The players below don't include anything from these. If that's intended, save as usual. Otherwise, cancel, fix the file and upload it again.</p>
+        <div class="preview-body">
+            <p id="rankingsPreviewCount" class="preview-count"></p>
+            <!-- Says where this upload lands: a new set, or an in-place overwrite of an existing
+                 one (and how many leagues follow that set). Filled by openRankingsPreview. -->
+            <p id="rankingsPreviewTarget" class="preview-target" style="display: none;"></p>
+            <!-- Files that contributed no players (multi-file uploads) and workbook tabs skipped as
+                 notes, each with the reason. Reuses the unmatched-names styling. Filled by
+                 openRankingsPreview. -->
+            <div id="rankingsPreviewSkipped" class="preview-unmatched" style="display: none; margin-top: 0; margin-bottom: 0.75rem;">
+                <div class="preview-unmatched-title"></div>
+                <div class="preview-unmatched-list"></div>
+                <p class="preview-unmatched-hint">The players below don't include anything from these. If that's intended, save as usual. Otherwise, cancel, fix the file and upload it again.</p>
+            </div>
+            <ul id="rankingsPreviewList" class="preview-list"></ul>
+            <p id="rankingsPreviewNote" class="preview-note" style="display: none;">This file also includes Strength of Schedule data, which will be updated too.</p>
+            <div id="rankingsPreviewDerived" class="preview-derived" style="display: none;">
+                <div class="preview-derived-title">Positional ranks will be derived</div>
+                <!-- One line, and the rest behind "Why?" (improvements F10): the full explanation pushed the
+                     destination line and the league list off a phone's screen. -->
+                <p class="preview-derived-body"></p>
+                <details class="preview-derived-more">
+                    <summary>Why?</summary>
+                    <p class="preview-derived-detail"></p>
+                </details>
+            </div>
+            <div id="rankingsPreviewUnmatched" class="preview-unmatched" style="display: none;">
+                <div class="preview-unmatched-title"></div>
+                <div class="preview-unmatched-list"></div>
+                <p class="preview-unmatched-hint">Players are matched by name, so these stay unranked everywhere in the app - including your lineup and waiver scans. Team defenses are often named differently than Sleeper names them. You can still save this file; renaming them to match Sleeper fixes it.</p>
+            </div>
+            <!-- Other leagues to point at this set, picked before saving. Only shown when there's
+                 more than one league. Filled by openRankingsPreview via renderLeaguePicker. -->
+            <div id="rankingsPreviewLeagues" class="mls-league-picker" style="display: none;"></div>
         </div>
-        <ul id="rankingsPreviewList" class="preview-list"></ul>
-        <p id="rankingsPreviewNote" class="preview-note" style="display: none;">This file also includes Strength of Schedule data, which will be updated too.</p>
-        <div id="rankingsPreviewDerived" class="preview-derived" style="display: none;">
-            <div class="preview-derived-title">Positional ranks will be derived</div>
-            <p class="preview-derived-body"></p>
-        </div>
-        <div id="rankingsPreviewUnmatched" class="preview-unmatched" style="display: none;">
-            <div class="preview-unmatched-title"></div>
-            <div class="preview-unmatched-list"></div>
-            <p class="preview-unmatched-hint">Players are matched by name, so these stay unranked everywhere in the app - including your lineup and waiver scans. Team defenses are often named differently than Sleeper names them. You can still save this file; renaming them to match Sleeper fixes it.</p>
-        </div>
-        <!-- Says where this upload lands: a new set, or an in-place overwrite of an existing
-             one (and how many leagues follow that set). Filled by openRankingsPreview. -->
-        <p id="rankingsPreviewTarget" class="preview-target" style="display: none;"></p>
-        <!-- Other leagues to point at this set, picked before saving. Only shown when there's
-             more than one league. Filled by openRankingsPreview via renderLeaguePicker. -->
-        <div id="rankingsPreviewLeagues" class="mls-league-picker" style="display: none;"></div>
         <div class="preview-actions">
             <button class="btn btn-secondary" data-action="cancelRankingsPreview">Cancel</button>
-            <button id="rankingsPreviewConfirmBtn" class="btn btn-primary" data-action="confirmRankingsPreview">Looks Good, Save It</button>
+            <button id="rankingsPreviewConfirmBtn" class="btn btn-primary" data-action="confirmRankingsPreview">Save Set</button>
         </div>
     </div>
 </div>
@@ -1660,8 +1680,10 @@
 <div id="rankingLeaguesOverlay" class="preview-overlay" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="rankingLeaguesTitle">
     <div class="preview-modal">
         <h3 id="rankingLeaguesTitle">Choose leagues</h3>
-        <p id="rankingLeaguesIntro" class="preview-count"></p>
-        <div id="rankingLeaguesList" class="mls-league-picker"></div>
+        <div class="preview-body">
+            <p id="rankingLeaguesIntro" class="preview-count"></p>
+            <div id="rankingLeaguesList" class="mls-league-picker"></div>
+        </div>
         <div class="preview-actions">
             <button type="button" class="btn btn-secondary" data-league-picker="cancel">Cancel</button>
             <button type="button" class="btn btn-primary" data-league-picker="ok">Save</button>

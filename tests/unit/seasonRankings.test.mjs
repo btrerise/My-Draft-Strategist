@@ -71,6 +71,30 @@ test('usage counts both slots; the offer is the set redraft leagues use most', (
     assert.deepEqual(season.leaguesWithoutSeason(leagues, SETS, 'none').map(l => l.leagueId), ['d2']);
 });
 
+// Replacing a ROS set (improvements F10): the red box names redraft use, dynasty-set use and In-Season use apart, and
+// says "dynasty or keeper" when a keeper league is in a group (owner's choice).
+test('the replace note counts every league a ROS set change reaches', () => {
+    const S = 'In-\u2060Season';
+    const keeper = (extra = {}) => ({ leagueId: 'k1', leagueType: 'keeper', rosRankingSetId: 'dyn', ...extra });
+    const reds = (n) => Array.from({ length: n }, () => redraft());
+    assert.equal(season.rosSetUseNote('red', reds(4)), 'Used by 4 leagues.');
+    assert.equal(season.rosSetUseNote('red', reds(1)), 'Used by 1 league.');
+    assert.equal(season.rosSetUseNote('red', []), 'Used by 0 leagues.');
+    assert.equal(season.rosSetUseNote('red', [...reds(4), dynasty({ seasonRankingSetId: 'red' }), dynasty({ seasonRankingSetId: 'red' })]),
+        `Used by 4 leagues, and as ${S} rankings in 2 dynasty leagues.`);
+    assert.equal(season.rosSetUseNote('dyn', [dynasty(), dynasty(), dynasty()]), 'Used as dynasty rankings in 3 dynasty leagues.');
+    assert.equal(season.rosSetUseNote('dyn', [redraft({ rosRankingSetId: 'dyn' }), dynasty(), keeper()]),
+        'Used by 1 league, and as dynasty rankings in 2 dynasty or keeper leagues.');
+    assert.equal(season.rosSetUseNote('dyn', [keeper()]), 'Used as dynasty rankings in 1 keeper league.');
+    assert.equal(season.rosSetUseNote('red', [redraft(), dynasty({ rosRankingSetId: 'red' }), keeper({ seasonRankingSetId: 'red' })]),
+        `Used by 1 league, as dynasty rankings in 1 dynasty league, and as ${S} rankings in 1 keeper league.`);
+    // Its own dynasty set as In-Season counts once, as the dynasty set; a keeper league played as redraft is redraft.
+    assert.equal(season.rosSetUseNote('dyn', [dynasty({ seasonRankingSetId: 'dyn' })]), 'Used as dynasty rankings in 1 dynasty league.');
+    assert.equal(season.rosSetUseNote('dyn', [keeper({ keeperStyle: 'redraft' })]), 'Used by 1 league.');
+    assert.equal(season.rosSetUseNote('dyn', [{ leagueId: 'x', formatBadge: 'Keeper PPR', rosRankingSetId: 'dyn' }]),
+        'Used as dynasty rankings in 1 keeper league.');
+});
+
 // Two teams, one RB each and one WR each. By the dynasty list You are better; by the season list Them.
 const league = {
     reqs: { QB: 0, RB: 1, WR: 1, TE: 0, FLEX: 0, SFLEX: 0 },

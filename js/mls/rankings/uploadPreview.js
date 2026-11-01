@@ -167,8 +167,17 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
                 const wording = derivedRanksWording(derivedPos, derivedFlex, isWeekly);
                 if (derivedEl && wording) {
                     derivedEl.querySelector('.preview-derived-title').textContent = wording.title;
+                    // One line, the rest behind "Why?" (improvements F10, round 2).
                     derivedEl.querySelector('.preview-derived-body').textContent =
+                        `The app works out ${wording.short} from the file's order. Fine to save.`;
+                    derivedEl.querySelector('.preview-derived-detail').textContent =
                         `${wording.detail} Either way the ordering is sound; it just means those numbers are this app's reading of your list, and tiers stay on the ranks your file published.`;
+                    const more = derivedEl.querySelector('.preview-derived-more');
+                    if (more) {
+                        more.open = false;
+                        // Opened near the bottom of the window, the text would unfold out of sight.
+                        more.ontoggle = () => { if (more.open) more.scrollIntoView({ block: 'nearest' }); };
+                    }
                     derivedEl.style.display = 'block';
                 }
             }).catch(err => console.warn('Rankings file check skipped:', err));
@@ -183,6 +192,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
             if (target && target.mode === 'replace') {
                 const leagueNote = target.slot === 'season'
                     ? escapeHtml(seasonUseNote(target))
+                    : target.useNote ? escapeHtml(target.useNote)
                     : target.leagueCount === 1 ? 'Used by 1 league.' : `Used by ${target.leagueCount} leagues.`;
                 targetEl.innerHTML = `Replaces ${target.slot === 'season' ? 'your In-Season set' : 'the saved set'} <strong>${escapeHtml(target.name)}</strong>` +
                     `${target.playerCount ? ` (${target.playerCount} player${target.playerCount === 1 ? '' : 's'})` : ''}. ` +
@@ -218,7 +228,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         if (confirmBtn) {
             const isReplace = !!(target && target.mode === 'replace');
             confirmBtn.className = isReplace ? 'btn btn-danger' : 'btn btn-primary';
-            confirmBtn.textContent = isReplace ? 'Replace Set' : 'Looks Good, Save It';
+            confirmBtn.textContent = isReplace ? 'Replace Set' : 'Save Set';
         }
 
         previewShell.open();

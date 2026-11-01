@@ -1597,6 +1597,9 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
     max-height: 240px;
     overflow-y: auto;
 }
+/* In a dialog the whole middle scrolls (improvements F10), so the list doesn't scroll on its own as well: one scroll,
+   not a scroll inside a scroll. */
+.preview-body .mls-league-picker-list { max-height: none; overflow: visible; }
 .mls-league-picker-row {
     display: flex;
     align-items: center;
@@ -2669,3 +2672,23 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .mls-rank-dual-tip .tooltip-text.mls-rank-dual-text { width: max-content; max-width: min(360px, calc(100vw - 16px)); }
 .mls-rank-dual-priced { display: inline-block; margin-top: 4px; color: var(--text-muted); }
 .mls-roster-sort-note { margin: -0.3rem 0 0.6rem; font-size: 0.78rem; color: var(--text-muted); }
+
+/* --- RANKINGS CARD, improvements F10 round 2 --- */
+/* "+ Create New Set" picked: which set the league keeps until the next upload saves the new one. */
+.mls-new-set-hint { margin: 0.35rem 0 0; font-size: 0.78rem; line-height: 1.4; color: var(--text-muted); }
+/* On phones Rename is its pencil alone (its title and aria-label keep the name), so the set's name has room in the
+   drop-down beside it ("ROS Redraft (24 pla…" was cut off). */
+@media (max-width: 480px) {
+    .mls-rename-label { display: none; }
+}
+/* Auto-Fetch's settings, folded behind a one-line summary of what they are. */
+.mls-autofetch-settings > summary {
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    padding: 0.25rem 0 0.6rem;
+    width: fit-content;
+    max-width: 100%;
+}
+.mls-autofetch-settings-label { font-weight: 600; color: var(--text-main); }
+.mls-autofetch-settings[open] > summary { padding-bottom: 0.75rem; }

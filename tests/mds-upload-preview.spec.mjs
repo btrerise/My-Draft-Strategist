@@ -1,5 +1,5 @@
 // Draft Strategist's rankings upload preview (refactor chunk 8C). A file or a paste opens the
-// preview and loads nothing until "Looks Good, Save It" (or "Replace Rankings", when a pool is
+// preview and loads nothing until "Save" (or "Replace", when a pool is
 // already loaded and Aggregate is off); Cancel or Escape leaves the pool as it was. The owner's
 // decisions are in docs/refactor/LOG.md (8C): the paste box goes through the preview too, the
 // unmatched names are the rows the import couldn't link to a Sleeper player, and a file with no
@@ -54,7 +54,7 @@ test.describe('Draft Strategist rankings upload preview', () => {
         // Nothing loaded yet: an empty pool, so saving just loads it.
         await expect(page.locator('#rankingsPreviewTarget')).toHaveText('Loads as your player pool.');
         await expect(page.locator('#rankingsPreviewTarget')).not.toHaveClass(/is-replace/);
-        await expect(confirmBtn(page)).toHaveText('Looks Good, Save It');
+        await expect(confirmBtn(page)).toHaveText('Save');
         await expect(confirmBtn(page)).toHaveClass('btn btn-primary');
         await expect(page.getByRole('button', { name: 'Cancel' })).toBeFocused(); // focus trap
         expect((await saved(page)).names).toEqual([]);
@@ -87,7 +87,7 @@ test.describe('Draft Strategist rankings upload preview', () => {
         await expect(page.locator('#rankingsPreviewTarget'))
             .toHaveText("Replaces your current rankings (24 players). This can't be undone.");
         await expect(page.locator('#rankingsPreviewTarget')).toHaveClass('preview-target is-replace');
-        await expect(confirmBtn(page)).toHaveText('Replace Rankings');
+        await expect(confirmBtn(page)).toHaveText('Replace');
         await expect(confirmBtn(page)).toHaveClass('btn btn-danger');
 
         // The page's hotkeys don't reach the page behind the preview ('2' opens the Tracker).
@@ -135,7 +135,7 @@ test.describe('Draft Strategist rankings upload preview', () => {
         await expect(page.locator('#rankingsPreviewTarget'))
             .toHaveText('Blends with your current rankings (24 players): 70% this file, 30% current.');
         await expect(page.locator('#rankingsPreviewTarget')).not.toHaveClass(/is-replace/);
-        await expect(confirmBtn(page)).toHaveText('Looks Good, Save It');
+        await expect(confirmBtn(page)).toHaveText('Save');
         await confirmMdsPreview(page);
         await expect(toast(page, 'Loaded 24 players').last()).toBeVisible();
         const after = await saved(page);
