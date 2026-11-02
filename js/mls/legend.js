@@ -15,7 +15,7 @@
 import {
     BYE_BADGE_HTML, DISMISS_ICON, PICK_BADGE_HTML, STARTS_ICON, UPGRADE_ICON,
     WARNING_ICON, bestBallBadgeMarkup, edgeBadgeMarkup, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup, leagueStatusChipMarkup,
-    ROOT_ICONS, moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, rankGapChipMarkup, rootCountBadgeMarkup, rootShareMarkup, rootSplitBadgeMarkup, scoutPillMarkup,
+    ROOT_ICONS, moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, rankGapChipMarkup, rootCountBadgeMarkup, rootOfBadgeMarkup, rootShareMarkup, scoutPillMarkup,
     sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, weekResultMarkup, weekStatusMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
@@ -115,8 +115,8 @@ const GROUPS = [
             'In the Dashboard\'s This week card: each matchup as it stands now, winning, losing or tied. Until every game is final it can still change.'],
         [weekStatusMarkup(false) + weekStatusMarkup(true),
             'This week\'s scores: Provisional while any game of the week is still to finish, then Final (Sleeper can still correct stats for a few days).'],
-        [`<span class="mls-root-legend-icons">${ROOT_ICONS.root}${ROOT_ICONS.against}${ROOT_ICONS.both}</span>` + rootCountBadgeMarkup('root', 3) + rootCountBadgeMarkup('against', 2) + rootSplitBadgeMarkup(3, 1),
-            'On the Scoreboard\'s Who to root for: how many of your matchups a player starts in. Green with a thumbs up, Root for: yours in 2 or more and against you in none. Red with a thumbs down, Against you: your opponents\' in 2 or more and yours in none. Amber with crossing arrows, Both sides: yours in 3 (green) and against you in 1 (red).'],
+        [`<span class="mls-root-legend-icons">${ROOT_ICONS.root}${ROOT_ICONS.against}${ROOT_ICONS.both}</span>` + rootCountBadgeMarkup('root', 3) + rootCountBadgeMarkup('against', 2) + rootOfBadgeMarkup(3, 4),
+            'On the Scoreboard\'s Who to root for: how many of your matchups a player starts in. Green with a thumbs up, Root for: yours in 2 or more and against you in none. Red with a thumbs down, Against you: your opponents\' in 2 or more and yours in none. Amber with crossing arrows, Both sides: yours in 3 of his 4 (and against you in the other).'],
         [rootShareMarkup(72),
             'Tap a player on both sides for his stake: how much of his weight is in your leagues. Each league weighs more when it\'s paid (1.5 times), when the matchup is close (a decided one counts for nothing) and the bigger his share of his side\'s points still to come, so it can differ from the counts.'],
     ]],

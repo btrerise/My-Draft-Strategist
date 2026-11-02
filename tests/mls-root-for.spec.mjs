@@ -79,17 +79,16 @@ test.describe('Scoreboard: who to root for', () => {
         const both = group(page, 'both').locator('.mls-root-row');
         await expect(both).toHaveCount(2);
         const allen = both.filter({ hasText: 'Josh Allen' });
-        // The chip has both counts (round 2); the weighted stake is in the detail.
-        await expect(allen.locator('.mls-root-split-yours')).toHaveText('2');
-        await expect(allen.locator('.mls-root-split-against')).toHaveText('1');
-        await expect(allen.locator('.mls-root-split')).toContainText('yours in 2, against you in 1');
+        // The chip says how many of his matchups are yours (round 3); the weighted stake is in the detail.
+        await expect(allen.locator('.mls-root-count.is-both')).toHaveText('2 of 3 yours');
+        await expect(both.filter({ hasText: 'Lamar Jackson' }).locator('.mls-root-count.is-both')).toHaveText('1 of 3 yours');
         await expect(allen.locator('.mls-root-share')).toHaveText('Your stake: 67%');
         await expect(both.filter({ hasText: 'Lamar Jackson' }).locator('.mls-root-share')).toHaveText('Your stake: 33%');
         // Every row in the three groups is the same height (the stake no longer adds a line).
         const heights = await board(page).locator('.mls-root-spot .mls-root-player').evaluateAll(els => [...new Set(els.map(e => Math.round(e.getBoundingClientRect().height)))]);
         expect(heights).toHaveLength(1);
         // The (i) beside Both sides explains the chip and the stake.
-        await expect(group(page, 'both').locator('.mls-root-group-title .tooltip-text')).toContainText('against you in 1 (red)');
+        await expect(group(page, 'both').locator('.mls-root-group-title .tooltip-text')).toContainText('for you in 3 and against you in the other');
         await expect(allen.locator('.mls-root-meta')).toHaveText('BUF @ BAL · Final');
 
         // Tap: which leagues on which side.

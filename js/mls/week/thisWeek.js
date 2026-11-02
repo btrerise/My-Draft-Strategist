@@ -34,7 +34,7 @@ import { State, parseEspnScoreboard, refreshGameTimes } from '../state.js';
 import { isBestBallLeague, isExcludedFromSimulation } from '../helpers.js';
 import { fantasyPosition } from '../constants.js';
 import { ensureLineupProjections, formatKickoffLabel, getLeagueScoringKey, storeLeagueMatchups } from '../lineup/gameInfo.js';
-import { ROOT_ICONS, paidBadgeMarkup, rootCountBadgeMarkup, rootShareMarkup, rootSplitBadgeMarkup, weekResultMarkup, weekStatusMarkup } from '../badges.js';
+import { ROOT_ICONS, paidBadgeMarkup, rootCountBadgeMarkup, rootOfBadgeMarkup, rootShareMarkup, weekResultMarkup, weekStatusMarkup } from '../badges.js';
 import { playerHeadshotHTML } from '../lineup/headshots.js';
 import { buildRootFor, sideOrder, starterIdsOf } from './rootFor.js';
 import { matchupWinChances } from '../sim/winChance.js';
@@ -1209,9 +1209,9 @@ function rootRow(r, pl, list, ctx, { compact = false, side = null } = {}) {
     const id = `mlsRootDetail-${++rootRowSeq}`;
     const kind = r.group || (side === 'against' ? 'against' : 'root');
     const n = side ? r[side].length : r.count;
-    // Both sides (round 2): the counts in the chip ("3 | 1"), the weighted stake only in the detail, with what it weighs.
+    // Both sides: "3 of 4 yours" in the chip (round 3, owner's choice), the weighted stake only in the detail (round 2).
     const both = !compact && r.group === 'both';
-    const chip = compact ? '' : ' ' + (both ? rootSplitBadgeMarkup(r.yours.length, r.against.length) : rootCountBadgeMarkup(kind, n));
+    const chip = compact ? '' : ' ' + (both ? rootOfBadgeMarkup(r.yours.length, r.count) : rootCountBadgeMarkup(kind, n));
     const detail = [
         both ? `<div class="mls-root-stake">${rootShareMarkup(r.share)} <span class="mls-root-stake-note">How much of his weight is in your leagues. The (i) beside Both sides says how each league is weighed.</span></div>` : '',
         r.yours.length ? `<div class="mls-root-detail-side"><span class="mls-root-detail-label is-root">Yours in</span><ul>${r.yours.map(x => rootPart(x, pl)).join('')}</ul></div>` : '',
@@ -1289,7 +1289,7 @@ function rootHTML(m) {
     const group = ([kind, title, none]) => {
         const rows = rf[kind];
         // Both sides explains its chip and the stake (round 2, owner: "at bare minimum, a tooltip").
-        const tip = kind === 'both' ? `<span class="tooltip-container mls-week-info mls-root-info"><span class="tooltip-icon">i</span><span class="tooltip-text"><strong>3 | 1:</strong> he starts for you in 3 of your matchups (green) and against you in 1 (red).<br><br><strong>Your stake</strong> (tap him): how much of his weight is in your leagues. A paid league counts 1.5 times, a close matchup more than a lopsided one (a decided one not at all), and he counts more the bigger his share of his side's points still to come, so the stake can differ from the counts.</span></span>` : '';
+        const tip = kind === 'both' ? `<span class="tooltip-container mls-week-info mls-root-info"><span class="tooltip-icon">i</span><span class="tooltip-text"><strong>3 of 4 yours:</strong> he starts in 4 of your matchups, for you in 3 and against you in the other.<br><br><strong>Your stake</strong> (tap him): how much of his weight is in your leagues. A paid league counts 1.5 times, a close matchup more than a lopsided one (a decided one not at all), and he counts more the bigger his share of his side's points still to come, so the stake can differ from the counts.</span></span>` : '';
         return `<div class="mls-root-group is-${kind}"><h5 class="mls-root-group-title">${ROOT_ICONS[kind]}${title} <span class="mls-root-group-n">${rows.length}</span>${tip}</h5>${rows.length
             ? rootList(rows, `spot:${kind}`, ctx, ROOT_SPOT_ROWS, {})
             : `<p class="mls-root-none">${none}</p>`}</div>`;

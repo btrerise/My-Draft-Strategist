@@ -116,7 +116,7 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Who to root for, across your leagues.** The Scoreboard is now two halves you can fold (remembered): League
   Scoreboard, the matchups as before, and Player Scoreboard, which opens with Who to root for and then MVPs & LVPs. Who
   to root for lists every starter in your Sleeper matchups this week. On top are the players in 2 or more of them: Root
-  for (yours, never against you), Against you, and Both sides ("3 | 1": yours in 3, against you in 1; tap him for your
+  for (yours, never against you), Against you, and Both sides ("3 of 4 yours": in 4 of your matchups, yours in 3; tap him for your
   stake, how much of his weight is in your leagues). Leagues are weighted: a paid
   league counts 1.5 times, a close matchup more than a lopsided one, and a player more the bigger his share of his side's
   points still to come. Below that, every starter by kickoff window, yours beside theirs, with finished games folded into

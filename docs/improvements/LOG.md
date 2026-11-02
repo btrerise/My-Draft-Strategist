@@ -8084,3 +8084,22 @@ Checks (round 2): check-precache OK; 480 unit tests; full Playwright run 669 pas
 `visual.spec.mjs` comparisons failing (this container's renderer, as on main). Screenshots, main against this branch in
 this container: still the same four PNGs differ (the Scoreboard and the Guide at both widths; the Guide a little longer
 than round 1 on phones, for the new wording), and the other 38 are identical. Take the four from CI.
+
+### S27, round 3: Both sides' chip in one color (owner's choice)
+
+The owner found round 2's "3 | 1" chip (amber border, green and red numbers) clashed: three colors in one small pill. I
+mocked three single-color options on the real rows at 375 and 1280px:
+- A: "in 3" as before
+- B: "1 of 3 yours"
+- C: dots, filled for yours
+
+The owner leaned B and asked about A with a tappable chip instead. I advised against it: the whole row is already the
+button that opens the leagues, a button inside it is invalid and a tap would open both, and the count behind a tap can't
+be compared at a glance. **Owner: B.**
+
+- `rootOfBadgeMarkup(yours, of)`: "3 of 4 yours", the same amber pill as "in 4" (`mls-root-count is-both`, kept whole
+  with `white-space: nowrap`). `rootSplitBadgeMarkup` and its CSS are gone.
+- The Both sides (i), the legend line, the Guide and CHANGELOG say "3 of 4 yours". The stake stays in the tap detail.
+- `CACHE_NAME` v2.8.141 → v2.8.142. Spec: the chip's text for Allen (2 of 3) and Lamar (1 of 3), the (i)'s words.
+  root-for, tooltips-onscreen and svg-icons pass (28), and 480 unit tests. Screenshots: still the same four (the
+  Guide's wording only).

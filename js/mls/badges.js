@@ -181,10 +181,10 @@ export const ROOT_ICONS = {
 // "in 3": how many of your matchups he starts in, in the side's color (green yours, red against you, amber both).
 export const rootCountBadgeMarkup = (kind, n) =>
     `<span class="badge mls-root-count is-${kind === 'against' ? 'against' : (kind === 'both' ? 'both' : 'root')}">in ${Number(n) || 0}</span>`;
-// A player on both sides (S27 round 2, owner: "72% yours (3 of 4)" beside "85% yours (2 of 4)" didn't add up): one chip
-// with both counts, green for the matchups where he's yours and red for those where he's against you, "3 | 1".
-export const rootSplitBadgeMarkup = (yours, against) =>
-    `<span class="badge mls-root-split"><span class="mls-root-split-yours">${Number(yours) || 0}</span><span class="mls-root-split-against">${Number(against) || 0}</span><span class="sr-only"> (yours in ${Number(yours) || 0}, against you in ${Number(against) || 0})</span></span>`;
+// A player on both sides, "3 of 4 yours": the matchups where he's yours out of all his (owner's choice, S27 round 3, in
+// the Both sides amber; round 2's "3 | 1" in green and red was one color too many beside it). Same pill as "in 4".
+export const rootOfBadgeMarkup = (yours, of) =>
+    `<span class="badge mls-root-count is-both">${Number(yours) || 0} of ${Number(of) || 0} yours</span>`;
 // His stake, in the row's detail: a bar, green for the part of his weight that's in your leagues, red for the rest.
 export const rootShareMarkup = (share) => {
     const pct = Math.max(0, Math.min(100, Math.round(Number(share) || 0)));
