@@ -8103,3 +8103,36 @@ be compared at a glance. **Owner: B.**
 - `CACHE_NAME` v2.8.141 → v2.8.142. Spec: the chip's text for Allen (2 of 3) and Lamar (1 of 3), the (i)'s words.
   root-for, tooltips-onscreen and svg-icons pass (28), and 480 unit tests. Screenshots: still the same four (the
   Guide's wording only).
+
+### S27, round 4: my review as a user on the owner's 19 leagues (Monday of week 8); the owner took 1, 2 and 4
+
+I restored the owner's backup in this container's browser and opened the Scoreboard live: Sleeper's matchups, and ESPN's
+scoreboard handed to the page from curl because the browser's own request failed here. Headshots are blocked here, so
+the rows showed initials. My notes, worst first:
+1. Both sides held 70 of the 96 players in 2+ matchups (Root for 11, Against you 15); DK Metcalf, "6 of 8 yours", was
+   among them.
+2. On Monday night every Root for and Against you player was Final; the MNF players were further down.
+3. The same names appeared three times.
+4. The window lists' small line read "in 3" on some rows and "pts" on others.
+5. Times showed in UTC, which is only this container's clock.
+
+**Owner: do 1, 2 and 4; 75 / 25 is fine.**
+- **1, the lean rule** (`rootFor.js`: `LEAN_ROOT` 75, `LEAN_AGAINST` 25, `lean` on the row). A player on both sides with
+  a stake of 75% or more goes in Root for, 25% or less in Against you. He keeps "6 of 8 yours" in that group's color
+  (`rootOfBadgeMarkup(yours, of, kind)`) and his stake in the detail. The (i), the legend, the Guide and CHANGELOG say so.
+- **2, still to play first.** While any game is left, the three groups hold only players still to play. A group whose
+  players have all finished says "All 7 have finished: see the games final line below." Once every game is over (a
+  past week) everyone is back. The intro says "still to play" while it applies, and Player Scoreboard's summary counts
+  what's shown. This also takes care of most of 3.
+- **4.** The window lists put "in 3" as muted text after the name (`.mls-root-in`), with "pts" under every row's points.
+
+On the owner's data after the change: Root for 2 · Against 1 · Both 1, all from CHI @ SEA (they were 11 / 15 / 70).
+
+Tests: unit (9). The 75% / 25% lines and lean, and the two cases that now lean (an 80% player and the guillotine one at
+20%). `mls-root-for.spec.mjs`: mid-Sunday shows only Jefferson, the "All N have finished" lines, "in 3" and "pts" in
+the windows; every game final (week 1) has the full groups, the chips, the stake, the (i), Show all / Show less; the
+paid test and the edge test on week 1. `CACHE_NAME` v2.8.142 → v2.8.143.
+
+**Found right after (put to the owner):** on the owner's Monday, D'Andre Swift ("2 of 4 yours") leaned into Root for and
+Colston Loveland ("2 of 3 yours") into Against you. A decided matchup weighs 0, so Swift's two against-you leagues count
+for nothing. That's right by the stake, but the chip's counts include the decided leagues and seem to contradict it.

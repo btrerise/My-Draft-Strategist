@@ -2,7 +2,7 @@
 // share score, plus which ids count as starters (bench, Best Ball).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PAID_WEIGHT, buildRootFor, impactsOf, sideOrder, stakesOf, starterIdsOf } from '../../js/mls/week/rootFor.js';
+import { LEAN_AGAINST, LEAN_ROOT, PAID_WEIGHT, buildRootFor, impactsOf, sideOrder, stakesOf, starterIdsOf } from '../../js/mls/week/rootFor.js';
 
 const p = (id, remaining = 10, over = false) => ({ id, remaining, over });
 const league = (id, mine, theirs, extra = {}) => ({ id, name: `League ${id}`, paid: false, status: 'swing', chance: null, mine, theirs, ...extra });
@@ -74,7 +74,8 @@ test('impact: his share of his side\'s projected points still to come; 0 once hi
         league('Big', [p('allen', 20), p('k', 5)], [p('y', 10)]),
         league('Small', [p('w', 20), p('v', 15)], [p('allen', 5), p('u', 20)]),
     ] });
-    assert.equal(rf.both[0].share, 80); // 0.8 / (0.8 + 0.2)
+    assert.equal(rf.players.find(r => r.id === 'allen').share, 80); // 0.8 / (0.8 + 0.2): mostly yours, so Root for
+    assert.equal(rf.root[0].id, 'allen');
 });
 
 test('a finished game falls back to paid weights for the share, and finished players sort after the rest', () => {
@@ -100,7 +101,10 @@ test('guillotine and median-only leagues: yours only, never Against you, and nam
     assert.deepEqual(rf.noOpponent, ['League Chop']);
     assert.deepEqual(ids(rf.root), ['allen']); // yours in Chop and A
     const jj = rf.players.find(r => r.id === 'jj');
-    assert.equal(jj.group, 'both'); // yours in Chop, against in A and B
+    // Yours in Chop (half of his side), against in A and B (all of theirs): 0.5 / 2.5 = 20% yours, so Against you.
+    assert.equal(jj.share, 20);
+    assert.equal(jj.group, 'against');
+    assert.equal(jj.lean, true);
     assert.equal(jj.yours[0].stakes, 1);
     assert.equal(jj.yours[0].status, 'none');
     // A guillotine league's own list of theirs is never read.
@@ -129,4 +133,26 @@ test('starters: the bench never counts, empty slots are dropped, Best Ball count
     // In the rule: a benched player is in no list.
     const rf = buildRootFor({ leagues: [league('A', starterIdsOf(entry).map(id => p(id)), [])] });
     assert.ok(!rf.players.some(r => r.id === 'rb2'));
+});
+
+test('a player on both sides whose stake leans 75% or more one way goes in that group, marked lean', () => {
+    assert.equal(LEAN_ROOT, 75);
+    assert.equal(LEAN_AGAINST, 25);
+    const mine = (n) => Array.from({ length: n }, (_, i) => league(`m${i}`, [p('dk'), p(`x${i}`)], [p(`y${i}`)]));
+    const theirs = (n) => Array.from({ length: n }, (_, i) => league(`t${i}`, [p(`w${i}`)], [p('dk'), p(`z${i}`)]));
+    // 3 of 4 yours, equal weights: exactly 75%, Root for.
+    let rf = buildRootFor({ leagues: [...mine(3), ...theirs(1)] });
+    assert.equal(rf.players.find(r => r.id === 'dk').share, 75);
+    assert.deepEqual(rf.root.map(r => r.id), ['dk']);
+    assert.equal(rf.root[0].lean, true);
+    assert.equal(rf.both.length, 0);
+    // 1 of 4: 25%, Against you.
+    rf = buildRootFor({ leagues: [...mine(1), ...theirs(3)] });
+    assert.deepEqual(rf.against.map(r => r.id), ['dk']);
+    // 2 of 3: 67%, still Both sides, not lean.
+    rf = buildRootFor({ leagues: [...mine(2), ...theirs(1)] });
+    assert.deepEqual(rf.both.map(r => r.id), ['dk']);
+    assert.equal(rf.both[0].lean, false);
+    // A player only on your side is never lean.
+    assert.equal(rf.players.find(r => r.id === 'x0').lean, false);
 });

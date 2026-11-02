@@ -7,8 +7,9 @@
 // bestBallLineup in playerRecap.js) and draws what comes back.
 //
 // The groups (the card's rule):
-// - Root for: your starter in 2 or more leagues, and your opponent's in none.
-// - Against you: your opponent's starter in 2 or more leagues, and yours in none.
+// - Root for: your starter in 2 or more leagues, and your opponent's in none; or on both sides with 75%+ of his weight
+//   yours (round 4, lean).
+// - Against you: your opponent's starter in 2 or more leagues, and yours in none; or on both sides with 25% or less yours.
 // - Both sides: yours in at least one and against you in at least one, with a share score: the weight of the leagues
 //   where he's yours divided by the weight of all his leagues, as a percent.
 // A guillotine league, or one with no opponent this week (median only), has nobody against you: its starters count for
@@ -31,6 +32,11 @@ import { bestBallLineup } from './playerRecap.js';
 export const PAID_WEIGHT = 1.5;
 // "In 2 or more" of your matchups for Root for and Against you.
 export const SPOTLIGHT_MIN = 2;
+// A player on both sides whose stake leans one way (owner's choice, S27 round 4): 75% or more of his weight in your
+// leagues puts him in Root for, 25% or less in Against you, still with his "6 of 8 yours" (lean: true). With 19 leagues,
+// 70 of 96 players were "Both sides", DK Metcalf at 6 of 8 among them.
+export const LEAN_ROOT = 75;
+export const LEAN_AGAINST = 25;
 
 const round3 = (n) => Math.round(n * 1000) / 1000;
 
@@ -103,7 +109,10 @@ export function buildRootFor({ leagues = [] } = {}) {
             const [y, t] = weight > 0 ? [yoursWeight, weight] : [sum(r.yours, paidOnly), sum(r.yours, paidOnly) + sum(r.against, paidOnly)];
             share = Math.round((y / t) * 100);
         }
-        return { ...r, count: r.yours.length + r.against.length, yoursWeight, againstWeight, weight, share, group };
+        let lean = false;
+        if (group === 'both' && share >= LEAN_ROOT) { group = 'root'; lean = true; }
+        else if (group === 'both' && share <= LEAN_AGAINST) { group = 'against'; lean = true; }
+        return { ...r, count: r.yours.length + r.against.length, yoursWeight, againstWeight, weight, share, group, lean };
     });
     const order = (a, b) => Number(a.over) - Number(b.over) || b.weight - a.weight || b.count - a.count || String(a.id).localeCompare(String(b.id));
     players.sort(order);

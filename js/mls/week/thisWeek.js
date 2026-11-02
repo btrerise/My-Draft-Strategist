@@ -787,7 +787,9 @@ function renderScoreboard(m) {
         const root = rootHTML(m);
         const rf = root.rf;
         const anyGroup = rf.root.length || rf.against.length || rf.both.length;
-        const groupsText = anyGroup ? `Root for ${rf.root.length} · Against ${rf.against.length} · Both ${rf.both.length}` : `${rf.players.length} starter${rf.players.length === 1 ? '' : 's'}`;
+        // The groups' counts as shown: still to play while games are left (round 4).
+        const spot = root.spot || rf;
+        const groupsText = anyGroup ? `Root for ${spot.root.length} · Against ${spot.against.length} · Both ${spot.both.length}` : `${rf.players.length} starter${rf.players.length === 1 ? '' : 's'}`;
         const rootFold = foldSection('root', `<span class="mls-week-sub">Who to root for</span><span class="mls-week-summary">${rf.players.length} starter${rf.players.length === 1 ? '' : 's'} in your matchups</span>`, root.html, 'Who to root for', 'mls-root');
         // MVPs & LVPs once a game has kicked off (S22).
         const playerBody = rootFold + (started && listed.length ? recapHTML(m) : '');
@@ -1210,10 +1212,13 @@ function rootRow(r, pl, list, ctx, { compact = false, side = null } = {}) {
     const kind = r.group || (side === 'against' ? 'against' : 'root');
     const n = side ? r[side].length : r.count;
     // Both sides: "3 of 4 yours" in the chip (round 3, owner's choice), the weighted stake only in the detail (round 2).
-    const both = !compact && r.group === 'both';
-    const chip = compact ? '' : ' ' + (both ? rootOfBadgeMarkup(r.yours.length, r.count) : rootCountBadgeMarkup(kind, n));
+    // A player who leans one way sits in Root for / Against you with the same counts, in that group's color (round 4).
+    const split = r.yours.length > 0 && r.against.length > 0;
+    const chip = compact ? '' : ' ' + (split ? rootOfBadgeMarkup(r.yours.length, r.count, r.group) : rootCountBadgeMarkup(kind, n));
+    // The window lists (round 4): "in 3" after the name, muted, and always "pts" under the points.
+    const inText = compact && n > 1 ? ` <span class="mls-root-in">in ${n}</span>` : '';
     const detail = [
-        both ? `<div class="mls-root-stake">${rootShareMarkup(r.share)} <span class="mls-root-stake-note">How much of his weight is in your leagues. The (i) beside Both sides says how each league is weighed.</span></div>` : '',
+        split && r.share != null ? `<div class="mls-root-stake">${rootShareMarkup(r.share)} <span class="mls-root-stake-note">How much of his weight is in your leagues. The (i) beside Both sides says how each league is weighed.</span></div>` : '',
         r.yours.length ? `<div class="mls-root-detail-side"><span class="mls-root-detail-label is-root">Yours in</span><ul>${r.yours.map(x => rootPart(x, pl)).join('')}</ul></div>` : '',
         r.against.length ? `<div class="mls-root-detail-side"><span class="mls-root-detail-label is-against">Against you in</span><ul>${r.against.map(x => rootPart(x, pl)).join('')}</ul></div>` : '',
     ].join('');
@@ -1221,8 +1226,8 @@ function rootRow(r, pl, list, ctx, { compact = false, side = null } = {}) {
     return `<li class="mls-root-row${compact ? ' is-compact' : ''}">
         <button type="button" class="btn-bare mls-root-player" data-action="toggleRootPlayer" data-key="${escapeHtml(key)}" data-focus-key="${escapeHtml(key)}" aria-expanded="${open}" aria-controls="${id}">
             ${playerHeadshotHTML({ id: pl.id, name: pl.name, pos, team: pl.team })}<span class="badge pos-badge ${escapeHtml(pos)} mls-root-pos">${escapeHtml(pos === 'DEF' ? 'D/ST' : pos)}</span>
-            <span class="mls-root-who"><span class="mls-root-name">${escapeHtml(pl.name)}${chip}</span><span class="mls-root-meta">${rootMeta(pl, ctx)}</span></span>
-            <span class="mls-root-pts">${rootPoints(pl, ctx, rootStarted)}<small>${compact && n > 1 ? `in ${n}` : 'pts'}</small></span>
+            <span class="mls-root-who"><span class="mls-root-name">${escapeHtml(pl.name)}${chip}${inText}</span><span class="mls-root-meta">${rootMeta(pl, ctx)}</span></span>
+            <span class="mls-root-pts">${rootPoints(pl, ctx, rootStarted)}<small>pts</small></span>
         </button>
         <div id="${id}" class="mls-root-detail"${open ? '' : ' hidden'}>${detail}</div>
     </li>`;
@@ -1284,12 +1289,19 @@ function rootHTML(m) {
         return { html: `<p class="text-helper mls-root-empty">${msg}</p>`, rf };
     }
     // One line (the weights are in the header's (i) and the Guide: S21 round 11, long helper text filled a phone screen).
-    if (rf.root.length || rf.against.length || rf.both.length) parts.push(`<p class="mls-root-intro">Players in 2 or more of your matchups, those that matter most first. Tap one for the leagues.</p>`);
+    const toCome = rf.players.some(r => !r.over);
+    if (rf.root.length || rf.against.length || rf.both.length) parts.push(`<p class="mls-root-intro">Players in 2 or more of your matchups${toCome ? ' still to play' : ''}, those that matter most first. Tap one for the leagues.</p>`);
     if (pending) parts.push(`<p class="text-helper mls-root-pending">Still loading ${pending} league${pending === 1 ? '' : 's'}; ${pending === 1 ? 'it joins' : 'they join'} the board when ${pending === 1 ? 'it arrives' : 'they arrive'}.</p>`);
+    // While any game is still to come, the groups hold only players still to play (round 4, owner: on Monday night every
+    // Root for and Against you player was Final); the rest are in the games final line. Once every game is over (a past
+    // week), everyone.
+    const spot = Object.fromEntries(ROOT_GROUPS.map(([kind]) => [kind, toCome ? rf[kind].filter(r => !r.over) : rf[kind]]));
     const group = ([kind, title, none]) => {
-        const rows = rf[kind];
+        const rows = spot[kind];
+        const done = rf[kind].length - rows.length;
+        if (!rows.length && done) none = `${done === 1 ? 'The one player here has' : `All ${done} have`} finished: see the games final line below.`;
         // Both sides explains its chip and the stake (round 2, owner: "at bare minimum, a tooltip").
-        const tip = kind === 'both' ? `<span class="tooltip-container mls-week-info mls-root-info"><span class="tooltip-icon">i</span><span class="tooltip-text"><strong>3 of 4 yours:</strong> he starts in 4 of your matchups, for you in 3 and against you in the other.<br><br><strong>Your stake</strong> (tap him): how much of his weight is in your leagues. A paid league counts 1.5 times, a close matchup more than a lopsided one (a decided one not at all), and he counts more the bigger his share of his side's points still to come, so the stake can differ from the counts.</span></span>` : '';
+        const tip = kind === 'both' ? `<span class="tooltip-container mls-week-info mls-root-info"><span class="tooltip-icon">i</span><span class="tooltip-text"><strong>3 of 4 yours:</strong> he starts in 4 of your matchups, for you in 3 and against you in the other.<br><br><strong>Your stake</strong> (tap him): how much of his weight is in your leagues. A paid league counts 1.5 times, a close matchup more than a lopsided one (a decided one not at all), and he counts more the bigger his share of his side's points still to come, so the stake can differ from the counts.<br><br>A stake of 75% or more puts him in <strong>Root for</strong>, 25% or less in <strong>Against you</strong>; Both sides keeps the real splits. While games are left, the groups show only players still to play.</span></span>` : '';
         return `<div class="mls-root-group is-${kind}"><h5 class="mls-root-group-title">${ROOT_ICONS[kind]}${title} <span class="mls-root-group-n">${rows.length}</span>${tip}</h5>${rows.length
             ? rootList(rows, `spot:${kind}`, ctx, ROOT_SPOT_ROWS, {})
             : `<p class="mls-root-none">${none}</p>`}</div>`;
@@ -1322,7 +1334,7 @@ function rootHTML(m) {
         parts.push(rootWindow('final', title, '', over, ctx, !keys.length, { counts: `${n('yours')} of your starters, ${n('against')} against you` }));
     }
     if (rf.noOpponent.length) parts.push(`<p class="text-helper mls-root-note">${rf.noOpponent.map(escapeHtml).join(', ')} ${rf.noOpponent.length === 1 ? 'has' : 'have'} no opponent this week (guillotine or median only), so ${rf.noOpponent.length === 1 ? 'its' : 'their'} starters count for you only.</p>`);
-    return { html: parts.join(''), rf };
+    return { html: parts.join(''), rf, spot };
 }
 
 // A row's leagues, opened and closed in place (no redraw, so focus stays on it).
