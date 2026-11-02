@@ -8077,3 +8077,10 @@ tooltips under both apps (the tooltips are shared).
 Tests: `mls-root-for.spec.mjs` (the chip's counts, the stake in the detail, one row height across the groups, the
 Both sides (i), Show less and focus); `mls-mvp-lvp.spec.mjs` (MVPs' Show all / Show less, focus on the button);
 `tooltips-onscreen.spec.mjs` (above).
+
+`CACHE_NAME` v2.8.140 → v2.8.141 (a second push to the branch's preview, S21 round 6's lesson).
+
+Checks (round 2): check-precache OK; 480 unit tests; full Playwright run 669 passed, 41 skipped, only the 10
+`visual.spec.mjs` comparisons failing (this container's renderer, as on main). Screenshots, main against this branch in
+this container: still the same four PNGs differ (the Scoreboard and the Guide at both widths; the Guide a little longer
+than round 1 on phones, for the new wording), and the other 38 are identical. Take the four from CI.
