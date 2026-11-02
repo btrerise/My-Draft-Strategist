@@ -8163,3 +8163,32 @@ who you root for, so it's left out of the counts, the groups and the window list
   - this-week, mvp-lvp, tooltips-onscreen (74) and 482 unit tests pass.
 - `CACHE_NAME` v2.8.143 → v2.8.144. Screenshots: no change beyond the four (the screenshot league is before kickoff,
   where everything is open; only the Guide's words differ).
+
+### S27, round 6: counts are facts again; groups follow the counts; decided players dimmed (owner's choice)
+
+The owner was unsure about round 5: "I might look at the board and think 'Wait, I thought I had Swift in more leagues?'"
+And only two players in the groups on Monday night felt "a tad lame". My view: one number was doing two jobs. The chip
+reads as a fact the owner knows from memory, while the weighting is a judgment. So I separated them, and the owner
+agreed to all four:
+1. **Counts are every league** again: "in 4", "3 of 4 yours". Round 5's open-only counting is undone, but its dimmed
+   decided leagues in the tap detail stay.
+2. **Groups follow the counts:** 75% or more of a player's leagues yours puts him in Root for, 25% or less in Against
+   you (round 4 went by the stake). The chip and the group can't disagree.
+3. **The weighting orders the players** within each group, and "Your stake" stays in the tap detail.
+4. **A player whose every matchup is effectively decided or over is `settled`:** still listed, dimmed (`.is-settled`),
+   last in his group, with "decided" at the end of his line. Never in a past week, when nothing is open.
+
+Round 4's "while games are left, the groups show only players still to play" stays. The (i), the legend, the Guide and
+CHANGELOG are reworded.
+
+On the owner's Monday (19 leagues, CHI @ SEA left):
+- Root for 1: Luther Burden III, 3 of 4 yours.
+- Both sides 3: D'Andre Swift and Jaxon Smith-Njigba 2 of 4, Colston Loveland 2 of 3.
+- The MNF window 6 yours · 8 against; the finished line 102 / 101.
+- No MNF player was settled that night.
+- The groups are short because only four MNF players start in 2 or more of the owner's matchups; the window below lists
+  all 14.
+
+Tests: unit (10, the lean by counts, `settled` and its order, guillotine always open, a past week); `mls-root-for` back to
+"in 3" with nobody settled, and the two-league tests' Both sides line; this-week, mvp-lvp and tooltips-onscreen (74);
+482 unit tests. `CACHE_NAME` v2.8.144 → v2.8.145.

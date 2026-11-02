@@ -7,9 +7,10 @@
 // bestBallLineup in playerRecap.js) and draws what comes back.
 //
 // The groups (the card's rule):
-// - Root for: your starter in 2 or more leagues, and your opponent's in none; or on both sides with 75%+ of his weight
-//   yours (round 4, lean).
+// - Root for: your starter in 2 or more leagues, and your opponent's in none; or on both sides with 75%+ of his leagues
+//   yours (rounds 4 and 6, lean).
 // - Against you: your opponent's starter in 2 or more leagues, and yours in none; or on both sides with 25% or less yours.
+// - Every league counts, decided ones too (round 6); a player whose every matchup is decided or over is `settled`.
 // - Both sides: yours in at least one and against you in at least one, with a share score: the weight of the leagues
 //   where he's yours divided by the weight of all his leagues, as a percent.
 // A guillotine league, or one with no opponent this week (median only), has nobody against you: its starters count for
@@ -32,9 +33,9 @@ import { bestBallLineup } from './playerRecap.js';
 export const PAID_WEIGHT = 1.5;
 // "In 2 or more" of your matchups for Root for and Against you.
 export const SPOTLIGHT_MIN = 2;
-// A player on both sides whose stake leans one way (owner's choice, S27 round 4): 75% or more of his weight in your
-// leagues puts him in Root for, 25% or less in Against you, still with his "6 of 8 yours" (lean: true). With 19 leagues,
-// 70 of 96 players were "Both sides", DK Metcalf at 6 of 8 among them.
+// A player on both sides who leans one way (owner's choices, S27 rounds 4 and 6): 75% or more of his leagues yours puts
+// him in Root for, 25% or less in Against you, still with his "6 of 8 yours" (lean: true). With 19 leagues, 70 of 96
+// players were "Both sides", DK Metcalf at 6 of 8 among them.
 export const LEAN_ROOT = 75;
 export const LEAN_AGAINST = 25;
 
@@ -67,8 +68,7 @@ export function impactsOf(side = []) {
 //   mine: [{ id, remaining, over }], theirs: [...] (empty for a league with no opponent), noOpponent: boolean }].
 // Returns { players: [row], root, against, both, noOpponent: [league names] }, each list sorted: players still to play
 // first, by total weight, then by how many leagues, then by id (stable for the tests). A row:
-//   { id, yours: [part], against: [part] (open matchups only while any is open), allYours, allAgainst (every league),
-//     count, yoursWeight, againstWeight, weight, share (percent, both sides only),
+//   { id, yours: [part], against: [part] (allYours / allAgainst: the same lists), count, settled, yoursWeight, againstWeight, weight, share (percent, both sides only),
 //     group: 'root' | 'against' | 'both' | null, over (his game is over in every league) }
 // and a part: { leagueId, name, paid, status, chance, stakes, impact, weight }.
 export function buildRootFor({ leagues = [] } = {}) {
@@ -98,16 +98,16 @@ export function buildRootFor({ leagues = [] } = {}) {
     });
     const sum = (parts, f) => parts.reduce((s, x) => s + f(x), 0);
     const paidOnly = (x) => (x.paid ? PAID_WEIGHT : 1);
-    // Only open matchups count (owner's choice, round 5): once any matchup is effectively decided or done, it adds
-    // nothing to who you root for, so it's left out of the counts, the groups and the lists. Every league stays in
-    // allYours / allAgainst, for the row's detail. When no matchup is open (a past week, every game over), all count.
+    // Round 6 (owner's choice, after round 5 counted only open matchups and "I thought I had Swift in more leagues?"):
+    // the counts are facts, every league he starts in; the groups follow the counts; the weights only order players and
+    // give the stake. A player whose every matchup is effectively decided or over is `settled`: still listed, dimmed and
+    // last in his group. When nothing is open (a past week, every game over), nobody is settled.
     const isOpen = (x) => x.status !== 'decided' && x.status !== 'done';
     const anyOpen = leagues.some(l => l && (l.noOpponent || isOpen(l)));
-    const counted = (parts) => (anyOpen ? parts.filter(isOpen) : parts);
-    const players = [...byId.values()].map(full => {
-        const r = { ...full, allYours: full.yours, allAgainst: full.against, yours: counted(full.yours), against: counted(full.against) };
+    const players = [...byId.values()].map(r => {
         const yoursWeight = round3(sum(r.yours, x => x.weight)), againstWeight = round3(sum(r.against, x => x.weight));
         const weight = round3(yoursWeight + againstWeight);
+        const count = r.yours.length + r.against.length;
         let group = null;
         if (r.yours.length && r.against.length) group = 'both';
         else if (r.yours.length >= SPOTLIGHT_MIN) group = 'root';
@@ -117,22 +117,23 @@ export function buildRootFor({ leagues = [] } = {}) {
             const [y, t] = weight > 0 ? [yoursWeight, weight] : [sum(r.yours, paidOnly), sum(r.yours, paidOnly) + sum(r.against, paidOnly)];
             share = Math.round((y / t) * 100);
         }
+        // Leaning one way by his leagues (round 6; round 4 went by the stake): 75% or more of them yours, Root for; 25% or
+        // less, Against you. So the chip ("6 of 8 yours") and the group always agree.
         let lean = false;
-        if (group === 'both' && share >= LEAN_ROOT) { group = 'root'; lean = true; }
-        else if (group === 'both' && share <= LEAN_AGAINST) { group = 'against'; lean = true; }
-        return { ...r, count: r.yours.length + r.against.length, yoursWeight, againstWeight, weight, share, group, lean };
+        const yoursPct = count ? (r.yours.length / count) * 100 : 0;
+        if (group === 'both' && yoursPct >= LEAN_ROOT) { group = 'root'; lean = true; }
+        else if (group === 'both' && yoursPct <= LEAN_AGAINST) { group = 'against'; lean = true; }
+        const settled = anyOpen && ![...r.yours, ...r.against].some(isOpen);
+        return { ...r, allYours: r.yours, allAgainst: r.against, count, yoursWeight, againstWeight, weight, share, group, lean, settled };
     });
-    // A player whose matchups are all decided is nobody's to root for any more.
-    const decidedOnly = players.filter(r => !r.yours.length && !r.against.length).length;
-    const live = players.filter(r => r.yours.length || r.against.length);
-    const order = (a, b) => Number(a.over) - Number(b.over) || b.weight - a.weight || b.count - a.count || String(a.id).localeCompare(String(b.id));
-    live.sort(order);
+    const order = (a, b) => Number(a.over) - Number(b.over) || Number(a.settled) - Number(b.settled) || b.weight - a.weight || b.count - a.count || String(a.id).localeCompare(String(b.id));
+    players.sort(order);
     return {
-        players: live,
-        root: live.filter(r => r.group === 'root'),
-        against: live.filter(r => r.group === 'against'),
-        both: live.filter(r => r.group === 'both'),
-        noOpponent, anyOpen, decidedOnly,
+        players,
+        root: players.filter(r => r.group === 'root'),
+        against: players.filter(r => r.group === 'against'),
+        both: players.filter(r => r.group === 'both'),
+        noOpponent, anyOpen,
     };
 }
 

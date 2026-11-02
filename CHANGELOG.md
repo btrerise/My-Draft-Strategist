@@ -117,10 +117,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   Scoreboard, the matchups as before, and Player Scoreboard, which opens with Who to root for and then MVPs & LVPs. Who
   to root for lists every starter in your Sleeper matchups this week. On top are the players in 2 or more of them: Root
   for (yours, never against you), Against you, and Both sides ("3 of 4 yours": in 4 of your matchups, yours in 3; tap him for your
-  stake, how much of his weight is in your leagues; a stake of 75% or more puts him in Root for, 25% or less in Against
-  you). While games are left, the groups show only players still to play, and only matchups still open count. Leagues
-  are weighted: a paid
-  league counts 1.5 times, a close matchup more than a lopsided one, and a player more the bigger his share of his side's
+  stake, how much of his weight is in your leagues, which orders each group). 75% or more of a player's leagues yours
+  puts him in Root for, 25% or less in Against you. While games are left, the groups show only players still to play,
+  and one whose every matchup is already decided is dimmed at the bottom. Leagues are weighted: a paid league counts 1.5 times, a close matchup more than a lopsided one, and a player more the bigger his share of his side's
   points still to come. Below that, every starter by kickoff window, yours beside theirs, with finished games folded into
   one line. Tap a player to see which leagues are on each side. Earlier weeks show final points. The idea came from
   Sleepy (sleepy-football.vercel.app), credited in the Guide and under the Scoreboard.

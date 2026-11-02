@@ -74,8 +74,9 @@ test('impact: his share of his side\'s projected points still to come; 0 once hi
         league('Big', [p('allen', 20), p('k', 5)], [p('y', 10)]),
         league('Small', [p('w', 20), p('v', 15)], [p('allen', 5), p('u', 20)]),
     ] });
-    assert.equal(rf.players.find(r => r.id === 'allen').share, 80); // 0.8 / (0.8 + 0.2): mostly yours, so Root for
-    assert.equal(rf.root[0].id, 'allen');
+    // 0.8 / (0.8 + 0.2). The stake doesn't move him (round 6): yours in 1 of 2, so Both sides.
+    assert.equal(rf.both[0].share, 80);
+    assert.equal(rf.both[0].id, 'allen');
 });
 
 test('a finished game falls back to paid weights for the share, and finished players sort after the rest', () => {
@@ -101,10 +102,11 @@ test('guillotine and median-only leagues: yours only, never Against you, and nam
     assert.deepEqual(rf.noOpponent, ['League Chop']);
     assert.deepEqual(ids(rf.root), ['allen']); // yours in Chop and A
     const jj = rf.players.find(r => r.id === 'jj');
-    // Yours in Chop (half of his side), against in A and B (all of theirs): 0.5 / 2.5 = 20% yours, so Against you.
+    // Yours in Chop (half of his side), against in A and B (all of theirs): a stake of 0.5 / 2.5 = 20%, but yours in 1 of
+    // his 3 leagues, so Both sides (round 6: the groups follow the counts).
     assert.equal(jj.share, 20);
-    assert.equal(jj.group, 'against');
-    assert.equal(jj.lean, true);
+    assert.equal(jj.group, 'both');
+    assert.equal(jj.lean, false);
     assert.equal(jj.yours[0].stakes, 1);
     assert.equal(jj.yours[0].status, 'none');
     // A guillotine league's own list of theirs is never read.
@@ -157,7 +159,7 @@ test('a player on both sides whose stake leans 75% or more one way goes in that 
     assert.equal(rf.players.find(r => r.id === 'x0').lean, false);
 });
 
-test('only open matchups count while any is open: decided leagues stay in the detail only', () => {
+test('every league counts; a player whose every matchup is decided is settled, dimmed and last', () => {
     const rf = buildRootFor({ leagues: [
         league('A', [p('swift'), p('gone')], [p('x')], { status: 'decided' }),
         league('B', [p('swift'), p('gone')], [p('y')], { status: 'done' }),
@@ -165,23 +167,25 @@ test('only open matchups count while any is open: decided leagues stay in the de
         league('D', [p('w')], [p('swift')], { chance: 50 }),
     ] });
     assert.equal(rf.anyOpen, true);
+    // Yours in two decided matchups, against you in two open ones: the counts are every league (round 6).
     const swift = rf.players.find(r => r.id === 'swift');
-    // Yours only in decided matchups, against you in two open ones: Against you, "in 2", not a split.
-    assert.equal(swift.group, 'against');
-    assert.equal(swift.lean, false);
-    assert.equal(swift.count, 2);
-    assert.equal(swift.yours.length, 0);
-    assert.deepEqual(swift.allYours.map(x => x.leagueId), ['A', 'B']);
-    assert.deepEqual(swift.allAgainst.map(x => x.leagueId), ['C', 'D']);
-    // In decided matchups only: off the board, and counted.
-    assert.ok(!rf.players.some(r => r.id === 'gone'));
-    assert.ok(rf.decidedOnly >= 1);
+    assert.equal(swift.count, 4);
+    assert.equal(swift.group, 'both');
+    assert.equal(swift.settled, false);
+    assert.deepEqual(swift.yours.map(x => x.leagueId), ['A', 'B']);
+    // In decided matchups only: still Root for ("in 2"), settled.
+    const gone = rf.players.find(r => r.id === 'gone');
+    assert.equal(gone.group, 'root');
+    assert.equal(gone.settled, true);
+    // Settled players sort after the others still to play.
+    const ids = rf.players.map(r => r.id);
+    assert.ok(ids.indexOf('gone') > ids.indexOf('z'));
     // A guillotine league is always open.
     const g = buildRootFor({ leagues: [league('Chop', [p('a'), p('b')], [], { noOpponent: true }), league('A', [p('a')], [p('b')], { status: 'done' })] });
     assert.equal(g.anyOpen, true);
-    assert.equal(g.players.find(r => r.id === 'a').count, 1);
-    // Nothing open (a past week): every league counts.
+    assert.equal(g.players.find(r => r.id === 'a').settled, false);
+    // Nothing open (a past week): nobody is settled.
     const past = buildRootFor({ leagues: [league('A', [p('a', 0, true)], [], { status: 'done' }), league('B', [p('a', 0, true)], [], { status: 'done' })] });
     assert.equal(past.anyOpen, false);
-    assert.deepEqual(past.root.map(r => r.id), ['a']);
+    assert.equal(past.root[0].settled, false);
 });

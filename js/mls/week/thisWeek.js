@@ -790,7 +790,7 @@ function renderScoreboard(m) {
         // The groups' counts as shown: still to play while games are left (round 4).
         const spot = root.spot || rf;
         const groupsText = anyGroup ? `Root for ${spot.root.length} · Against ${spot.against.length} · Both ${spot.both.length}` : `${rf.players.length} starter${rf.players.length === 1 ? '' : 's'}`;
-        const rootFold = foldSection('root', `<span class="mls-week-sub">Who to root for</span><span class="mls-week-summary">${rf.players.length} starter${rf.players.length === 1 ? '' : 's'} in ${rf.decidedOnly ? 'matchups still open' : 'your matchups'}</span>`, root.html, 'Who to root for', 'mls-root');
+        const rootFold = foldSection('root', `<span class="mls-week-sub">Who to root for</span><span class="mls-week-summary">${rf.players.length} starter${rf.players.length === 1 ? '' : 's'} in your matchups</span>`, root.html, 'Who to root for', 'mls-root');
         // MVPs & LVPs once a game has kicked off (S22).
         const playerBody = rootFold + (started && listed.length ? recapHTML(m) : '');
         const swingCount = callable.filter(r => r.res.status === 'swing').length;
@@ -1227,10 +1227,11 @@ function rootRow(r, pl, list, ctx, { compact = false, side = null } = {}) {
         (r.allAgainst || r.against).length ? `<div class="mls-root-detail-side"><span class="mls-root-detail-label is-against">Against you in</span><ul>${(r.allAgainst || r.against).map(x => rootPart(x, pl)).join('')}</ul></div>` : '',
     ].join('');
     const pos = pl.pos || '';
-    return `<li class="mls-root-row${compact ? ' is-compact' : ''}">
+    // Every matchup he's in is decided or over (round 6): still listed, dimmed, last, and said so.
+    return `<li class="mls-root-row${compact ? ' is-compact' : ''}${r.settled ? ' is-settled' : ''}">
         <button type="button" class="btn-bare mls-root-player" data-action="toggleRootPlayer" data-key="${escapeHtml(key)}" data-focus-key="${escapeHtml(key)}" aria-expanded="${open}" aria-controls="${id}">
             ${playerHeadshotHTML({ id: pl.id, name: pl.name, pos, team: pl.team })}<span class="badge pos-badge ${escapeHtml(pos)} mls-root-pos">${escapeHtml(pos === 'DEF' ? 'D/ST' : pos)}</span>
-            <span class="mls-root-who"><span class="mls-root-name">${escapeHtml(pl.name)}${chip}${inText}</span><span class="mls-root-meta">${rootMeta(pl, ctx)}</span></span>
+            <span class="mls-root-who"><span class="mls-root-name">${escapeHtml(pl.name)}${chip}${inText}</span><span class="mls-root-meta">${rootMeta(pl, ctx)}${r.settled ? ' · <span class="mls-root-settled">decided</span>' : ''}</span></span>
             <span class="mls-root-pts">${rootPoints(pl, ctx, rootStarted)}<small>pts</small></span>
         </button>
         <div id="${id}" class="mls-root-detail"${open ? '' : ' hidden'}>${detail}</div>
@@ -1305,7 +1306,7 @@ function rootHTML(m) {
         const done = rf[kind].length - rows.length;
         if (!rows.length && done) none = `${done === 1 ? 'The one player here has' : `All ${done} have`} finished: see the games final line below.`;
         // Both sides explains its chip and the stake (round 2, owner: "at bare minimum, a tooltip").
-        const tip = kind === 'both' ? `<span class="tooltip-container mls-week-info mls-root-info"><span class="tooltip-icon">i</span><span class="tooltip-text"><strong>3 of 4 yours:</strong> he starts in 4 of your matchups, for you in 3 and against you in the other.<br><br><strong>Your stake</strong> (tap him): how much of his weight is in your leagues. A paid league counts 1.5 times, a close matchup more than a lopsided one (a decided one not at all), and he counts more the bigger his share of his side's points still to come, so the stake can differ from the counts.<br><br>A stake of 75% or more puts him in <strong>Root for</strong>, 25% or less in <strong>Against you</strong>; Both sides keeps the real splits. While games are left, the groups show only players still to play, and only matchups still open count (tap a player for every league).</span></span>` : '';
+        const tip = kind === 'both' ? `<span class="tooltip-container mls-week-info mls-root-info"><span class="tooltip-icon">i</span><span class="tooltip-text"><strong>3 of 4 yours:</strong> he starts in 4 of your matchups, for you in 3 and against you in the other.<br><br><strong>Your stake</strong> (tap him): how much of his weight is in your leagues. A paid league counts 1.5 times, a close matchup more than a lopsided one (a decided one not at all), and he counts more the bigger his share of his side's points still to come, so the stake can differ from the counts; it orders the players, closest and biggest first.<br><br>75% or more of his leagues yours puts him in <strong>Root for</strong>, 25% or less in <strong>Against you</strong>; Both sides keeps the real splits. While games are left, the groups show only players still to play; one whose every matchup is already decided is dimmed, last, marked "decided".</span></span>` : '';
         return `<div class="mls-root-group is-${kind}"><h5 class="mls-root-group-title">${ROOT_ICONS[kind]}${title} <span class="mls-root-group-n">${rows.length}</span>${tip}</h5>${rows.length
             ? rootList(rows, `spot:${kind}`, ctx, ROOT_SPOT_ROWS, {})
             : `<p class="mls-root-none">${none}</p>`}</div>`;
