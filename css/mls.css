@@ -2711,3 +2711,81 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 }
 .mls-autofetch-settings-label { font-weight: 600; color: var(--text-main); }
 .mls-autofetch-settings[open] > summary { padding-bottom: 0.75rem; }
+
+/* --- The Scoreboard's two halves and Who to root for (week/thisWeek.js, improvements S27) --- */
+/* League Scoreboard and Player Scoreboard: folding sections under the header, each with a bolder title. */
+.mls-week-section { margin-top: 0.6rem; }
+.mls-week-section + .mls-week-section { border-top: 1px solid var(--border); padding-top: 0.6rem; margin-top: 1rem; }
+.mls-week-section > .mls-week-fold-toggle { padding: 0.3rem 0; }
+.mls-week-section-title { font-size: 1rem; font-weight: 700; color: var(--text-main); }
+.mls-week-section > .mls-week-fold-body { padding-top: 0.2rem; }
+.mls-week-section > .mls-week-fold-body > :first-child { margin-top: 0.2rem; }
+.mls-root { margin-top: 0.3rem; }
+.mls-root-intro { margin: 0.1rem 0 0.5rem; font-size: 0.78rem; color: var(--text-muted); max-width: 70ch; }
+.mls-root-empty, .mls-root-pending, .mls-root-note { margin: 0.3rem 0; }
+.mls-root-none { margin: 0.1rem 0.25rem; font-size: 0.78rem; color: var(--text-muted); font-style: italic; }
+/* The three groups: stacked on phones, side by side from 900px. A colored top edge per side. */
+.mls-root-spot { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
+@media (min-width: 900px) { .mls-root-spot { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.mls-root-group { --root-c: #10b981; min-width: 0; border: 1px solid var(--border); border-top: 3px solid var(--root-c); border-radius: 10px; padding: 0.5rem 0.55rem; background: rgba(255, 255, 255, 0.02); }
+.mls-root-group.is-against { --root-c: #ef4444; }
+.mls-root-group.is-both { --root-c: #f59e0b; }
+.mls-root-group-title { display: flex; align-items: center; gap: 0.35rem; margin: 0 0 0.3rem; font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--root-c); }
+.mls-root-group-n { font-weight: 500; letter-spacing: 0; color: var(--text-muted); }
+.mls-root-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.mls-root-player { display: grid; grid-template-columns: 32px auto minmax(0, 1fr) auto; align-items: center; gap: 0.45rem; width: 100%; min-height: 44px; padding: 0.3rem 0.35rem; border-radius: 8px; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.mls-root-player:hover { background: rgba(255, 255, 255, 0.04); }
+.mls-root-player:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
+body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0, 1fr) auto; }
+.mls-root-pos { width: 34px; padding: 1px 0; text-align: center; font-size: 0.62rem; }
+.mls-root-who { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+.mls-root-name { color: var(--text-main); font-weight: 600; font-size: 0.85rem; overflow-wrap: anywhere; }
+.mls-root-meta { font-size: 0.72rem; color: var(--text-muted); }
+.mls-root-live { color: #f59e0b; font-weight: 600; }
+.mls-root-pts { text-align: right; font-weight: 700; font-size: 0.85rem; color: var(--text-main); font-variant-numeric: tabular-nums; line-height: 1.2; white-space: nowrap; }
+.mls-root-pts small { display: block; font-size: 0.68rem; font-weight: 500; color: var(--text-muted); }
+/* "in 3": how many of your matchups, in the side's color. */
+.badge.mls-root-count { margin-left: 0.3rem; padding: 0 6px; border: 1px solid currentColor; border-radius: 999px; font-size: 0.66rem; font-weight: 700; vertical-align: 1px; background: transparent; }
+.mls-root-count.is-root { color: #10b981; }
+.mls-root-count.is-against { color: #ef4444; }
+.mls-root-count.is-both { color: #f59e0b; }
+/* A player on both sides: the green part of the bar is your share of his weight. */
+.badge.mls-root-share { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 2px; padding: 0; font-size: 0.7rem; font-weight: 500; color: var(--text-muted); background: transparent; border: 0; }
+.mls-root-share-bar { display: inline-block; width: 54px; height: 5px; border-radius: 3px; background: #ef4444; overflow: hidden; }
+.mls-root-share-bar > span { display: block; height: 100%; background: #10b981; }
+/* A row's leagues, opened by tapping it. */
+.mls-root-detail { margin: 0.1rem 0 0.35rem 2.6rem; padding-left: 0.5rem; border-left: 2px solid var(--border); font-size: 0.75rem; color: var(--text-muted); }
+.mls-root-detail ul { list-style: none; margin: 0 0 0.25rem; padding: 0; }
+.mls-root-detail-label { display: block; font-weight: 600; }
+.mls-root-detail-label.is-root { color: #10b981; }
+.mls-root-detail-label.is-against { color: #ef4444; }
+.mls-root-detail .mls-week-name { font-weight: 600; }
+/* Kickoff windows: a heading that folds, then your starters and theirs (stacked on phones, side by side from 600px). */
+.mls-root-window { margin-top: 0.6rem; }
+.mls-root-window-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.45rem; width: 100%; min-height: 36px; padding: 0.2rem 0; border-bottom: 1px solid var(--border); text-align: left; color: var(--text-muted); font: inherit; font-size: 0.75rem; cursor: pointer; }
+.mls-root-window-head:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
+.mls-root-window:not(.is-open) .mls-root-window-head { border-bottom-style: dashed; }
+.mls-root-window:not(.is-open) .mls-root-chevron { transform: rotate(-90deg); }
+.mls-root-window-title { font-weight: 700; font-size: 0.8rem; color: var(--text-main); }
+.mls-root-window-body { padding-top: 0.35rem; }
+.mls-root-sides { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.4rem; }
+@media (min-width: 600px) { .mls-root-sides { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; } }
+.mls-root-side { min-width: 0; }
+.mls-root-side-title { margin: 0 0 0.15rem; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
+.mls-root-side-n { font-weight: 400; }
+.mls-root-row.is-compact .mls-root-player { grid-template-columns: auto minmax(0, 1fr) auto; min-height: 40px; padding: 0.2rem 0.3rem; }
+.mls-root-row.is-compact .mls-headshot { display: none; }
+.mls-root-row.is-compact .mls-root-detail { margin-left: 2.4rem; }
+@media (min-width: 600px) {
+    .mls-root-row.is-compact .mls-root-player { grid-template-columns: 28px auto minmax(0, 1fr) auto; }
+    .mls-root-row.is-compact .mls-headshot { display: inline-flex; width: 28px; height: 28px; }
+    body.mls-hide-headshots .mls-root-row.is-compact .mls-headshot { display: none; }
+    body.mls-hide-headshots .mls-root-row.is-compact .mls-root-player { grid-template-columns: auto minmax(0, 1fr) auto; }
+}
+/* The credit line under the Scoreboard card, like the Dashboard's version line. */
+.mls-scoreboard-credit a { color: inherit; }
+/* The legend's sample of the three sides' icons (js/mls/legend.js). */
+.mls-root-legend-icons { display: inline-flex; gap: 0.3rem; margin-right: 0.3rem; vertical-align: -2px; }
+.mls-root-legend-icons svg:nth-child(1) { color: #10b981; }
+.mls-root-legend-icons svg:nth-child(2) { color: #ef4444; }
+.mls-root-legend-icons svg:nth-child(3) { color: #f59e0b; }

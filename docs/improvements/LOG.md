@@ -7912,3 +7912,130 @@ Weekly rankings are stale (`getFreshness(…, 6)`, the league cards' rule).
 **Left over.** Device tests the research couldn't settle: Safari's hidden-tab timing, and whether a Worker timer
 escapes Chrome's throttle (N4 checks it). The runbook page was updated the same day (version 35): N2 and N4
 rewritten as above, N3 marked covered by N2, N5–N7 added, and the order and Notifications track adjusted.
+
+## S27 — Who to root for and against this week, across your leagues
+
+**User-visible effect.**
+- **The Scoreboard has two halves now**, each folding with a tap on its title (remembered): **League Scoreboard**
+  (everything that was there: splits, Biggest win / Worst loss, Still in play, the decided line, the tiles, the notes)
+  and **Player Scoreboard** (Who to root for, then MVPs & LVPs). The header stays above both: the week's arrows, the
+  record, Provisional / Final and Refresh. Export Recap stays at the bottom. Folded, each says what's inside: "3 leagues ·
+  1 still in play" and "Root for 7 · Against 7 · Both 2".
+- **Who to root for**: every starter in this week's Sleeper matchups, from the matchups the Scoreboard already loads.
+  - On top, the players in 2 or more of your matchups, in three groups: **Root for** (green, thumbs up), **Against you**
+    (red, thumbs down) and **Both sides** (amber, crossing arrows). They sit side by side from 900px and stack on phones.
+    Each row has headshot, position badge (D/ST for defenses), name, an "in 3" chip, team and opponent, kickoff time /
+    Live / Final, and points. Both sides adds a green/red bar and "67% yours (2 of 3)". Five per group, then "Show all N".
+  - **Tap a player (or Enter)** to see the leagues on each side ("Yours in", "Against you in"): each league's name ($ if
+    paid), his points there, the win chance or "effectively decided" / "final" / "no opponent", and his share of what
+    his side has left.
+  - Below that, **every starter by kickoff window** ("Sun 1:00 PM · KC @ DEN · under way · 4 yours · 3 against"), with
+    your starters beside the ones against you (stacked on phones). Five per side, then Show all. Each window folds.
+  - Finished games fold into one line ("6 games final · 8 of your starters, 9 against you"). In a past week every game
+    is final, so that line opens and the list shows final points.
+  - Guillotine and median-only leagues have no opponent, and a line names them: their starters count for you only.
+  - Players who are Out, on IR or on a bye are left off: S11's "lineups need you" box already flags them.
+- A muted **credit line under the Scoreboard card**, styled like the Dashboard's version line: "The root-for board was
+  inspired by Sleepy, sleepy-football.vercel.app" (linked). The same sentence ends the Guide's new Who to root for line.
+- The header's (i) gains one line on the weights. The Guide's Scoreboard item gains the two halves and Who to root for.
+  The badge legend gains two lines: the "in N" chips with the three icons, and the share bar.
+
+**Owner's decisions (asked before building; two rounds of sketches at 375 and 1280px, the second at 20-league scale).**
+1. **Where:** between the matchups and MVPs & LVPs, with the tab split into **League Scoreboard** and **Player
+   Scoreboard**, both foldable ("allowing users control over what they do and don't see").
+2. **Layout:** the spotlight over the list by kickoff window. **Each window folds**, every list is **capped with Show
+   all** (as MVPs & LVPs are), and **no By Game view**. A key for the folds: agreed. I proposed one key for the halves and
+   Who to root for (`mls_scoreboard_folds`) and nothing remembered for the windows, because their times change weekly.
+3. **Weighting: combined.** paid × stakes × impact:
+   - paid: **1.5** for a "$ Paid" league.
+   - stakes: from the Simulator's win chance, 4·p·(1 − p) (0 once decided or done). It's now computed for every open
+     matchup, not just Still in play: before kickoff, and while too early to call. Best Ball, guillotine and week 1 count 1.
+   - impact: his projected points still to come ÷ his side's.
+   - "Percentage rostered" was (a), how many of your leagues he's in. It's the sum itself (each league adds its weight),
+     so it isn't a separate factor.
+4. **No "close matchups only" switch for now**: a decided matchup already weighs 0. Revisit after seeing it with many
+   leagues.
+5. **Points:** this week's live points, not an average. The owner corrected my reading of Sleepy: it averages a player's
+   score across the leagues you roster him in, not across the season. The number shown is Sleeper's own stat on the
+   MVPs & LVPs scale (half PPR by default); each league's own points are in the tap detail.
+6. **Credit:** the Guide line plus a line **at the bottom of the page under the card**, like the Dashboard's version
+   (owner's idea). Nothing else in the feature names Sleepy, and nobody was contacted.
+
+**Rules as built** (`js/mls/week/rootFor.js`, no app state):
+- Root for: yours in 2+ and against in none. Against you: theirs in 2+ and yours in none. Both sides: at least one of
+  each. The share score is your leagues' weight ÷ all his leagues' weight, as a percent. When every weight is 0 (games
+  over, a past week) it uses the paid weights alone. Players still to play sort first, by weight, then by how many
+  leagues.
+- Starters only (`starterIdsOf`): Sleeper's starters, or Best Ball's lineup from the points so far (`bestBallLineup`).
+  The Scoreboard's own Best Ball scoring now goes through the same function, unchanged in behavior.
+- Impact without projections: a player still to play takes the average of the known ones (or an even share), so a
+  missing projection doesn't zero him.
+
+**What changed, and where.**
+- `js/mls/week/rootFor.js` (new): `buildRootFor`, `stakesOf`, `impactsOf`, `sideOrder`, `starterIdsOf`,
+  `PAID_WEIGHT`. `sw.js`: in `PRECACHE_ASSETS`, `CACHE_NAME` v2.8.139 → v2.8.140.
+- `js/mls/week/thisWeek.js`:
+  - The body is two `foldSection`s ('league', 'player') with Who to root for ('root') inside Player.
+  - `rootModel` / `rootHTML` / `rootRow` / `rootWindow` draw the board from the Scoreboard's rows; nothing is fetched.
+  - `addBoardChances` gives the board win chances for the open matchups Still in play doesn't cover. They're kept in
+    their own map, so the tiles and Still in play show exactly what they did. Both runs queue on the one worker.
+  - `toggleRootPlayer` and `toggleRootWindow` work in place, so focus stays put. `showAllRoot` redraws and focuses the
+    first row it adds, and a redraw keeps focus on a row or window (`restoreFocus`).
+  - The fold transition now names what follows in the enclosing sections too.
+  - A 'nomatch' league keeps your side, for median-only leagues.
+- `js/mls/badges.js`: `ROOT_ICONS`, `rootCountBadgeMarkup`, `rootShareMarkup`. `js/mls/legend.js`: two lines.
+  `tests/unit/badgeLegend.test.mjs`: `mls-root-pos` (sizing) in ALLOWED.
+- `js/mls/main.js`: the three actions. `js/shared/storage/keys.js`: `mls_scoreboard_folds` ({ league?, player?, root? },
+  only while not open; removed when back to the defaults). `css/mls.css`: the sections, the board, the legend icons.
+- `lineup/index.html`: the credit line (`.app-version.mls-scoreboard-credit`) and the Guide text.
+- `CHANGELOG.md`: one line under Lineup Strategist, crediting Sleepy.
+
+**Tests.**
+- `tests/unit/rootFor.test.mjs` (8): both sides and the groups, a paid league's weight, stakes (50/50, 90/10, decided,
+  done, no chance), impact (share of what's left, final, missing projections), the fallback for finished games,
+  guillotine / median-only leagues, the window order, starters (bench, empty slots, Best Ball, no slot order).
+- `tests/mls-root-for.spec.mjs` (both widths), with a third fixture league ("Third Fixture League", id …031:
+  `make-fixtures.mjs` writes `league3.json`, `league3-rosters.json` and `league3-matchups.json`, with Allen and Lamar
+  swapped; routes in `helpers.mjs`; the other fixture files are unchanged). It covers:
+  - the halves and their order; Root for 7, Against you 7 and Both sides 2 with "in 3", 67% / 33% yours, and 57% / 43%
+    once the third league is paid;
+  - the tap detail and Enter, Show all and its focus, the MIN window and its fold, the finished games' line (D/ST and K
+    in it);
+  - the halves folding and remembered across a reload (the key's value, removed at the defaults);
+  - a past week (Every game is final, open);
+  - the empty states: no Sleeper league, a league still loading then joining, no matchups in any league;
+  - nothing past the card's edges at 375 and 1280px, and the credit link.
+- `mls-this-week.spec.mjs` and `mls-mvp-lvp.spec.mjs`: two checks that read the card body's direct children now read
+  League Scoreboard's.
+
+**Fetches.** None of its own. The extra win chances (Best Ball excluded) run only while the Scoreboard tab is open, and
+use the Simulator's usual score-history requests (the same weekly files the Lineup tab's Simulator and Still in play
+read, cached in IndexedDB). A first full run caught them starting from the Dashboard and the Lineup tab too, in
+`mls-byes`, `mls-flex-choice` and `mls-waiver-flex-unranked` (unstubbed history weeks); fixed by `onScoreboard()`.
+
+**Screenshots.** I rendered main and this branch in this container and compared them with `npm run pxdiff`: 38 are
+identical and 4 differ, all by design. The screenshot league is a single league before kickoff, with no ESPN
+scoreboard in the screenshot test.
+- `desktop/mls-league-scoreboard.png`, `phone/mls-league-scoreboard.png`: the two halves; League Scoreboard as before;
+  Player Scoreboard with "Nobody starts in 2 or more of your matchups this week." and the 16 starters under "Kickoff
+  time unknown" (dashes for points); the credit line under the card. The PNG grows (desktop 936 → 1059px, phone 918 →
+  1203px).
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: the Guide's two new Scoreboard lines and the legend's two
+  new lines.
+This container renders with Chromium 1243, not CI's 1194, so the four aren't re-taken here: take them from the pull
+request's CI run as docs/TESTING.md describes.
+
+**Checks.**
+- check-precache OK; 480 unit tests pass.
+- Full Playwright run: 651 passed, 41 skipped. The failures were the 10 `visual.spec.mjs` comparisons (this container's
+  renderer, as on main) and the three specs above, which pass after the fix (40/40).
+- After the last edits: root-for, this-week, mvp-lvp, keyboard, svg-icons, smoke and tooltips-onscreen all pass.
+
+**Left over.**
+- Re-take the four PNGs from CI.
+- The owner's point 4: see how the board reads with ~20 real leagues on a Sunday before deciding on a "close matchups
+  only" switch (decided matchups already weigh 0).
+- Best Ball matchups have no win chance (S21's open follow-up on simulating the whole roster), so they count as 1 in the
+  stakes.
+- The kickoff windows' folds aren't remembered (their times change weekly). The halves and Who to root for are.
+- Open follow-ups this touched: none of docs/TESTING.md's.

@@ -334,7 +334,8 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await expect(ext.nth(0)).toHaveText(/Biggest win\s*Second Fixture League\s*\+35\.2/);
         await expect(ext.nth(1)).toHaveText(/Worst loss\s*Fixture League\s*−12\.0/);
         // Above Still in play and the tiles, under the splits.
-        const order = await page.locator('#thisWeekCard .mls-week-body').evaluate(b => [...b.children].map(c => c.className.split(' ')[0]));
+        // In League Scoreboard since S27 (the card's body is two folding halves).
+        const order = await page.locator('#thisWeekCard .mls-week-fold[data-fold="league"] > .mls-week-fold-body').evaluate(b => [...b.children].map(c => c.className.split(' ')[0]));
         expect(order.indexOf('mls-week-extremes')).toBeGreaterThan(order.indexOf('mls-week-splits-row'));
         expect(order.indexOf('mls-week-extremes')).toBeLessThan(order.indexOf('mls-week-tiles'));
         await ext.nth(1).click();

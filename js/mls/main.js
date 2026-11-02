@@ -52,7 +52,7 @@ import { loadRosterTab, setRosterPosFilter, setRosterSort } from './render/roste
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
 import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeaguePaid, toggleLeagueReorder, withCardsTransition } from './render/leagueCards.js';
-import { dismissPaidHint, exportScoreboard, leaveScoreboardWeek, refreshThisWeek, renderThisWeek, scoreboardThisWeek, showAllRecap, showAllSwings, stepScoreboardWeek, toggleWeekFold } from './week/thisWeek.js';
+import { dismissPaidHint, exportScoreboard, leaveScoreboardWeek, refreshThisWeek, renderThisWeek, scoreboardThisWeek, showAllRecap, showAllRoot, showAllSwings, stepScoreboardWeek, toggleRootPlayer, toggleRootWindow, toggleWeekFold } from './week/thisWeek.js';
 import { resetRecapLines, saveRecapLines } from './week/recapLines.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
@@ -146,6 +146,10 @@ const clickActions = {
     // Export on the Scoreboard: a summary image to share (week/shareImage.js, S22 round 2)
     exportScoreboard() { exportScoreboard(); },
     showAllRecap() { showAllRecap(this.dataset.list); },
+    // Who to root for (week/thisWeek.js, improvements S27): a row's leagues, a kickoff window's fold, Show all
+    toggleRootPlayer() { toggleRootPlayer(this.dataset.key); },
+    toggleRootWindow() { toggleRootWindow(this.dataset.window); },
+    showAllRoot() { showAllRoot(this.dataset.list); },
     saveRecapLines() { if (saveRecapLines()) renderThisWeek(); },
     resetRecapLines() { resetRecapLines(); renderThisWeek(); },
     jumpToLeagueNeeds() { jumpToLeagueNeeds(); },

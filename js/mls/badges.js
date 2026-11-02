@@ -169,3 +169,20 @@ export const weekResultMarkup = (result) =>
 export const weekStatusMarkup = (final) => final
     ? `<span class="badge mls-week-status is-final">Final</span>`
     : `<span class="badge mls-week-status is-provisional">Provisional</span>`;
+
+// --- WHO TO ROOT FOR (the Scoreboard's Player Scoreboard, week/thisWeek.js, improvements S27) ---
+// The three sides a player can be on across your matchups, each with a Feather-style icon: thumbs up (yours), thumbs
+// down (your opponents'), and crossing arrows (both).
+export const ROOT_ICONS = {
+    root: `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>`,
+    against: `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>`,
+    both: `<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg>`,
+};
+// "in 3": how many of your matchups he starts in, in the side's color (green yours, red against you, amber both).
+export const rootCountBadgeMarkup = (kind, n) =>
+    `<span class="badge mls-root-count is-${kind === 'against' ? 'against' : (kind === 'both' ? 'both' : 'root')}">in ${Number(n) || 0}</span>`;
+// A player on both sides: a bar, green for the share of his weight that's yours and red for the rest, then "67% yours".
+export const rootShareMarkup = (share, yours, of) => {
+    const pct = Math.max(0, Math.min(100, Math.round(Number(share) || 0)));
+    return `<span class="badge mls-root-share"><span class="mls-root-share-bar" aria-hidden="true"><span style="width:${pct}%"></span></span>${pct}% yours${of ? ` (${yours} of ${of})` : ''}</span>`;
+};

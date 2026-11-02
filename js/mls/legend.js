@@ -15,7 +15,7 @@
 import {
     BYE_BADGE_HTML, DISMISS_ICON, PICK_BADGE_HTML, STARTS_ICON, UPGRADE_ICON,
     WARNING_ICON, bestBallBadgeMarkup, edgeBadgeMarkup, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup, leagueStatusChipMarkup,
-    moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, rankGapChipMarkup, scoutPillMarkup,
+    ROOT_ICONS, moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, rankGapChipMarkup, rootCountBadgeMarkup, rootShareMarkup, scoutPillMarkup,
     sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, weekResultMarkup, weekStatusMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
@@ -115,6 +115,10 @@ const GROUPS = [
             'In the Dashboard\'s This week card: each matchup as it stands now, winning, losing or tied. Until every game is final it can still change.'],
         [weekStatusMarkup(false) + weekStatusMarkup(true),
             'This week\'s scores: Provisional while any game of the week is still to finish, then Final (Sleeper can still correct stats for a few days).'],
+        [`<span class="mls-root-legend-icons">${ROOT_ICONS.root}${ROOT_ICONS.against}${ROOT_ICONS.both}</span>` + rootCountBadgeMarkup('root', 3) + rootCountBadgeMarkup('against', 2) + rootCountBadgeMarkup('both', 4),
+            'On the Scoreboard\'s Who to root for: how many of your matchups a player starts in. Green with a thumbs up, Root for: yours in 2 or more and against you in none. Red with a thumbs down, Against you: your opponents\' in 2 or more and yours in none. Amber with crossing arrows, Both sides.'],
+        [rootShareMarkup(67, 2, 3),
+            'A player on both sides of your matchups: the green part is how much of his weight is in your leagues (a paid league counts 1.5 times, a close matchup more than a lopsided one, and he counts more the bigger his share of his side\'s points still to come).'],
     ]],
     ['Schedule', [
         [sosBadgeMarkup(1, '', { compact: true, sample: true }) + sosBadgeMarkup(16, '', { compact: true, sample: true }) + sosBadgeMarkup(32, '', { compact: true, sample: true }),

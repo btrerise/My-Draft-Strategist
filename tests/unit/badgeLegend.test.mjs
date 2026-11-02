@@ -32,7 +32,7 @@ const ALLOWED = new Set([
     'mls-pos-badge-sizing', 'mls-ta-title-badge',        // sizing of a position badge in a row or title
     'mls-trade-row-warn',                                // red text for "Not on your roster" in a Trade Analyzer row (S14)
     'mls-player-badges-row', 'mls-name-badges', 'card-badges-row', 'mls-nowrap', 'mls-scan-pill-stack',
-    'mls-rank-badge-sizing',
+    'mls-rank-badge-sizing', 'mls-root-pos',             // sizing of a position badge on the Scoreboard's Who to root for (S27)
     'status-badge', 'status-badge-meta',                 // the upload cards' "Updated ..." lines (text)
     'mls-rank-parts', 'mls-rank-part', 'mls-rank-bar', 'is-stacked', // a split rank badge's halves
     'sos-badge-label', 'sos-badge-icon',                 // parts of the SoS badge (in the legend anyway)

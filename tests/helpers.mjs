@@ -27,6 +27,10 @@ const SLEEPER_FIXTURES = [
     // The second league (dynasty, improvements S21's This week card): its own league and matchups, the same teams.
     [/^\/v1\/league\/1000000000000000021$/, 'league2.json'],
     [/^\/v1\/league\/1000000000000000021\/matchups\/\d+$/, 'league2-matchups.json'],
+    // The third league (improvements S27's Who to root for): Allen and Lamar swapped between the two teams.
+    [/^\/v1\/league\/1000000000000000031$/, 'league3.json'],
+    [/^\/v1\/league\/1000000000000000031\/rosters$/, 'league3-rosters.json'],
+    [/^\/v1\/league\/1000000000000000031\/matchups\/\d+$/, 'league3-matchups.json'],
     [/^\/v1\/league\/\d+$/, 'league.json'],
     [/^\/v1\/league\/\d+\/users$/, 'league-users.json'],
     [/^\/v1\/league\/\d+\/rosters$/, 'league-rosters.json'],
@@ -168,6 +172,7 @@ export const WAIVER_RANKINGS_CSV = readFileSync(here('./fixtures/rankings-waiver
 
 export const FIXTURE_LEAGUE_ID = '1000000000000000001';
 export const FIXTURE_LEAGUE2_ID = '1000000000000000021';
+export const FIXTURE_LEAGUE3_ID = '1000000000000000031';
 
 /**
  * MDS (refactor 8C): a rankings upload or paste opens the upload preview and loads nothing until
