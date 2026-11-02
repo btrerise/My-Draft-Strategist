@@ -790,7 +790,7 @@ function renderScoreboard(m) {
         // The groups' counts as shown: still to play while games are left (round 4).
         const spot = root.spot || rf;
         const groupsText = anyGroup ? `Root for ${spot.root.length} · Against ${spot.against.length} · Both ${spot.both.length}` : `${rf.players.length} starter${rf.players.length === 1 ? '' : 's'}`;
-        const rootFold = foldSection('root', `<span class="mls-week-sub">Who to root for</span><span class="mls-week-summary">${rf.players.length} starter${rf.players.length === 1 ? '' : 's'} in your matchups</span>`, root.html, 'Who to root for', 'mls-root');
+        const rootFold = foldSection('root', `<span class="mls-week-sub">Who to root for</span><span class="mls-week-summary">${rf.players.length} starter${rf.players.length === 1 ? '' : 's'} in ${rf.decidedOnly ? 'matchups still open' : 'your matchups'}</span>`, root.html, 'Who to root for', 'mls-root');
         // MVPs & LVPs once a game has kicked off (S22).
         const playerBody = rootFold + (started && listed.length ? recapHTML(m) : '');
         const swingCount = callable.filter(r => r.res.status === 'swing').length;
@@ -1196,10 +1196,13 @@ function rootPart(x, pl) {
     const bits = [`${fmt(pl.points[x.leagueId])} pts`];
     if (x.status === 'none') bits.push('no opponent');
     else if (x.status === 'decided') bits.push('effectively decided');
-    else if (x.status === 'done' || pl.gameState === 'post') bits.push('final');
+    else if (x.status === 'done') bits.push('matchup over');
+    else if (pl.gameState === 'post') bits.push('final');
     else if (typeof x.chance === 'number') bits.push(`${pctText(x.chance)} to win`);
-    if (x.impact > 0 && x.status !== 'decided' && x.status !== 'done') bits.push(`${Math.round(x.impact * 100)}% of what's left`);
-    return `<li><span class="mls-week-name">${escapeHtml(x.name)}</span>${x.paid ? ' ' + paidBadgeMarkup() : ''} <span class="mls-root-part">· ${bits.join(' · ')}</span></li>`;
+    const off = x.status === 'decided' || x.status === 'done';
+    if (x.impact > 0 && !off) bits.push(`${Math.round(x.impact * 100)}% of what's left`);
+    // A decided or finished matchup doesn't count on the board (round 5): dimmed here.
+    return `<li${off ? ' class="mls-root-part-off"' : ''}><span class="mls-week-name">${escapeHtml(x.name)}</span>${x.paid ? ' ' + paidBadgeMarkup() : ''} <span class="mls-root-part">· ${bits.join(' · ')}</span></li>`;
 }
 let rootRowSeq = 0;
 // A player's row: a button (tap or Enter) that opens the leagues on each side. compact (the window lists): no count chip
@@ -1219,8 +1222,9 @@ function rootRow(r, pl, list, ctx, { compact = false, side = null } = {}) {
     const inText = compact && n > 1 ? ` <span class="mls-root-in">in ${n}</span>` : '';
     const detail = [
         split && r.share != null ? `<div class="mls-root-stake">${rootShareMarkup(r.share)} <span class="mls-root-stake-note">How much of his weight is in your leagues. The (i) beside Both sides says how each league is weighed.</span></div>` : '',
-        r.yours.length ? `<div class="mls-root-detail-side"><span class="mls-root-detail-label is-root">Yours in</span><ul>${r.yours.map(x => rootPart(x, pl)).join('')}</ul></div>` : '',
-        r.against.length ? `<div class="mls-root-detail-side"><span class="mls-root-detail-label is-against">Against you in</span><ul>${r.against.map(x => rootPart(x, pl)).join('')}</ul></div>` : '',
+        // Every league, decided ones too (marked so); the counts above take only the open ones (round 5).
+        (r.allYours || r.yours).length ? `<div class="mls-root-detail-side"><span class="mls-root-detail-label is-root">Yours in</span><ul>${(r.allYours || r.yours).map(x => rootPart(x, pl)).join('')}</ul></div>` : '',
+        (r.allAgainst || r.against).length ? `<div class="mls-root-detail-side"><span class="mls-root-detail-label is-against">Against you in</span><ul>${(r.allAgainst || r.against).map(x => rootPart(x, pl)).join('')}</ul></div>` : '',
     ].join('');
     const pos = pl.pos || '';
     return `<li class="mls-root-row${compact ? ' is-compact' : ''}">
@@ -1301,7 +1305,7 @@ function rootHTML(m) {
         const done = rf[kind].length - rows.length;
         if (!rows.length && done) none = `${done === 1 ? 'The one player here has' : `All ${done} have`} finished: see the games final line below.`;
         // Both sides explains its chip and the stake (round 2, owner: "at bare minimum, a tooltip").
-        const tip = kind === 'both' ? `<span class="tooltip-container mls-week-info mls-root-info"><span class="tooltip-icon">i</span><span class="tooltip-text"><strong>3 of 4 yours:</strong> he starts in 4 of your matchups, for you in 3 and against you in the other.<br><br><strong>Your stake</strong> (tap him): how much of his weight is in your leagues. A paid league counts 1.5 times, a close matchup more than a lopsided one (a decided one not at all), and he counts more the bigger his share of his side's points still to come, so the stake can differ from the counts.<br><br>A stake of 75% or more puts him in <strong>Root for</strong>, 25% or less in <strong>Against you</strong>; Both sides keeps the real splits. While games are left, the groups show only players still to play.</span></span>` : '';
+        const tip = kind === 'both' ? `<span class="tooltip-container mls-week-info mls-root-info"><span class="tooltip-icon">i</span><span class="tooltip-text"><strong>3 of 4 yours:</strong> he starts in 4 of your matchups, for you in 3 and against you in the other.<br><br><strong>Your stake</strong> (tap him): how much of his weight is in your leagues. A paid league counts 1.5 times, a close matchup more than a lopsided one (a decided one not at all), and he counts more the bigger his share of his side's points still to come, so the stake can differ from the counts.<br><br>A stake of 75% or more puts him in <strong>Root for</strong>, 25% or less in <strong>Against you</strong>; Both sides keeps the real splits. While games are left, the groups show only players still to play, and only matchups still open count (tap a player for every league).</span></span>` : '';
         return `<div class="mls-root-group is-${kind}"><h5 class="mls-root-group-title">${ROOT_ICONS[kind]}${title} <span class="mls-root-group-n">${rows.length}</span>${tip}</h5>${rows.length
             ? rootList(rows, `spot:${kind}`, ctx, ROOT_SPOT_ROWS, {})
             : `<p class="mls-root-none">${none}</p>`}</div>`;

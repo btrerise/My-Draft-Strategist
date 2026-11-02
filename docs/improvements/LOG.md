@@ -8136,3 +8136,30 @@ paid test and the edge test on week 1. `CACHE_NAME` v2.8.142 → v2.8.143.
 **Found right after (put to the owner):** on the owner's Monday, D'Andre Swift ("2 of 4 yours") leaned into Root for and
 Colston Loveland ("2 of 3 yours") into Against you. A decided matchup weighs 0, so Swift's two against-you leagues count
 for nothing. That's right by the stake, but the chip's counts include the decided leagues and seem to contradict it.
+
+### S27, round 5: only open matchups count (owner: "Yes, count only open matchups")
+
+The problem round 4 found, and my proposal: once any matchup is effectively decided or over, it changes nothing about
+who you root for, so it's left out of the counts, the groups and the window lists.
+- `buildRootFor`: `yours` / `against` hold only open matchups (status not `decided` or `done`; guillotine and
+  median-only leagues are always open) while any matchup is open. `allYours` / `allAgainst` keep every league for the
+  row's detail. A player only in decided matchups is off the board (`decidedOnly` counts them). When nothing is open
+  (a past week, every game over) every league counts, as before. Weights didn't change: a decided matchup already
+  weighed 0.
+- The detail lists every league. A decided one is dimmed (`.mls-root-part-off`) with "effectively decided", and a
+  finished one says "matchup over".
+- Who to root for's summary says "in matchups still open" when a player was left out. The (i), the Guide and
+  CHANGELOG say only open matchups count.
+- On the owner's Monday: the MNF window "3 yours · 4 against" (was 6 / 8); the finished line 39 / 34 (was 102 / 101);
+  the groups Root for 1, Against 0, Both 1. D'Andre Swift reads "1 of 2 yours" in Root for. Both his open leagues are
+  in play, but his stake is 75% or more (the paid weight, how close each is, his share of each side), so the lean
+  rule moves him. That's round 4's rule at work, now with honest counts; put to the owner.
+- Tests:
+  - Unit (10): open-only, the decided-only player, guillotine always open, a past week counting everything; the fallback
+    test's three leagues all final.
+  - `mls-root-for.spec.mjs` (Jefferson's projection 10, so Fixture League and Third Fixture League stay open and Second
+    Fixture League is decided): Jefferson "in 2", not 3, and his detail's three leagues with the decided one dimmed; with
+    two leagues only one is open, so the single "Nobody starts in 2 or more" line.
+  - this-week, mvp-lvp, tooltips-onscreen (74) and 482 unit tests pass.
+- `CACHE_NAME` v2.8.143 → v2.8.144. Screenshots: no change beyond the four (the screenshot league is before kickoff,
+  where everything is open; only the Guide's words differ).

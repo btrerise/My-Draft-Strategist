@@ -36,6 +36,14 @@ async function routeWeek(page, { empty = false } = {}) {
     const body = (file) => (empty ? '[]' : fixture(file));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: body('league-matchups-live.json') }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE2_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: body('league2-matchups.json') }));
+    // Jefferson's projection, so two matchups stay open (round 5: only open ones count). At the fixture's own he can't
+    // close Fixture League's 12 points; at 12.5 he's all but sure to close Third Fixture League's 8, and the Simulator
+    // settles each. At 10 both stay in play (about 8% and 92%), and Second Fixture League is decided.
+    await page.route(/sleeper\.app\/v1\/projections\/nfl\/regular\/2026\/2$/, route => {
+        const proj = JSON.parse(fixture('projections-2026-2.json'));
+        proj['6794'] = { ...proj['6794'], pts_ppr: 10 };
+        return route.fulfill({ json: proj });
+    });
     if (empty) await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE3_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: '[]' }));
 }
 
@@ -70,8 +78,9 @@ test.describe('Scoreboard: who to root for', () => {
         await expect(section(page, 'player').locator('.mls-week-fold-toggle').first()).toContainText('Root for 1 · Against 0 · Both 0');
         await expect(board(page).locator('.mls-root-intro')).toContainText('still to play');
         await expect(group(page, 'root').locator('.mls-root-group-title')).toContainText('Root for 1');
-        await expect(names(group(page, 'root'))).toHaveText(['Justin Jefferson in 3']);
-        await expect(group(page, 'root').locator('.mls-root-count')).toHaveText('in 3');
+        // Round 5: only open matchups count, and Second Fixture League is decided: "in 2", not 3.
+        await expect(names(group(page, 'root'))).toHaveText(['Justin Jefferson in 2']);
+        await expect(group(page, 'root').locator('.mls-root-count')).toHaveText('in 2');
         await expect(group(page, 'against')).toContainText('All 7 have finished: see the games final line below.');
         await expect(group(page, 'both')).toContainText('All 2 have finished: see the games final line below.');
 
@@ -85,7 +94,11 @@ test.describe('Scoreboard: who to root for', () => {
         await expect(detail).toBeVisible();
         await expect(detail.locator('.mls-root-detail-side')).toHaveCount(1);
         await expect(detail).toContainText('Yours in');
-        await expect(detail).toContainText('Third Fixture League');
+        // Every league in the detail; the decided one dimmed and said so.
+        await expect(detail.locator('li')).toHaveCount(3);
+        await expect(detail.locator('li.mls-root-part-off')).toHaveCount(1);
+        await expect(detail.locator('li.mls-root-part-off')).toContainText('Second Fixture League');
+        await expect(detail.locator('li.mls-root-part-off')).toContainText('effectively decided');
         await page.keyboard.press('Enter');
         await expect(btn).toHaveAttribute('aria-expanded', 'false');
         await expect(detail).toBeHidden();
@@ -98,7 +111,7 @@ test.describe('Scoreboard: who to root for', () => {
         await expect(night.locator('.mls-root-window-sub')).toHaveText('MIN @ CHI · 1 yours · 0 against');
         await expect(night.locator('.mls-root-side').first()).toContainText('Justin Jefferson');
         // Round 4: "in 3" after the name, and "pts" under the points on every row.
-        await expect(night.locator('.mls-root-side').first().locator('.mls-root-in')).toHaveText('in 3');
+        await expect(night.locator('.mls-root-side').first().locator('.mls-root-in')).toHaveText('in 2');
         await expect(night.locator('.mls-root-side').first().locator('.mls-root-pts small')).toHaveText('pts');
         await expect(night.locator('.mls-root-side').nth(1)).toContainText('Nobody');
         const final = windows.nth(1);
@@ -199,14 +212,15 @@ test.describe('Scoreboard: who to root for', () => {
         await expect(toggle('player')).toHaveAttribute('aria-expanded', 'false');
         // Folded, each still says what's in it.
         await expect(toggle('league')).toContainText('2 leagues');
-        await expect(toggle('player')).toContainText('Root for 1 · Against 0 · Both 0');
+        // Second Fixture League is decided, so only one matchup is open and nobody is in 2 or more (round 5).
+        await expect(toggle('player')).toContainText('16 starters');
         await toggle('league').click();
         await toggle('player').click();
         await expect(toggle('player')).toHaveAttribute('aria-expanded', 'true');
         // Back to the defaults: the key is removed.
         expect(await page.evaluate(() => localStorage.getItem('mls_scoreboard_folds'))).toBeNull();
-        // With no player on both sides, that group says so.
-        await expect(group(page, 'both')).toContainText('Nobody starts on both sides of your matchups.');
+        // Nobody in 2 or more open matchups: one line, not three empty groups.
+        await expect(board(page).locator('.mls-root-none-all')).toHaveText('Nobody starts in 2 or more of your matchups this week.');
         await expectClean(page, state);
     });
 
@@ -250,7 +264,8 @@ test.describe('Scoreboard: who to root for', () => {
         await addLeague(page, FIXTURE_LEAGUE3_ID, 3);
         await showTab(page, 'scoreboard');
         await expect(board(page).locator('.mls-root-pending')).toHaveText('Still loading 1 league; it joins the board when it arrives.');
-        await expect(group(page, 'both')).toContainText('Nobody starts on both sides');
+        // Of the two loaded, only Fixture League is open (round 5), so nobody is in 2 or more yet.
+        await expect(board(page).locator('.mls-root-none-all')).toBeVisible();
         release();
         await expect(board(page).locator('.mls-root-pending')).toHaveCount(0);
         // Allen and Lamar are on both sides now; their game is over, so the group points to the final line.

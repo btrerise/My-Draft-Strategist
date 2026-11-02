@@ -81,8 +81,8 @@ test('impact: his share of his side\'s projected points still to come; 0 once hi
 test('a finished game falls back to paid weights for the share, and finished players sort after the rest', () => {
     const rf = buildRootFor({ leagues: [
         league('A', [p('allen', 0, true), p('jj', 12)], [p('lamar', 0, true)], { paid: true, status: 'done' }),
-        league('B', [p('lamar', 0, true), p('jj', 12)], [p('allen', 0, true)]),
-        league('C', [p('lamar', 0, true)], [p('allen', 0, true)]),
+        league('B', [p('lamar', 0, true), p('jj', 12)], [p('allen', 0, true)], { status: 'done' }),
+        league('C', [p('lamar', 0, true)], [p('allen', 0, true)], { status: 'done' }),
     ] });
     const allen = rf.players.find(r => r.id === 'allen');
     assert.equal(allen.weight, 0);
@@ -155,4 +155,33 @@ test('a player on both sides whose stake leans 75% or more one way goes in that 
     assert.equal(rf.both[0].lean, false);
     // A player only on your side is never lean.
     assert.equal(rf.players.find(r => r.id === 'x0').lean, false);
+});
+
+test('only open matchups count while any is open: decided leagues stay in the detail only', () => {
+    const rf = buildRootFor({ leagues: [
+        league('A', [p('swift'), p('gone')], [p('x')], { status: 'decided' }),
+        league('B', [p('swift'), p('gone')], [p('y')], { status: 'done' }),
+        league('C', [p('z')], [p('swift')], { chance: 50 }),
+        league('D', [p('w')], [p('swift')], { chance: 50 }),
+    ] });
+    assert.equal(rf.anyOpen, true);
+    const swift = rf.players.find(r => r.id === 'swift');
+    // Yours only in decided matchups, against you in two open ones: Against you, "in 2", not a split.
+    assert.equal(swift.group, 'against');
+    assert.equal(swift.lean, false);
+    assert.equal(swift.count, 2);
+    assert.equal(swift.yours.length, 0);
+    assert.deepEqual(swift.allYours.map(x => x.leagueId), ['A', 'B']);
+    assert.deepEqual(swift.allAgainst.map(x => x.leagueId), ['C', 'D']);
+    // In decided matchups only: off the board, and counted.
+    assert.ok(!rf.players.some(r => r.id === 'gone'));
+    assert.ok(rf.decidedOnly >= 1);
+    // A guillotine league is always open.
+    const g = buildRootFor({ leagues: [league('Chop', [p('a'), p('b')], [], { noOpponent: true }), league('A', [p('a')], [p('b')], { status: 'done' })] });
+    assert.equal(g.anyOpen, true);
+    assert.equal(g.players.find(r => r.id === 'a').count, 1);
+    // Nothing open (a past week): every league counts.
+    const past = buildRootFor({ leagues: [league('A', [p('a', 0, true)], [], { status: 'done' }), league('B', [p('a', 0, true)], [], { status: 'done' })] });
+    assert.equal(past.anyOpen, false);
+    assert.deepEqual(past.root.map(r => r.id), ['a']);
 });

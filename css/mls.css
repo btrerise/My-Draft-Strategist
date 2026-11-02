@@ -2794,3 +2794,5 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .mls-root-legend-icons svg:nth-child(1) { color: #10b981; }
 .mls-root-legend-icons svg:nth-child(2) { color: #ef4444; }
 .mls-root-legend-icons svg:nth-child(3) { color: #f59e0b; }
+/* A league in a row's detail that no longer counts: its matchup is decided or over (round 5). */
+.mls-root-detail li.mls-root-part-off { opacity: 0.6; }
