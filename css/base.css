@@ -1230,6 +1230,11 @@ label.toggle-title,
     visibility: visible; opacity: 1; transform: translateY(0);
 }
 
+/* A long tooltip opens wider, and scrolls inside if it still runs past the window's bottom (js/shared/ui/tooltips.js,
+   place; improvements S27 round 2). Set each time one is about to show, from its own length. */
+.tooltip .tooltip-text.tt-wide, .tooltip-container .tooltip-text.tt-wide { width: 480px; }
+.tooltip .tooltip-text.tt-scroll, .tooltip-container .tooltip-text.tt-scroll { max-height: var(--tt-maxh, 60vh); overflow-y: auto; overscroll-behavior: contain; pointer-events: auto; }
+
 /* Mobile tap-to-toggle class */
 .tooltip-text.mobile-visible {
     visibility: visible !important;

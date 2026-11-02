@@ -34,7 +34,7 @@ import { State, parseEspnScoreboard, refreshGameTimes } from '../state.js';
 import { isBestBallLeague, isExcludedFromSimulation } from '../helpers.js';
 import { fantasyPosition } from '../constants.js';
 import { ensureLineupProjections, formatKickoffLabel, getLeagueScoringKey, storeLeagueMatchups } from '../lineup/gameInfo.js';
-import { ROOT_ICONS, paidBadgeMarkup, rootCountBadgeMarkup, rootShareMarkup, weekResultMarkup, weekStatusMarkup } from '../badges.js';
+import { ROOT_ICONS, paidBadgeMarkup, rootCountBadgeMarkup, rootShareMarkup, rootSplitBadgeMarkup, weekResultMarkup, weekStatusMarkup } from '../badges.js';
 import { playerHeadshotHTML } from '../lineup/headshots.js';
 import { buildRootFor, sideOrder, starterIdsOf } from './rootFor.js';
 import { matchupWinChances } from '../sim/winChance.js';
@@ -385,11 +385,16 @@ async function resolveForDraw() {
 function paidHintDismissed() {
     try { return localStorage.getItem(KEYS.mls.paidHintDismissed) === '1'; } catch (e) { return false; }
 }
-// "Show all N" under the in-play list: every swing, until the week changes.
+// "Show all N" under the in-play list: every swing, until the week changes; then "Show less" folds it back (S27 round 2,
+// owner: every Show all on the Scoreboard gets a way back). The button keeps focus across the redraw.
 export function showAllSwings() {
-    view.allSwingsWeek = weekCtx().week;
+    const week = weekCtx().week;
+    view.allSwingsWeek = view.allSwingsWeek === week ? null : week;
     renderThisWeek();
 }
+// The button under a capped list: "Show all N" while capped, "Show less" once opened.
+const moreButton = (action, list, total, cap, open) => total <= cap ? '' :
+    `<button type="button" class="btn-bare mls-week-show-all" data-action="${action}"${list ? ` data-list="${escapeHtml(list)}"` : ''} data-focus-key="more|${escapeHtml(list || action)}" aria-expanded="${open}">${open ? 'Show less' : `Show all ${total}`}</button>`;
 export function dismissPaidHint() {
     try { localStorage.setItem(KEYS.mls.paidHintDismissed, '1'); } catch (e) { /* hidden for this visit only */ }
     renderThisWeek();
@@ -724,7 +729,7 @@ function renderScoreboard(m) {
             const shown = view.allSwingsWeek === ctx.week ? swings : swings.slice(0, SWINGS_SHOWN);
             // Folds to its heading (owner, S22 round 3), remembered, with the chevron turning as on the Dashboard.
             const body = [`<ul class="mls-week-swings">${shown.map(r => swingHTML(r, ctx)).join('')}</ul>`];
-            if (shown.length < swings.length) body.push(`<button type="button" class="btn-bare mls-week-show-all" data-action="showAllSwings">Show all ${swings.length}</button>`);
+            body.push(moreButton('showAllSwings', null, swings.length, SWINGS_SHOWN, view.allSwingsWeek === ctx.week));
             // Once for the list, not under every Best Ball league (owner, after the Thursday-night pass).
             if (shown.some(r => r.res.bestBall)) body.push('<p class="mls-week-swing-note">Best Ball: anyone on the roster with a game left can still count.</p>');
             parts.push(foldSection('swings', `<span class="mls-week-sub">Still in play</span><span class="mls-week-summary">${swings.length}</span>`, body.join(''), 'Still in play'));
@@ -982,7 +987,8 @@ export function toggleWeekFold(which) {
 }
 
 export function showAllRecap(list) {
-    if (list === 'mvp' || list === 'lvp') recapView.allWeek[list] = weekCtx().week;
+    const week = weekCtx().week;
+    if (list === 'mvp' || list === 'lvp') recapView.allWeek[list] = recapView.allWeek[list] === week ? null : week;
     renderThisWeek();
 }
 
@@ -1048,7 +1054,7 @@ function recapTable(kind, rows, week, scale, single = false) {
         ['started', () => cell('started', 'Started', startedText(r))],
     ].filter(([cls]) => keep(cls)).map(([, draw]) => draw()).join('')}</li>`;
     const head = `<li class="mls-recap-row mls-recap-headrow" role="row">${cols.map(([cls, label]) => `<span class="mls-recap-cell mls-recap-${cls}" role="columnheader">${label}</span>`).join('')}</li>`;
-    const more = shown.length < rows.length ? `<button type="button" class="btn-bare mls-week-show-all" data-action="showAllRecap" data-list="${kind}">Show all ${rows.length}</button>` : '';
+    const more = moreButton('showAllRecap', kind, rows.length, RECAP_ROWS, all);
     return `<ol class="mls-recap-table is-${kind}${single ? ' is-single' : ''}" role="table" aria-label="${kind === 'mvp' ? 'MVPs' : 'LVPs'}">${head}${shown.map(row).join('')}</ol>${more}`;
 }
 
@@ -1203,8 +1209,11 @@ function rootRow(r, pl, list, ctx, { compact = false, side = null } = {}) {
     const id = `mlsRootDetail-${++rootRowSeq}`;
     const kind = r.group || (side === 'against' ? 'against' : 'root');
     const n = side ? r[side].length : r.count;
-    const share = !compact && r.group === 'both' ? rootShareMarkup(r.share, r.yours.length, r.count) : '';
+    // Both sides (round 2): the counts in the chip ("3 | 1"), the weighted stake only in the detail, with what it weighs.
+    const both = !compact && r.group === 'both';
+    const chip = compact ? '' : ' ' + (both ? rootSplitBadgeMarkup(r.yours.length, r.against.length) : rootCountBadgeMarkup(kind, n));
     const detail = [
+        both ? `<div class="mls-root-stake">${rootShareMarkup(r.share)} <span class="mls-root-stake-note">How much of his weight is in your leagues. The (i) beside Both sides says how each league is weighed.</span></div>` : '',
         r.yours.length ? `<div class="mls-root-detail-side"><span class="mls-root-detail-label is-root">Yours in</span><ul>${r.yours.map(x => rootPart(x, pl)).join('')}</ul></div>` : '',
         r.against.length ? `<div class="mls-root-detail-side"><span class="mls-root-detail-label is-against">Against you in</span><ul>${r.against.map(x => rootPart(x, pl)).join('')}</ul></div>` : '',
     ].join('');
@@ -1212,7 +1221,7 @@ function rootRow(r, pl, list, ctx, { compact = false, side = null } = {}) {
     return `<li class="mls-root-row${compact ? ' is-compact' : ''}">
         <button type="button" class="btn-bare mls-root-player" data-action="toggleRootPlayer" data-key="${escapeHtml(key)}" data-focus-key="${escapeHtml(key)}" aria-expanded="${open}" aria-controls="${id}">
             ${playerHeadshotHTML({ id: pl.id, name: pl.name, pos, team: pl.team })}<span class="badge pos-badge ${escapeHtml(pos)} mls-root-pos">${escapeHtml(pos === 'DEF' ? 'D/ST' : pos)}</span>
-            <span class="mls-root-who"><span class="mls-root-name">${escapeHtml(pl.name)}${compact ? '' : ' ' + rootCountBadgeMarkup(kind, n)}</span><span class="mls-root-meta">${rootMeta(pl, ctx)}</span>${share}</span>
+            <span class="mls-root-who"><span class="mls-root-name">${escapeHtml(pl.name)}${chip}</span><span class="mls-root-meta">${rootMeta(pl, ctx)}</span></span>
             <span class="mls-root-pts">${rootPoints(pl, ctx, rootStarted)}<small>${compact && n > 1 ? `in ${n}` : 'pts'}</small></span>
         </button>
         <div id="${id}" class="mls-root-detail"${open ? '' : ' hidden'}>${detail}</div>
@@ -1222,7 +1231,7 @@ function rootRow(r, pl, list, ctx, { compact = false, side = null } = {}) {
 function rootList(rows, list, ctx, cap, opts) {
     const st = rootState(ctx.week);
     const shown = st.all.has(list) ? rows : rows.slice(0, cap);
-    const more = shown.length < rows.length ? `<button type="button" class="btn-bare mls-week-show-all" data-action="showAllRoot" data-list="${escapeHtml(list)}">Show all ${rows.length}</button>` : '';
+    const more = moreButton('showAllRoot', list, rows.length, cap, st.all.has(list));
     return `<ul class="mls-root-list">${shown.map(r => rootRow(r, rootModelInfo.get(r.id) || { id: r.id, name: r.id, points: {} }, list, ctx, opts)).join('')}</ul>${more}`;
 }
 let rootModelInfo = new Map();
@@ -1279,7 +1288,9 @@ function rootHTML(m) {
     if (pending) parts.push(`<p class="text-helper mls-root-pending">Still loading ${pending} league${pending === 1 ? '' : 's'}; ${pending === 1 ? 'it joins' : 'they join'} the board when ${pending === 1 ? 'it arrives' : 'they arrive'}.</p>`);
     const group = ([kind, title, none]) => {
         const rows = rf[kind];
-        return `<div class="mls-root-group is-${kind}"><h5 class="mls-root-group-title">${ROOT_ICONS[kind]}${title} <span class="mls-root-group-n">${rows.length}</span></h5>${rows.length
+        // Both sides explains its chip and the stake (round 2, owner: "at bare minimum, a tooltip").
+        const tip = kind === 'both' ? `<span class="tooltip-container mls-week-info mls-root-info"><span class="tooltip-icon">i</span><span class="tooltip-text"><strong>3 | 1:</strong> he starts for you in 3 of your matchups (green) and against you in 1 (red).<br><br><strong>Your stake</strong> (tap him): how much of his weight is in your leagues. A paid league counts 1.5 times, a close matchup more than a lopsided one (a decided one not at all), and he counts more the bigger his share of his side's points still to come, so the stake can differ from the counts.</span></span>` : '';
+        return `<div class="mls-root-group is-${kind}"><h5 class="mls-root-group-title">${ROOT_ICONS[kind]}${title} <span class="mls-root-group-n">${rows.length}</span>${tip}</h5>${rows.length
             ? rootList(rows, `spot:${kind}`, ctx, ROOT_SPOT_ROWS, {})
             : `<p class="mls-root-none">${none}</p>`}</div>`;
     };
@@ -1338,12 +1349,15 @@ export function toggleRootWindow(key) {
     const body = document.getElementById(btn.getAttribute('aria-controls'));
     if (body) body.hidden = !open;
 }
-// Every row of a list; focus moves to the first row it adds.
+// Every row of a list, focus on the first row it adds; or back to the first few ("Show less"), focus on the button.
 export function showAllRoot(list) {
     const st = rootState(weekCtx().week);
-    st.all.add(list);
-    const cap = list.startsWith('spot:') ? ROOT_SPOT_ROWS : ROOT_WINDOW_ROWS;
-    view.focusNext = { list, index: cap };
+    if (st.all.has(list)) {
+        st.all.delete(list);
+    } else {
+        st.all.add(list);
+        view.focusNext = { list, index: list.startsWith('spot:') ? ROOT_SPOT_ROWS : ROOT_WINDOW_ROWS };
+    }
     renderThisWeek();
 }
 

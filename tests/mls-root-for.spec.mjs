@@ -79,8 +79,17 @@ test.describe('Scoreboard: who to root for', () => {
         const both = group(page, 'both').locator('.mls-root-row');
         await expect(both).toHaveCount(2);
         const allen = both.filter({ hasText: 'Josh Allen' });
-        await expect(allen.locator('.mls-root-share')).toHaveText('67% yours (2 of 3)');
-        await expect(both.filter({ hasText: 'Lamar Jackson' }).locator('.mls-root-share')).toHaveText('33% yours (1 of 3)');
+        // The chip has both counts (round 2); the weighted stake is in the detail.
+        await expect(allen.locator('.mls-root-split-yours')).toHaveText('2');
+        await expect(allen.locator('.mls-root-split-against')).toHaveText('1');
+        await expect(allen.locator('.mls-root-split')).toContainText('yours in 2, against you in 1');
+        await expect(allen.locator('.mls-root-share')).toHaveText('Your stake: 67%');
+        await expect(both.filter({ hasText: 'Lamar Jackson' }).locator('.mls-root-share')).toHaveText('Your stake: 33%');
+        // Every row in the three groups is the same height (the stake no longer adds a line).
+        const heights = await board(page).locator('.mls-root-spot .mls-root-player').evaluateAll(els => [...new Set(els.map(e => Math.round(e.getBoundingClientRect().height)))]);
+        expect(heights).toHaveLength(1);
+        // The (i) beside Both sides explains the chip and the stake.
+        await expect(group(page, 'both').locator('.mls-root-group-title .tooltip-text')).toContainText('against you in 1 (red)');
         await expect(allen.locator('.mls-root-meta')).toHaveText('BUF @ BAL · Final');
 
         // Tap: which leagues on which side.
@@ -101,10 +110,16 @@ test.describe('Scoreboard: who to root for', () => {
         await expect(detail).toBeHidden();
         await expect(btn).toBeFocused();
 
-        // Show all: the other two rows, focus on the first of them.
-        await group(page, 'root').locator('[data-action="showAllRoot"]').click();
+        // Show all: the other two rows, focus on the first of them; Show less folds it back, focus on the button.
+        const more = group(page, 'root').locator('[data-action="showAllRoot"]');
+        await more.click();
         await expect(group(page, 'root').locator('.mls-root-row')).toHaveCount(7);
         await expect(group(page, 'root').locator('.mls-root-player').nth(5)).toBeFocused();
+        await expect(more).toHaveText('Show less');
+        await more.click();
+        await expect(group(page, 'root').locator('.mls-root-row')).toHaveCount(5);
+        await expect(more).toHaveText('Show all 7');
+        await expect(more).toBeFocused();
 
         // By kickoff window: only the MIN game is still to come; the rest are in the finished games' line, folded.
         const windows = board(page).locator('.mls-root-window');
@@ -142,8 +157,8 @@ test.describe('Scoreboard: who to root for', () => {
         await showTab(page, 'scoreboard');
         const both = group(page, 'both').locator('.mls-root-row');
         // Allen: yours in two free leagues (1 + 1), against you in the paid one (1.5): 2 / 3.5.
-        await expect(both.filter({ hasText: 'Josh Allen' }).locator('.mls-root-share')).toHaveText('57% yours (2 of 3)');
-        await expect(both.filter({ hasText: 'Lamar Jackson' }).locator('.mls-root-share')).toHaveText('43% yours (1 of 3)');
+        await expect(both.filter({ hasText: 'Josh Allen' }).locator('.mls-root-share')).toHaveText('Your stake: 57%');
+        await expect(both.filter({ hasText: 'Lamar Jackson' }).locator('.mls-root-share')).toHaveText('Your stake: 43%');
         await expectClean(page, state);
     });
 

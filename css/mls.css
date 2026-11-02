@@ -2749,7 +2749,16 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .mls-root-count.is-root { color: #10b981; }
 .mls-root-count.is-against { color: #ef4444; }
 .mls-root-count.is-both { color: #f59e0b; }
-/* A player on both sides: the green part of the bar is your share of his weight. */
+/* A player on both sides (round 2): "3 | 1", yours in green and against you in red, one chip. */
+.badge.mls-root-split { display: inline-flex; margin-left: 0.3rem; padding: 0; border: 1px solid #f59e0b; border-radius: 999px; overflow: hidden; font-size: 0.66rem; font-weight: 700; vertical-align: 1px; background: transparent; }
+.mls-root-split-yours, .mls-root-split-against { padding: 0 6px; }
+.mls-root-split-yours { color: #10b981; }
+.mls-root-split-against { color: #ef4444; border-left: 1px solid #f59e0b; }
+.mls-root-group-title .mls-root-info { margin-left: auto; text-transform: none; letter-spacing: normal; font-weight: 400; }
+.mls-root-stake { margin: 0 0 0.3rem; }
+.mls-root-stake .mls-root-share { color: var(--text-main); font-weight: 600; }
+.mls-root-stake-note { display: block; margin-top: 2px; }
+/* His stake (in the detail): the green part of the bar is the share of his weight in your leagues. */
 .badge.mls-root-share { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 2px; padding: 0; font-size: 0.7rem; font-weight: 500; color: var(--text-muted); background: transparent; border: 0; }
 .mls-root-share-bar { display: inline-block; width: 54px; height: 5px; border-radius: 3px; background: #ef4444; overflow: hidden; }
 .mls-root-share-bar > span { display: block; height: 100%; background: #10b981; }

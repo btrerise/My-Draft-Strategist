@@ -8039,3 +8039,41 @@ request's CI run as docs/TESTING.md describes.
   stakes.
 - The kickoff windows' folds aren't remembered (their times change weekly). The halves and Who to root for are.
 - Open follow-ups this touched: none of docs/TESTING.md's.
+
+### S27, round 2: the owner's review (real leagues, Monday of week 8)
+
+The owner looked at the board with their 19 leagues (screenshot, Monday night with only CHI @ SEA left) and sent four
+notes.
+1. **"Show less" after every "Show all" on the Scoreboard.** Still in play, MVPs, LVPs and every root-for list: once
+   opened, the button reads "Show less" (`aria-expanded`) and folds the list back. One helper (`moreButton`) draws all
+   of them. Focus stays on the button across the redraw; Who to root for's Show all still moves focus to the first row
+   it adds.
+2. **The Both sides bar was unclear and made that group taller.** "72% yours (3 of 4)" beside "85% yours (2 of 4)" read
+   as wrong: the percent is the weighted stake (decided matchups weigh 0, and so on), and the counts in brackets looked
+   like its source.
+   - Now each row has one chip with both counts, **"3 | 1"** (yours in green, against you in red, read out as "yours in 3,
+     against you in 1"), in the place of "in 4". So every row in the three groups is one height (the spec checks it).
+   - The weighted number moved into the tap detail as **"Your stake: 72%"** with the bar and a line saying what it is.
+   - An **(i) beside Both sides** explains the chip and how each league is weighed.
+   - The legend's lines follow (`rootSplitBadgeMarkup`, `rootShareMarkup(share)`).
+3. **Finished players lower in the groups?** They already are: `buildRootFor` sorts players still to play first. In the
+   owner's screenshot every Root for and Against you player's game was final (only CHI @ SEA was left, and its players
+   were on both sides), and Both sides shows exactly that order: the Monday players above DK Metcalf (Final). Nothing
+   changed; offered to dim final rows if wanted.
+4. **Tooltips cut off.** Every tooltip is 260px wide (capped at the window's width, S19 round 7), so the Scoreboard
+   header's (about 900px tall) ran past the bottom of the page. Site-wide fix in `js/shared/ui/tooltips.js` (`place`) and
+   `css/base.css`:
+   - A tooltip taller than 280px at 260px opens wider (`tt-wide`, 480px or the window's width less 16px), so the
+     Scoreboard's is about 500px tall on a desktop and fits a phone.
+   - If one still runs past the window's bottom, it scrolls inside (`tt-scroll`, `max-height` to the window's bottom, at
+     least 160px). The owner preferred wider, so scrolling is only the fallback.
+   - Short tooltips keep their 260px.
+   - `tooltips-onscreen.spec.mjs` now visits the Scoreboard too, and has a test that the long tip opens wider than 300px
+     and fits the window at 375px and 1280px, while a short one keeps 260px.
+
+Also: the Guide's and CHANGELOG's lines for the chip and the stake, a CHANGELOG line for Show less, and one for the wider
+tooltips under both apps (the tooltips are shared).
+
+Tests: `mls-root-for.spec.mjs` (the chip's counts, the stake in the detail, one row height across the groups, the
+Both sides (i), Show less and focus); `mls-mvp-lvp.spec.mjs` (MVPs' Show all / Show less, focus on the button);
+`tooltips-onscreen.spec.mjs` (above).

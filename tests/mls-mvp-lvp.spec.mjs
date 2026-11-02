@@ -241,9 +241,18 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await showTab(page, 'scoreboard');
         await expect(section(page)).toContainText('WR 1 / 0.5');
         await expect(rowsOf(page, 'mvp')).toHaveCount(5);
-        await section(page).locator('[data-action="showAllRecap"][data-list="mvp"]').click();
+        const more = section(page).locator('[data-action="showAllRecap"][data-list="mvp"]');
+        await more.click();
         await expect(rowsOf(page, 'mvp')).toHaveCount(6);
-        await expect(section(page).locator('[data-action="showAllRecap"]')).toHaveCount(0);
+        // Show less folds it back (improvements S27 round 2), with focus kept on the button.
+        await expect(more).toHaveText('Show less');
+        await expect(more).toBeFocused();
+        await more.click();
+        await expect(rowsOf(page, 'mvp')).toHaveCount(5);
+        await expect(more).toHaveText('Show all 6');
+        await more.click();
+        await expect(rowsOf(page, 'mvp')).toHaveCount(6);
+        await expect(section(page).locator('[data-action="showAllRecap"]')).toHaveText(['Show less']);
 
         await showTab(page, 'setup');
         await page.click('[data-action="resetRecapLines"]');
