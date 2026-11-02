@@ -1309,7 +1309,7 @@ function rootHTML(m) {
         const done = rf[kind].length - rows.length;
         if (!rows.length && done) none = `${done === 1 ? 'The one player here has' : `All ${done} have`} finished: see the games final line below.`;
         // Both sides explains its chip and the stake (round 2, owner: "at bare minimum, a tooltip").
-        const tip = kind === 'both' ? `<span class="tooltip-container mls-week-info mls-root-info"><span class="tooltip-icon">i</span><span class="tooltip-text"><strong>3 of 4 yours:</strong> he starts in 4 of your matchups, for you in 3 and against you in the other.<br><br><strong>Your stake</strong> (tap him): how much of his weight is in your leagues. A paid league counts 1.5 times, a close matchup more than a lopsided one (a decided one not at all), and he counts more the bigger his share of his side's points still to come, so the stake can differ from the counts; it orders the players, closest and biggest first.<br><br>75% or more of his leagues yours puts him in <strong>Root for</strong>, 25% or less in <strong>Against you</strong>; Both sides keeps the real splits. While games are left, the groups show only players still to play; one whose every matchup is already decided is dimmed, last, marked "decided".</span></span>` : '';
+        const tip = kind === 'both' ? `<span class="tooltip-container mls-week-info mls-root-info"><span class="tooltip-icon">i</span><span class="tooltip-text"><strong>3 of 4 yours:</strong> for you in 3 of his matchups, against you in 1. Mostly yours (75%+) puts him in Root for, mostly theirs (25% or less) in Against you.<br><br><strong>Order:</strong> paid, close and high-scoring matchups first; tap a player for his stake. "Decided": none of his matchups can change.</span></span>` : '';
         return `<div class="mls-root-group is-${kind}"><h5 class="mls-root-group-title">${ROOT_ICONS[kind]}${title} <span class="mls-root-group-n">${rows.length}</span>${tip}</h5>${rows.length
             ? rootList(rows, `spot:${kind}`, ctx, ROOT_SPOT_ROWS, {})
             : `<p class="mls-root-none">${none}</p>`}</div>`;
@@ -1338,8 +1338,8 @@ function rootHTML(m) {
         const n = (side) => over.filter(r => r[side].length).length;
         const games = new Set(over.map(r => (info.get(r.id) || {}).team).filter(Boolean).map(t => [t, (ctx.games[t] || {}).opp].sort().join('@')));
         const title = !keys.length ? 'Every game is final' : (games.size ? `${games.size} game${games.size === 1 ? '' : 's'} final` : 'Games final');
-        // Folded while games are still to come; open when every game is over (a past week), so the list is the board.
-        parts.push(rootWindow('final', title, '', over, ctx, !keys.length, { counts: `${n('yours')} of your starters, ${n('against')} against you` }));
+        // Folded, always (round 8, owner: in a past week it repeated the groups' players).
+        parts.push(rootWindow('final', title, '', over, ctx, false, { counts: `${n('yours')} of your starters, ${n('against')} against you` }));
     }
     if (rf.noOpponent.length) parts.push(`<p class="text-helper mls-root-note">${rf.noOpponent.map(escapeHtml).join(', ')} ${rf.noOpponent.length === 1 ? 'has' : 'have'} no opponent this week (guillotine or median only), so ${rf.noOpponent.length === 1 ? 'its' : 'their'} starters count for you only.</p>`);
     return { html: parts.join(''), rf, spot };

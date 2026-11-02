@@ -159,8 +159,10 @@ test.describe('Scoreboard: who to root for', () => {
         expect(heights).toHaveLength(1);
         // The (i) beside Both sides explains the chip, the stake and the 75% / 25% lines.
         const tip = group(page, 'both').locator('.mls-root-group-title .tooltip-text');
-        await expect(tip).toContainText('for you in 3 and against you in the other');
-        await expect(tip).toContainText('75% or more');
+        // Two short lines (round 8).
+        await expect(tip).toContainText('for you in 3 of his matchups, against you in 1');
+        await expect(tip).toContainText('75%+');
+        expect((await tip.evaluate(t => t.innerHTML)).split('<br><br>')).toHaveLength(2);
         await expect(allen.locator('.mls-root-meta')).toHaveText('BUF @ BAL · Final');
         await allen.locator('.mls-root-player').click();
         const detail = allen.locator('.mls-root-detail');
@@ -232,6 +234,9 @@ test.describe('Scoreboard: who to root for', () => {
         const windows = board(page).locator('.mls-root-window');
         await expect(windows).toHaveCount(1);
         await expect(windows.first().locator('.mls-root-window-title')).toHaveText('Every game is final');
+        // Folded in a past week too (round 8); it opens on a tap.
+        await expect(windows.first().locator('.mls-root-window-body')).toBeHidden();
+        await windows.first().locator('.mls-root-window-head').click();
         await expect(windows.first().locator('.mls-root-window-body')).toBeVisible();
         // Jefferson too is final now, with week 1's half-PPR points from Sleeper's stats.
         await group(page, 'root').locator('[data-action="showAllRoot"]').click();

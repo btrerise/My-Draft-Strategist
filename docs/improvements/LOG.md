@@ -8213,3 +8213,13 @@ Noted for the owner, not changed:
   rule as chosen; it only shows in a past week or once everything is final.
 - The (i) beside Both sides is three paragraphs (fits a phone screen since round 2's tooltip fix).
 - In a past week the open "Every game is final" list repeats the groups' players.
+
+### S27, round 8: a shorter Both sides tip, and the finished line always folded (owner's choices)
+
+- The (i) beside Both sides is two short lines: what "3 of 4 yours" means and the 75% / 25% rule; then the order (paid,
+  close, high-scoring first), "tap a player for his stake", and what "Decided" means. It was three paragraphs.
+- The finished games' line ("Every game is final" in a past week) always starts folded; in a past week it had opened and
+  repeated the groups' players.
+- The owner on Both sides being the biggest group in a finished week: "I'm not really sure we can get around" it; left as
+  it is.
+- `CACHE_NAME` v2.8.146 → v2.8.147. root-for and tooltips-onscreen (26) and 482 unit tests pass.
