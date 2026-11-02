@@ -81,7 +81,7 @@ export function buildRootFor({ leagues = [] } = {}) {
     leagues.forEach(l => {
         if (!l) return;
         const paid = l.paid ? PAID_WEIGHT : 1;
-        const stakes = stakesOf(l.noOpponent ? { status: 'none', chance: null } : l);
+        const stakes = stakesOf(l.noOpponent ? { status: l.status === 'done' ? 'done' : 'none', chance: null } : l);
         if (l.noOpponent) noOpponent.push(l.name);
         const add = (side, list) => {
             const impacts = impactsOf(side || []);
@@ -90,7 +90,7 @@ export function buildRootFor({ leagues = [] } = {}) {
                 const row = rowOf(p.id);
                 if (!p.over) row.over = false;
                 const impact = impacts.get(p.id) || 0;
-                row[list].push({ leagueId: l.id, name: l.name, paid: !!l.paid, status: l.noOpponent ? 'none' : l.status, chance: l.noOpponent ? null : (l.chance ?? null), stakes, impact, weight: round3(paid * stakes * impact) });
+                row[list].push({ leagueId: l.id, name: l.name, paid: !!l.paid, status: l.noOpponent ? (l.status === 'done' ? 'done' : 'none') : l.status, chance: l.noOpponent ? null : (l.chance ?? null), stakes, impact, weight: round3(paid * stakes * impact) });
             });
         };
         add(l.mine, 'yours');
@@ -103,7 +103,8 @@ export function buildRootFor({ leagues = [] } = {}) {
     // give the stake. A player whose every matchup is effectively decided or over is `settled`: still listed, dimmed and
     // last in his group. When nothing is open (a past week, every game over), nobody is settled.
     const isOpen = (x) => x.status !== 'decided' && x.status !== 'done';
-    const anyOpen = leagues.some(l => l && (l.noOpponent || isOpen(l)));
+    // A league with no opponent is open unless it says it's done (round 7: its games are over, or it's a past week).
+    const anyOpen = leagues.some(l => l && (l.noOpponent ? l.status !== 'done' : isOpen(l)));
     const players = [...byId.values()].map(r => {
         const yoursWeight = round3(sum(r.yours, x => x.weight)), againstWeight = round3(sum(r.against, x => x.weight));
         const weight = round3(yoursWeight + againstWeight);

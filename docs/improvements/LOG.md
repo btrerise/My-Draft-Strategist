@@ -8192,3 +8192,24 @@ On the owner's Monday (19 leagues, CHI @ SEA left):
 Tests: unit (10, the lean by counts, `settled` and its order, guillotine always open, a past week); `mls-root-for` back to
 "in 3" with nobody settled, and the two-league tests' Both sides line; this-week, mvp-lvp and tooltips-onscreen (74);
 482 unit tests. `CACHE_NAME` v2.8.144 → v2.8.145.
+
+### S27, round 7: another review as a user (the owner: "I think this is the best combination")
+
+On the owner's 19 leagues, live (Monday of week 8, CHI @ SEA left) and on week 7 with the arrows, at 1280 and 390px in
+the owner's time zone. I opened a Both sides row and the (i), tabbed through the rows, opened the finished line. No
+console errors. Fixed here:
+1. **A bug: in a past week, almost everyone read "decided".** A guillotine or median-only league counted as always
+   open, so with every other matchup done, every player not in it was `settled` (week 7: DK Metcalf, 7 of 9, dimmed at
+   the bottom of Root for). Such a league is now open only while one of your starters there still has a game to play,
+   and never in a past week (`rootModel` sets its status; `rootFor` reads it for stakes and `anyOpen`). Unit test for it.
+2. **On desktop an empty group stretched to its neighbours' height** (Against you on Monday night, "All 21 have
+   finished"): each group keeps its own height now (`align-items: start`).
+3. **"100% of what's left" in the detail read as the whole matchup.** It's now "100% of your points still to come" and
+   "63% of their points still to come".
+`CACHE_NAME` v2.8.145 → v2.8.146. root-for and this-week (56) and 482 unit tests pass.
+
+Noted for the owner, not changed:
+- In a finished week, Both sides is the biggest group (week 7: Root for 27, Against you 24, Both 41). That's the counts
+  rule as chosen; it only shows in a past week or once everything is final.
+- The (i) beside Both sides is three paragraphs (fits a phone screen since round 2's tooltip fix).
+- In a past week the open "Every game is final" list repeats the groups' players.

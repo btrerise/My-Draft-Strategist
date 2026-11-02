@@ -184,6 +184,11 @@ test('every league counts; a player whose every matchup is decided is settled, d
     const g = buildRootFor({ leagues: [league('Chop', [p('a'), p('b')], [], { noOpponent: true }), league('A', [p('a')], [p('b')], { status: 'done' })] });
     assert.equal(g.anyOpen, true);
     assert.equal(g.players.find(r => r.id === 'a').settled, false);
+    // A guillotine league whose games are over (or a past week's) isn't open (round 7): with every other matchup done too,
+    // nobody is settled. Before, it counted as open, and in a past week everyone else read "decided".
+    const doneChop = buildRootFor({ leagues: [league('Chop', [p('a', 0, true)], [], { noOpponent: true, status: 'done' }), league('A', [p('a', 0, true), p('b', 0, true)], [p('c', 0, true)], { status: 'done' }), league('B', [p('b', 0, true)], [], { status: 'done' })] });
+    assert.equal(doneChop.anyOpen, false);
+    assert.ok(doneChop.players.every(r => !r.settled));
     // Nothing open (a past week): nobody is settled.
     const past = buildRootFor({ leagues: [league('A', [p('a', 0, true)], [], { status: 'done' }), league('B', [p('a', 0, true)], [], { status: 'done' })] });
     assert.equal(past.anyOpen, false);

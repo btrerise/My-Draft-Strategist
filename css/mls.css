@@ -2726,7 +2726,8 @@ button.ir-slot-badge:focus-visible { outline: 2px solid var(--primary-green); ou
 .mls-root-none { margin: 0.1rem 0.25rem; font-size: 0.78rem; color: var(--text-muted); font-style: italic; }
 /* The three groups: stacked on phones, side by side from 900px. A colored top edge per side. */
 .mls-root-spot { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.6rem; }
-@media (min-width: 900px) { .mls-root-spot { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/* Each group its own height (round 7: an empty one stretched to its neighbours'). */
+@media (min-width: 900px) { .mls-root-spot { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; } }
 .mls-root-group { --root-c: #10b981; min-width: 0; border: 1px solid var(--border); border-top: 3px solid var(--root-c); border-radius: 10px; padding: 0.5rem 0.55rem; background: rgba(255, 255, 255, 0.02); }
 .mls-root-group.is-against { --root-c: #ef4444; }
 .mls-root-group.is-both { --root-c: #f59e0b; }

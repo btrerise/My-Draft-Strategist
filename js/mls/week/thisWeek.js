@@ -1162,7 +1162,9 @@ function rootModel(m) {
         const noOpponent = res.kind !== 'h2h';
         leagues.push({
             id: l.leagueId, name: l.name || 'Unnamed league', paid: !!l.paid, noOpponent,
-            status: noOpponent ? 'none' : res.status, chance: noOpponent ? null : (boardChanceOf(ctx, l.leagueId) ?? null),
+            // A league with no opponent is open while one of your starters there still has a game to play (round 7: it
+            // was always open, so in a past week everyone else read "decided").
+            status: noOpponent ? (!ctx.past && res.me.starters.some(p => p.state === 'live') ? 'none' : 'done') : res.status, chance: noOpponent ? null : (boardChanceOf(ctx, l.leagueId) ?? null),
             mine: side(res.me, l), theirs: noOpponent ? [] : side(res.them, l),
         });
     });
@@ -1192,7 +1194,7 @@ function rootMeta(pl, ctx) {
 }
 // One league in a row's detail: its name ($ if paid), his points there, then how open it is and how much of what his
 // side has left rides on him.
-function rootPart(x, pl) {
+function rootPart(x, pl, side = 'yours') {
     const bits = [`${fmt(pl.points[x.leagueId])} pts`];
     if (x.status === 'none') bits.push('no opponent');
     else if (x.status === 'decided') bits.push('effectively decided');
@@ -1200,7 +1202,8 @@ function rootPart(x, pl) {
     else if (pl.gameState === 'post') bits.push('final');
     else if (typeof x.chance === 'number') bits.push(`${pctText(x.chance)} to win`);
     const off = x.status === 'decided' || x.status === 'done';
-    if (x.impact > 0 && !off) bits.push(`${Math.round(x.impact * 100)}% of what's left`);
+    // His share of what that side is still projected to score (round 7: "of what's left" read as the whole matchup).
+    if (x.impact > 0 && !off) bits.push(`${Math.round(x.impact * 100)}% of ${side === 'against' ? 'their' : 'your'} points still to come`);
     // A decided or finished matchup doesn't count on the board (round 5): dimmed here.
     return `<li${off ? ' class="mls-root-part-off"' : ''}><span class="mls-week-name">${escapeHtml(x.name)}</span>${x.paid ? ' ' + paidBadgeMarkup() : ''} <span class="mls-root-part">· ${bits.join(' · ')}</span></li>`;
 }
@@ -1224,7 +1227,7 @@ function rootRow(r, pl, list, ctx, { compact = false, side = null } = {}) {
         split && r.share != null ? `<div class="mls-root-stake">${rootShareMarkup(r.share)} <span class="mls-root-stake-note">How much of his weight is in your leagues. The (i) beside Both sides says how each league is weighed.</span></div>` : '',
         // Every league, decided ones too (marked so); the counts above take only the open ones (round 5).
         (r.allYours || r.yours).length ? `<div class="mls-root-detail-side"><span class="mls-root-detail-label is-root">Yours in</span><ul>${(r.allYours || r.yours).map(x => rootPart(x, pl)).join('')}</ul></div>` : '',
-        (r.allAgainst || r.against).length ? `<div class="mls-root-detail-side"><span class="mls-root-detail-label is-against">Against you in</span><ul>${(r.allAgainst || r.against).map(x => rootPart(x, pl)).join('')}</ul></div>` : '',
+        (r.allAgainst || r.against).length ? `<div class="mls-root-detail-side"><span class="mls-root-detail-label is-against">Against you in</span><ul>${(r.allAgainst || r.against).map(x => rootPart(x, pl, 'against')).join('')}</ul></div>` : '',
     ].join('');
     const pos = pl.pos || '';
     // Every matchup he's in is decided or over (round 6): still listed, dimmed, last, and said so.
