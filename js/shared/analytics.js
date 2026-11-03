@@ -13,9 +13,10 @@
 // Counted only on the production site. Branch previews (*.pages.dev), localhost and the tests
 // never load the script. data-domains repeats the check inside Umami's own script.
 //
-// Opting out (the owner's own browsers): open any page with ?nocount=1 and this browser is no
-// longer counted; ?nocount=0 counts it again. A toast says which, and the parameter is removed
-// from the address bar so a reload or a bookmark doesn't repeat it. The choice is kept under
+// Opting out: anyone can tap "Don't count this device" at the end of the Visitor Counts line
+// (each Guide, T-Score's The Research), which then reads "Count this device again". Or open any
+// page with ?nocount=1 (?nocount=0 counts it again); the parameter is then removed from the address
+// bar so a reload or a bookmark doesn't repeat it. A toast says which. The choice is kept under
 // KEYS.shared.analyticsOptOut, which is in neither app's backup and survives both apps' resets.
 //
 // Settings live here (not in an inline snippet) so the pages carry no inline script for it. The
@@ -45,27 +46,49 @@ function writeOptOut(on) {
     } catch { return false; }
 }
 
-// ?nocount=1 / ?nocount=0. Returns true when the address had the parameter.
+// Saves the choice and says so. The links (below) and ?nocount= both come through here.
+function setOptOut(on) {
+    if (!writeOptOut(on)) {
+        showToast("This browser's storage is blocked, so the visitor-count setting couldn't be saved.", { isError: true });
+        return;
+    }
+    if (on) showToast("This device won't be counted in the site's visitor numbers.");
+    else showToast("This device is counted in the site's visitor numbers again.");
+    updateNoCountLinks();
+    if (!on) loadUmami(); // counted from this page on (only on the live site; shouldCount decides)
+}
+
+// ?nocount=1 / ?nocount=0, then the parameter is taken out of the address bar.
 function applyNoCountParam() {
     const url = new URL(location.href);
     const value = url.searchParams.get('nocount');
-    if (value !== '1' && value !== '0') return false;
-    const on = value === '1';
-    const saved = writeOptOut(on);
-    if (!saved) {
-        showToast("This browser's storage is blocked, so the visitor-count setting couldn't be saved.", { isError: true });
-    } else if (on) {
-        showToast("This browser won't be counted in the site's visitor numbers. Open any page with ?nocount=0 to undo.", { duration: 6000 });
-    } else {
-        showToast("This browser is counted in the site's visitor numbers again.");
-    }
+    if (value !== '1' && value !== '0') return;
+    setOptOut(value === '1');
     url.searchParams.delete('nocount');
     try { history.replaceState(history.state, '', url.pathname + url.search + url.hash); } catch { /* the toast already said it */ }
-    return true;
 }
 
-export function initAnalytics() {
-    applyNoCountParam();
+// The "Visitor Counts" lines (each app's Guide, T-Score's The Research) end with a link,
+// <a data-nocount-link href="?nocount=1">. It shows the choice this device can make next, and a tap
+// switches it in place (no reload, so it works the same in an installed app, which has no address
+// bar). The href is the fallback if this module never runs. A listener on the document, not an
+// inline handler: this module is shared, so it can't use a page's delegate().
+const LINK_TEXT = { count: 'Count this device again', stop: "Don't count this device" };
+function updateNoCountLinks() {
+    const optedOut = readOptOut();
+    document.querySelectorAll('a[data-nocount-link]').forEach((a) => {
+        a.textContent = optedOut ? LINK_TEXT.count : LINK_TEXT.stop;
+        a.setAttribute('href', optedOut ? '?nocount=0' : '?nocount=1');
+    });
+}
+function onNoCountLinkClick(e) {
+    const a = e.target instanceof Element ? e.target.closest('a[data-nocount-link]') : null;
+    if (!a) return;
+    e.preventDefault();
+    setOptOut(!readOptOut());
+}
+
+function loadUmami() {
     if (!shouldCount(location.hostname, readOptOut())) return;
     if (document.querySelector(`script[src="${UMAMI_SCRIPT_URL}"]`)) return;
 
@@ -82,6 +105,13 @@ export function initAnalytics() {
     // Offline, or blocked by an ad blocker: the script just doesn't run. The browser notes the
     // failed request itself; there's nothing for the app to do or log.
     document.head.appendChild(s);
+}
+
+export function initAnalytics() {
+    applyNoCountParam();
+    updateNoCountLinks();
+    document.addEventListener('click', onNoCountLinkClick);
+    loadUmami();
 }
 
 // Not under node --test, which imports this file for shouldCount.

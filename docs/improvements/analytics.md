@@ -74,8 +74,14 @@ What it can't do: it isn't Cloudflare (one more account), and its idea of "the s
   bring it back or take it away) and **neither app's reset** (Factory Reset, Reset Everything) clears it. Clearing the
   browser's site data does. Umami's own `umami.disabled` key would do the same job, but every key has to be spelled in
   `keys.js` and the loader skipping the script entirely is simpler and sends nothing at all.
-- **Do this once on every browser you use** (phone, computer, each browser): open
-  `https://mydraftstrategist.com/?nocount=1`. Private windows forget it when closed.
+- **The link** (added at the owner's request, same day): each Visitor Counts line ends with **Don't count this
+  device**; a tap opts out in place (toast, no reload) and the link then reads **Count this device again**, which
+  undoes it and loads the counter straight away. It's for every visitor, and it's how to opt out an iPhone or iPad
+  Home Screen app, which keeps its own storage apart from Safari and has no address bar. On a computer or Android,
+  an installed app shares storage with the browser (and profile) it was installed from, so opting out in that
+  browser covers it too.
+- **Do this once on every browser and iPhone/iPad app you use**: open `https://mydraftstrategist.com/?nocount=1`, or
+  tap the link in the Guide. Private windows forget it when closed.
 
 Load cost (`npm run perf -- --server cf --runs 3`, this branch against `origin/main`, PageSpeed's mobile setup; the
 measurements run on localhost, so they show the cost of the loader file itself, about 1 KB, not of Umami's script):

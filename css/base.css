@@ -2548,3 +2548,8 @@ button.pos-filter {
     .has-nav-bar .menu-overlay,
     .has-nav-bar .menu-overlay.open { transition: none; }
 }
+
+/* "Don't count this device" / "Count this device again" at the end of each Visitor Counts line (improvements A1;
+   js/shared/analytics.js swaps the text). The site's green, like the Guide's badge-legend link. */
+a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-space: nowrap; text-underline-offset: 2px; }
+a[data-nocount-link]:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; border-radius: 4px; }

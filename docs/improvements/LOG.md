@@ -8318,7 +8318,9 @@ shows as a failed request:
   only mydraftstrategist.com).
 
 **Two-minute check, after this deploys, on your phone and your computer:**
-1. Open `https://mydraftstrategist.com/?nocount=1` (each browser you use). A toast says this browser won't be counted.
+1. Opt out on each device: open `https://mydraftstrategist.com/?nocount=1` in the browser you installed from, or tap
+   **Don't count this device** in a Guide. On an iPhone or iPad, do it **inside the installed app** too (Guide, the link):
+   Home Screen apps don't share Safari's storage.
 2. Open `/`, `/lineup/` and `/t-score/`. Each should load normally, with no "Checking your browser" page.
 3. Lineup Strategist: Sync All Leagues. Draft Strategist: Dashboard, Quick-Start or Fetch Market Value with a Fantasy
    Football Calculator format: players or ADP should load.
@@ -8335,3 +8337,22 @@ plan has no way to exempt a path. The rest of the site's protection (DDoS, the W
 - The six screenshot baselines above, from CI, once a PR is open.
 - Custom events (Ko-fi tap, Share, Export…) are for K1 to choose; each is a `data-umami-event` attribute, no code.
 - `docs/TESTING.md`'s open follow-ups: none touched.
+
+### A1, round 2: a "Don't count this device" link (owner's request)
+
+The owner asked whether opting out in the browser covers the installed app. On a computer and on Android, yes: an
+installed app shares storage with the browser (and profile) it was installed from. On an iPhone or iPad, no: a Home
+Screen app keeps its own storage, apart from Safari, and has no address bar for `?nocount=1`. The owner: "Yes, add the
+link, with 'count this device again' too. Good to allow people to opt out if they want."
+
+- Each Visitor Counts line (both Guides, T-Score's The Research) ends with a link, `<a data-nocount-link
+  href="?nocount=1">`. `js/shared/analytics.js` sets its text from the saved choice (**Don't count this device** or
+  **Count this device again**) and toggles it on tap, in place, with a toast and no reload, through a document click
+  listener (the module is shared, so not a page's `delegate()`; no inline handler). Opting back in loads Umami
+  straight away on the live site. The `href` is the fallback if the module never runs. Styled in `css/base.css` like
+  the Guide's badge-legend link (the site's green, semi-bold).
+- `tests/analytics.spec.mjs`: the link on each page toggles both ways without navigating, survives a reload in its
+  new state, loads nothing while opted out and the script once after opting back in; it also works off the live site
+  (only saves the choice). 24 tests, both widths, pass; 485 unit tests pass.
+- Screenshots: the same six PNGs as round 1 change (a little taller again); compared with main in the container,
+  nothing else moved. Still to come from CI.

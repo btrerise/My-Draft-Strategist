@@ -105,3 +105,44 @@ test('the opt-out is in neither app\'s backup', async ({ page, baseURL }) => {
     });
     expect(owned).toEqual({ mds: false, mls: false, stored: '1' });
 });
+
+// The link at the end of each Visitor Counts line (each Guide, T-Score's The Research): it toggles in place, with no
+// reload, so it also works in an installed app (no address bar).
+for (const path of PAGES) {
+    test(`${path}: "Don't count this device" toggles in place, and back`, async ({ page, baseURL }) => {
+        const { umamiRequests } = await openAs(page, 'https://mydraftstrategist.com', path, baseURL);
+        expect(umamiRequests).toEqual([UMAMI]);
+        const link = page.locator('a[data-nocount-link]');
+        await expect(link).toHaveCount(1);
+        const before = page.url();
+
+        await expect(link).toHaveText("Don't count this device");
+        await link.evaluate((a) => a.click()); // the Guide may be on a hidden tab; the click is what's tested
+        await expect(toast(page)).toContainText("won't be counted");
+        await expect(link).toHaveText('Count this device again');
+        await expect(link).toHaveAttribute('href', '?nocount=0');
+        expect(await optOut(page)).toBe('1');
+        expect(page.url()).toBe(before); // no navigation
+
+        await link.evaluate((a) => a.click());
+        await expect(toast(page)).toContainText('counted in the site');
+        await expect(link).toHaveText("Don't count this device");
+        expect(await optOut(page)).toBeNull();
+        await expect(umamiTag(page)).toHaveCount(1); // still the one tag
+
+        // Opted out, a fresh load shows the other choice and loads nothing; opting back in loads the script then.
+        await link.evaluate((a) => a.click());
+        const again = await openAs(page, 'https://mydraftstrategist.com', path, baseURL);
+        expect(again.umamiRequests).toEqual([]);
+        await expect(link).toHaveText('Count this device again');
+        await link.evaluate((a) => a.click());
+        await expect(umamiTag(page)).toHaveCount(1);
+    });
+}
+
+test('the link works off the live site too (it only saves the choice)', async ({ page }) => {
+    await openApp(page, '/t-score/');
+    await page.locator('a[data-nocount-link]').evaluate((a) => a.click());
+    expect(await optOut(page)).toBe('1');
+    await expect(umamiTag(page)).toHaveCount(0);
+});
