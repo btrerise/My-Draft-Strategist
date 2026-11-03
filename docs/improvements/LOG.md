@@ -8356,3 +8356,17 @@ link, with 'count this device again' too. Good to allow people to opt out if the
   (only saves the choice). 24 tests, both widths, pass; 485 unit tests pass.
 - Screenshots: the same six PNGs as round 1 change (a little taller again); compared with main in the container,
   nothing else moved. Still to come from CI.
+
+### A1: screenshot baselines from CI (PR #217)
+
+CI's run 41583853340 (head bb5129d) failed only in `visual.spec.mjs` (699 passed, 41 skipped, 6 failed), on exactly
+the six PNGs listed above. Each `-expected.png` was byte-identical to the committed baseline. Checked row by row:
+- **T-Score's The Research** (desktop +121px, phone +168px): the old image plus the new Visitor Counts line at the
+  end; every other row identical.
+- **The two Guides** (Draft desktop +81px, phone +219px; Lineup desktop +93px, phone +232px): identical above the new
+  line in Backup, Restore & Reset; below it the same content moved down, with anti-aliasing differences on round
+  shapes (the step-number circles, the badges' glow) from the new position. Looked at side by side: no visible change
+  besides the new line and its link.
+
+The run's `-actual.png` files are the new baselines: `desktop/` and `phone/` `mds-empty-guide.png`,
+`mls-league-guide.png` and `tscore-researchTab.png`.
