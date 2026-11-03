@@ -3,6 +3,10 @@ import { chromiumLaunchOptions } from './browser.mjs';
 
 const PORT = 4173;
 
+// Let page.context().route() see the service worker's own requests (Chromium only shows them with this flag). Only
+// sw-html-for-asset.spec.mjs runs with service workers allowed; every other spec blocks them (serviceWorkers below).
+process.env.PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS = '1';
+
 export default defineConfig({
     testDir: '.',
     testMatch: /.*\.spec\.mjs$/,

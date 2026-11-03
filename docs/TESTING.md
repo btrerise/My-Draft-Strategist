@@ -48,7 +48,8 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
 
 ## How the tests work
 
-- **Server:** `tests/serve.mjs` serves the repo root with real 404s. Playwright starts it on port 4173
+- **Server:** `tests/serve.mjs` serves the repo root with real 404s (the body is `404.html`, as Cloudflare Pages serves
+  it; `not-found.spec.mjs`). Playwright starts it on port 4173
   (`reuseExistingServer`, so a server already on that port is reused).
 - **Stubs** (`tests/helpers.mjs`): every request that leaves localhost is intercepted.
   - PapaParse comes from `tests/node_modules`, pinned to the 5.4.1 the pages load.
@@ -194,6 +195,12 @@ shot and S10 took four runs for 14.)
     branch and above `main`'s (update to the latest main right before pushing); middle number only when the service
     worker's own behavior changes. A change only to tests, docs or tooling needs no bump.
   - `sw.js` stays at the site root, and the public URLs `/`, `/lineup/` and `/t-score/` don't change.
+  - The service worker never stores or serves an HTML page as a script, stylesheet, image or font (`isHtmlForAsset`,
+    improvements A1 follow-up). With no `404.html`, Cloudflare Pages answers a path it doesn't have (a new file
+    requested mid-deploy) with `index.html` and status 200, and Cloudflare's default Browser Cache TTL (4 hours on the
+    Free plan) keeps that in the browser. `sw-html-for-asset.spec.mjs` is the one spec that runs with service workers
+    allowed; `playwright.config.mjs` sets `PW_EXPERIMENTAL_SERVICE_WORKER_NETWORK_EVENTS` so `context.route()` sees
+    the service worker's own requests.
 - **Script order:** every page loads `js/boot.js` first (a plain script), then `js/shared/globals.js`, then its
   entry module. Last comes `js/shared/analytics.js` (improvements A1), which adds Umami's visitor
   counter on mydraftstrategist.com only; the tests run on localhost, so it adds nothing there (`analytics.spec.mjs`

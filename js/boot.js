@@ -280,6 +280,10 @@
         // page that works. A same-origin script failing is the real case this exists for --
         // that's any file in js/mds/'s, js/mls/'s or js/tscore/'s module graph.
         //
+        // And not a same-origin script marked data-optional: js/shared/analytics.js (the visitor counter, improvements
+        // A1) is the only one. The app works without it, and a tracker blocker that matches its name, one failed
+        // request, or a Bot Fight Mode challenge can stop it (the owner saw this banner over a working app on a phone).
+        //
         // And only a <link> that IS a stylesheet. A preload (the self-hosted font, improvements S17) that fails costs
         // only what it was fetching early: the font's own @font-face just falls back.
         const isStylesheet = tag === 'LINK' && /(^|\s)stylesheet(\s|$)/i.test(target.rel || '');
@@ -287,6 +291,10 @@
             const url = target.src || target.href || '';
             if (!isSameOrigin(url)) {
                 console.warn('Optional third-party resource failed to load:', url);
+                return;
+            }
+            if (tag === 'SCRIPT' && target.hasAttribute('data-optional')) {
+                console.warn('Optional script failed to load:', url);
                 return;
             }
             showBootErrorBanner('Failed to load: ' + (url || tag));

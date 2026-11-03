@@ -34,7 +34,7 @@
 //   * Middle number (v2.8.x -> v2.9.0): when this file's own behavior changes -- the caching
 //     strategy, what works offline, how old caches are cleared -- as v2.8.0 marked the strategy
 //     change above. App features don't move it; they go in CHANGELOG.md and the apps' footer versions.
-const CACHE_NAME = 'draft-strategist-v2.8.148';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.9.0';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -221,6 +221,11 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
             return cache.addAll(PRECACHE_ASSETS.map(url => new Request(url, { cache: 'reload' })))
+                // An edge still on the previous deploy answers a new file with index.html (isHtmlForAsset): drop
+                // any such entry, so the first load fetches the real file instead of being served a page.
+                .then(() => cache.keys())
+                .then((requests) => Promise.all(requests.map((req) => cache.match(req).then((res) =>
+                    (res && isHtmlForAsset(req, res)) ? cache.delete(req) : null))))
                 .catch(err => console.log('Precache partial failure (ignoring offline-only resources):', err));
         })
     );
@@ -247,8 +252,21 @@ self.addEventListener('activate', (event) => {
 // a failed page load, which is why nothing awaits this.
 function cachePut(request, response) {
     if (!response || response.status !== 200) return;
+    if (isHtmlForAsset(request, response)) return;
     const copy = response.clone();
     caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => {});
+}
+
+// An HTML page where a script, stylesheet, image or font belongs (owner's bug report after improvements A1,
+// 2026-11-03). Cloudflare Pages has no 404.html here, so it answers any path it doesn't have -- a file added by a
+// deploy that hasn't reached this visitor's edge yet -- with index.html and status 200, and Cloudflare's default
+// Browser Cache TTL keeps that in the browser for hours. Stale-while-revalidate then stored it as the script and
+// served it on every load: js/shared/analytics.js "failed to load" until the phone's cache was cleared. Such a
+// response is never stored, and never preferred over a cached copy.
+function isHtmlForAsset(request, response) {
+    const path = new URL(request.url).pathname;
+    if (!STATIC_ASSET_RE.test(path)) return false;
+    return /^text\/html/i.test(response.headers.get('content-type') || '');
 }
 
 // Last-resort HTML fallback when a navigation can't be served from network or its own cache
@@ -285,10 +303,12 @@ self.addEventListener('fetch', (event) => {
             caches.match(event.request).then((cached) => {
                 const networkFetch = fetch(event.request)
                     .then((response) => {
+                        // A page where the asset should be: keep the cached copy if there is one.
+                        if (isHtmlForAsset(event.request, response)) return cached || response;
                         cachePut(event.request, response);
                         return response;
                     })
-                    .catch(() => cached);
+                    .catch(() => cached || Response.error());
 
                 // Cached copy wins the race when there is one; the fetch above still runs to
                 // completion in the background so the next load gets the fresh bytes.

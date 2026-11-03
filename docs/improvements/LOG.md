@@ -8370,3 +8370,95 @@ the six PNGs listed above. Each `-expected.png` was byte-identical to the commit
 
 The run's `-actual.png` files are the new baselines: `desktop/` and `phone/` `mds-empty-guide.png`,
 `mls-league-guide.png` and `tscore-researchTab.png`.
+
+### A1 follow-up: the error banner over a working app (owner's bug report, 2026-11-03)
+
+After PR #217 deployed, the owner's phone showed boot.js's fatal banner ("Something went wrong loading the app",
+technical details "Failed to load: https://mydraftstrategist.com/js/shared/analytics.js") over a Lineup Strategist
+Dashboard that had loaded and worked. `js/boot.js` treats any same-origin `<script>` that fails to load as fatal (the
+case it was written for is one of the app's modules 404ing); the visitor counter's loader is the first same-origin
+script the app can do without.
+
+**Cause, as far as a session can tell.** Something stopped that one request on the phone. Candidates: a tracker
+blocker matching the file name (none of EasyPrivacy, uBlock's privacy list, AdGuard's spyware sections or Brave's
+first-party list has a rule that matches `/js/shared/analytics.js`, checked 2026-11-03, but other blockers and apps
+use other lists); a dropped request (every other file came from the service worker's cache, so the new file was the
+only network fetch, and `sw.js`'s stale-while-revalidate has no cached copy to fall back to for a file it hasn't
+precached yet); or a Bot Fight Mode challenge on it (Cloudflare, Security, Events would show one). The fix covers all
+three.
+
+**Fix (test first).** New in `tests/analytics.spec.mjs`: with `analytics.js` aborted as a blocker would, each page
+must load with no banner and no console.error (failed on main on all three pages: "fatal boot banner is showing"), and
+a real app file that fails (`js/mls/main.js`) must still raise the banner naming it. Then:
+- The loader's tag on all three pages carries `data-optional`; `js/boot.js` logs a console.warn for a same-origin
+  script with that attribute instead of showing the banner. Only that tag has it.
+- `CACHE_NAME` v2.8.148 → v2.8.149. A line under both apps' Unreleased in `CHANGELOG.md`.
+
+If the counter is blocked on a device, that device simply isn't counted (and its Guide link falls back to opening
+`?nocount=1`, which does nothing without the loader; harmless, since nothing is counted there anyway).
+
+Noted, not changed: `sw.js`'s stale-while-revalidate answers `respondWith(undefined)` when the network fails and
+nothing is cached (`.catch(() => cached)` with no cached copy), which turns one dropped request into a hard failure for
+that file. Every precached file is safe; only a file added since the last precache is exposed, briefly. A small
+separate change if it's ever worth it.
+
+#### The cause, found with the owner (same day)
+
+The owner: Chrome on Android, no blocker, and Reload didn't clear it; every page showed it, in Chrome and in the
+installed app. Opening `https://mydraftstrategist.com/js/shared/analytics.js` directly showed **Draft Strategist's home
+page** (unstyled) in Chrome and the app, but the real code in an Incognito tab; after force-stopping the app and
+clearing its cache, the app showed the code too. So the phone was being handed `index.html` for that one URL, and
+keeping it. Two Cloudflare defaults, both in Cloudflare's docs (read 2026-11-03):
+- **Pages' SPA mode.** "If your project does not include a top-level `404.html` file, Pages assumes that you are
+  deploying a single-page application" and "serves the root (`/`) for any incoming path that does not correspond to a
+  static asset", with status 200. This repo has no `404.html`.
+- **Browser Cache TTL, 4 hours by default** on every plan: Cloudflare overrides the origin's `Cache-Control` when it's
+  lower (Pages sends `max-age=0, must-revalidate`) unless the zone is set to **Respect Existing Headers**.
+
+Most likely sequence: during the deploy the phone asked for the new file from an edge still on the previous
+deployment, got `index.html` (200), Chrome kept it for 4 hours, and the service worker's stale-while-revalidate stored
+it as the script (status 200 was its only check) and served it on every load; its background refresh went through the
+same browser cache and stored the page again. Incognito has neither cache. It wasn't the code (all files pass
+`node --check`; main's copy is byte-identical to the tested one) and it wasn't Bot Fight Mode.
+
+**Fix in `sw.js` (test first; v2.9.0, the middle number because the service worker's behavior changes):**
+`isHtmlForAsset(request, response)`: a `text/html` response for a path the service worker treats as a static asset
+(`.js`, `.css`, images, fonts). `cachePut` never stores one; stale-while-revalidate keeps serving the cached copy
+instead of it; after the install's `addAll`, any such entry is deleted so the first load fetches the real file. A
+network failure with nothing cached now answers `Response.error()` instead of `respondWith(undefined)` (the same
+failure, stated plainly). `tests/sw-html-for-asset.spec.mjs` (service workers allowed; three tests, both widths): a
+script and a stylesheet answered with the home page after install stay cached as the real files, and a page served
+for the new file during install isn't kept and the real file is cached once it's there. All three failed on the old
+`sw.js` (the cache held `<!DOCTYPE html>` for `analytics.js` and `text/html` for `tscore.css`).
+
+**For the owner (not done; dashboard settings or your call):**
+- In Cloudflare, Caching, Configuration: set **Browser Cache TTL** to **Respect Existing Headers**. Pages' own headers
+  then apply (browsers re-check each file, cheaply, with its ETag), so a deploy is picked up at once and a wrong answer
+  can't stick for 4 hours. Recommended.
+- ~~Optionally a `404.html`~~: the owner said yes; done, below.
+- Anyone else who loaded the site in the minutes of the deploy may see the banner until their 4 hours run out, or
+  until this fix deploys (the new service worker serves the cached real file and drops the page).
+
+#### `404.html` (owner: "Proceed with adding a 404.html page")
+
+- `404.html` at the root: "Page not found", a line saying saved data is safe, and links to `/`, `/lineup/` and
+  `/t-score/` (Feather icons, the site's buttons, `css/base.css`). Absolute URLs throughout, since Pages serves it at
+  whatever address was asked for; no scripts; `noindex`. Not precached: offline, an unknown address still gets the
+  app shell from the service worker (`htmlFallback`), as before.
+- With it, Pages stops treating the site as a single-page app: an address it doesn't have gets this page with status
+  404, and a missing script gets a 404 rather than the home page with 200. Checked first that nothing depended on the
+  old behavior: no page has ever been deleted or renamed (git history), the apps use `#hash` for tabs, and
+  `tests/serve.mjs` already gave real 404s, so every spec has run that way all along. `/lineup` and `/t-score` without
+  the slash are redirected to the folder by Pages, as before.
+- `tests/serve.mjs` now answers a 404 with `404.html`'s content (still status 404), like Pages.
+  `tests/not-found.spec.mjs`: an unknown address (top level and deep under `/lineup/`) shows the page styled, with
+  its logo and the three links, and a link works; a missing `.js` gets a 404. CHANGELOG line under both apps; README
+  (Hosting).
+
+#### Owner's decisions on the follow-up (same day)
+
+- Browser Cache TTL set to **Respect Existing Headers** in Cloudflare (done by the owner).
+- The error had stopped on main by then (the phone's 4-hour copy had expired). Asked whether the rest is still needed
+  with `404.html` in place, the owner chose to **keep everything**: the `data-optional` banner fix (a blocker or a
+  dropped request on the optional counter must never show the fatal banner), the service worker's HTML-for-asset
+  guard (v2.9.0, mostly redundant once `404.html` exists, kept as a safety net) and `404.html`.

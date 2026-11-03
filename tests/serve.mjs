@@ -25,6 +25,8 @@ createServer(async (req, res) => {
         res.writeHead(200, { 'Content-Type': TYPES[extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
         res.end(body);
     } catch {
-        res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found');
+        // Like Cloudflare Pages since the site has a 404.html (improvements A1 follow-up): that page, status 404.
+        const page = await readFile(join(ROOT, '404.html')).catch(() => 'Not found');
+        res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end(page);
     }
 }).listen(PORT, () => console.log(`serving ${ROOT} on http://localhost:${PORT}`));
