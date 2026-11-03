@@ -7912,3 +7912,326 @@ Weekly rankings are stale (`getFreshness(…, 6)`, the league cards' rule).
 **Left over.** Device tests the research couldn't settle: Safari's hidden-tab timing, and whether a Worker timer
 escapes Chrome's throttle (N4 checks it). The runbook page was updated the same day (version 35): N2 and N4
 rewritten as above, N3 marked covered by N2, N5–N7 added, and the order and Notifications track adjusted.
+
+## S27 — Who to root for and against this week, across your leagues
+
+**User-visible effect.**
+- **The Scoreboard has two halves now**, each folding with a tap on its title (remembered): **League Scoreboard**
+  (everything that was there: splits, Biggest win / Worst loss, Still in play, the decided line, the tiles, the notes)
+  and **Player Scoreboard** (Who to root for, then MVPs & LVPs). The header stays above both: the week's arrows, the
+  record, Provisional / Final and Refresh. Export Recap stays at the bottom. Folded, each says what's inside: "3 leagues ·
+  1 still in play" and "Root for 7 · Against 7 · Both 2".
+- **Who to root for**: every starter in this week's Sleeper matchups, from the matchups the Scoreboard already loads.
+  - On top, the players in 2 or more of your matchups, in three groups: **Root for** (green, thumbs up), **Against you**
+    (red, thumbs down) and **Both sides** (amber, crossing arrows). They sit side by side from 900px and stack on phones.
+    Each row has headshot, position badge (D/ST for defenses), name, an "in 3" chip, team and opponent, kickoff time /
+    Live / Final, and points. Both sides adds a green/red bar and "67% yours (2 of 3)". Five per group, then "Show all N".
+  - **Tap a player (or Enter)** to see the leagues on each side ("Yours in", "Against you in"): each league's name ($ if
+    paid), his points there, the win chance or "effectively decided" / "final" / "no opponent", and his share of what
+    his side has left.
+  - Below that, **every starter by kickoff window** ("Sun 1:00 PM · KC @ DEN · under way · 4 yours · 3 against"), with
+    your starters beside the ones against you (stacked on phones). Five per side, then Show all. Each window folds.
+  - Finished games fold into one line ("6 games final · 8 of your starters, 9 against you"). In a past week every game
+    is final, so that line opens and the list shows final points.
+  - Guillotine and median-only leagues have no opponent, and a line names them: their starters count for you only.
+  - Players who are Out, on IR or on a bye are left off: S11's "lineups need you" box already flags them.
+- A muted **credit line under the Scoreboard card**, styled like the Dashboard's version line: "The root-for board was
+  inspired by Sleepy, sleepy-football.vercel.app" (linked). The same sentence ends the Guide's new Who to root for line.
+- The header's (i) gains one line on the weights. The Guide's Scoreboard item gains the two halves and Who to root for.
+  The badge legend gains two lines: the "in N" chips with the three icons, and the share bar.
+
+**Owner's decisions (asked before building; two rounds of sketches at 375 and 1280px, the second at 20-league scale).**
+1. **Where:** between the matchups and MVPs & LVPs, with the tab split into **League Scoreboard** and **Player
+   Scoreboard**, both foldable ("allowing users control over what they do and don't see").
+2. **Layout:** the spotlight over the list by kickoff window. **Each window folds**, every list is **capped with Show
+   all** (as MVPs & LVPs are), and **no By Game view**. A key for the folds: agreed. I proposed one key for the halves and
+   Who to root for (`mls_scoreboard_folds`) and nothing remembered for the windows, because their times change weekly.
+3. **Weighting: combined.** paid × stakes × impact:
+   - paid: **1.5** for a "$ Paid" league.
+   - stakes: from the Simulator's win chance, 4·p·(1 − p) (0 once decided or done). It's now computed for every open
+     matchup, not just Still in play: before kickoff, and while too early to call. Best Ball, guillotine and week 1 count 1.
+   - impact: his projected points still to come ÷ his side's.
+   - "Percentage rostered" was (a), how many of your leagues he's in. It's the sum itself (each league adds its weight),
+     so it isn't a separate factor.
+4. **No "close matchups only" switch for now**: a decided matchup already weighs 0. Revisit after seeing it with many
+   leagues.
+5. **Points:** this week's live points, not an average. The owner corrected my reading of Sleepy: it averages a player's
+   score across the leagues you roster him in, not across the season. The number shown is Sleeper's own stat on the
+   MVPs & LVPs scale (half PPR by default); each league's own points are in the tap detail.
+6. **Credit:** the Guide line plus a line **at the bottom of the page under the card**, like the Dashboard's version
+   (owner's idea). Nothing else in the feature names Sleepy, and nobody was contacted.
+
+**Rules as built** (`js/mls/week/rootFor.js`, no app state):
+- Root for: yours in 2+ and against in none. Against you: theirs in 2+ and yours in none. Both sides: at least one of
+  each. The share score is your leagues' weight ÷ all his leagues' weight, as a percent. When every weight is 0 (games
+  over, a past week) it uses the paid weights alone. Players still to play sort first, by weight, then by how many
+  leagues.
+- Starters only (`starterIdsOf`): Sleeper's starters, or Best Ball's lineup from the points so far (`bestBallLineup`).
+  The Scoreboard's own Best Ball scoring now goes through the same function, unchanged in behavior.
+- Impact without projections: a player still to play takes the average of the known ones (or an even share), so a
+  missing projection doesn't zero him.
+
+**What changed, and where.**
+- `js/mls/week/rootFor.js` (new): `buildRootFor`, `stakesOf`, `impactsOf`, `sideOrder`, `starterIdsOf`,
+  `PAID_WEIGHT`. `sw.js`: in `PRECACHE_ASSETS`, `CACHE_NAME` v2.8.139 → v2.8.140.
+- `js/mls/week/thisWeek.js`:
+  - The body is two `foldSection`s ('league', 'player') with Who to root for ('root') inside Player.
+  - `rootModel` / `rootHTML` / `rootRow` / `rootWindow` draw the board from the Scoreboard's rows; nothing is fetched.
+  - `addBoardChances` gives the board win chances for the open matchups Still in play doesn't cover. They're kept in
+    their own map, so the tiles and Still in play show exactly what they did. Both runs queue on the one worker.
+  - `toggleRootPlayer` and `toggleRootWindow` work in place, so focus stays put. `showAllRoot` redraws and focuses the
+    first row it adds, and a redraw keeps focus on a row or window (`restoreFocus`).
+  - The fold transition now names what follows in the enclosing sections too.
+  - A 'nomatch' league keeps your side, for median-only leagues.
+- `js/mls/badges.js`: `ROOT_ICONS`, `rootCountBadgeMarkup`, `rootShareMarkup`. `js/mls/legend.js`: two lines.
+  `tests/unit/badgeLegend.test.mjs`: `mls-root-pos` (sizing) in ALLOWED.
+- `js/mls/main.js`: the three actions. `js/shared/storage/keys.js`: `mls_scoreboard_folds` ({ league?, player?, root? },
+  only while not open; removed when back to the defaults). `css/mls.css`: the sections, the board, the legend icons.
+- `lineup/index.html`: the credit line (`.app-version.mls-scoreboard-credit`) and the Guide text.
+- `CHANGELOG.md`: one line under Lineup Strategist, crediting Sleepy.
+
+**Tests.**
+- `tests/unit/rootFor.test.mjs` (8): both sides and the groups, a paid league's weight, stakes (50/50, 90/10, decided,
+  done, no chance), impact (share of what's left, final, missing projections), the fallback for finished games,
+  guillotine / median-only leagues, the window order, starters (bench, empty slots, Best Ball, no slot order).
+- `tests/mls-root-for.spec.mjs` (both widths), with a third fixture league ("Third Fixture League", id …031:
+  `make-fixtures.mjs` writes `league3.json`, `league3-rosters.json` and `league3-matchups.json`, with Allen and Lamar
+  swapped; routes in `helpers.mjs`; the other fixture files are unchanged). It covers:
+  - the halves and their order; Root for 7, Against you 7 and Both sides 2 with "in 3", 67% / 33% yours, and 57% / 43%
+    once the third league is paid;
+  - the tap detail and Enter, Show all and its focus, the MIN window and its fold, the finished games' line (D/ST and K
+    in it);
+  - the halves folding and remembered across a reload (the key's value, removed at the defaults);
+  - a past week (Every game is final, open);
+  - the empty states: no Sleeper league, a league still loading then joining, no matchups in any league;
+  - nothing past the card's edges at 375 and 1280px, and the credit link.
+- `mls-this-week.spec.mjs` and `mls-mvp-lvp.spec.mjs`: two checks that read the card body's direct children now read
+  League Scoreboard's.
+
+**Fetches.** None of its own. The extra win chances (Best Ball excluded) run only while the Scoreboard tab is open, and
+use the Simulator's usual score-history requests (the same weekly files the Lineup tab's Simulator and Still in play
+read, cached in IndexedDB). A first full run caught them starting from the Dashboard and the Lineup tab too, in
+`mls-byes`, `mls-flex-choice` and `mls-waiver-flex-unranked` (unstubbed history weeks); fixed by `onScoreboard()`.
+
+**Screenshots.** I rendered main and this branch in this container and compared them with `npm run pxdiff`: 38 are
+identical and 4 differ, all by design. The screenshot league is a single league before kickoff, with no ESPN
+scoreboard in the screenshot test.
+- `desktop/mls-league-scoreboard.png`, `phone/mls-league-scoreboard.png`: the two halves; League Scoreboard as before;
+  Player Scoreboard with "Nobody starts in 2 or more of your matchups this week." and the 16 starters under "Kickoff
+  time unknown" (dashes for points); the credit line under the card. The PNG grows (desktop 936 → 1059px, phone 918 →
+  1203px).
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: the Guide's two new Scoreboard lines and the legend's two
+  new lines.
+This container renders with Chromium 1243, not CI's 1194, so the four aren't re-taken here: take them from the pull
+request's CI run as docs/TESTING.md describes.
+
+**Checks.**
+- check-precache OK; 480 unit tests pass.
+- Full Playwright run: 651 passed, 41 skipped. The failures were the 10 `visual.spec.mjs` comparisons (this container's
+  renderer, as on main) and the three specs above, which pass after the fix (40/40).
+- After the last edits: root-for, this-week, mvp-lvp, keyboard, svg-icons, smoke and tooltips-onscreen all pass.
+
+**Left over.**
+- Re-take the four PNGs from CI.
+- The owner's point 4: see how the board reads with ~20 real leagues on a Sunday before deciding on a "close matchups
+  only" switch (decided matchups already weigh 0).
+- Best Ball matchups have no win chance (S21's open follow-up on simulating the whole roster), so they count as 1 in the
+  stakes.
+- The kickoff windows' folds aren't remembered (their times change weekly). The halves and Who to root for are.
+- Open follow-ups this touched: none of docs/TESTING.md's.
+
+### S27, round 2: the owner's review (real leagues, Monday of week 8)
+
+The owner looked at the board with their 19 leagues (screenshot, Monday night with only CHI @ SEA left) and sent four
+notes.
+1. **"Show less" after every "Show all" on the Scoreboard.** Still in play, MVPs, LVPs and every root-for list: once
+   opened, the button reads "Show less" (`aria-expanded`) and folds the list back. One helper (`moreButton`) draws all
+   of them. Focus stays on the button across the redraw; Who to root for's Show all still moves focus to the first row
+   it adds.
+2. **The Both sides bar was unclear and made that group taller.** "72% yours (3 of 4)" beside "85% yours (2 of 4)" read
+   as wrong: the percent is the weighted stake (decided matchups weigh 0, and so on), and the counts in brackets looked
+   like its source.
+   - Now each row has one chip with both counts, **"3 | 1"** (yours in green, against you in red, read out as "yours in 3,
+     against you in 1"), in the place of "in 4". So every row in the three groups is one height (the spec checks it).
+   - The weighted number moved into the tap detail as **"Your stake: 72%"** with the bar and a line saying what it is.
+   - An **(i) beside Both sides** explains the chip and how each league is weighed.
+   - The legend's lines follow (`rootSplitBadgeMarkup`, `rootShareMarkup(share)`).
+3. **Finished players lower in the groups?** They already are: `buildRootFor` sorts players still to play first. In the
+   owner's screenshot every Root for and Against you player's game was final (only CHI @ SEA was left, and its players
+   were on both sides), and Both sides shows exactly that order: the Monday players above DK Metcalf (Final). Nothing
+   changed; offered to dim final rows if wanted.
+4. **Tooltips cut off.** Every tooltip is 260px wide (capped at the window's width, S19 round 7), so the Scoreboard
+   header's (about 900px tall) ran past the bottom of the page. Site-wide fix in `js/shared/ui/tooltips.js` (`place`) and
+   `css/base.css`:
+   - A tooltip taller than 280px at 260px opens wider (`tt-wide`, 480px or the window's width less 16px), so the
+     Scoreboard's is about 500px tall on a desktop and fits a phone.
+   - If one still runs past the window's bottom, it scrolls inside (`tt-scroll`, `max-height` to the window's bottom, at
+     least 160px). The owner preferred wider, so scrolling is only the fallback.
+   - Short tooltips keep their 260px.
+   - `tooltips-onscreen.spec.mjs` now visits the Scoreboard too, and has a test that the long tip opens wider than 300px
+     and fits the window at 375px and 1280px, while a short one keeps 260px.
+
+Also: the Guide's and CHANGELOG's lines for the chip and the stake, a CHANGELOG line for Show less, and one for the wider
+tooltips under both apps (the tooltips are shared).
+
+Tests: `mls-root-for.spec.mjs` (the chip's counts, the stake in the detail, one row height across the groups, the
+Both sides (i), Show less and focus); `mls-mvp-lvp.spec.mjs` (MVPs' Show all / Show less, focus on the button);
+`tooltips-onscreen.spec.mjs` (above).
+
+`CACHE_NAME` v2.8.140 → v2.8.141 (a second push to the branch's preview, S21 round 6's lesson).
+
+Checks (round 2): check-precache OK; 480 unit tests; full Playwright run 669 passed, 41 skipped, only the 10
+`visual.spec.mjs` comparisons failing (this container's renderer, as on main). Screenshots, main against this branch in
+this container: still the same four PNGs differ (the Scoreboard and the Guide at both widths; the Guide a little longer
+than round 1 on phones, for the new wording), and the other 38 are identical. Take the four from CI.
+
+### S27, round 3: Both sides' chip in one color (owner's choice)
+
+The owner found round 2's "3 | 1" chip (amber border, green and red numbers) clashed: three colors in one small pill. I
+mocked three single-color options on the real rows at 375 and 1280px:
+- A: "in 3" as before
+- B: "1 of 3 yours"
+- C: dots, filled for yours
+
+The owner leaned B and asked about A with a tappable chip instead. I advised against it: the whole row is already the
+button that opens the leagues, a button inside it is invalid and a tap would open both, and the count behind a tap can't
+be compared at a glance. **Owner: B.**
+
+- `rootOfBadgeMarkup(yours, of)`: "3 of 4 yours", the same amber pill as "in 4" (`mls-root-count is-both`, kept whole
+  with `white-space: nowrap`). `rootSplitBadgeMarkup` and its CSS are gone.
+- The Both sides (i), the legend line, the Guide and CHANGELOG say "3 of 4 yours". The stake stays in the tap detail.
+- `CACHE_NAME` v2.8.141 → v2.8.142. Spec: the chip's text for Allen (2 of 3) and Lamar (1 of 3), the (i)'s words.
+  root-for, tooltips-onscreen and svg-icons pass (28), and 480 unit tests. Screenshots: still the same four (the
+  Guide's wording only).
+
+### S27, round 4: my review as a user on the owner's 19 leagues (Monday of week 8); the owner took 1, 2 and 4
+
+I restored the owner's backup in this container's browser and opened the Scoreboard live: Sleeper's matchups, and ESPN's
+scoreboard handed to the page from curl because the browser's own request failed here. Headshots are blocked here, so
+the rows showed initials. My notes, worst first:
+1. Both sides held 70 of the 96 players in 2+ matchups (Root for 11, Against you 15); DK Metcalf, "6 of 8 yours", was
+   among them.
+2. On Monday night every Root for and Against you player was Final; the MNF players were further down.
+3. The same names appeared three times.
+4. The window lists' small line read "in 3" on some rows and "pts" on others.
+5. Times showed in UTC, which is only this container's clock.
+
+**Owner: do 1, 2 and 4; 75 / 25 is fine.**
+- **1, the lean rule** (`rootFor.js`: `LEAN_ROOT` 75, `LEAN_AGAINST` 25, `lean` on the row). A player on both sides with
+  a stake of 75% or more goes in Root for, 25% or less in Against you. He keeps "6 of 8 yours" in that group's color
+  (`rootOfBadgeMarkup(yours, of, kind)`) and his stake in the detail. The (i), the legend, the Guide and CHANGELOG say so.
+- **2, still to play first.** While any game is left, the three groups hold only players still to play. A group whose
+  players have all finished says "All 7 have finished: see the games final line below." Once every game is over (a
+  past week) everyone is back. The intro says "still to play" while it applies, and Player Scoreboard's summary counts
+  what's shown. This also takes care of most of 3.
+- **4.** The window lists put "in 3" as muted text after the name (`.mls-root-in`), with "pts" under every row's points.
+
+On the owner's data after the change: Root for 2 · Against 1 · Both 1, all from CHI @ SEA (they were 11 / 15 / 70).
+
+Tests: unit (9). The 75% / 25% lines and lean, and the two cases that now lean (an 80% player and the guillotine one at
+20%). `mls-root-for.spec.mjs`: mid-Sunday shows only Jefferson, the "All N have finished" lines, "in 3" and "pts" in
+the windows; every game final (week 1) has the full groups, the chips, the stake, the (i), Show all / Show less; the
+paid test and the edge test on week 1. `CACHE_NAME` v2.8.142 → v2.8.143.
+
+**Found right after (put to the owner):** on the owner's Monday, D'Andre Swift ("2 of 4 yours") leaned into Root for and
+Colston Loveland ("2 of 3 yours") into Against you. A decided matchup weighs 0, so Swift's two against-you leagues count
+for nothing. That's right by the stake, but the chip's counts include the decided leagues and seem to contradict it.
+
+### S27, round 5: only open matchups count (owner: "Yes, count only open matchups")
+
+The problem round 4 found, and my proposal: once any matchup is effectively decided or over, it changes nothing about
+who you root for, so it's left out of the counts, the groups and the window lists.
+- `buildRootFor`: `yours` / `against` hold only open matchups (status not `decided` or `done`; guillotine and
+  median-only leagues are always open) while any matchup is open. `allYours` / `allAgainst` keep every league for the
+  row's detail. A player only in decided matchups is off the board (`decidedOnly` counts them). When nothing is open
+  (a past week, every game over) every league counts, as before. Weights didn't change: a decided matchup already
+  weighed 0.
+- The detail lists every league. A decided one is dimmed (`.mls-root-part-off`) with "effectively decided", and a
+  finished one says "matchup over".
+- Who to root for's summary says "in matchups still open" when a player was left out. The (i), the Guide and
+  CHANGELOG say only open matchups count.
+- On the owner's Monday: the MNF window "3 yours · 4 against" (was 6 / 8); the finished line 39 / 34 (was 102 / 101);
+  the groups Root for 1, Against 0, Both 1. D'Andre Swift reads "1 of 2 yours" in Root for. Both his open leagues are
+  in play, but his stake is 75% or more (the paid weight, how close each is, his share of each side), so the lean
+  rule moves him. That's round 4's rule at work, now with honest counts; put to the owner.
+- Tests:
+  - Unit (10): open-only, the decided-only player, guillotine always open, a past week counting everything; the fallback
+    test's three leagues all final.
+  - `mls-root-for.spec.mjs` (Jefferson's projection 10, so Fixture League and Third Fixture League stay open and Second
+    Fixture League is decided): Jefferson "in 2", not 3, and his detail's three leagues with the decided one dimmed; with
+    two leagues only one is open, so the single "Nobody starts in 2 or more" line.
+  - this-week, mvp-lvp, tooltips-onscreen (74) and 482 unit tests pass.
+- `CACHE_NAME` v2.8.143 → v2.8.144. Screenshots: no change beyond the four (the screenshot league is before kickoff,
+  where everything is open; only the Guide's words differ).
+
+### S27, round 6: counts are facts again; groups follow the counts; decided players dimmed (owner's choice)
+
+The owner was unsure about round 5: "I might look at the board and think 'Wait, I thought I had Swift in more leagues?'"
+And only two players in the groups on Monday night felt "a tad lame". My view: one number was doing two jobs. The chip
+reads as a fact the owner knows from memory, while the weighting is a judgment. So I separated them, and the owner
+agreed to all four:
+1. **Counts are every league** again: "in 4", "3 of 4 yours". Round 5's open-only counting is undone, but its dimmed
+   decided leagues in the tap detail stay.
+2. **Groups follow the counts:** 75% or more of a player's leagues yours puts him in Root for, 25% or less in Against
+   you (round 4 went by the stake). The chip and the group can't disagree.
+3. **The weighting orders the players** within each group, and "Your stake" stays in the tap detail.
+4. **A player whose every matchup is effectively decided or over is `settled`:** still listed, dimmed (`.is-settled`),
+   last in his group, with "decided" at the end of his line. Never in a past week, when nothing is open.
+
+Round 4's "while games are left, the groups show only players still to play" stays. The (i), the legend, the Guide and
+CHANGELOG are reworded.
+
+On the owner's Monday (19 leagues, CHI @ SEA left):
+- Root for 1: Luther Burden III, 3 of 4 yours.
+- Both sides 3: D'Andre Swift and Jaxon Smith-Njigba 2 of 4, Colston Loveland 2 of 3.
+- The MNF window 6 yours · 8 against; the finished line 102 / 101.
+- No MNF player was settled that night.
+- The groups are short because only four MNF players start in 2 or more of the owner's matchups; the window below lists
+  all 14.
+
+Tests: unit (10, the lean by counts, `settled` and its order, guillotine always open, a past week); `mls-root-for` back to
+"in 3" with nobody settled, and the two-league tests' Both sides line; this-week, mvp-lvp and tooltips-onscreen (74);
+482 unit tests. `CACHE_NAME` v2.8.144 → v2.8.145.
+
+### S27, round 7: another review as a user (the owner: "I think this is the best combination")
+
+On the owner's 19 leagues, live (Monday of week 8, CHI @ SEA left) and on week 7 with the arrows, at 1280 and 390px in
+the owner's time zone. I opened a Both sides row and the (i), tabbed through the rows, opened the finished line. No
+console errors. Fixed here:
+1. **A bug: in a past week, almost everyone read "decided".** A guillotine or median-only league counted as always
+   open, so with every other matchup done, every player not in it was `settled` (week 7: DK Metcalf, 7 of 9, dimmed at
+   the bottom of Root for). Such a league is now open only while one of your starters there still has a game to play,
+   and never in a past week (`rootModel` sets its status; `rootFor` reads it for stakes and `anyOpen`). Unit test for it.
+2. **On desktop an empty group stretched to its neighbours' height** (Against you on Monday night, "All 21 have
+   finished"): each group keeps its own height now (`align-items: start`).
+3. **"100% of what's left" in the detail read as the whole matchup.** It's now "100% of your points still to come" and
+   "63% of their points still to come".
+`CACHE_NAME` v2.8.145 → v2.8.146. root-for and this-week (56) and 482 unit tests pass.
+
+Noted for the owner, not changed:
+- In a finished week, Both sides is the biggest group (week 7: Root for 27, Against you 24, Both 41). That's the counts
+  rule as chosen; it only shows in a past week or once everything is final.
+- The (i) beside Both sides is three paragraphs (fits a phone screen since round 2's tooltip fix).
+- In a past week the open "Every game is final" list repeats the groups' players.
+
+### S27, round 8: a shorter Both sides tip, and the finished line always folded (owner's choices)
+
+- The (i) beside Both sides is two short lines: what "3 of 4 yours" means and the 75% / 25% rule; then the order (paid,
+  close, high-scoring first), "tap a player for his stake", and what "Decided" means. It was three paragraphs.
+- The finished games' line ("Every game is final" in a past week) always starts folded; in a past week it had opened and
+  repeated the groups' players.
+- The owner on Both sides being the biggest group in a finished week: "I'm not really sure we can get around" it; left as
+  it is.
+- `CACHE_NAME` v2.8.146 → v2.8.147. root-for and tooltips-onscreen (26) and 482 unit tests pass.
+
+### S27: screenshot baselines from CI (PR #216)
+
+CI's first run (41547473581) failed only in `visual.spec.mjs` (679 passed, 41 skipped), on exactly the four PNGs listed
+above. Each `-expected.png` was byte-identical to the committed baseline.
+- **The Scoreboard** (desktop 900 → 1016px, phone 918 → 1172px) shows the two halves, Player Scoreboard's "Nobody starts
+  in 2 or more of your matchups this week." with the 16 starters (points as dashes before kickoff), and the credit line.
+- **The Guide** is identical to the old baseline down to the changed Scoreboard text (desktop 839px, phone 1778px) and
+  again in the rows below; what's between moved for the new Guide text and the two legend lines.
+
+The run's `-actual.png` files are the new baselines: `desktop/` and `phone/` `mls-league-scoreboard.png` and
+`mls-league-guide.png`.

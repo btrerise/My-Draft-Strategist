@@ -128,6 +128,21 @@ const pointsFor = (mine, theirs) => Object.fromEntries([
 const live1 = pointsFor([22, 18, 20, 0, 10, 16, 7, 5], [24, 19, 17, 14, 12, 13, 6, 5]);
 const live2 = pointsFor([28.4, 22, 25, 0, 12, 25, 10, 8], [20.2, 15, 14, 11, 10, 12, 7, 6]);
 
+// A third league for the Scoreboard's Who to root for (improvements S27, tests/mls-root-for.spec.mjs): "Third Fixture
+// League" (LEAGUE3_ID, redraft), the same two teams except that Josh Allen (4984) and Lamar Jackson (4881) have swapped,
+// so each is your starter in two leagues and your opponent's in the third (Both sides). Everyone else starts on the same
+// side in all three (Root for / Against you). Its points are the first league's, player by player.
+export const LEAGUE3_ID = '1000000000000000031';
+const league3 = { ...league, league_id: LEAGUE3_ID, name: 'Third Fixture League' };
+const swap3 = { 4984: '4881', 4881: '4984' };
+const rosters3 = rosters.map(r => ({ ...r, league_id: LEAGUE3_ID, players: r.players.map(id => swap3[id] || id) }));
+const matchups3 = rosters3.map(r => {
+    const starters = startersFor(r.players);
+    const players_points = Object.fromEntries(r.players.map(id => [id, live1[id] ?? 0]));
+    const points = Math.round(starters.filter(id => id !== '0').reduce((t, id) => t + (live1[id] ?? 0), 0) * 100) / 100;
+    return { roster_id: r.roster_id, matchup_id: 1, points, starters, players: r.players, players_points, starters_points: starters.map(id => live1[id] ?? 0) };
+});
+
 // Sleeper's stats for week 2 as the Scoreboard's MVPs & LVPs read them (improvements S22, round 8: one Boom / Bust verdict
 // per player on half-PPR points, the same in every league). Set apart from the leagues' own points on purpose: Lamb's 25.0
 // in Second Fixture League is 18.0 in half PPR (no boom), Allen 25.0 and Chase 21.0 are booms. A player whose game hasn't
@@ -151,6 +166,9 @@ const out = {
     'league-matchups-final.json': withPoints({ ...live1, 6794: 20 }),
     'league2.json': league2,
     'league2-matchups.json': withPoints(live2),
+    'league3.json': league3,
+    'league3-rosters.json': rosters3,
+    'league3-matchups.json': matchups3,
     'user.json': USERS[0],
     'user-leagues.json': [league],
     'trending-add.json': trendingAdd,

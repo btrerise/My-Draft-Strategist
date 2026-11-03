@@ -84,13 +84,26 @@
   // Slides a tooltip back inside the window. Measured with any earlier shift undone; a hidden tooltip still has its
   // box (visibility: hidden), so this works before it fades in. CSS applies --tt-dx with `translate`, which doesn't
   // touch the fade's `transform`.
+  // A long one (improvements S27 round 2, the owner: the Scoreboard's header tip, ~900px tall at 260px wide, ran past the
+  // bottom of the page) opens wider, up to 480px or the window's width, so it's shorter; if it still doesn't fit
+  // between its top and the window's bottom, it scrolls inside (and takes taps and the wheel while it's open).
   const MARGIN = 8;
+  const TALL = 280;
   function place(text) {
     if (!text) return;
     text.style.removeProperty('--tt-dx');
-    const r = text.getBoundingClientRect();
+    text.style.removeProperty('--tt-maxh');
+    text.classList.remove('tt-wide', 'tt-scroll');
+    let r = text.getBoundingClientRect();
     if (!r.width) return;
     const vw = document.documentElement.clientWidth;
+    const vh = document.documentElement.clientHeight;
+    if (r.height > TALL) { text.classList.add('tt-wide'); r = text.getBoundingClientRect(); }
+    const room = Math.floor(vh - Math.max(r.top, 0) - MARGIN);
+    if (r.height > room && room > 0) {
+      text.style.setProperty('--tt-maxh', `${Math.max(room, 160)}px`);
+      text.classList.add('tt-scroll');
+    }
     let dx = 0;
     if (r.left < MARGIN) dx = MARGIN - r.left;
     else if (r.right > vw - MARGIN) dx = (vw - MARGIN) - r.right;

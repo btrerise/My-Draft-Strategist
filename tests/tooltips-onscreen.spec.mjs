@@ -58,7 +58,7 @@ test.describe('Tooltips stay on the screen', () => {
         await seedMls(page);
         await loadMlsRankings(page);
         const bad = [];
-        for (const tab of ['setup', 'roster', 'lineup', 'guide']) {
+        for (const tab of ['setup', 'roster', 'lineup', 'scoreboard', 'guide']) {
             await showTab(page, tab);
             bad.push(...(await offScreen(page)).map(b => `${tab}: ${b}`));
         }
@@ -71,6 +71,32 @@ test.describe('Tooltips stay on the screen', () => {
         await expect(page.locator('#tradeOutput [data-trade-impact]')).toHaveCount(1);
         bad.push(...(await offScreen(page)).map(b => `scout: ${b}`));
         expect(bad).toEqual([]);
+        await expectClean(page, state);
+    });
+
+    // A long tooltip opens wider and fits between its top and the window's bottom (improvements S27 round 2, the owner:
+    // the Scoreboard's header tip, about 900px tall at 260px wide, was cut off at the bottom of the page).
+    test('a long tooltip opens wider and fits the window', async ({ page }) => {
+        await at375(page);
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await showTab(page, 'scoreboard');
+        const icon = page.locator('#thisWeekCard .mls-week-head .tooltip-icon');
+        await icon.click();
+        const tip = page.locator('#thisWeekCard .mls-week-head .tooltip-text');
+        await expect(tip).toHaveClass(/\bmobile-visible\b/);
+        await expect(tip).toHaveClass(/\btt-wide\b/);
+        const box = await tip.evaluate(t => { const r = t.getBoundingClientRect(); return { w: r.width, left: r.left, right: r.right, bottom: r.bottom, vw: document.documentElement.clientWidth, vh: document.documentElement.clientHeight, scroll: t.scrollHeight > t.clientHeight + 1 }; });
+        expect(box.w).toBeGreaterThan(300);
+        expect(box.left).toBeGreaterThanOrEqual(0);
+        expect(box.right).toBeLessThanOrEqual(box.vw);
+        expect(box.bottom).toBeLessThanOrEqual(box.vh);
+        // When it still doesn't fit, its own content scrolls; at these sizes the wider box is enough.
+        expect(box.scroll).toBe(false);
+        // A short tooltip keeps its 260px.
+        await icon.click();
+        await showTab(page, 'setup');
+        expect(await page.evaluate(() => getComputedStyle(document.querySelector('.tooltip-container .tooltip-text')).width)).toBe('260px');
         await expectClean(page, state);
     });
 });

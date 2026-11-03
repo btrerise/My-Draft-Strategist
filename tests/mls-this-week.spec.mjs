@@ -277,7 +277,8 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(card(page).locator('.mls-week-swing')).toHaveCount(0);
         // No "Done: 2" line (it only repeated the record), and the tiles go back to league order, as on the Dashboard.
         await expect(card(page).locator('.mls-week-decided')).toHaveCount(0);
-        await expect(card(page).locator('.mls-week-body > .mls-week-sub').last()).toHaveText('Every league');
+        // In League Scoreboard since S27 (the card's body is two folding halves).
+        await expect(card(page).locator('.mls-week-fold[data-fold="league"] > .mls-week-fold-body > .mls-week-sub').last()).toHaveText('Every league');
         await expect(tiles(page).locator('.mls-week-name')).toHaveText(['Fixture League', 'Second Fixture League']);
         await expect(card(page)).toContainText('Every game is final');
         await expectClean(page, state);
