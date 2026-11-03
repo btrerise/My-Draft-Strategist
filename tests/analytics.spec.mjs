@@ -146,3 +146,27 @@ test('the link works off the live site too (it only saves the choice)', async ({
     expect(await optOut(page)).toBe('1');
     await expect(umamiTag(page)).toHaveCount(0);
 });
+
+// Owner's report after A1 deployed (2026-11-03): on a phone, the fatal "Something went wrong loading the app" banner
+// named js/shared/analytics.js, over a Lineup Strategist that had loaded fine. boot.js treats any same-origin script that
+// fails to load as fatal; this one is optional (visitor counts only). Whatever stops it (a blocker that matches the
+// file, one failed request, a challenge), the app must carry on with no banner and no console.error.
+for (const path of PAGES) {
+    test(`${path}: if the visitor-count loader itself can't load, the app carries on with no error banner`, async ({ page }) => {
+        const state = await preparePage(page);
+        const blocked = [];
+        await page.route(/\/js\/shared\/analytics\.js$/, (route) => { blocked.push(route.request().url()); return route.abort('blockedbyclient'); });
+        await page.goto(path);
+        await page.waitForLoadState('networkidle');
+        expect(blocked.length).toBe(1);
+        await expectClean(page, state);
+    });
+}
+
+test('a real app file that fails to load still raises the error banner (only the visitor counter is optional)', async ({ page }) => {
+    await preparePage(page);
+    await page.route(/\/js\/mls\/main\.js$/, (route) => route.abort('failed'));
+    await page.goto('/lineup/');
+    await expect(page.locator('#mds-boot-error')).toBeVisible();
+    await expect(page.locator('#mds-boot-error')).toContainText('js/mls/main.js');
+});

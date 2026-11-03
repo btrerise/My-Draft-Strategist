@@ -8370,3 +8370,34 @@ the six PNGs listed above. Each `-expected.png` was byte-identical to the commit
 
 The run's `-actual.png` files are the new baselines: `desktop/` and `phone/` `mds-empty-guide.png`,
 `mls-league-guide.png` and `tscore-researchTab.png`.
+
+### A1 follow-up: the error banner over a working app (owner's bug report, 2026-11-03)
+
+After PR #217 deployed, the owner's phone showed boot.js's fatal banner ("Something went wrong loading the app",
+technical details "Failed to load: https://mydraftstrategist.com/js/shared/analytics.js") over a Lineup Strategist
+Dashboard that had loaded and worked. `js/boot.js` treats any same-origin `<script>` that fails to load as fatal (the
+case it was written for is one of the app's modules 404ing); the visitor counter's loader is the first same-origin
+script the app can do without.
+
+**Cause, as far as a session can tell.** Something stopped that one request on the phone. Candidates: a tracker
+blocker matching the file name (none of EasyPrivacy, uBlock's privacy list, AdGuard's spyware sections or Brave's
+first-party list has a rule that matches `/js/shared/analytics.js`, checked 2026-11-03, but other blockers and apps
+use other lists); a dropped request (every other file came from the service worker's cache, so the new file was the
+only network fetch, and `sw.js`'s stale-while-revalidate has no cached copy to fall back to for a file it hasn't
+precached yet); or a Bot Fight Mode challenge on it (Cloudflare, Security, Events would show one). The fix covers all
+three.
+
+**Fix (test first).** New in `tests/analytics.spec.mjs`: with `analytics.js` aborted as a blocker would, each page
+must load with no banner and no console.error (failed on main on all three pages: "fatal boot banner is showing"), and
+a real app file that fails (`js/mls/main.js`) must still raise the banner naming it. Then:
+- The loader's tag on all three pages carries `data-optional`; `js/boot.js` logs a console.warn for a same-origin
+  script with that attribute instead of showing the banner. Only that tag has it.
+- `CACHE_NAME` v2.8.148 → v2.8.149. A line under both apps' Unreleased in `CHANGELOG.md`.
+
+If the counter is blocked on a device, that device simply isn't counted (and its Guide link falls back to opening
+`?nocount=1`, which does nothing without the loader; harmless, since nothing is counted there anyway).
+
+Noted, not changed: `sw.js`'s stale-while-revalidate answers `respondWith(undefined)` when the network fails and
+nothing is cached (`.catch(() => cached)` with no cached copy), which turns one dropped request into a hard failure for
+that file. Every precached file is safe; only a file added since the last precache is exposed, briefly. A small
+separate change if it's ever worth it.
