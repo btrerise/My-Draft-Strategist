@@ -8454,3 +8454,11 @@ for the new file during install isn't kept and the real file is cached once it's
   `tests/not-found.spec.mjs`: an unknown address (top level and deep under `/lineup/`) shows the page styled, with
   its logo and the three links, and a link works; a missing `.js` gets a 404. CHANGELOG line under both apps; README
   (Hosting).
+
+#### Owner's decisions on the follow-up (same day)
+
+- Browser Cache TTL set to **Respect Existing Headers** in Cloudflare (done by the owner).
+- The error had stopped on main by then (the phone's 4-hour copy had expired). Asked whether the rest is still needed
+  with `404.html` in place, the owner chose to **keep everything**: the `data-optional` banner fix (a blocker or a
+  dropped request on the optional counter must never show the fatal banner), the service worker's HTML-for-asset
+  guard (v2.9.0, mostly redundant once `404.html` exists, kept as a safety net) and `404.html`.
