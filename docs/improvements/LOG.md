@@ -8223,3 +8223,15 @@ Noted for the owner, not changed:
 - The owner on Both sides being the biggest group in a finished week: "I'm not really sure we can get around" it; left as
   it is.
 - `CACHE_NAME` v2.8.146 → v2.8.147. root-for and tooltips-onscreen (26) and 482 unit tests pass.
+
+### S27: screenshot baselines from CI (PR #216)
+
+CI's first run (41547473581) failed only in `visual.spec.mjs` (679 passed, 41 skipped), on exactly the four PNGs listed
+above. Each `-expected.png` was byte-identical to the committed baseline.
+- **The Scoreboard** (desktop 900 → 1016px, phone 918 → 1172px) shows the two halves, Player Scoreboard's "Nobody starts
+  in 2 or more of your matchups this week." with the 16 starters (points as dashes before kickoff), and the credit line.
+- **The Guide** is identical to the old baseline down to the changed Scoreboard text (desktop 839px, phone 1778px) and
+  again in the rows below; what's between moved for the new Guide text and the two legend lines.
+
+The run's `-actual.png` files are the new baselines: `desktop/` and `phone/` `mls-league-scoreboard.png` and
+`mls-league-guide.png`.
