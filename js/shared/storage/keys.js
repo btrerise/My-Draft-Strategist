@@ -107,6 +107,9 @@ export const KEYS = {
         // transient hand-off signal, not a setting, so neither app backs it up or restores it.
         handoffRoster: 'shared_handoff_roster',
         sleeperLeagueId: 'shared_sleeper_league_id', // legacy MDS -> MLS league-ID hand-off; MLS only removes it now
+        // '1' when this browser opted out of the site's visitor counts (?nocount=1, js/shared/analytics.js,
+        // improvements A1). Site-wide, so in neither app's backup and kept by both apps' resets.
+        analyticsOptOut: 'shared_analytics_optout',
     },
     // Written by the T-Score page, in neither app's backup. cache is read back by MDS for its
     // T-Score column.

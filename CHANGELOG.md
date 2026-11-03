@@ -15,6 +15,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Visitor counts, without cookies.** The site now counts how many people use each page with Umami (umami.is), so
+  the owner can tell real visitors from bots. No cookies and nothing that identifies you: the page opened, the site
+  that linked to it, the browser, device type, screen size, language and rough location. Your drafts, rankings and
+  Sleeper username are never sent. The Guide's "Backup, Restore & Reset" step says so. Nothing else changes.
 - **Long tooltips fit the screen.** A long tooltip opens wider (up to the screen's width) so you can read all of it; if
   it still doesn't fit, it scrolls inside.
 - **The upload preview's buttons stay in reach.** When the rankings preview is taller than the screen, its middle
@@ -113,6 +117,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Visitor counts, without cookies.** The site now counts how many people use each page with Umami (umami.is), so
+  the owner can tell real visitors from bots. No cookies and nothing that identifies you: the page opened, the site
+  that linked to it, the browser, device type, screen size, language and rough location. Your leagues, rankings and
+  Sleeper username are never sent. The Guide's "Backup, Restore & Reset" step says so. Nothing else changes.
 - **Who to root for, across your leagues.** The Scoreboard is now two halves you can fold (remembered): League
   Scoreboard, the matchups as before, and Player Scoreboard, which opens with Who to root for and then MVPs & LVPs. Who
   to root for lists every starter in your Sleeper matchups this week. On top are the players in 2 or more of them: Root

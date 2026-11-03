@@ -195,7 +195,9 @@ shot and S10 took four runs for 14.)
     worker's own behavior changes. A change only to tests, docs or tooling needs no bump.
   - `sw.js` stays at the site root, and the public URLs `/`, `/lineup/` and `/t-score/` don't change.
 - **Script order:** every page loads `js/boot.js` first (a plain script), then `js/shared/globals.js`, then its
-  entry module. In MLS, `js/mls/main.js`'s import list sets the module load order (LOG 3F); code that runs at a
+  entry module. Last comes `js/shared/analytics.js` (improvements A1), which adds Umami's visitor
+  counter on mydraftstrategist.com only; the tests run on localhost, so it adds nothing there (`analytics.spec.mjs`
+  serves the pages under the live hostname to test it). In MLS, `js/mls/main.js`'s import list sets the module load order (LOG 3F); code that runs at a
   module's top level must not use names from modules that evaluate later.
 - **Where CSS goes** (4D): one app only → `css/mds.css` or `css/mls.css` (T-Score: `css/tscore.css`); both apps,
   or a feature meant to be shared → `css/base.css`. An app-feature rule that has to beat earlier shared rules goes at
