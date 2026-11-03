@@ -15,9 +15,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **Fixed: a false "Something went wrong loading the app" banner.** If the new visitor counter couldn't load (a
-  tracker blocker, a dropped connection), the app showed its full-screen error banner even though everything worked.
-  The counter is optional, so now nothing is shown.
+- **Fixed: "Something went wrong loading the app" after the last update.** During a deploy, a phone could be handed
+  the home page in place of a new file, keep it for hours, and show the full-screen error banner on every load until
+  its cache was cleared. The app no longer keeps a page where a script or stylesheet belongs, and the optional visitor
+  counter can never raise that banner.
 - **Visitor counts, without cookies.** The site now counts how many people use each page with Umami (umami.is), so
   the owner can tell real visitors from bots. No cookies and nothing that identifies you: the page opened, the site
   that linked to it, the browser, device type, screen size, language and rough location. Your drafts, rankings and
@@ -121,9 +122,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **Fixed: a false "Something went wrong loading the app" banner.** If the new visitor counter couldn't load (a
-  tracker blocker, a dropped connection), the app showed its full-screen error banner even though everything worked.
-  The counter is optional, so now nothing is shown.
+- **Fixed: "Something went wrong loading the app" after the last update.** During a deploy, a phone could be handed
+  the home page in place of a new file, keep it for hours, and show the full-screen error banner on every load until
+  its cache was cleared. The app no longer keeps a page where a script or stylesheet belongs, and the optional visitor
+  counter can never raise that banner.
 - **Visitor counts, without cookies.** The site now counts how many people use each page with Umami (umami.is), so
   the owner can tell real visitors from bots. No cookies and nothing that identifies you: the page opened, the site
   that linked to it, the browser, device type, screen size, language and rough location. Your leagues, rankings and

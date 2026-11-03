@@ -8401,3 +8401,41 @@ Noted, not changed: `sw.js`'s stale-while-revalidate answers `respondWith(undefi
 nothing is cached (`.catch(() => cached)` with no cached copy), which turns one dropped request into a hard failure for
 that file. Every precached file is safe; only a file added since the last precache is exposed, briefly. A small
 separate change if it's ever worth it.
+
+#### The cause, found with the owner (same day)
+
+The owner: Chrome on Android, no blocker, and Reload didn't clear it; every page showed it, in Chrome and in the
+installed app. Opening `https://mydraftstrategist.com/js/shared/analytics.js` directly showed **Draft Strategist's home
+page** (unstyled) in Chrome and the app, but the real code in an Incognito tab; after force-stopping the app and
+clearing its cache, the app showed the code too. So the phone was being handed `index.html` for that one URL, and
+keeping it. Two Cloudflare defaults, both in Cloudflare's docs (read 2026-11-03):
+- **Pages' SPA mode.** "If your project does not include a top-level `404.html` file, Pages assumes that you are
+  deploying a single-page application" and "serves the root (`/`) for any incoming path that does not correspond to a
+  static asset", with status 200. This repo has no `404.html`.
+- **Browser Cache TTL, 4 hours by default** on every plan: Cloudflare overrides the origin's `Cache-Control` when it's
+  lower (Pages sends `max-age=0, must-revalidate`) unless the zone is set to **Respect Existing Headers**.
+
+Most likely sequence: during the deploy the phone asked for the new file from an edge still on the previous
+deployment, got `index.html` (200), Chrome kept it for 4 hours, and the service worker's stale-while-revalidate stored
+it as the script (status 200 was its only check) and served it on every load; its background refresh went through the
+same browser cache and stored the page again. Incognito has neither cache. It wasn't the code (all files pass
+`node --check`; main's copy is byte-identical to the tested one) and it wasn't Bot Fight Mode.
+
+**Fix in `sw.js` (test first; v2.9.0, the middle number because the service worker's behavior changes):**
+`isHtmlForAsset(request, response)`: a `text/html` response for a path the service worker treats as a static asset
+(`.js`, `.css`, images, fonts). `cachePut` never stores one; stale-while-revalidate keeps serving the cached copy
+instead of it; after the install's `addAll`, any such entry is deleted so the first load fetches the real file. A
+network failure with nothing cached now answers `Response.error()` instead of `respondWith(undefined)` (the same
+failure, stated plainly). `tests/sw-html-for-asset.spec.mjs` (service workers allowed; three tests, both widths): a
+script and a stylesheet answered with the home page after install stay cached as the real files, and a page served
+for the new file during install isn't kept and the real file is cached once it's there. All three failed on the old
+`sw.js` (the cache held `<!DOCTYPE html>` for `analytics.js` and `text/html` for `tscore.css`).
+
+**For the owner (not done; dashboard settings or your call):**
+- In Cloudflare, Caching, Configuration: set **Browser Cache TTL** to **Respect Existing Headers**. Pages' own headers
+  then apply (browsers re-check each file, cheaply, with its ETag), so a deploy is picked up at once and a wrong answer
+  can't stick for 4 hours. Recommended.
+- Optionally a `404.html` at the root, so a missing file gets a real 404 instead of the home page. That also changes
+  what a mistyped address shows (a "not found" page instead of Draft Strategist), so it's left for you to decide.
+- Anyone else who loaded the site in the minutes of the deploy may see the banner until their 4 hours run out, or
+  until this fix deploys (the new service worker serves the cached real file and drops the page).
