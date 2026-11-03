@@ -325,3 +325,10 @@
     color: var(--primary-green);
     border-color: var(--primary-green);
 }
+
+/* The Research's last line: what the site's visitor counts record (improvements A1). */
+.article-content p.tscore-privacy {
+    margin-top: 2rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}

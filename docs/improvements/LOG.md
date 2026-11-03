@@ -8235,3 +8235,138 @@ above. Each `-expected.png` was byte-identical to the committed baseline.
 
 The run's `-actual.png` files are the new baselines: `desktop/` and `phone/` `mls-league-scoreboard.png` and
 `mls-league-guide.png`.
+
+## A1 — Real visitor numbers: privacy-friendly analytics
+
+**User-visible effect.** Nothing changes in how the apps work. Each page now counts visits with **Umami Cloud**
+(free plan, no cookies), on mydraftstrategist.com only. One new line in each app's Guide, under "Backup, Restore &
+Reset" ("Visitor Counts: …"), and a small muted line at the end of T-Score's **The Research** tab, says what's counted
+(the page, the site that linked to it, browser, device type, screen size, language and rough location), that nothing
+that identifies you is kept, and that leagues, drafts, rankings and the Sleeper username are never sent. Opening any
+page with `?nocount=1` stops counting that browser, with a toast saying so; `?nocount=0` counts it again.
+
+**The owner's decisions (2026-11-03).** After the comparison (now in `docs/improvements/analytics.md`, with sources):
+**Umami Cloud, free Hobby plan** ("I'd prefer to not pay anything"); Plausible was out on price, Cloudflare Web
+Analytics and GoatCounter count visits rather than people, and GA4 needs a cookie banner. 1–4 "as suggested":
+(1) the loader committed in the repo, not Cloudflare's one-click injection; (2) count mydraftstrategist.com only, never
+`*.pages.dev` or localhost; (3) `?nocount=1` / `?nocount=0` opt-out; (4) no custom events now, left for K1. Website ID
+`9cf14075-37fe-4528-bd9c-a596c26c0671` (public by design). The first look at prices came from search snippets because
+the session's network blocked the vendors' sites; the owner allowed them and every number was then re-read on the
+vendor's own page (GoatCounter's from its page source on GitHub until its site was allowed).
+
+**What changed, where.**
+- `js/shared/analytics.js` (new, in `PRECACHE_ASSETS`): the loader. The last `<script type="module">` on all three
+  pages, after the app's module. `shouldCount(hostname, optedOut)` decides (exported, unit-tested); then it adds
+  `<script defer src="https://cloud.umami.is/script.js">` with `data-website-id`, `data-domains`
+  (`mydraftstrategist.com,www.mydraftstrategist.com`), `data-exclude-hash` (tab switches are `pushState` to `#tab`; without
+  it every tab switch would count as a page view against the plan's 100K events a month) and `data-exclude-search`
+  (keeps `?week=6` and the like out of the recorded address). Settings are in the loader, no inline snippet.
+- `js/shared/storage/keys.js`: `KEYS.shared.analyticsOptOut` = `shared_analytics_optout` (`'1'` = opted out). In the
+  `shared` group, like the hand-off keys: site-wide, so in **neither app's Backup** (Restore neither adds nor removes
+  it) and **neither app's reset** (Lineup's Factory Reset, Draft's Reset Everything) clears it. Clearing the browser's
+  site data does.
+- `index.html`, `lineup/index.html`, `t-score/index.html`: the script tag; the Guide lines and T-Score's line
+  (`.tscore-privacy` in `css/tscore.css`). `README.md`: a "Privacy and visitor counts" section. `docs/TESTING.md`:
+  the script-order line mentions the loader. `CHANGELOG.md`: a line under both apps' Unreleased (T-Score has no
+  section). `CACHE_NAME` v2.8.147 → v2.8.148.
+
+**Checked.**
+- `sw.js`'s fetch handler returns early for cross-origin requests and for anything that isn't a GET, so neither
+  `cloud.umami.is/script.js` nor the beacon (a POST to `gateway.umami.is/api/send`) goes near the cache. Offline or
+  blocked, the script just fails to load; the app logs nothing (the browser's own "Failed to load resource" note,
+  as for Ko-fi's image). The site sends no Content-Security-Policy, so nothing else needed allowing.
+- With the real Umami script (downloaded, served to the test page, its beacon captured and not sent): one POST per
+  page load, with the website ID, screen, language, title, hostname, URL without query or hash, and referrer. Two tab
+  switches on `/lineup/?week=6` sent nothing more.
+- `tests/analytics.spec.mjs` (16 tests, both widths) serves the pages under `https://mydraftstrategist.com` and a
+  `*.pages.dev` host from the local server: the script is added exactly once, deferred, with the right attributes, on
+  each page for the live host, never on localhost or the preview host; `?nocount=1` stops it on every page (toast, key
+  set, parameter removed, other parameters and the hash kept) and `?nocount=0` brings it back; the script's request is
+  aborted as for every third party and nothing logs a console.error. `tests/unit/analytics.test.mjs`: the host rule
+  (including look-alikes such as `mydraftstrategist.com.evil.example`) and the key's ownership.
+- First paint (`npm run perf -- --server cf --runs 3`, this branch then `--ref origin/main`, medians; on localhost the
+  loader adds nothing but its own ~1 KB module, which is the part that runs on every visit): cold visits FCP / LCP
+  `/` 1.99 / 2.58 s vs main 1.97 / 2.54 s, `/lineup/` 1.97 / 1.97 s vs 1.91 / 1.91 s, `/t-score/` 1.69 / 1.69 s vs
+  1.70 / 1.70 s; repeat visits within 0.08 s either way. No change beyond run-to-run noise. Umami's own 3.9 KB script
+  loads from another host after the page, so it can't block the first paint either.
+- Screenshots: rendered main and this branch in the same container (`RENDER_ENV=any`, Chromium 153; CI's 1194 isn't
+  here) and compared with `npm run pxdiff`: exactly six PNGs change, all taller for the new line and nothing else.
+  Re-take from CI: `desktop/` and `phone/` `mds-empty-guide.png`, `mls-league-guide.png` (the Guide's new "Visitor
+  Counts" bullet in Backup, Restore & Reset) and `tscore-researchTab.png` (the muted line at the end of The Research).
+  Not re-taken here, since this container can't render CI's pixels: open the PR, let CI fail on those six, and commit
+  its `-actual.png` files after checking each `-expected.png` matches the committed baseline (docs/TESTING.md, "When
+  your machine can't reproduce the baselines").
+
+- `npm run check` in the session: check-precache OK (154 files), 485 unit tests pass, 687 Playwright tests pass; the 4
+  failures are `visual.spec.mjs` refusing this container's Chromium 153 (the environment check), as on main.
+
+**Bot Fight Mode (on since 2026-11-02): what it could affect, and a check for the owner.** Cloudflare's page
+(read 2026-11-03): it challenges "traffic matching patterns of known bots", "may challenge API or mobile app traffic",
+**cannot be bypassed with WAF custom rules or Page Rules** (no exceptions on the Free plan; exceptions need Super Bot
+Fight Mode, a paid plan), and it turns on "JavaScript Detections", which injects a small script under
+`/cdn-cgi/challenge-platform/` into HTML pages (harmless here: the site has no Content-Security-Policy). Requests in
+question, all made by a real browser, so normally not challenged, but a challenge on a `fetch()` can't be answered and
+shows as a failed request:
+- **FFC proxy** (`/api/ffc/<format>`, `functions/api/ffc/`): Draft Strategist's Quick-Start and Fetch Market Value
+  call it with `fetch()`. A challenge here would read as "Fantasy Football Calculator unavailable". Its own call out to
+  FFC is server-to-server and isn't affected.
+- **The service worker**: its install (`cache.addAll` of ~150 files) and its update check (`/sw.js`) are browser
+  requests. A challenged file fails the whole precache silently, so offline would stop working for new installs.
+- **Installed-app launches**: the first request is a normal page navigation; a challenge there would show
+  Cloudflare's interstitial inside the app window.
+- Not affected: Sleeper, FantasyCalc, Google Sheets, Ko-fi and Umami are other domains (Cloudflare's setting covers
+  only mydraftstrategist.com).
+
+**Two-minute check, after this deploys, on your phone and your computer:**
+1. Opt out on each device: open `https://mydraftstrategist.com/?nocount=1` in the browser you installed from, or tap
+   **Don't count this device** in a Guide. On an iPhone or iPad, do it **inside the installed app** too (Guide, the link):
+   Home Screen apps don't share Safari's storage.
+2. Open `/`, `/lineup/` and `/t-score/`. Each should load normally, with no "Checking your browser" page.
+3. Lineup Strategist: Sync All Leagues. Draft Strategist: Dashboard, Quick-Start or Fetch Market Value with a Fantasy
+   Football Calculator format: players or ADP should load.
+4. Offline: once everything has loaded, turn on airplane mode (or DevTools, Network, Offline) and reload each page.
+   Each should still open. On the installed app, close it and open it again offline.
+5. In Umami (cloud.umami.is), the site should show visits from other people within a day, and none from you after
+   step 1. (To check it's live before opting out, open a private window first: it shows up under Realtime.)
+6. In Cloudflare, Security, Analytics, Events: anything labelled "Bot Fight Mode" on `/api/ffc/`, `/sw.js` or `/js/`
+   paths means real users are being challenged.
+If any step fails: turn Bot Fight Mode off (Security, Settings, filter "Bot traffic", Bot fight mode, off). The Free
+plan has no way to exempt a path. The rest of the site's protection (DDoS, the WAF's free managed rules) stays on.
+
+**Left over.**
+- The six screenshot baselines above, from CI, once a PR is open.
+- Custom events (Ko-fi tap, Share, Export…) are for K1 to choose; each is a `data-umami-event` attribute, no code.
+- `docs/TESTING.md`'s open follow-ups: none touched.
+
+### A1, round 2: a "Don't count this device" link (owner's request)
+
+The owner asked whether opting out in the browser covers the installed app. On a computer and on Android, yes: an
+installed app shares storage with the browser (and profile) it was installed from. On an iPhone or iPad, no: a Home
+Screen app keeps its own storage, apart from Safari, and has no address bar for `?nocount=1`. The owner: "Yes, add the
+link, with 'count this device again' too. Good to allow people to opt out if they want."
+
+- Each Visitor Counts line (both Guides, T-Score's The Research) ends with a link, `<a data-nocount-link
+  href="?nocount=1">`. `js/shared/analytics.js` sets its text from the saved choice (**Don't count this device** or
+  **Count this device again**) and toggles it on tap, in place, with a toast and no reload, through a document click
+  listener (the module is shared, so not a page's `delegate()`; no inline handler). Opting back in loads Umami
+  straight away on the live site. The `href` is the fallback if the module never runs. Styled in `css/base.css` like
+  the Guide's badge-legend link (the site's green, semi-bold).
+- `tests/analytics.spec.mjs`: the link on each page toggles both ways without navigating, survives a reload in its
+  new state, loads nothing while opted out and the script once after opting back in; it also works off the live site
+  (only saves the choice). 24 tests, both widths, pass; 485 unit tests pass.
+- Screenshots: the same six PNGs as round 1 change (a little taller again); compared with main in the container,
+  nothing else moved. Still to come from CI.
+
+### A1: screenshot baselines from CI (PR #217)
+
+CI's run 41583853340 (head bb5129d) failed only in `visual.spec.mjs` (699 passed, 41 skipped, 6 failed), on exactly
+the six PNGs listed above. Each `-expected.png` was byte-identical to the committed baseline. Checked row by row:
+- **T-Score's The Research** (desktop +121px, phone +168px): the old image plus the new Visitor Counts line at the
+  end; every other row identical.
+- **The two Guides** (Draft desktop +81px, phone +219px; Lineup desktop +93px, phone +232px): identical above the new
+  line in Backup, Restore & Reset; below it the same content moved down, with anti-aliasing differences on round
+  shapes (the step-number circles, the badges' glow) from the new position. Looked at side by side: no visible change
+  besides the new line and its link.
+
+The run's `-actual.png` files are the new baselines: `desktop/` and `phone/` `mds-empty-guide.png`,
+`mls-league-guide.png` and `tscore-researchTab.png`.

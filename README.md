@@ -6,7 +6,7 @@ The official repository for [My Draft Strategist](https://mydraftstrategist.com)
 
 ## Project Structure
 
-No build step: every file below is served as it is in the repo. Each page loads `js/boot.js` first, then `js/shared/globals.js`, then its own entry module.
+No build step: every file below is served as it is in the repo. Each page loads `js/boot.js` first, then `js/shared/globals.js`, then its own entry module. Last, `js/shared/analytics.js` adds the visitor counter (below).
 
 ```text
 index.html               Draft Strategist (the main page of the site)
@@ -75,6 +75,9 @@ CHANGELOG.md             What changed for users in each app version
 
 ## Hosting
 Hosted and deployed statically via Cloudflare Pages. There is no build step: files are served as they are in the repo.
+
+## Privacy and visitor counts
+The site counts visits with [Umami Cloud](https://umami.is) (free plan), without cookies, on mydraftstrategist.com only (never on `*.pages.dev` previews or localhost). Per page view it records the page, its title, the referring site, screen size and language; Umami's server adds browser, OS, device type and rough location, and counts unique visitors with a code made from the IP address and browser and a salt that changes monthly, never storing the address. Nothing that identifies you is kept, and no draft, league, ranking or Sleeper username is sent. Anyone can stop counting their device with the **Don't count this device** link at the end of the Visitor Counts line (each app's Guide, T-Score's The Research; it then reads "Count this device again"), or by opening any page with `?nocount=1` (`?nocount=0` undoes it). Details, the comparison with other tools and how to read the numbers: [`docs/improvements/analytics.md`](docs/improvements/analytics.md).
 
 ## Development Checks
 Run before pushing changes to scripts, styles or `sw.js`:
