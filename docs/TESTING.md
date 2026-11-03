@@ -48,7 +48,8 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
 
 ## How the tests work
 
-- **Server:** `tests/serve.mjs` serves the repo root with real 404s. Playwright starts it on port 4173
+- **Server:** `tests/serve.mjs` serves the repo root with real 404s (the body is `404.html`, as Cloudflare Pages serves
+  it; `not-found.spec.mjs`). Playwright starts it on port 4173
   (`reuseExistingServer`, so a server already on that port is reused).
 - **Stubs** (`tests/helpers.mjs`): every request that leaves localhost is intercepted.
   - PapaParse comes from `tests/node_modules`, pinned to the 5.4.1 the pages load.

@@ -19,6 +19,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   the home page in place of a new file, keep it for hours, and show the full-screen error banner on every load until
   its cache was cleared. The app no longer keeps a page where a script or stylesheet belongs, and the optional visitor
   counter can never raise that banner.
+- **A "Page not found" page.** A mistyped or old address now says so, with links to Draft Strategist, Lineup
+  Strategist and T-Score, instead of quietly showing Draft Strategist.
 - **Visitor counts, without cookies.** The site now counts how many people use each page with Umami (umami.is), so
   the owner can tell real visitors from bots. No cookies and nothing that identifies you: the page opened, the site
   that linked to it, the browser, device type, screen size, language and rough location. Your drafts, rankings and
@@ -126,6 +128,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   the home page in place of a new file, keep it for hours, and show the full-screen error banner on every load until
   its cache was cleared. The app no longer keeps a page where a script or stylesheet belongs, and the optional visitor
   counter can never raise that banner.
+- **A "Page not found" page.** A mistyped or old address now says so, with links to Draft Strategist, Lineup
+  Strategist and T-Score, instead of quietly showing Draft Strategist.
 - **Visitor counts, without cookies.** The site now counts how many people use each page with Umami (umami.is), so
   the owner can tell real visitors from bots. No cookies and nothing that identifies you: the page opened, the site
   that linked to it, the browser, device type, screen size, language and rough location. Your leagues, rankings and

@@ -8435,7 +8435,22 @@ for the new file during install isn't kept and the real file is cached once it's
 - In Cloudflare, Caching, Configuration: set **Browser Cache TTL** to **Respect Existing Headers**. Pages' own headers
   then apply (browsers re-check each file, cheaply, with its ETag), so a deploy is picked up at once and a wrong answer
   can't stick for 4 hours. Recommended.
-- Optionally a `404.html` at the root, so a missing file gets a real 404 instead of the home page. That also changes
-  what a mistyped address shows (a "not found" page instead of Draft Strategist), so it's left for you to decide.
+- ~~Optionally a `404.html`~~: the owner said yes; done, below.
 - Anyone else who loaded the site in the minutes of the deploy may see the banner until their 4 hours run out, or
   until this fix deploys (the new service worker serves the cached real file and drops the page).
+
+#### `404.html` (owner: "Proceed with adding a 404.html page")
+
+- `404.html` at the root: "Page not found", a line saying saved data is safe, and links to `/`, `/lineup/` and
+  `/t-score/` (Feather icons, the site's buttons, `css/base.css`). Absolute URLs throughout, since Pages serves it at
+  whatever address was asked for; no scripts; `noindex`. Not precached: offline, an unknown address still gets the
+  app shell from the service worker (`htmlFallback`), as before.
+- With it, Pages stops treating the site as a single-page app: an address it doesn't have gets this page with status
+  404, and a missing script gets a 404 rather than the home page with 200. Checked first that nothing depended on the
+  old behavior: no page has ever been deleted or renamed (git history), the apps use `#hash` for tabs, and
+  `tests/serve.mjs` already gave real 404s, so every spec has run that way all along. `/lineup` and `/t-score` without
+  the slash are redirected to the folder by Pages, as before.
+- `tests/serve.mjs` now answers a 404 with `404.html`'s content (still status 404), like Pages.
+  `tests/not-found.spec.mjs`: an unknown address (top level and deep under `/lineup/`) shows the page styled, with
+  its logo and the three links, and a link works; a missing `.js` gets a 404. CHANGELOG line under both apps; README
+  (Hosting).

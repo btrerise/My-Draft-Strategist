@@ -74,7 +74,7 @@ CHANGELOG.md             What changed for users in each app version
 ```
 
 ## Hosting
-Hosted and deployed statically via Cloudflare Pages. There is no build step: files are served as they are in the repo.
+Hosted and deployed statically via Cloudflare Pages. There is no build step: files are served as they are in the repo. `404.html` at the root is what Pages serves, with status 404, for any address the site doesn't have; without it Pages would treat the site as a single-page app and answer every unknown path (a missing script included) with the home page.
 
 ## Privacy and visitor counts
 The site counts visits with [Umami Cloud](https://umami.is) (free plan), without cookies, on mydraftstrategist.com only (never on `*.pages.dev` previews or localhost). Per page view it records the page, its title, the referring site, screen size and language; Umami's server adds browser, OS, device type and rough location, and counts unique visitors with a code made from the IP address and browser and a salt that changes monthly, never storing the address. Nothing that identifies you is kept, and no draft, league, ranking or Sleeper username is sent. Anyone can stop counting their device with the **Don't count this device** link at the end of the Visitor Counts line (each app's Guide, T-Score's The Research; it then reads "Count this device again"), or by opening any page with `?nocount=1` (`?nocount=0` undoes it). Details, the comparison with other tools and how to read the numbers: [`docs/improvements/analytics.md`](docs/improvements/analytics.md).
