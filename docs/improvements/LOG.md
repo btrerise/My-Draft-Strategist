@@ -8544,3 +8544,41 @@ to be re-taken from CI's renders once a pull request runs ("When your machine ca
 
 **Checks run.** `npm run check`: check-precache OK, 492 unit tests, 723 Playwright tests pass; `visual.spec.mjs`
 fails only on the container's environment check (4 tests, 0 ms each), as on main.
+
+### S31, round 2: my review as a user, and the owner's changes (owner: "Do all of them, and (a) for Top Available")
+
+**The review** (the owner's real weekly file in the fixture league, desktop and phone): helpful, most of all for
+waiver tiebreakers; clean on desktop. Clunky: (1) on phones "MIN 32" without "vs" / "@" read like a team and a rank,
+beside Pos / Flex / move-chip numbers; (2) phone rows grew a line; (3) Top Available stopped being compact; (4) the
+green-to-red badge beside the position colors (green RB chip, red QB chip) blurred meanings; (5) the tap text made you
+do the math; (6) "vs" was a guess for the file's bare "MIN".
+
+**The owner's answers:** all six, (a) for Top Available (Auto-Find's cards only), and for (2): **merge the badge with
+the "vs LV" / "@ BAL" the kickoff time already shows**, so the opponent is named once.
+
+**User-visible effect.**
+- The badge now sits on the badge line after the kickoff time, **in place of** the plain "@ JAX" from ESPN's
+  scoreboard: "Sun 1:00 PM  @ MIN 32". Without a matchup rank (K, DEF, a blank cell) it stays the plain text. The
+  meta line (position, team, rank) is as before S31.
+- Who and where come from the scoreboard when it has the game; the file's rank shows only when the file names the
+  same opponent (or none). Before the scoreboard loads, the file's opponent shows on its own, with "vs" / "@" only when
+  the file says so ("MIN 32", no guess).
+- Phones keep "vs" / "@" (the hiding rule is gone).
+- Tap text in words first: "This week at MIN: one of the toughest matchups for QBs (32 of 32, where 1 = easiest).
+  Already reflected in your Weekly ranks." Bands: 1–8 easiest, 9–24 middling, 25–32 toughest; a flip adds "Flipped,
+  since your SoS setting says your files rank 1 = hardest."
+- Waiver Wire: on Auto-Find's cards (merged the same way) when Rank By is Weekly; Top Available is back to main's.
+- Legend line reworded; samples "vs KC 3", "@ KC 28", "KC 16". Preview note: "They show after the kickoff time on the
+  Lineup tab, and on Auto-Find's cards when Rank By is Weekly…".
+
+**Where.** `js/mls/lineup/gameInfo.js` (`getGameInfoHTML(team, player)`, `getOpponentHTML`), `js/mls/opponent.js`
+(`opponentFor` prefers the scoreboard, `weeklyOpponentInfo`, `rankedOpponentBadgeHTML`, `matchupWords`, the tip),
+`js/mls/badges.js` (one ranked variant, no hidden prefix), `js/mls/render/lineup.js` (passes the player),
+`js/mls/scout/waivers.js` (`waiverOpponentPlayer`), `js/mls/scout/topAvailable.js` (reverted), `css/mls.css`,
+`js/mls/legend.js`, `js/mls/rankings/uploadPreview.js`, CHANGELOG.
+
+**Tests.** `tests/mls-opponent-strength.spec.mjs`: the badge in `.mls-game-info` and not in the meta line, the same
+text on phones, no guess for a bare team, the worded tips (easy, middling, flipped tough); with a stubbed scoreboard the
+plain "vs NYJ" before a Weekly file, the badge replacing it (kickoff kept, plain text gone), the scoreboard's "@ JAX"
+over a file that says "@ SEA" (no rank then), and an agreeing file; Top Available without it, Auto-Find with it on
+Weekly and not on ROS. Screenshots: still only the two Guide PNGs (the legend line).

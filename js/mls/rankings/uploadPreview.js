@@ -153,7 +153,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
             const what = withRank
                 ? `this week's opponents and matchup ranks (${withRank} player${withRank === 1 ? '' : 's'}), read as ${State.sosReversed ? `1 = hardest and flipped to ${SOS_SCALE_TEXT}, as your SoS setting on the Roster tab says` : SOS_SCALE_TEXT}`
                 : `this week's opponents (${withOpp} player${withOpp === 1 ? '' : 's'}) but no matchup ranks`;
-            oppNoteEl.textContent = `This file also has ${what}. They show on the Lineup tab, and in the Waiver Wire Assistant when Rank By is Weekly, until next week's rankings. Your season SoS isn't changed.`;
+            oppNoteEl.textContent = `This file also has ${what}. They show after the kickoff time on the Lineup tab, and on Auto-Find's cards when Rank By is Weekly, until next week's rankings. Your season SoS isn't changed.`;
         }
 
         // Unmatched-name check runs in the background (it needs Sleeper's player map) and fills

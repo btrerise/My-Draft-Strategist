@@ -9,7 +9,6 @@ import { isUnavailableThisWeek, rankingIndex, renderHTMLInto, getActiveLeague } 
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
-import { getOpponentBadgeHTML } from '../opponent.js';
 import { pickForSlot } from '../lineup/flexChoice.js';
 import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, kickoffFreeze, lineupBuiltBeforeKickoff, lineupProjectionsLoaded, noteLineupOptimized, refreshLineupStats } from '../lineup/gameInfo.js';
 import { activeSeasonRankings, getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
@@ -651,7 +650,7 @@ import { refreshThisWeek } from '../main.js';
                 // IR-slot badge before the injury badge, as on the Roster tab (improvements S9).
                 let irSlotBadge = getIrSlotBadgeHTML(p, { starting: true });
                 let injBadge = getInjuryBadgeHTML(p);
-                let kickoffBadge = getGameInfoHTML(p.team);
+                let kickoffBadge = getGameInfoHTML(p.team, p);
 
                 let sleeperWarn = "";
                 if (validSleeperStarters.length > 0 && !validSleeperStarters.includes(p.id)) {
@@ -688,7 +687,7 @@ import { refreshThisWeek } from '../main.js';
                             <div class="mls-player-row-meta">
                                 ${plainPos}
                                 <span class="badge">${escapeHtml(p.team)}</span>${rankMoveChip(rankedByRos ? 'season' : 'weekly', p.cleanName)}
-                                <span class="badge mls-rank-badge">${rankBadge}</span>${getOpponentBadgeHTML(p)}
+                                <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>
                         </div>
                     </div>
@@ -737,7 +736,7 @@ import { refreshThisWeek } from '../main.js';
                 // IR-slot badge before the injury badge, as on the Roster tab (improvements S9).
                 let irSlotBadge = getIrSlotBadgeHTML(p);
                 let injBadge = getInjuryBadgeHTML(p);
-                let kickoffBadge = getGameInfoHTML(p.team);
+                let kickoffBadge = getGameInfoHTML(p.team, p);
                 // Kept even though the divider above already labels the group: the divider
                 // scrolls off, and these rows get screenshotted and pasted into league chats.
                 let taxiBadge = p.isTaxi ? `<span class="badge taxi-badge">TAXI</span>` : "";
@@ -777,7 +776,7 @@ import { refreshThisWeek } from '../main.js';
                             <div class="mls-player-row-meta">
                                 ${plainPos}
                                 <span class="badge">${escapeHtml(p.team)}</span>${rankMoveChip(rankedByRos ? 'season' : 'weekly', p.cleanName)}
-                                <span class="badge mls-rank-badge">${rankBadge}</span>${getOpponentBadgeHTML(p)}
+                                <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>
                         </div>
                     </div>

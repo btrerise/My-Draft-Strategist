@@ -35,19 +35,16 @@ export function sosBadgeMarkup(rank, tip, { compact = false, sample = false } = 
     return `<button type="button" class="${cls}" style="${style}" data-action="explainSoS" data-tip="${tip}" title="${tip}" aria-label="${tip}">${inner}</button>`;
 }
 
-// --- THIS WEEK'S OPPONENT (opponent.js, getOpponentBadgeHTML; improvements S31) ---
-// "vs KC 28" / "@ KC 28": this week's opponent from your Weekly rankings and how tough he is for the
-// position, colored on the SoS scale (1 = easiest, green; 32 = hardest, red). With no rank it's "vs KC" in
-// the plain badge colors. On phones and touch screens "vs" / "@" is dropped ("KC 28"), as the SoS badge drops
-// "SoS: "; the tap says it all. opp: a team code; home: false for an away game ("@"), else "vs".
-// rank: 1-32 or null. tip: already escaped.
-export function opponentBadgeMarkup({ opp, home = null, rank = null }, tip, { sample = false } = {}) {
-    const rated = Number.isInteger(rank) && rank >= 1 && rank <= 32;
-    const cls = `badge opp-badge${rated ? '' : ' opp-badge-unrated'}`;
-    const style = rated ? ` style="${sosColorStyle(rank)}"` : '';
-    const inner = `<span class="opp-badge-at">${home === false ? '@' : 'vs'} </span>${escapeHtml(opp)}${rated ? ` ${rank}` : ''}`;
-    if (sample) return `<span class="${cls}"${style}>${inner}</span>`;
-    return `<button type="button" class="${cls}"${style} data-action="explainSoS" data-tip="${tip}" title="${tip}" aria-label="${tip}">${inner}</button>`;
+// --- THIS WEEK'S OPPONENT (opponent.js, rankedOpponentBadgeHTML; improvements S31) ---
+// "vs KC 28" / "@ KC 3" / "KC 16" (home or away unknown): this week's opponent with his matchup rank from your
+// Weekly rankings, colored on the SoS scale (1 = easiest, green; 32 = hardest, red). It stands where the plain
+// "vs KC" follows the kickoff time (lineup/gameInfo.js). opp: a team code; home: true, false or null;
+// rank: 1-32. tip: already escaped.
+export function opponentBadgeMarkup({ opp, home = null, rank }, tip, { sample = false } = {}) {
+    const style = ` style="${sosColorStyle(rank)}"`;
+    const inner = `${home === true ? 'vs ' : home === false ? '@ ' : ''}${escapeHtml(opp)} ${rank}`;
+    if (sample) return `<span class="badge opp-badge"${style}>${inner}</span>`;
+    return `<button type="button" class="badge opp-badge"${style} data-action="explainSoS" data-tip="${tip}" title="${tip}" aria-label="${tip}">${inner}</button>`;
 }
 
 // --- RANK-CHANGE CHIPS (rankings/moveChips.js, rankMoveChip) ---

@@ -123,8 +123,8 @@ const GROUPS = [
     ['Schedule', [
         [sosBadgeMarkup(1, '', { compact: true, sample: true }) + sosBadgeMarkup(16, '', { compact: true, sample: true }) + sosBadgeMarkup(32, '', { compact: true, sample: true }),
             'Strength of schedule at his position, from your SoS upload: 1 = easiest, 32 = hardest, green to red. On a phone it shows a calendar and the number. Tap for more. If your file ranks 1 = hardest, turn on that switch on the Roster tab\'s SoS card.'],
-        [opponentBadgeMarkup({ opp: 'KC', home: true, rank: 3 }, '', SAMPLE) + opponentBadgeMarkup({ opp: 'KC', home: false, rank: 28 }, '', SAMPLE) + opponentBadgeMarkup({ opp: 'KC', home: null, rank: null }, '', SAMPLE),
-            'This week\'s opponent and how tough he is for the position, when your Weekly rankings have an opponent column (Opp) and a matchup rank (Matchup): vs for a home game, @ for away, then the rank on the same scale as SoS, green to red. Plain when the file has no rank for him. On the Lineup tab, and in the Waiver Wire Assistant when Rank By is Weekly. On a phone it drops the vs or @. Tap for more. The SoS card\'s "1 = hardest" switch flips it too.'],
+        [opponentBadgeMarkup({ opp: 'KC', home: true, rank: 3 }, '', SAMPLE) + opponentBadgeMarkup({ opp: 'KC', home: false, rank: 28 }, '', SAMPLE) + opponentBadgeMarkup({ opp: 'KC', home: null, rank: 16 }, '', SAMPLE),
+            'This week\'s opponent, after the kickoff time, with how tough he is for the position when your Weekly rankings have a matchup rank (a Matchup column): vs for a home game, @ for away, then the rank on the same scale as SoS, green to red. Without a rank it\'s the plain "vs KC". Also on Auto-Find\'s cards when Rank By is Weekly. Tap for more. The SoS card\'s "1 = hardest" switch flips it too.'],
     ]],
 ];
 

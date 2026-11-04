@@ -9,7 +9,6 @@ import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, isConnectionError, isUnavailableThisWeek, rankingIndex } from '../helpers.js';
 import { getByeBadgeHTML, getGameInfoHTML, getLineupProjection, hasKickedOff, kickoffFreeze } from '../lineup/gameInfo.js';
 import { getSoSBadgeHTML } from '../sos.js';
-import { getOpponentBadgeHTML } from '../opponent.js';
 import { runScout } from './engine.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { activeSeasonRankings, optimizeLineup } from '../main.js';
@@ -662,11 +661,12 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     // (scout/engine.js).
     export const WAIVER_SOS_OPTS = { compact: true };
 
-    // This week's opponent from your Weekly rankings (improvements S31, js/mls/opponent.js), only when Rank By
-    // is Weekly (owner's choice: it can decide a pickup for this week). Exported for Top Available.
-    export function waiverOpponentBadge(ctx, cleanName, player) {
-        if (!ctx || !ctx.scan || ctx.scan.basis !== 'weekly' || !player) return '';
-        return getOpponentBadgeHTML({ cleanName, team: player.team, pos: player.pos });
+    // This week's opponent from your Weekly rankings on Auto-Find's cards (improvements S31, js/mls/opponent.js), only
+    // when Rank By is Weekly (owner's choice: it can decide a pickup for this week; not in Top Available, which stays a
+    // compact list). The player to pass to getGameInfoHTML, or null for the plain scoreboard text.
+    function waiverOpponentPlayer(ctx, cleanName, player) {
+        if (!ctx || !ctx.scan || ctx.scan.basis !== 'weekly' || !player) return null;
+        return { cleanName, pos: player.pos };
     }
 
     // One auto-find result card. rosterLine (Whole Roster lens) replaces the lineup explanation
@@ -685,7 +685,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
                     <span>${escapeHtml(fa.name)}</span>
                     ${teamText}
                 </div>
-                <div class="mls-player-badges-row">${injBadge}${getByeBadgeHTML(player.team)}${getGameInfoHTML(player.team)}${getSoSBadgeHTML(player.team, player.pos, WAIVER_SOS_OPTS)}${waiverOpponentBadge(ctx, fa.cleanName, player)}</div>
+                <div class="mls-player-badges-row">${injBadge}${getByeBadgeHTML(player.team)}${getGameInfoHTML(player.team, waiverOpponentPlayer(ctx, fa.cleanName, player))}${getSoSBadgeHTML(player.team, player.pos, WAIVER_SOS_OPTS)}</div>
                 ${waiverRanksRowHTML(ctx, fa.cleanName, player.pos)}
                 ${shownLine ? `<div class="mls-scan-verdict">${shownLine}</div>` : ''}
             </div>

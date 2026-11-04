@@ -58,43 +58,45 @@ test.describe('Lineup Strategist: this week\'s opponent strength', () => {
         await expectClean(page, state);
     });
 
-    test('the Lineup tab shows each player\'s opponent and matchup rank, explained on tap, flipped by the SoS switch', async ({ page }, testInfo) => {
-        const phone = testInfo.project.name === 'phone';
+    test('the Lineup tab shows each player\'s opponent and matchup rank, explained on tap, flipped by the SoS switch', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
         await showTab(page, 'lineup');
 
         await uploadWeekly(page, WEEKLY_OPP_CSV, 30, 'week2.csv');
         await expect(page.locator('#rankingsPreviewOppNote')).toBeVisible();
-        await expect(page.locator('#rankingsPreviewOppNote')).toHaveText("This file also has this week's opponents and matchup ranks (29 players), read as 1 = easiest, 32 = hardest. They show on the Lineup tab, and in the Waiver Wire Assistant when Rank By is Weekly, until next week's rankings. Your season SoS isn't changed.");
+        await expect(page.locator('#rankingsPreviewOppNote')).toHaveText("This file also has this week's opponents and matchup ranks (29 players), read as 1 = easiest, 32 = hardest. They show after the kickoff time on the Lineup tab, and on Auto-Find's cards when Rank By is Weekly, until next week's rankings. Your season SoS isn't changed.");
         await callApp(page, 'confirmRankingsPreview');
         await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
 
-        // "@ SEA" in the file: an away game. On phones and touch screens "vs" / "@" is dropped.
+        // "@ SEA" in the file: an away game, the same on phones. On the badge line, where the kickoff time and the
+        // opponent go (there's no scoreboard here, so no kickoff time).
         const henry = oppBadge(page, 'Derrick Henry');
-        await expect(henry).toHaveText(phone ? 'SEA 15' : '@ SEA 15', { useInnerText: true });
-        await expect(henry).toHaveAttribute('title', 'This week: at SEA, matchup 15 of 32 for RBs (1 = easiest, 32 = hardest), from your Weekly rankings.');
-        // Colored on the SoS scale: 1 green, 23 toward red.
-        await expect(oppBadge(page, "Ja'Marr Chase")).toHaveText(phone ? 'KC 1' : 'vs KC 1', { useInnerText: true });
+        await expect(henry).toHaveText('@ SEA 15', { useInnerText: true });
+        await expect(lineupRow(page, 'Derrick Henry').locator('.mls-player-badges-row .mls-game-info .opp-badge')).toHaveCount(1);
+        await expect(lineupRow(page, 'Derrick Henry').locator('.mls-player-row-meta .opp-badge')).toHaveCount(0);
+        await expect(henry).toHaveAttribute('title', 'This week at SEA: a middling matchup for RBs (15 of 32, where 1 = easiest). Already reflected in your Weekly ranks.');
+        // Colored on the SoS scale: 1 green. Words for the ends.
+        await expect(oppBadge(page, "Ja'Marr Chase")).toHaveText('vs KC 1', { useInnerText: true });
         expect(await oppBadge(page, "Ja'Marr Chase").getAttribute('style')).toContain('hsl(120, 80%, 65%)');
-        // A bare "NYJ" doesn't say home or away, and there's no scoreboard here: "vs".
-        await expect(oppBadge(page, 'George Kittle')).toHaveText(phone ? 'NYJ 23' : 'vs NYJ 23', { useInnerText: true });
-        // In the meta line, after the rank.
-        await expect(lineupRow(page, 'Derrick Henry').locator('.mls-player-row-meta .opp-badge')).toHaveCount(1);
-        // Kyren Williams's cells are blank and there's no scoreboard: no badge.
-        await expect(oppBadge(page, 'Kyren Williams')).toHaveCount(0);
+        await expect(oppBadge(page, "Ja'Marr Chase")).toHaveAttribute('title', /^This week vs KC: one of the easiest matchups for WRs \(1 of 32/);
+        // A bare "NYJ" doesn't say home or away, and there's no scoreboard to ask: no guess.
+        await expect(oppBadge(page, 'George Kittle')).toHaveText('NYJ 23', { useInnerText: true });
+        await expect(oppBadge(page, 'George Kittle')).toHaveAttribute('title', /^This week against NYJ: a middling matchup for TEs/);
+        // Kyren Williams's cells are blank and there's no scoreboard: nothing.
+        await expect(lineupRow(page, 'Kyren Williams').locator('.mls-game-info')).toHaveCount(0);
 
         // A tap explains it.
         await henry.click();
-        await expect(page.locator('.toast-message').filter({ hasText: 'This week: at SEA, matchup 15 of 32 for RBs' })).toBeVisible();
+        await expect(page.locator('.toast-message').filter({ hasText: 'This week at SEA: a middling matchup for RBs' })).toBeVisible();
 
-        // The SoS card's "My SoS files rank 1 = hardest" switch flips it: 15 -> 18.
+        // The SoS card's "My SoS files rank 1 = hardest" switch flips it: 15 -> 18, 1 -> 32.
         await showTab(page, 'roster');
         await page.evaluate(() => localStorage.setItem('mls_sos_reversed', '1'));
         await page.reload();
         await showTab(page, 'lineup');
-        await expect(oppBadge(page, 'Derrick Henry')).toHaveText(phone ? 'SEA 18' : '@ SEA 18', { useInnerText: true });
-        await expect(oppBadge(page, 'Derrick Henry')).toHaveAttribute('title', /matchup 18 of 32 for RBs \(1 = easiest, 32 = hardest\) \(flipped: your SoS setting says your files rank 1 = hardest\)/);
+        await expect(oppBadge(page, 'Derrick Henry')).toHaveText('@ SEA 18', { useInnerText: true });
+        await expect(oppBadge(page, "Ja'Marr Chase")).toHaveAttribute('title', 'This week vs KC: one of the toughest matchups for WRs (32 of 32, where 1 = easiest). Flipped, since your SoS setting says your files rank 1 = hardest. Already reflected in your Weekly ranks.');
 
         await expectClean(page, state);
     });
@@ -134,33 +136,42 @@ test.describe('Lineup Strategist: this week\'s opponent strength', () => {
         await expectClean(page, state);
     });
 
-    test('with a Matchup column and no Opp column, the opponent comes from this week\'s scoreboard', async ({ page }, testInfo) => {
-        const phone = testInfo.project.name === 'phone';
+    test('with the scoreboard loaded, the badge takes the plain opponent\'s place after the kickoff time', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
-        // ESPN's scoreboard: BAL at JAX, SF hosts NYJ.
+        // ESPN's scoreboard: BAL at JAX, SF hosts NYJ, CIN hosts KC.
+        const game = (home, away, date) => ({ date, status: { type: { state: 'pre' } }, competitions: [{ competitors: [
+            { team: { abbreviation: home }, homeAway: 'home' }, { team: { abbreviation: away }, homeAway: 'away' }] }] });
         await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, route => route.fulfill({ json: { events: [
-            { date: '2026-09-20T17:00:00Z', status: { type: { state: 'pre' } }, competitions: [{ competitors: [
-                { team: { abbreviation: 'JAX' }, homeAway: 'home' }, { team: { abbreviation: 'BAL' }, homeAway: 'away' }] }] },
-            { date: '2026-09-20T20:25:00Z', status: { type: { state: 'pre' } }, competitions: [{ competitors: [
-                { team: { abbreviation: 'SF' }, homeAway: 'home' }, { team: { abbreviation: 'NYJ' }, homeAway: 'away' }] }] },
+            game('JAX', 'BAL', '2026-09-20T17:00:00Z'), game('SF', 'NYJ', '2026-09-20T20:25:00Z'), game('CIN', 'KC', '2026-09-20T20:25:00Z'),
         ] } }));
         await page.reload();
         await seedMls(page);
         await showTab(page, 'lineup');
+        // Before any Weekly file: the plain opponent after the kickoff time, as before.
+        await saveWeekly(page, RANKINGS_CSV, 24);
+        await expect(lineupRow(page, 'George Kittle').locator('.mls-game-info .mls-opp')).toHaveText('vs NYJ');
 
+        // A Matchup column and no Opp column: who and where from the scoreboard, the rank from the file, named once.
         const matchupOnly = WEEKLY_OPP_CSV.trim().split('\n').map(line => line.split(',').filter((_, i) => i !== 6).join(',')).join('\n');
         await saveWeekly(page, matchupOnly, 30);
-        await expect(oppBadge(page, 'Derrick Henry')).toHaveText(phone ? 'JAX 15' : '@ JAX 15', { useInnerText: true });
-        await expect(oppBadge(page, 'George Kittle')).toHaveText(phone ? 'NYJ 23' : 'vs NYJ 23', { useInnerText: true });
-        // A team with no game on the scoreboard: no opponent to show.
-        await expect(oppBadge(page, "Ja'Marr Chase")).toHaveCount(0);
+        const kittleInfo = lineupRow(page, 'George Kittle').locator('.mls-game-info');
+        await expect(kittleInfo.locator('.kickoff-badge')).toHaveCount(1);
+        await expect(kittleInfo.locator('.opp-badge')).toHaveText('vs NYJ 23', { useInnerText: true });
+        await expect(kittleInfo.locator('.mls-opp')).toHaveCount(0);
+        await expect(oppBadge(page, 'Derrick Henry')).toHaveText('@ JAX 15', { useInnerText: true });
+
+        // The full file: "@ SEA" for Henry, but the scoreboard says JAX, so his rank isn't shown beside JAX.
+        await saveWeekly(page, WEEKLY_OPP_CSV, 30);
+        await expect(oppBadge(page, 'Derrick Henry')).toHaveCount(0);
+        await expect(lineupRow(page, 'Derrick Henry').locator('.mls-game-info .mls-opp')).toHaveText('@ JAX');
+        // Chase: the file's "vs KC" agrees with the scoreboard.
+        await expect(oppBadge(page, "Ja'Marr Chase")).toHaveText('vs KC 1', { useInnerText: true });
 
         state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !/espn/i.test(e)));
         await expectClean(page, state);
     });
 
-    test('the Waiver Wire Assistant shows it when Rank By is Weekly, not ROS', async ({ page }, testInfo) => {
-        const phone = testInfo.project.name === 'phone';
+    test('Auto-Find\'s cards show it when Rank By is Weekly, not ROS; Top Available never', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
         await loadMlsRankings(page, WAIVER_RANKINGS_CSV, 30);
@@ -168,18 +179,21 @@ test.describe('Lineup Strategist: this week\'s opponent strength', () => {
         await showTab(page, 'scout');
 
         const out = page.locator('#waiverOutput');
-        const cookRow = out.locator('.mls-ta-row').filter({ hasText: 'James Cook' });
-        // James Cook (26), a free agent: his Opp cell as the file has it.
-        const cookCell = WEEKLY_OPP_CSV.split('\n').find(l => l.includes('James Cook')).split(',')[6];
-        const cookOpp = cookCell.replace(/^(vs|@) /, '');
-        const away = cookCell.startsWith('@');
-        await expect(cookRow.locator('.opp-badge')).toHaveText(phone ? `${cookOpp} 26` : `${away ? '@' : 'vs'} ${cookOpp} 26`, { useInnerText: true });
+        // Top Available stays a compact list (owner's choice).
+        await expect(out.locator('.mls-ta-row').filter({ hasText: 'James Cook' })).toHaveCount(1);
+        await expect(out.locator('.opp-badge')).toHaveCount(0);
+
+        // Auto-Find: James Cook (26), a free agent, "TB" in the file.
+        await callApp(page, 'setWaiverMode', 'auto');
+        await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
+        const cook = out.locator('.mls-scan-card').filter({ hasText: 'James Cook' });
+        await expect(cook.locator('.opp-badge')).toHaveText('TB 26', { useInnerText: true });
 
         await page.selectOption('#waiverScanBasis', 'ros');
-        await expect(out).toContainText('by ROS rank');
+        await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
+        await expect(out).toContainText('ROS');
+        await expect(out.locator('.mls-scan-card').first()).toBeVisible();
         await expect(out.locator('.opp-badge')).toHaveCount(0);
-        await page.selectOption('#waiverScanBasis', 'weekly');
-        await expect(out.locator('.mls-ta-row').filter({ hasText: 'James Cook' }).locator('.opp-badge')).toHaveCount(1);
 
         await expectClean(page, state);
     });
