@@ -111,7 +111,7 @@ import { sosBadgeMarkup } from './badges.js';
             <div class="sos-status-line">${age} <span class="sos-status-sep" aria-hidden="true">&middot;</span> <span class="sos-status-scale">${SOS_SCALE_TEXT}</span></div>
             ${ratings}
             <div class="toggle-row">
-                <span class="toggle-title"><label for="sosReversedToggle">My SoS files rank 1 = hardest</label></span>
+                <span class="toggle-title"><label for="sosReversedToggle">My SoS files rank <span class="mls-nowrap">1 = hardest</span></label></span>
                 <input type="checkbox" id="sosReversedToggle" class="toggle-switch" data-action="setSosReversed"${State.sosReversed ? ' checked' : ''}>
             </div>
             <div class="sos-flip-hint">Turn this on if your source lists the toughest schedule as 1. It flips the SoS saved now and every SoS you upload later (SoS files, and SoS columns in ROS rankings files). Weekly matchup ranks have their own switch in the Lineup tab's Lineup settings.</div>`;

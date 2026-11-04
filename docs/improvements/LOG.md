@@ -8732,3 +8732,22 @@ new SoS toasts. `tests/mls-sflex-kickoff.spec.mjs`: no summary checks.
 `visual.spec.mjs` fails only on the container's environment check, as on main. Rendered against main the same way here:
 still exactly the four PNGs listed after round 6 (`desktop/` and `phone/mls-league-guide.png`,
 `desktop/` and `phone/mls-league-lineup.png`), to be re-taken from CI's renders.
+
+### S31, round 9: a fourth review as a user (owner: "Yes, do both")
+
+**Findings.** (1) Auto-Find's card compared this week with the season: the free agent showed "vs LAR 20" while the
+player he's measured against showed only his season SoS badge (Josh Allen's green "3", when Allen is at MIN, 32 this
+week). (2) "My matchup files rank 1 = hardest" broke as "…rank 1 =" / "hardest" on phones.
+
+**Built.**
+- With Rank By Weekly, Auto-Find's comparison line shows your player's matchup beside his name, before his season SoS
+  badge: "Would need to pass Josh Allen @ MIN 32 [3] (your QB)". Ranked matchups only (no plain "@ MIN"). Also in the
+  Whole Roster lens's "Upgrade over / Ranked ahead of" lines. Not in Check a List, whose cards don't show the free
+  agent's matchup either. `js/mls/scout/waivers.js`: `waiverCompareLine(…, withMatchup)`, `waiverVerdictParts(ctx,
+  row, { withMatchup })`.
+- "1 = hardest" kept together in both toggle labels (`.mls-nowrap`; `lineup/index.html`, `js/mls/sos.js`).
+- CHANGELOG line extended.
+
+**Tests.** `tests/mls-opponent-strength.spec.mjs`: Jayden Daniels's card names Josh Allen with his matchup rank (13);
+none with Rank By ROS. Screenshots: none newly affected (the screenshot league has no matchup ranks; labels are
+hidden or folded there).

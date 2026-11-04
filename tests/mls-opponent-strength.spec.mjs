@@ -249,6 +249,11 @@ test.describe('Lineup Strategist: this week\'s opponent strength', () => {
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         const cook = out.locator('.mls-scan-card').filter({ hasText: 'James Cook' });
         await expect(cook.locator('.opp-rank-badge')).toHaveText('TB 26', { useInnerText: true });
+        // The player he's measured against shows this week's matchup too, beside his name (not just his season SoS):
+        // Jayden Daniels "Would need to pass Josh Allen", whose row in the file is "vs NYJ", 13.
+        const daniels = out.locator('.mls-scan-card').filter({ hasText: 'Jayden Daniels' });
+        await expect(daniels.locator('.mls-scan-verdict')).toContainText('Would need to pass Josh Allen');
+        await expect(daniels.locator('.mls-scan-verdict .opp-rank-badge')).toHaveText(/ 13$/, { useInnerText: true });
 
         await page.selectOption('#waiverScanBasis', 'ros');
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();

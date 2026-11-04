@@ -9,6 +9,7 @@ import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, isConnectionError, isUnavailableThisWeek, rankingIndex } from '../helpers.js';
 import { getByeBadgeHTML, getGameInfoHTML, getLineupProjection, hasKickedOff, kickoffFreeze } from '../lineup/gameInfo.js';
 import { getSoSBadgeHTML } from '../sos.js';
+import { rankedOpponentBadgeHTML, weeklyOpponentInfo } from '../opponent.js';
 import { runScout } from './engine.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { activeSeasonRankings, optimizeLineup } from '../main.js';
@@ -602,7 +603,9 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     // Only the label and the number shown change; the verdict itself was already decided by
     // the caller, and ordering RB/WR/TE by Overall is the same order the FLEX comparison uses.
     // The verb is the caller's: "Upgrade over" only for a tier jump (isTierUpgrade).
-    function waiverCompareLine(faPlayer, other, slotType, verb, display, label, basis = 'auto', crossKind = 'flex') {
+    // withMatchup: Auto-Find with Rank By Weekly, where the free agent's card shows this week's matchup; then your player's
+    // goes beside his name too, so the card compares this week with this week (improvements S31, owner's choice).
+    function waiverCompareLine(faPlayer, other, slotType, verb, display, label, basis = 'auto', crossKind = 'flex', withMatchup = false) {
         // Each number carries the tier of the list it came from (improvements S8), like the card's rank
         // row: Overall -> tier, Flex -> flexTier, position -> posTier. Untiered files add nothing.
         const { useFlex, crossField, faD, oD, faTier, oTier } = comparedTiers(faPlayer, other, slotType, display, basis, crossKind);
@@ -623,12 +626,13 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
             + `<span class="mls-nowrap">${shortPlayerName(faPlayer.name)} ${fmt(faVal, faPlayer.pos, faTier, faD)}</span>, `
             + `<span class="mls-nowrap">${shortPlayerName(other.name)} ${fmt(oVal, other.pos, oTier, oD)}</span>`;
         // His SoS badge beside his name (improvements S7), so both schedules sit side by side.
-        return `${verb} <strong>${escapeHtml(other.name)}</strong>${getSoSBadgeHTML(other.team, other.pos, WAIVER_SOS_OPTS)}${slotText}${tierGapHTML(faTier, oTier)}<span class="mls-verdict-nums">${nums}</span>`;
+        const matchup = withMatchup ? rankedOpponentBadgeHTML(weeklyOpponentInfo(other), other.pos) : '';
+        return `${verb} <strong>${escapeHtml(other.name)}</strong>${matchup ? ` ${matchup}` : ''}${getSoSBadgeHTML(other.team, other.pos, WAIVER_SOS_OPTS)}${slotText}${tierGapHTML(faTier, oTier)}<span class="mls-verdict-nums">${nums}</span>`;
     }
 
     // Pill + one-line explanation for a lineup verdict. Returns a neutral pill when there's no
     // verdict (no lineup yet) so the caller never has to special-case it.
-    export function waiverVerdictParts(ctx, { player, verdict }) {
+    export function waiverVerdictParts(ctx, { player, verdict }, { withMatchup = false } = {}) {
         if (!verdict) return { pill: '', line: '' };
         const pill = scoutPillMarkup;
         const onBye = !!getByeBadgeHTML(player.team);
@@ -637,11 +641,11 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
                 return {
                     pill: pill('mls-verdict-start', 'Would Start'),
                     line: verdict.displaced
-                        ? waiverCompareLine(player, verdict.displaced, verdict.displacedSlotType, 'Replaces', ctx.checkDisplay, ctx.checkLabel, 'auto', ctx.checkCross)
+                        ? waiverCompareLine(player, verdict.displaced, verdict.displacedSlotType, 'Replaces', ctx.checkDisplay, ctx.checkLabel, 'auto', ctx.checkCross, withMatchup)
                         : 'Fills an empty lineup slot'
                 };
             case 'bench':
-                return { pill: pill('mls-verdict-bench', 'Bench'), line: waiverCompareLine(player, verdict.bubble, verdict.bubbleSlotType, 'Would need to pass', ctx.checkDisplay, ctx.checkLabel, 'auto', ctx.checkCross) };
+                return { pill: pill('mls-verdict-bench', 'Bench'), line: waiverCompareLine(player, verdict.bubble, verdict.bubbleSlotType, 'Would need to pass', ctx.checkDisplay, ctx.checkLabel, 'auto', ctx.checkCross, withMatchup) };
             case 'unavailable':
                 return { pill: pill('mls-verdict-out', onBye ? 'Bye' : 'Out'), line: onBye ? 'On bye this week - a stash, not a start.' : `Listed ${escapeHtml(player.inj || 'out')} - can't start this week.` };
             case 'kickedOff':
@@ -673,7 +677,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     // line; the lineup pill stays either way so "would he start?" is always answered.
     function renderWaiverScanCard(ctx, row, rosterLine = null) {
         const { fa, player, verdict } = row;
-        const { pill, line } = waiverVerdictParts(ctx, row);
+        const { pill, line } = waiverVerdictParts(ctx, row, { withMatchup: !!waiverOpponentPlayer(ctx, fa.cleanName, player) });
         const injBadge = player.inj ? `<span class="badge inj-badge">${escapeHtml(player.inj)}</span>` : '';
         const teamText = player.team ? `<span class="mls-opp">${escapeHtml(player.team)}</span>` : '';
         const shownLine = rosterLine || line;
@@ -919,7 +923,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
                         const { faTier, oTier } = comparedTiers(row.player, bench, null, basisDisplay, basisKind, ctx.scanCross);
                         if (isTiered(faTier) && isTiered(oTier)) sameTier++; else close++;
                     }
-                    const line = waiverCompareLine(row.player, bench, null, isUpgrade ? 'Upgrade over' : 'Ranked ahead of', basisDisplay, basisLabel, basisKind, ctx.scanCross);
+                    const line = waiverCompareLine(row.player, bench, null, isUpgrade ? 'Upgrade over' : 'Ranked ahead of', basisDisplay, basisLabel, basisKind, ctx.scanCross, !!(ctx.scan && ctx.scan.basis === 'weekly'));
                     return renderWaiverScanCard(ctx, row, line);
                 }).join('');
                 const rest = [sameTier && `${sameTier} same tier`, close && `${close} within 2 spots`].filter(Boolean);

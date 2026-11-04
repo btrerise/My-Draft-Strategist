@@ -127,7 +127,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **This week's matchup on the Lineup tab.** When your Weekly rankings file has a matchup rank (Matchup, Opp Rank or
   OPRK, or "WR Matchup" in a side-by-side file; 1 = easiest, 32 = hardest), the opponent after each player's kickoff
   time is shown in color with the rank, such as "@ MIN 32": green for an easy matchup, red for a tough one. Tap it for
-  what it means ("one of the toughest matchups for QBs"). Auto-Find's cards show it too when Rank By is Weekly. It
+  what it means ("one of the toughest matchups for QBs"). Auto-Find's cards show it too when Rank By is Weekly, for the
+  free agent and for your player he's measured against. It
   shows only while those Weekly rankings are this week's. If your file ranks 1 = hardest, turn on "My matchup files
   rank 1 = hardest" in Lineup settings. It's separate from the Roster tab's SoS switch, so the two sources can rank
   opposite ways (if you had that one on, matchups start flipped too).
