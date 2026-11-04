@@ -948,9 +948,9 @@
         </div>
 
         <!-- Lineup settings (improvements S31, owner's choice): FLEX Kickoff Optimization and the matchup ranks' 1 = hardest
-             switch, folded like the Trade Analyzer's Value settings. The summary says what's set while it's folded. -->
+             switch, folded like the Trade Analyzer's Value settings. -->
         <details class="sos-details-accordion mls-lineup-settings" id="lineupSettings">
-            <summary class="sos-summary">Lineup settings <span id="lineupSettingsSummary" class="mls-lineup-settings-summary"></span></summary>
+            <summary class="sos-summary">Lineup settings</summary>
             <div class="accordion-body">
                 <div class="toggle-row">
                     <div class="toggle-info">
@@ -970,12 +970,11 @@
                             <label for="matchupReversedToggle">My matchup files rank 1 = hardest</label>
                             <div class="tooltip-container">
                                 <div class="tooltip-icon">i</div>
-                                <span class="tooltip-text">Your Weekly rankings' matchup ranks (the colored "@ MIN 32" after a player's kickoff time) are read as 1 = easiest, 32 = hardest. Turn this on if your file lists the toughest matchup as 1. It's the same setting as "My SoS files rank 1 = hardest" on the Roster tab's SoS card.</span>
+                                <span class="tooltip-text">Your Weekly rankings' matchup ranks (the colored "@ MIN 32" after a player's kickoff time) are read as 1 = easiest, 32 = hardest. Turn this on if your file lists the toughest matchup as 1. Season SoS has its own switch on the Roster tab's SoS card.</span>
                             </div>
                         </span>
-                        <span id="matchupFlipHint" class="toggle-desc" hidden>Also flips your season SoS.</span>
                     </div>
-                    <input type="checkbox" id="matchupReversedToggle" class="toggle-switch" data-action="setSosReversed" aria-describedby="matchupFlipHint">
+                    <input type="checkbox" id="matchupReversedToggle" class="toggle-switch" data-action="setMatchupReversed">
                 </div>
             </div>
         </details>

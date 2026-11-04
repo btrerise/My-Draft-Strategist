@@ -8697,3 +8697,33 @@ source and a Weekly source that rank opposite ways.
 matchups and season SoS." (or "…for season SoS." without matchup ranks); "Flipped back: a 1 in your files shows as 1
 (easiest), …". The "Keep as is" toasts after grid edits are unchanged. Specs updated (`mls-sos-scale`,
 `mls-opponent-strength`).
+
+### S31, round 8: no summary on Lineup settings, and matchups get their own switch (owner: "Yes, remove the summary and split the switch")
+
+**The owner's questions on round 7.** (2) Would the muted summary look off beside "Lineup settings", and should it go,
+since no other folded settings card has one? I agreed: it can't share the title line on a phone without wrapping, on its
+own lines the folded card is nearly as tall as an open one, and it shows set-and-forget settings. That made (3), its
+rewording, unnecessary. (4) Would splitting the switch be more future-proof? Yes, and simpler: no "also flips your
+season SoS", no manual-grid dialog from the Lineup tab, toasts that name one thing.
+
+**User-visible effect.**
+- "Lineup settings" is just the title when folded.
+- "My matchup files rank 1 = hardest" (Lineup settings) flips only matchup ranks; toast "Matchups flipped: a 1 in your
+  file now shows as 32 (hardest)." / "Matchups flipped back: …". Its tooltip says season SoS has its own switch.
+- "My SoS files rank 1 = hardest" (Roster tab) flips only season SoS; toast "SoS flipped: a 1 in your SoS files now
+  shows as 32 (hardest)." / "SoS flipped back: …"; its hint points to Lineup settings for matchups.
+- Carry-over: until the matchup toggle is first set, it follows the SoS switch, so anyone who had that on keeps
+  their matchup ranks read the same way.
+- The tip says "Turn off …" when the toggle is on.
+
+**What changed and where.** `js/shared/storage/keys.js`: **new key `mls_matchup_reversed`** ('1' / '0'; unset =
+follow `mls_sos_reversed`), `mls_` prefix so Backup / Restore and Factory Reset include it. `js/mls/state.js`:
+`State.matchupReversed`. `js/mls/opponent.js`: `renderLineupSettings` and `setMatchupReversed` (moved from sos.js,
+which is back to SoS only), the flip reads `State.matchupReversed`. `js/mls/main.js`: the `setMatchupReversed` action.
+`lineup/index.html`, `css/mls.css` (summary and hint removed), `js/mls/rankings/engine.js`,
+`js/mls/rankings/uploadPreview.js`, CHANGELOG.
+
+**Tests.** `tests/mls-opponent-strength.spec.mjs`: each toggle flips only its own (saved SoS untouched by the matchup
+toggle and the matchup badge untouched by the SoS toggle, both keys checked), the carry-over from an old SoS setting
+and setting it apart afterwards, the folded title alone, "Turn off" in the tip. `tests/mls-sos-scale.spec.mjs`: the
+new SoS toasts. `tests/mls-sflex-kickoff.spec.mjs`: no summary checks.

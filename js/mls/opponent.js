@@ -12,14 +12,17 @@
 // week's. Who and where come from ESPN's scoreboard (State.gamesByTeam, refreshGameTimes in state.js) when it
 // has his game, else from the file ("vs KC" / "@ KC"; a bare "KC" shows as "KC", no guess).
 //
-// The rank is stored as the file wrote it; the SoS card's "My SoS files rank 1 = hardest" switch
-// (State.sosReversed) flips it when it's shown, so one switch covers every file from a site (owner's choice).
-// Display only: the optimizer never reads it.
+// The rank is stored as the file wrote it, and flipped when shown if "My matchup files rank 1 = hardest" is on (Lineup
+// settings, State.matchupReversed, KEYS.mls.matchupReversed). Its own switch since round 8 (owner's choice): an SoS
+// source and a Weekly source can rank opposite ways. Display only: the optimizer never reads it.
 import { State } from './state.js';
 import { rankingIndex } from './helpers.js';
 import { isSameRankingsWeek } from '../shared/rankings/compare.js';
 import { escapeHtml } from '../shared/html.js';
 import { opponentBadgeMarkup } from './badges.js';
+import { KEYS } from '../shared/storage/keys.js';
+import { showToast } from '../shared/ui/toast.js';
+import { renderLineupUI } from './main.js';
 
 // Whether a set's rows carry any opponent data. Cached on the array, like rankingIndex: a new upload or
 // a league switch gives State.weeklyRankings a new array.
@@ -34,7 +37,7 @@ export function rankingsHaveOpponents(rows) {
     return has;
 }
 
-// Whether a set's rows carry any matchup rank (not just opponents): the Weekly card's switch shows only then.
+// Whether a set's rows carry any matchup rank (not just opponents): the Lineup settings toggle shows only then.
 const _hasRankCache = new WeakMap();
 export function rankingsHaveMatchupRanks(rows) {
     if (!Array.isArray(rows) || rows.length === 0) return false;
@@ -52,7 +55,7 @@ export function weeklyOpponentsShown(now = Date.now()) {
 }
 
 // The rank as the app reads it (1 = easiest), flipped when your files rank 1 = hardest.
-export function shownOpponentRank(rank, reversed = State.sosReversed) {
+export function shownOpponentRank(rank, reversed = State.matchupReversed) {
     if (!Number.isInteger(rank) || rank < 1 || rank > 32) return null;
     return reversed ? 33 - rank : rank;
 }
@@ -85,8 +88,9 @@ export function matchupWords(rank) {
 // The tap / hover text, plain (escaped by the caller). Only for a ranked matchup.
 export function opponentTip({ opp, home, rank }, pos) {
     const where = home === true ? `vs ${opp}` : home === false ? `at ${opp}` : `against ${opp}`;
-    const scale = State.sosReversed ? `${rank} of 32 with your file's order flipped, so 1 = easiest` : `${rank} of 32, where 1 = easiest`;
-    return `This week ${where}: ${matchupWords(rank)} for ${pos ? posPlural(pos) : 'his position'} (${scale}). Reads backwards? Turn on "My matchup files rank 1 = hardest" in Lineup settings.`;
+    const on = State.matchupReversed;
+    const scale = on ? `${rank} of 32 with your file's order flipped, so 1 = easiest` : `${rank} of 32, where 1 = easiest`;
+    return `This week ${where}: ${matchupWords(rank)} for ${pos ? posPlural(pos) : 'his position'} (${scale}). Reads backwards? Turn ${on ? 'off' : 'on'} "My matchup files rank 1 = hardest" in Lineup settings.`;
 }
 
 // This week's opponent from the Weekly rankings for a player ({ cleanName, team, pos }), or null when the
@@ -102,4 +106,28 @@ export function weeklyOpponentInfo(player) {
 export function rankedOpponentBadgeHTML(info, pos) {
     if (!info || info.rank === null) return '';
     return opponentBadgeMarkup(info, escapeHtml(opponentTip(info, pos)));
+}
+
+// --- LINEUP SETTINGS: "My matchup files rank 1 = hardest" (round 6, its own switch since round 8) ---
+// Shown when the league's Weekly rankings have matchup ranks, or when it's on (so it can be turned off). Called with
+// the rankings' meta (rankings/engine.js), so an upload, a set switch or a league switch shows or hides it.
+export function renderLineupSettings() {
+    const row = document.getElementById('matchupFlipRow');
+    if (!row) return;
+    row.hidden = !(rankingsHaveMatchupRanks(State.weeklyRankings) || State.matchupReversed);
+    const toggle = document.getElementById('matchupReversedToggle');
+    if (toggle) toggle.checked = State.matchupReversed;
+}
+
+// The toggle: remembered, and the Lineup tab redraws (matchups never change who starts, so no re-optimize, which would
+// undo your swaps). Nothing saved is rewritten: ranks are flipped when shown.
+export function setMatchupReversed(on) {
+    on = !!on;
+    if (on === State.matchupReversed) return;
+    State.matchupReversed = on;
+    localStorage.setItem(KEYS.mls.matchupReversed, on ? '1' : '0');
+    renderLineupSettings();
+    showToast(on ? 'Matchups flipped: a 1 in your file now shows as 32 (hardest).' : 'Matchups flipped back: a 1 in your file shows as 1 (easiest).');
+    const activeTab = document.querySelector('.tab-content.active');
+    if (activeTab && activeTab.id === 'lineupTab') renderLineupUI();
 }

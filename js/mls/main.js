@@ -26,7 +26,8 @@ import './leagues/scoutResults.js';
 import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDraftStrategistRoster } from './leagues/handoff.js';
 import { addManualPlayer, deletePlayer } from './leagues/addPlayer.js';
 import { importAllSleeperLeagues } from './leagues/importAll.js';
-import { explainSoS, generateSoSGrid, renderLineupSettings, saveManualSoS, setSosReversed } from './sos.js';
+import { explainSoS, generateSoSGrid, saveManualSoS, setSosReversed } from './sos.js';
+import { setMatchupReversed } from './opponent.js';
 import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
 import { applyWaiverScanSettingsToUI, autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
@@ -274,7 +275,7 @@ const changeActions = {
     togglePosInput() { togglePosInput(this.dataset.type, this.dataset.pos); },
     updateMarketSetting() { updateMarketSetting(this.dataset.setting, this.value); },
     updateMarketSettingChecked() { updateMarketSetting(this.dataset.setting, this.checked); },
-    updateLineupSetting() { updateLineupSetting(this.dataset.setting, this.checked); renderLineupSettings(); },
+    updateLineupSetting() { updateLineupSetting(this.dataset.setting, this.checked); },
     addEarlyTeam() { addEarlyTeam(this.value); },
     // 5C: Advanced Settings, Power Rankings, Monte Carlo and Scout tab controls
     toggleMlsHeadshots() { toggleMlsHeadshots(this.checked); },
@@ -288,6 +289,8 @@ const changeActions = {
     updateWaiverScanSettingChecked() { updateWaiverScanSetting(this.dataset.setting, this.checked); },
     // The SoS card's "My SoS files rank 1 = hardest" switch (js/mls/sos.js).
     setSosReversed() { setSosReversed(this.checked); },
+    // Lineup settings' "My matchup files rank 1 = hardest" (improvements S31, js/mls/opponent.js).
+    setMatchupReversed() { setMatchupReversed(this.checked); },
     updateTradeSettingChecked() { updateTradeSetting(this.dataset.setting, this.checked); },
     updateTradeSetting() { updateTradeSetting(this.dataset.setting, this.value); },
     toggleDisconnectMode() { toggleDisconnectMode(); },

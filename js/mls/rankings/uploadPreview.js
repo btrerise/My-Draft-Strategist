@@ -151,7 +151,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
             const withRank = isWeekly ? parsedData.filter(p => Number.isInteger(p.oppRank)).length : 0;
             oppNoteEl.style.display = (withOpp || withRank) ? 'block' : 'none';
             oppNoteEl.textContent = withRank
-                ? `This file also has this week's opponents and matchup ranks (${SOS_SCALE_TEXT}${State.sosReversed ? '; flipped, as your "1 = hardest" switch says' : ''}). They show after the kickoff time on the Lineup tab and on Auto-Find's cards. Your season SoS isn't changed.`
+                ? `This file also has this week's opponents and matchup ranks (${SOS_SCALE_TEXT}${State.matchupReversed ? '; flipped, as your "My matchup files rank 1 = hardest" setting says' : ''}). They show after the kickoff time on the Lineup tab and on Auto-Find's cards. Your season SoS isn't changed.`
                 : `This file also has this week's opponents (no matchup ranks). Your season SoS isn't changed.`;
         }
 

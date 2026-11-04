@@ -14,7 +14,6 @@ import { escapeHtml } from '../shared/html.js';
 import { getFreshness } from '../shared/freshness.js';
 import { SOS_SCALE_TEXT, looksLikeRatings, reverseSosValue, sosValues } from './sosScale.js';
 import { sosBadgeMarkup } from './badges.js';
-import { rankingsHaveMatchupRanks } from './opponent.js';
 
     // --- SOS ENGINE ---
     export function generateSoSGrid() {
@@ -115,32 +114,8 @@ import { rankingsHaveMatchupRanks } from './opponent.js';
                 <span class="toggle-title"><label for="sosReversedToggle">My SoS files rank 1 = hardest</label></span>
                 <input type="checkbox" id="sosReversedToggle" class="toggle-switch" data-action="setSosReversed"${State.sosReversed ? ' checked' : ''}>
             </div>
-            <div class="sos-flip-hint">Turn this on if your source lists the toughest schedule as 1. It flips the SoS saved now and every SoS you upload later (SoS files, and SoS columns in ROS rankings files), and the matchup ranks in your Weekly rankings.</div>`;
+            <div class="sos-flip-hint">Turn this on if your source lists the toughest schedule as 1. It flips the SoS saved now and every SoS you upload later (SoS files, and SoS columns in ROS rankings files). Weekly matchup ranks have their own switch in the Lineup tab's Lineup settings.</div>`;
         el.hidden = false;
-    }
-
-    // The Lineup tab's "Lineup settings" (improvements S31, owner's choice): the same switch as "My matchup files rank
-    // 1 = hardest", shown when the league's Weekly rankings have matchup ranks (or it's already on, so it can be turned
-    // off), and the folded card's summary of what's set (FLEX kickoff too). Without SoS loaded the Roster tab's copy isn't
-    // there, so this is the only one. One setting (State.sosReversed): matchup ranks are stored as the file has them and
-    // flipped when shown (js/mls/opponent.js). Called with the rankings' meta (rankings/engine.js), on a flip and on a
-    // FLEX Kickoff change (main.js).
-    export function renderLineupSettings() {
-        const row = document.getElementById('matchupFlipRow');
-        const showMatchup = rankingsHaveMatchupRanks(State.weeklyRankings) || State.sosReversed;
-        if (row) {
-            row.hidden = !showMatchup;
-            const toggle = document.getElementById('matchupReversedToggle');
-            if (toggle) toggle.checked = State.sosReversed;
-            const hint = document.getElementById('matchupFlipHint');
-            if (hint) hint.hidden = !hasSoS();
-        }
-        const summary = document.getElementById('lineupSettingsSummary');
-        if (summary) {
-            const parts = [`FLEX kickoff: ${State.lineupSettings && State.lineupSettings.flexKickoffOptimization ? 'on' : 'off'}`];
-            if (showMatchup) parts.push(`Matchups: 1 = ${State.sosReversed ? 'hardest' : 'easiest'}`);
-            summary.textContent = parts.join(' \u00b7 ');
-        }
     }
 
     // The switch: remembered, and it flips what's already saved (which is always 1 = easiest), so a
@@ -153,16 +128,6 @@ import { rankingsHaveMatchupRanks } from './opponent.js';
         if (on === State.sosReversed) return;
         State.sosReversed = on;
         localStorage.setItem(KEYS.mls.sosReversed, on ? '1' : '0');
-        // Weekly matchup ranks follow the switch when shown (improvements S31); only saved SoS is rewritten.
-        const matchups = rankingsHaveMatchupRanks(State.weeklyRankings) ? ' Matchup ranks follow it too.' : '';
-        if (!hasSoS()) {
-            // No season SoS to flip (the switch was used in the Lineup tab's Lineup settings).
-            renderSoSStatus();
-            renderLineupSettings();
-            showToast(on ? 'Flipped: a 1 in your file now shows as 32 (hardest).' : 'Flipped back: a 1 in your file shows as 1 (easiest).');
-            refreshSoSViews();
-            return;
-        }
         let flipSaved = true;
         if (State.sosSource && State.sosSource.kind === 'grid') {
             flipSaved = await showConfirm(`You've edited the manual grid since your last upload, and the grid is always ${SOS_SCALE_TEXT}. Flip the SoS you have now too?\n\nEither way, SoS you upload from now on ${on ? 'is flipped' : "isn't flipped"}.`,
@@ -173,22 +138,19 @@ import { rankingsHaveMatchupRanks } from './opponent.js';
                 Object.keys(posMap || {}).forEach(pos => { posMap[pos] = reverseSosValue(posMap[pos]); });
             });
             saveSoS();
-            // One short toast (improvements S31, round 7): what a 1 in your files becomes, and for what.
-            const what = matchups ? 'for matchups and season SoS' : 'for season SoS';
-            showToast(on ? `Flipped: a 1 in your files now shows as 32 (hardest), ${what}.` : `Flipped back: a 1 in your files shows as 1 (easiest), ${what}.`);
+            // One short toast (improvements S31, round 7): what a 1 in your SoS files becomes.
+            showToast(on ? 'SoS flipped: a 1 in your SoS files now shows as 32 (hardest).' : 'SoS flipped back: a 1 in your SoS files shows as 1 (easiest).');
         } else {
             renderSoSStatus();
-            showToast((on ? `Saved SoS kept as is. SoS files you upload from now on are flipped to ${SOS_SCALE_TEXT}.` : `Saved SoS kept as is. SoS files you upload from now on are read as ${SOS_SCALE_TEXT}.`) + matchups);
+            showToast(on ? `Saved SoS kept as is. SoS files you upload from now on are flipped to ${SOS_SCALE_TEXT}.` : `Saved SoS kept as is. SoS files you upload from now on are read as ${SOS_SCALE_TEXT}.`);
         }
-        renderLineupSettings();
         refreshSoSViews();
     }
 
     function refreshSoSViews() {
         const activeTabEl = document.querySelector('.tab-content.active');
         const activeTab = activeTabEl ? activeTabEl.id : '';
-        // SoS and matchup ranks never change who starts, so the Lineup tab only redraws (a re-optimize would undo
-        // your swaps when the switch is used in its Lineup settings, improvements S31).
+        // SoS never changes who starts, so the Lineup tab only redraws (a re-optimize would undo your swaps).
         if (activeTab === 'lineupTab') renderLineupUI();
         else if (activeTab === 'rosterTab') loadRosterTab();
     }

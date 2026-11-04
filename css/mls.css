@@ -1270,12 +1270,11 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 button.opp-rank-badge:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
 
 /* Lineup settings (improvements S31): folded under the Optimize row like the Trade Analyzer's Value settings. The
-   summary after its title says what's set; the rows are the usual toggle rows, the last without its bottom margin. */
+   rows are the usual toggle rows, the last shown one without its bottom margin. */
 .mls-lineup-settings { margin-top: 0.75rem; }
 .mls-lineup-settings .accordion-body { padding-top: 0.75rem; }
 .mls-lineup-settings .toggle-row:last-child, .mls-lineup-settings .toggle-row:has(+ .toggle-row[hidden]) { margin-bottom: 0; }
-.mls-lineup-settings-summary { margin-left: 0.4rem; font-weight: 500; font-size: 0.8rem; color: var(--text-muted); }
-#matchupFlipRow[hidden], #matchupFlipHint[hidden] { display: none; }
+#matchupFlipRow[hidden] { display: none; }
 /* The SoS card's switch is a toggle row too (improvements S31), inside the status line's grid. */
 .sos-status .toggle-row { margin: 0; padding: 0.6rem 0.75rem; }
 

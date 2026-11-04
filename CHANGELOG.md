@@ -129,10 +129,11 @@ What changed for users in each version of the two apps, in plain language. Newes
   time is shown in color with the rank, such as "@ MIN 32": green for an easy matchup, red for a tough one. Tap it for
   what it means ("one of the toughest matchups for QBs"). Auto-Find's cards show it too when Rank By is Weekly. It
   shows only while those Weekly rankings are this week's. If your file ranks 1 = hardest, turn on "My matchup files
-  rank 1 = hardest" in Lineup settings (the same setting as the Roster tab's SoS switch).
+  rank 1 = hardest" in Lineup settings. It's separate from the Roster tab's SoS switch, so the two sources can rank
+  opposite ways (if you had that one on, matchups start flipped too).
 - **Lineup settings.** FLEX Kickoff Optimization moved into a folded "Lineup settings" section under the Optimize
-  button, with the matchup switch when your Weekly rankings have matchup ranks; folded, it says what's set ("FLEX
-  kickoff: on · Matchups: 1 = easiest"). Both are toggles, and so is the Roster tab's "My SoS files rank 1 = hardest".
+  button, with the matchup switch when your Weekly rankings have matchup ranks. Both are toggles, and so is the
+  Roster tab's "My SoS files rank 1 = hardest".
 - **Fixed: a Weekly rankings file could overwrite your season strength of schedule.** A Weekly file with a Matchup
   (or SoS, Schedule or ROS) column replaced the Roster tab's season SoS with that one week's numbers. Weekly files no
   longer change season SoS; SoS files, ROS rankings files and the manual grid still do.

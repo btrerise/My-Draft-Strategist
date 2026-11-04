@@ -64,35 +64,47 @@ test.describe('Lineup Strategist: this week\'s opponent strength', () => {
         await expectClean(page, state);
     });
 
-    test('with season SoS loaded, the Weekly card\'s switch is the Roster tab\'s: it flips both, and both show it', async ({ page }) => {
+    test('the matchup toggle and the Roster tab\'s SoS toggle are separate; an old SoS setting carries over once', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
         await page.setInputFiles('#sosFileInput', { name: 'sos.csv', mimeType: 'text/csv', buffer: Buffer.from(['Team,QB,RB,WR,TE', 'BAL,15,25,32,17'].join('\n')) });
         await expect.poll(() => page.evaluate(() => localStorage.getItem('mls_sos'))).not.toBeNull();
         await showTab(page, 'lineup');
         await saveWeekly(page, WEEKLY_OPP_CSV, 30);
-        await expect(page.locator('#lineupSettingsSummary')).toHaveText('FLEX kickoff: on · Matchups: 1 = easiest');
         await openLineupSettings(page);
-        await expect(page.locator('#matchupFlipHint')).toHaveText('Also flips your season SoS.');
 
+        // Flipping matchups leaves season SoS alone.
         await page.locator('#matchupReversedToggle').check();
-        await expect(page.locator('.toast-message').filter({ hasText: 'Flipped: a 1 in your files now shows as 32 (hardest), for matchups and season SoS.' })).toBeVisible();
+        await expect(page.locator('.toast-message').filter({ hasText: 'Matchups flipped: a 1 in your file now shows as 32 (hardest).' })).toBeVisible();
         await expect(oppBadge(page, 'Derrick Henry')).toHaveText('@ SEA 18', { useInnerText: true });
-        expect((await savedSoS(page)).BAL.RB).toBe('8');
-        await showTab(page, 'roster');
-        await expect(page.locator('#sosReversedToggle')).toBeChecked();
-        // And back from the Roster tab.
-        await page.locator('#sosReversedToggle').uncheck();
+        expect(await page.evaluate(() => [localStorage.getItem('mls_matchup_reversed'), localStorage.getItem('mls_sos_reversed')])).toEqual(['1', null]);
         expect((await savedSoS(page)).BAL.RB).toBe('25');
+        await showTab(page, 'roster');
+        await expect(page.locator('#sosReversedToggle')).not.toBeChecked();
+        // And flipping SoS leaves matchups alone.
+        await page.locator('#sosReversedToggle').check();
+        await expect(page.locator('.toast-message').filter({ hasText: 'SoS flipped: a 1 in your SoS files now shows as 32 (hardest).' })).toBeVisible();
+        expect((await savedSoS(page)).BAL.RB).toBe('8');
+        await page.locator('#sosReversedToggle').uncheck();
         await showTab(page, 'lineup');
-        await expect(page.locator('#matchupReversedToggle')).not.toBeChecked();
-        await expect(page.locator('#lineupSettingsSummary')).toHaveText('FLEX kickoff: on · Matchups: 1 = easiest');
+        await expect(page.locator('#matchupReversedToggle')).toBeChecked();
+        await expect(oppBadge(page, 'Derrick Henry')).toHaveText('@ SEA 18', { useInnerText: true });
+
+        // Someone who had the SoS switch on before matchups had their own: matchups start flipped too, until set.
+        await page.evaluate(() => { localStorage.removeItem('mls_matchup_reversed'); localStorage.setItem('mls_sos_reversed', '1'); });
+        await page.reload();
+        await showTab(page, 'lineup');
+        await expect(page.locator('#matchupReversedToggle')).toBeChecked();
+        await expect(oppBadge(page, 'Derrick Henry')).toHaveText('@ SEA 18', { useInnerText: true });
+        await openLineupSettings(page);
+        await page.locator('#matchupReversedToggle').uncheck();
         await expect(oppBadge(page, 'Derrick Henry')).toHaveText('@ SEA 15', { useInnerText: true });
+        expect(await page.evaluate(() => [localStorage.getItem('mls_matchup_reversed'), localStorage.getItem('mls_sos_reversed')])).toEqual(['0', '1']);
 
         await expectClean(page, state);
     });
 
-    test('the Lineup tab shows each player\'s opponent and matchup rank, explained on tap, flipped by the SoS switch', async ({ page }) => {
+    test('the Lineup tab shows each player\'s opponent and matchup rank, explained on tap, flipped by its own toggle', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
         await showTab(page, 'lineup');
@@ -128,19 +140,17 @@ test.describe('Lineup Strategist: this week\'s opponent strength', () => {
         const look = await henry.evaluate(e => { const c = getComputedStyle(e); return { bg: c.backgroundColor, border: c.borderTopWidth, deco: c.textDecorationStyle }; });
         expect(look).toEqual({ bg: 'rgba(0, 0, 0, 0)', border: '0px', deco: 'dotted' });
 
-        // No season SoS here, so the Roster tab has no switch; Lineup settings does. It flips the matchup ranks
-        // (15 -> 18, 1 -> 32) without re-optimizing, and says so in the tip. Folded, its summary says what's set.
-        await expect(page.locator('#lineupSettingsSummary')).toHaveText('FLEX kickoff: on · Matchups: 1 = easiest');
+        // Lineup settings (folded, no summary) has the toggle. It flips the matchup ranks (15 -> 18, 1 -> 32) without
+        // re-optimizing, and the tip says how to undo it.
+        await expect(page.locator('#lineupSettings > summary')).toHaveText('Lineup settings');
         await expect(page.locator('#matchupFlipRow')).toBeHidden();
         await openLineupSettings(page);
-        await expect(page.locator('#matchupFlipHint')).toBeHidden();
         await page.locator('#matchupReversedToggle').check();
-        await expect(page.locator('#lineupSettingsSummary')).toHaveText('FLEX kickoff: on · Matchups: 1 = hardest');
-        await expect(page.locator('.toast-message').filter({ hasText: 'Flipped: a 1 in your file now shows as 32 (hardest).' })).toBeVisible();
+        await expect(page.locator('.toast-message').filter({ hasText: 'Matchups flipped: a 1 in your file now shows as 32 (hardest).' })).toBeVisible();
         await expect(oppBadge(page, 'Derrick Henry')).toHaveText('@ SEA 18', { useInnerText: true });
-        await expect(oppBadge(page, "Ja'Marr Chase")).toHaveAttribute('title', "This week vs KC: one of the toughest matchups for WRs (32 of 32 with your file's order flipped, so 1 = easiest). Reads backwards? Turn on \"My matchup files rank 1 = hardest\" in Lineup settings.");
-        expect(await page.evaluate(() => localStorage.getItem('mls_sos_reversed'))).toBe('1');
-        expect(await page.evaluate(() => localStorage.getItem('mls_sos'))).toBeNull();
+        await expect(oppBadge(page, "Ja'Marr Chase")).toHaveAttribute('title', "This week vs KC: one of the toughest matchups for WRs (32 of 32 with your file's order flipped, so 1 = easiest). Reads backwards? Turn off \"My matchup files rank 1 = hardest\" in Lineup settings.");
+        expect(await page.evaluate(() => localStorage.getItem('mls_matchup_reversed'))).toBe('1');
+        expect(await page.evaluate(() => [localStorage.getItem('mls_sos'), localStorage.getItem('mls_sos_reversed')])).toEqual([null, null]);
         // Remembered.
         await page.reload();
         await showTab(page, 'lineup');
@@ -164,7 +174,6 @@ test.describe('Lineup Strategist: this week\'s opponent strength', () => {
         await expect(page.locator('#lineupTab .opp-rank-badge')).toHaveCount(0);
         // No matchup ranks: Lineup settings has only FLEX Kickoff.
         await expect(page.locator('#matchupFlipRow')).toBeHidden();
-        await expect(page.locator('#lineupSettingsSummary')).toHaveText('FLEX kickoff: on');
 
         // With them, then a week later (the set's upload moved back past last Tuesday's start): gone.
         await saveWeekly(page, WEEKLY_OPP_CSV, 30);

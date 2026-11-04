@@ -7,7 +7,7 @@ import { State } from '../state.js';
 import { updatePulsePrompts } from '../init.js';
 import { populateRankingSetDropdown } from './sets.js';
 import { getFreshness } from '../../shared/freshness.js';
-import { renderLineupSettings } from '../sos.js';
+import { renderLineupSettings } from '../opponent.js';
 
     export const toggleRankingsCard = function(cardId) {
         const card = document.getElementById(cardId);
