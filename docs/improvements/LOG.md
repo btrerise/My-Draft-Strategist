@@ -8751,3 +8751,12 @@ week). (2) "My matchup files rank 1 = hardest" broke as "…rank 1 =" / "hardest
 **Tests.** `tests/mls-opponent-strength.spec.mjs`: Jayden Daniels's card names Josh Allen with his matchup rank (13);
 none with Rank By ROS. Screenshots: none newly affected (the screenshot league has no matchup ranks; labels are
 hidden or folded there).
+
+### S31: screenshot baselines from CI (PR #219, run 41917001628)
+
+CI failed only `visual.spec.mjs` › "MLS synced league tabs", on exactly the four PNGs predicted. Each `-expected.png`
+was byte-identical to the committed baseline, and the `-actual.png` renders (now committed) differ only where S31
+changes the page: `desktop/` and `phone/mls-league-lineup.png` (the FLEX Kickoff row became the folded "Lineup
+settings", +10px) and `desktop/` and `phone/mls-league-guide.png` (the new legend line, +61px and +142px). The phone
+renders also differ in a 30-row strip under the fixed, translucent bottom nav, which a full-page capture draws over
+whatever sits behind it at that height.
