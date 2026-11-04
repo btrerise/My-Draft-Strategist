@@ -8678,3 +8678,11 @@ removed), `js/mls/sos.js` (`renderLineupSettings` replaces `renderWeeklyMatchupS
 the toggle hidden without matchup ranks, the hint with SoS only, flipping from Lineup settings and from the Roster tab,
 the new tip. `tests/mls-sflex-kickoff.spec.mjs`: opens Lineup settings before turning FLEX Kickoff off and checks the
 summary follows.
+
+**Screenshots after round 6** (main and the branch rendered the same way here, `npm run pxdiff`): four change, all
+to be re-taken from CI's renders once a pull request runs:
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: the new legend line (taller by 61px and 144px).
+- `desktop/mls-league-lineup.png`, `phone/mls-league-lineup.png`: the FLEX Kickoff row became the folded "Lineup
+  settings" line (11px taller on both).
+Every other screenshot is pixel-identical to main's. **Checks:** `npm run check`: check-precache OK, 492 unit tests,
+725 Playwright tests pass; `visual.spec.mjs` fails only on the container's environment check, as on main.
