@@ -129,7 +129,9 @@ test.describe('Lineup Strategist: this week\'s opponent strength', () => {
         // No season SoS here, so the Roster tab has no switch; the Weekly Matchup Rankings card does. It flips the
         // matchup ranks (15 -> 18, 1 -> 32) without re-optimizing, and says so in the tip.
         const scale = page.locator('#weeklyMatchupScale');
-        await openWeeklyCard(page);
+        // The card stays open after an upload with matchup ranks (owner's choice), so the switch is in view.
+        await expect(page.locator('[data-action="toggleRankingsCard"][data-card="weeklyRankingsCard"]')).toHaveAttribute('aria-expanded', 'true');
+        await expect(scale).toBeVisible();
         await expect(scale).toContainText('Matchup ranks: 1 = easiest, 32 = hardest');
         await expect(scale).not.toContainText('also flips your season SoS');
         await page.locator('#weeklyMatchupReversedToggle').check();
@@ -161,6 +163,8 @@ test.describe('Lineup Strategist: this week\'s opponent strength', () => {
         await expect(lineupRow(page, 'Derrick Henry')).toHaveCount(1);
         await expect(page.locator('#lineupTab .opp-rank-badge')).toHaveCount(0);
         await expect(page.locator('#weeklyMatchupScale')).toBeHidden();
+        // Without matchup ranks the card folds after a save, as before.
+        await expect(page.locator('[data-action="toggleRankingsCard"][data-card="weeklyRankingsCard"]')).toHaveAttribute('aria-expanded', 'false');
 
         // With them, then a week later (the set's upload moved back past last Tuesday's start): gone.
         await saveWeekly(page, WEEKLY_OPP_CSV, 30);

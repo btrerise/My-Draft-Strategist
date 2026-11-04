@@ -8619,3 +8619,10 @@ redraw), `js/mls/rankings/engine.js` (draws it with the card's meta), `lineup/in
 tips, the Weekly card's switch with no SoS (flips 15→18, toast, remembered, no `mls_sos` written), and with SoS (label,
 toast, saved SoS flipped, the Roster switch checked, back from the Roster tab); hidden without matchup ranks.
 Screenshots: still only the two Guide PNGs.
+
+### S31, round 4: the Weekly card stays open after a matchup upload (owner: "Keep the card open")
+
+After saving a Weekly file with matchup ranks, the Weekly Matchup Rankings card no longer folds, so its "My files rank
+1 = hardest" switch is in view (`confirmRankingsPreview`, `js/mls/rankings/uploadPreview.js`). Other uploads fold as
+before. Spec: open after a matchup upload, folded after one without. No screenshot changes (the screenshot league's
+files have no matchup ranks).

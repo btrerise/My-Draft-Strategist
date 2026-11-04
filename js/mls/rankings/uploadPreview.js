@@ -7,6 +7,7 @@ import { RANKING_TYPE_CONFIG, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { importSoSUpdates, saveImportedSoS } from '../sos.js';
 import { SOS_SCALE_TEXT } from '../sosScale.js';
+import { rankingsHaveMatchupRanks } from '../opponent.js';
 import { analyzeRankingsFile, derivedRanksWording } from '../scout/waivers.js';
 import { createPreviewShell, formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { setRankingsCardExpanded } from './engine.js';
@@ -280,7 +281,9 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
         const slot = leaguesEl && leaguesEl.dataset.slot === 'season' ? 'season' : null;
         const savedSetId = saveRankingsAsSet(type, parsedData);
         assignSetToLeagues(type, savedSetId, { add: leagueChoice.add }, { slot });
-        setRankingsCardExpanded(RANKING_TYPE_CONFIG[type].cardId, false);
+        // A Weekly file with matchup ranks keeps its card open, so the "My files rank 1 = hardest" switch is in view
+        // right after the upload (improvements S31, owner's choice); everything else folds as before.
+        setRankingsCardExpanded(RANKING_TYPE_CONFIG[type].cardId, isWeekly && rankingsHaveMatchupRanks(parsedData));
 
         if (hasNewSos) {
             importSoSUpdates(sosUpdates);
