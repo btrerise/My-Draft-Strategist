@@ -8727,3 +8727,8 @@ which is back to SoS only), the flip reads `State.matchupReversed`. `js/mls/main
 toggle and the matchup badge untouched by the SoS toggle, both keys checked), the carry-over from an old SoS setting
 and setting it apart afterwards, the folded title alone, "Turn off" in the tip. `tests/mls-sos-scale.spec.mjs`: the
 new SoS toasts. `tests/mls-sflex-kickoff.spec.mjs`: no summary checks.
+
+**Checks after round 8.** `npm run check`: check-precache OK, 492 unit tests, 725 Playwright tests pass;
+`visual.spec.mjs` fails only on the container's environment check, as on main. Rendered against main the same way here:
+still exactly the four PNGs listed after round 6 (`desktop/` and `phone/mls-league-guide.png`,
+`desktop/` and `phone/mls-league-lineup.png`), to be re-taken from CI's renders.
