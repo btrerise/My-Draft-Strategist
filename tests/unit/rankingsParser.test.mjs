@@ -27,9 +27,9 @@ const pick = (p, keys = ['name', 'rank', 'tier', 'posRank', 'posTier', 'flexRank
 
 describe('exports', () => {
     // 2C added the four MDS title-line exports (moved from js/mds/import.js); 9A added parseSosValue
-    // for js/mls/sos.js.
-    test('parseRankingsFiles plus the MDS title-line helpers and parseSosValue', () => {
-        assert.deepEqual(Object.keys(parser).sort(), ['MDS_NAME_HEADERS', 'findHeaderRowIndex', 'normalizeHeader', 'parseRankingsFiles', 'parseSosValue', 'stripTitleLines']);
+    // for js/mls/sos.js; improvements S31 added the two opponent-cell readers.
+    test('parseRankingsFiles plus the MDS title-line helpers, parseSosValue and the opponent cells', () => {
+        assert.deepEqual(Object.keys(parser).sort(), ['MDS_NAME_HEADERS', 'findHeaderRowIndex', 'normalizeHeader', 'parseOpponentCell', 'parseOpponentRank', 'parseRankingsFiles', 'parseSosValue', 'stripTitleLines']);
     });
 });
 
@@ -382,6 +382,97 @@ describe('strength of schedule extraction', () => {
         const res = await parse(single(csvFile('s.csv', 'Player,Team,SOS\nJosh Allen,BUF,5\n')));
         assert.equal(res.hasNewSos, false);
         assert.deepEqual(res.sosUpdates, {});
+    });
+});
+
+// Improvements S31: a Weekly upload reads this week's opponent (Opp) and its matchup rank (Matchup) into each
+// player, and never returns season SoS; a ROS upload is read as before.
+describe('this week\'s opponent (Weekly uploads)', () => {
+    const weekly = (files) => parse(files, { weekly: true });
+
+    test('opponent cells: "vs KC", "@ KC", "at KC", a bare "KC", aliases, and what isn\'t a team', () => {
+        assert.deepEqual(parser.parseOpponentCell('vs KC'), { opp: 'KC', home: true });
+        assert.deepEqual(parser.parseOpponentCell('vs. kc'), { opp: 'KC', home: true });
+        assert.deepEqual(parser.parseOpponentCell('@ KC'), { opp: 'KC', home: false });
+        assert.deepEqual(parser.parseOpponentCell('@KC'), { opp: 'KC', home: false });
+        assert.deepEqual(parser.parseOpponentCell('at KC'), { opp: 'KC', home: false });
+        assert.deepEqual(parser.parseOpponentCell('KC'), { opp: 'KC', home: null });
+        assert.deepEqual(parser.parseOpponentCell('ATL'), { opp: 'ATL', home: null });
+        assert.deepEqual(parser.parseOpponentCell('JAC'), { opp: 'JAX', home: null });
+        assert.deepEqual(parser.parseOpponentCell('@ WSH'), { opp: 'WAS', home: false });
+        for (const cell of ['', '  ', 'BYE', 'LA', 'vs', '-', null, undefined, 'Kansas City']) assert.equal(parser.parseOpponentCell(cell), null, String(cell));
+    });
+
+    test('matchup cells: whole ranks from 1 to 32, else null', () => {
+        assert.equal(parser.parseOpponentRank('28'), 28);
+        assert.equal(parser.parseOpponentRank(' 1 '), 1);
+        assert.equal(parser.parseOpponentRank('#5'), 5);
+        assert.equal(parser.parseOpponentRank('4.4'), 4);
+        for (const cell of ['', '0', '33', '-3', 'n/a', '3 of 5', null, undefined]) assert.equal(parser.parseOpponentRank(cell), null, String(cell));
+    });
+
+    test('a vertical Weekly file: Opp and Matchup on each row, blanks left out, and no season SoS', async () => {
+        const res = await weekly(single(csvFile('week9.csv', dedent(`
+            Rank,Player,Pos,Team,Opp,Matchup
+            1,Josh Allen,QB,BUF,@ MIN,32
+            2,Ja'Marr Chase,WR,CIN,vs ATL,20
+            3,Derrick Henry,RB,BAL,JAC,
+            4,Seattle Seahawks,DEF,SEA,ARI,1
+            5,Travis Kelce,TE,KC,,
+        `))));
+        const p = byName(res.parsedData);
+        assert.deepEqual(pick(p['joshallen'], ['opp', 'oppHome', 'oppRank']), { opp: 'MIN', oppHome: false, oppRank: 32 });
+        assert.deepEqual(pick(p['jamarrchase'], ['opp', 'oppHome', 'oppRank']), { opp: 'ATL', oppHome: true, oppRank: 20 });
+        assert.deepEqual(pick(p['derrickhenry'], ['opp', 'oppHome', 'oppRank']), { opp: 'JAX', oppHome: null, oppRank: undefined });
+        assert.deepEqual(pick(p['seattleseahawks'], ['opp', 'oppHome', 'oppRank']), { opp: 'ARI', oppHome: null, oppRank: 1 });
+        assert.ok(!('opp' in p['traviskelce']) && !('oppRank' in p['traviskelce']), 'blank cells add nothing');
+        // The Matchup column is this week's, so it isn't season SoS.
+        assert.equal(res.hasNewSos, false);
+        assert.deepEqual(res.sosUpdates, {});
+    });
+
+    test('headers may start with a position, and Opp Rank / OPRK mean Matchup', async () => {
+        for (const [opp, rank] of [['Opponent', 'Opp Rank'], ['WR Opponent', 'WR Matchup'], ['vs', 'OPRK'], ['Opp', 'Matchup Rank']]) {
+            const res = await weekly(single(csvFile('w.csv', `Player,Pos,Team,${opp},${rank}\nJa'Marr Chase,WR,CIN,ATL,20\n`)));
+            assert.deepEqual(pick(res.parsedData[0], ['opp', 'oppRank']), { opp: 'ATL', oppRank: 20 }, `${opp} / ${rank}`);
+        }
+    });
+
+    test('a Weekly file\'s SoS, Schedule and ROS columns aren\'t season SoS either (owner\'s choice)', async () => {
+        for (const header of ['SoS', 'Schedule', 'ROS', 'Matchup']) {
+            const res = await weekly(single(csvFile('w.csv', `Player,Tm,Position,${header}\nJosh Allen,BUF,QB,5\n`)));
+            assert.equal(res.hasNewSos, false, header);
+            assert.deepEqual(res.sosUpdates, {}, header);
+        }
+    });
+
+    test('a ROS upload reads no opponent, and its Matchup column is still season SoS', async () => {
+        const res = await parse(single(csvFile('ros.csv', 'Player,Team,Pos,Opp,Matchup\nJosh Allen,BUF,QB,MIN,5\n')));
+        assert.ok(!('opp' in res.parsedData[0]) && !('oppRank' in res.parsedData[0]));
+        assert.deepEqual(res.sosUpdates, { BUF: { QB: '5' } });
+    });
+
+    test('the side-by-side layout (the owner\'s weekly file, unquoted for the Papa stub): each section\'s Opponent and Matchup, K and DEF without one', async () => {
+        const res = await weekly(single(csvFile('Weekly-Rankings.csv', dedent(`
+            QB Rank,QB Player,QB Team,QB Opponent,QB Total,QB Matchup,QB Tier,WR Rank,WR Player,WR Team,WR Opponent,WR Total,WR Matchup,WR Tier,DEF Rank,DEF Team,DEF Opponent,DEF Spread,DEF Tier,FLEX Rank,FLEX Player,FLEX Team,FLEX Opponent,FLEX Total,FLEX Pos,FLEX Matchup,K Rank,K Player,K Team,K Projection,K Opponent
+            1,Joe Burrow,CIN,ATL,27.75,21,1,1,Jaxon Smith-Njigba,SEA,ARI,28.00,14,1,1,Seattle Seahawks,ARI,-11.50,1,1,Jahmyr Gibbs,DET,MIA,28.75,RB,5,1,Brandon Aubrey,DAL,1.00,IND
+            3,Josh Allen,BUF,MIN,24.50,32,2,4,Ja'Marr Chase,CIN,ATL,27.75,20,2,,,,,,2,Jaxon Smith-Njigba,SEA,ARI,28.00,WR,14,31,Chris Boswell,PIT,,
+        `))));
+        const p = byName(res.parsedData);
+        const opp = (n) => pick(p[n], ['opp', 'oppHome', 'oppRank']);
+        assert.deepEqual(opp('joeburrow'), { opp: 'ATL', oppHome: null, oppRank: 21 });
+        assert.deepEqual(opp('joshallen'), { opp: 'MIN', oppHome: null, oppRank: 32 });
+        assert.deepEqual(opp('jamarrchase'), { opp: 'ATL', oppHome: null, oppRank: 20 });
+        assert.deepEqual(opp('jaxonsmithnjigba'), { opp: 'ARI', oppHome: null, oppRank: 14 });
+        // Only in the FLEX section: its own Opponent and Matchup.
+        assert.deepEqual(opp('jahmyrgibbs'), { opp: 'MIA', oppHome: null, oppRank: 5 });
+        // DEF and K: the opponent, no rank. A blank K Opponent adds nothing.
+        assert.deepEqual(opp('seattleseahawks'), { opp: 'ARI', oppHome: null, oppRank: undefined });
+        assert.deepEqual(opp('brandonaubrey'), { opp: 'IND', oppHome: null, oppRank: undefined });
+        assert.ok(!('opp' in p['chrisboswell']));
+        // The ranks themselves are read as before.
+        assert.equal(p['joshallen'].posRank, 3);
+        assert.equal(res.hasNewSos, false);
     });
 });
 

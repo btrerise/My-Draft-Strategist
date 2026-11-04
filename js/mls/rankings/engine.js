@@ -7,6 +7,7 @@ import { State } from '../state.js';
 import { updatePulsePrompts } from '../init.js';
 import { populateRankingSetDropdown } from './sets.js';
 import { getFreshness } from '../../shared/freshness.js';
+import { renderLineupSettings } from '../opponent.js';
 
     export const toggleRankingsCard = function(cardId) {
         const card = document.getElementById(cardId);
@@ -73,6 +74,9 @@ import { getFreshness } from '../../shared/freshness.js';
                 setRankingsCardExpanded('weeklyRankingsCard', true); // nothing loaded yet -- show the actionable UI
             }
         }
+
+        // Lineup settings: the matchup ranks' 1 = hardest switch shows when the Weekly rankings have them (improvements S31).
+        renderLineupSettings();
 
         populateRankingSetDropdown('ros');
         populateRankingSetDropdown('weekly');

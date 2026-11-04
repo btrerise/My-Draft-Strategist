@@ -650,7 +650,7 @@ import { refreshThisWeek } from '../main.js';
                 // IR-slot badge before the injury badge, as on the Roster tab (improvements S9).
                 let irSlotBadge = getIrSlotBadgeHTML(p, { starting: true });
                 let injBadge = getInjuryBadgeHTML(p);
-                let kickoffBadge = getGameInfoHTML(p.team);
+                let kickoffBadge = getGameInfoHTML(p.team, p);
 
                 let sleeperWarn = "";
                 if (validSleeperStarters.length > 0 && !validSleeperStarters.includes(p.id)) {
@@ -736,7 +736,7 @@ import { refreshThisWeek } from '../main.js';
                 // IR-slot badge before the injury badge, as on the Roster tab (improvements S9).
                 let irSlotBadge = getIrSlotBadgeHTML(p);
                 let injBadge = getInjuryBadgeHTML(p);
-                let kickoffBadge = getGameInfoHTML(p.team);
+                let kickoffBadge = getGameInfoHTML(p.team, p);
                 // Kept even though the divider above already labels the group: the divider
                 // scrolls off, and these rows get screenshotted and pasted into league chats.
                 let taxiBadge = p.isTaxi ? `<span class="badge taxi-badge">TAXI</span>` : "";

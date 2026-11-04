@@ -8462,3 +8462,301 @@ for the new file during install isn't kept and the real file is cached once it's
   with `404.html` in place, the owner chose to **keep everything**: the `data-optional` banner fix (a blocker or a
   dropped request on the optional counter must never show the fatal banner), the service worker's HTML-for-asset
   guard (v2.9.0, mostly redundant once `404.html` exists, kept as a safety net) and `404.html`.
+
+## S31 — Lineup tab: this week's opponent strength from your weekly rankings
+
+**The reproduction first.** On main, a Weekly rankings file with a `Matchup` column (or `SoS`, `Schedule`, `ROS`) in
+the single-list layout was read as season SoS by the parser's vertical engine and saved over the Roster tab's season
+SoS grid on Save (the SoS card then said "from your Weekly rankings"). `tests/mls-opponent-strength.spec.mjs`'s first
+test uploads an SoS file, then saves such a Weekly file, and checks the SoS, its source and the Roster badge are
+unchanged: it failed on main (commit c831d1e) and passes now. The owner's own weekly file is the side-by-side layout
+(`QB Player … QB Opponent … QB Matchup`), read by the horizontal engine, which never read SoS, so the owner's files
+weren't the ones doing it.
+
+**The owner's answers** (from the file "Weekly-Rankings-All-11-3.csv", plus a ROS file for reference):
+1. Headers: my suggestion, plus **a position may come before the keyword** ("WR Opponent", "WR Matchup", as in the
+   file). Opponent's team: `Opp`, `Opponent`, `Opp Team`, `Opponent Team`, `vs`. Matchup rank: `Matchup`,
+   `Matchup Rank`, `Matchup Rk`, `Opp Rank`, `Opp Rk`, `Opponent Rank`, `OPRK`. **A Weekly file never writes season
+   SoS** (its SoS / Schedule / ROS columns are ignored); SoS files, ROS rankings files and the manual grid still do.
+2. Scale 1 = easiest like SoS, and **one switch**: "My SoS files rank 1 = hardest" flips it too.
+3. **A badge in the row's meta line** ("vs KC 28", "@ KC 3"), green to red on the SoS colors, explained on tap;
+   **"vs KC" with no rank too** ("include opponent always"); and **yes on the Waiver Wire's Weekly mode** ("that could
+   impact a user's decision to pick up the player or not").
+
+**User-visible effect.**
+- Lineup tab: each row (starters and bench) with this week's opponent gets a badge at the end of its meta line, after
+  the rank: "vs KC 28" (home), "@ KC 28" (away), coloured like the SoS badge (1 green, 32 red), or "vs KC" in plain
+  badge colours when the file has no rank for him (the owner's file has none for K and DEF). Tap or hover: "This week:
+  at SEA, matchup 15 of 32 for RBs (1 = easiest, 32 = hardest), from your Weekly rankings." On phones and touch
+  screens "vs" / "@" is hidden ("KC 28"), as the SoS badge drops "SoS: ".
+- Waiver Wire Assistant: the same badge on Top Available rows and Auto-Find cards when Rank By is Weekly (not ROS, not
+  Check a List's cards). Top Available still has no SoS badge (S7 round 3).
+- Shown only when the league's Weekly set has opponent data and was uploaded this rankings week
+  (`isSameRankingsWeek`, Tuesday 10:00 UTC to Tuesday), so last week's matchups never show as this week's.
+- "vs" / "@": from the file ("vs KC", "@ KC", "at KC"); for a bare "KC" from ESPN's scoreboard when it names the same
+  opponent; else "vs". A row with a Matchup rank but no Opp column takes the opponent from the scoreboard
+  (`State.gamesByTeam`, `refreshGameTimes`).
+- The upload preview says so: "This file also has this week's opponents and matchup ranks (29 players), read as 1 =
+  easiest, 32 = hardest [or: read as 1 = hardest and flipped…]. They show on the Lineup tab, and in the Waiver Wire
+  Assistant when Rank By is Weekly, until next week's rankings. Your season SoS isn't changed."
+- Fixed: a Weekly file no longer changes season SoS.
+- Guide → What the badges mean → Schedule: a new line with three samples (vs KC 3, @ KC 28, vs KC).
+
+**What changed and where.**
+- `js/shared/rankings/parse.js`: `parseRankingsFiles(…, { weekly })`. With it, the vertical engine reads no season
+  SoS and reads `Opp` / `Matchup` (any of the headers above, optionally after a position); the horizontal engine reads
+  each section's `<pos> Opponent` / `<pos> Matchup`. Stored on the player as `opp` (team code, aliases JAC→JAX,
+  WSH→WAS), `oppHome` (true / false / null) and `oppRank` (1–32 as the file has it, never flipped when stored). Blank
+  or non-team cells add nothing. New exports `parseOpponentCell`, `parseOpponentRank`. ROS uploads are read as before.
+- `js/mls/rankings/uploadPreview.js`: passes `weekly`; the new `#rankingsPreviewOppNote` (`lineup/index.html`).
+- `js/mls/opponent.js` (new, in `PRECACHE_ASSETS`): when to show, the flip at display time (`State.sosReversed`),
+  the scoreboard fallback, the tip, `getOpponentBadgeHTML(player)`.
+- `js/mls/badges.js`: `opponentBadgeMarkup` (a button with `data-action="explainSoS"`, which toasts `data-tip`;
+  `{ sample }` for the legend) and `sosColorStyle(rank)`, now shared with `sosBadgeMarkup` (same output as before).
+- `js/mls/render/lineup.js` (both row kinds), `js/mls/scout/waivers.js` (`waiverOpponentBadge`, Auto-Find cards),
+  `js/mls/scout/topAvailable.js` (rows). `js/mls/legend.js`: the legend line. `css/mls.css`: `.opp-badge*`.
+- No storage key: the fields live in the Weekly set's rows (`mls_ranking_sets_weekly`, and `mls_weekly`), so Backup /
+  Restore carries them. The optimizer doesn't read them.
+- `sw.js`: `opponent.js` precached; `CACHE_NAME` v2.9.1. CHANGELOG: two lines under Lineup Strategist.
+
+**Tests.**
+- `tests/unit/rankingsParser.test.mjs`: opponent cells ("vs KC", "vs. kc", "@ KC", "@KC", "at KC", bare "KC", "ATL",
+  aliases, blanks, "BYE", "LA", full names), matchup cells (1–32, "#5", "4.4", 0, 33, text), a vertical Weekly file
+  (blanks, a DEF row, no season SoS), position-prefixed and alternative headers, a Weekly file's SoS / Schedule / ROS /
+  Matchup columns giving no SoS, a ROS upload unchanged, and the owner's side-by-side layout (QB, WR, DEF, FLEX-only,
+  K with and without an opponent).
+- `tests/mls-opponent-strength.spec.mjs` (both widths) with `tests/fixtures/rankings-weekly-opponents.csv`: the
+  reproduction; the preview note; Lineup badges' text (phone without "vs" / "@"), colour, tip, toast, a blank row
+  without one, and the switch flipping 15 to 18; empty states (a Weekly file without the columns, the same set a
+  week old, a ROS upload with the columns); the scoreboard fallback; the Waiver Wire with Rank By Weekly and ROS.
+
+**Leftovers.**
+- On phones the badge often wraps to its own line under the rank. S32 (phone rows) is the place to tidy it, perhaps
+  moving it into a row's details as the card suggests.
+- Not on the Roster tab, Check a List's cards or the Trending view, and the optimizer doesn't use it (out of scope).
+- The owner's ROS file has `ROS` and `Next 4` columns: `ROS` is read as season SoS as before; `Next 4` isn't read.
+
+**Screenshots.** This container's Chromium (153) can't reproduce the baselines, so main and this branch were rendered
+the same way here (`RENDER_ENV=any`) and compared with `npm run pxdiff`: only **`desktop/mls-league-guide.png`** and
+**`phone/mls-league-guide.png`** change (taller by 103px and 232px), from the new legend line. Every Lineup, Roster and
+Scout screenshot is pixel-identical: the screenshot fixtures' rankings have no opponent columns. Those two PNGs are
+to be re-taken from CI's renders once a pull request runs ("When your machine can't reproduce the baselines").
+
+**Checks run.** `npm run check`: check-precache OK, 492 unit tests, 723 Playwright tests pass; `visual.spec.mjs`
+fails only on the container's environment check (4 tests, 0 ms each), as on main.
+
+### S31, round 2: my review as a user, and the owner's changes (owner: "Do all of them, and (a) for Top Available")
+
+**The review** (the owner's real weekly file in the fixture league, desktop and phone): helpful, most of all for
+waiver tiebreakers; clean on desktop. Clunky: (1) on phones "MIN 32" without "vs" / "@" read like a team and a rank,
+beside Pos / Flex / move-chip numbers; (2) phone rows grew a line; (3) Top Available stopped being compact; (4) the
+green-to-red badge beside the position colors (green RB chip, red QB chip) blurred meanings; (5) the tap text made you
+do the math; (6) "vs" was a guess for the file's bare "MIN".
+
+**The owner's answers:** all six, (a) for Top Available (Auto-Find's cards only), and for (2): **merge the badge with
+the "vs LV" / "@ BAL" the kickoff time already shows**, so the opponent is named once.
+
+**User-visible effect.**
+- The badge now sits on the badge line after the kickoff time, **in place of** the plain "@ JAX" from ESPN's
+  scoreboard: "Sun 1:00 PM  @ MIN 32". Without a matchup rank (K, DEF, a blank cell) it stays the plain text. The
+  meta line (position, team, rank) is as before S31.
+- Who and where come from the scoreboard when it has the game; the file's rank shows only when the file names the
+  same opponent (or none). Before the scoreboard loads, the file's opponent shows on its own, with "vs" / "@" only when
+  the file says so ("MIN 32", no guess).
+- Phones keep "vs" / "@" (the hiding rule is gone).
+- Tap text in words first: "This week at MIN: one of the toughest matchups for QBs (32 of 32, where 1 = easiest).
+  Already reflected in your Weekly ranks." Bands: 1–8 easiest, 9–24 middling, 25–32 toughest; a flip adds "Flipped,
+  since your SoS setting says your files rank 1 = hardest."
+- Waiver Wire: on Auto-Find's cards (merged the same way) when Rank By is Weekly; Top Available is back to main's.
+- Legend line reworded; samples "vs KC 3", "@ KC 28", "KC 16". Preview note: "They show after the kickoff time on the
+  Lineup tab, and on Auto-Find's cards when Rank By is Weekly…".
+
+**Where.** `js/mls/lineup/gameInfo.js` (`getGameInfoHTML(team, player)`, `getOpponentHTML`), `js/mls/opponent.js`
+(`opponentFor` prefers the scoreboard, `weeklyOpponentInfo`, `rankedOpponentBadgeHTML`, `matchupWords`, the tip),
+`js/mls/badges.js` (one ranked variant, no hidden prefix), `js/mls/render/lineup.js` (passes the player),
+`js/mls/scout/waivers.js` (`waiverOpponentPlayer`), `js/mls/scout/topAvailable.js` (reverted), `css/mls.css`,
+`js/mls/legend.js`, `js/mls/rankings/uploadPreview.js`, CHANGELOG.
+
+**Tests.** `tests/mls-opponent-strength.spec.mjs`: the badge in `.mls-game-info` and not in the meta line, the same
+text on phones, no guess for a bare team, the worded tips (easy, middling, flipped tough); with a stubbed scoreboard the
+plain "vs NYJ" before a Weekly file, the badge replacing it (kickoff kept, plain text gone), the scoreboard's "@ JAX"
+over a file that says "@ SEA" (no rank then), and an agreeing file; Top Available without it, Auto-Find with it on
+Weekly and not on ROS. Screenshots: still only the two Guide PNGs (the legend line).
+
+### S31, round 3: colored text, and the switch on the Weekly card (owner: "Yes, build both as sketched")
+
+**The owner's questions.** (1) Color the text instead of a badge, to ease the clash with the position chips, still
+tappable? (2) Drop "Already reflected in your Weekly ranks" (we can't know what the analyst did), and put a note about
+the flip switch, or the switch itself, on the Lineup tab. I agreed with both and found a gap: the Roster tab's switch
+only exists once season SoS is loaded, so a matchup-only user couldn't flip at all. Sketched: colored text with a faint
+dotted underline; the same switch inside the Lineup tab's Weekly Matchup Rankings card, shown only when the Weekly set
+has matchup ranks.
+
+**User-visible effect.**
+- "@ MIN 32" is colored text (the SoS color for its rank) with a faint dotted underline in its own color, no box. It's
+  still a button (tap or hover explains it), with a slightly larger hit area than the text.
+- Tap text: "This week at MIN: one of the toughest matchups for QBs (32 of 32, where 1 = easiest). Reads backwards?
+  Use the switch on the Weekly Matchup Rankings card." Flipped: "(32 of 32 with your file's order flipped, so 1 =
+  easiest)".
+- The Weekly Matchup Rankings card (Lineup tab), under "Loaded: N players": "Matchup ranks: 1 = easiest, 32 = hardest"
+  and "[ ] My files rank 1 = hardest", plus "(also flips your season SoS)" when SoS is loaded and "(your file's order
+  flipped)" when on. One setting with the Roster tab's switch (`mls_sos_reversed`); each shows the other's state.
+- With no season SoS, the switch flips only how matchup ranks read ("Flipped: your files rank 1 = hardest…"); with SoS
+  it behaves as before (asks first after grid edits) and its toast adds "Matchup ranks follow it too."
+- A flip on the Lineup tab redraws it instead of re-optimizing (SoS and matchups never change who starts; a re-optimize
+  would undo manual swaps). The Roster tab still reloads.
+- The preview note points to the Weekly card; the Roster switch's hint now says it flips SoS files, SoS columns in ROS
+  files, and Weekly matchup ranks (Weekly files no longer carry season SoS). Legend line reworded.
+
+**Note.** The Weekly card folds after a save, so the switch is one tap away (the card's header); the tip names the card.
+
+**Where.** `js/mls/badges.js` (`opponentBadgeMarkup`: `mls-opp opp-rank-badge`), `css/mls.css`, `js/mls/opponent.js`
+(tip, `rankingsHaveMatchupRanks`), `js/mls/sos.js` (`renderWeeklyMatchupScale`, `setSosReversed` without SoS, the Lineup
+redraw), `js/mls/rankings/engine.js` (draws it with the card's meta), `lineup/index.html` (`#weeklyMatchupScale`),
+`js/mls/rankings/uploadPreview.js`, `js/mls/legend.js`, CHANGELOG. No new key.
+
+**Tests.** `tests/mls-opponent-strength.spec.mjs`: text style (no background or border, dotted underline), the new
+tips, the Weekly card's switch with no SoS (flips 15→18, toast, remembered, no `mls_sos` written), and with SoS (label,
+toast, saved SoS flipped, the Roster switch checked, back from the Roster tab); hidden without matchup ranks.
+Screenshots: still only the two Guide PNGs.
+
+### S31, round 4: the Weekly card stays open after a matchup upload (owner: "Keep the card open")
+
+After saving a Weekly file with matchup ranks, the Weekly Matchup Rankings card no longer folds, so its "My files rank
+1 = hardest" switch is in view (`confirmRankingsPreview`, `js/mls/rankings/uploadPreview.js`). Other uploads fold as
+before. Spec: open after a matchup upload, folded after one without. No screenshot changes (the screenshot league's
+files have no matchup ranks).
+
+### S31, round 5: a second review as a user; the owner took 1–5 ("Do 1-5 as described"), with 1 still open
+
+**The review** (the owner's file, phone and desktop): the rows read well; the problems were (1) the open Weekly card
+pushing the lineup about a screen and a half down on phones after every upload, (2) the legend's samples running
+together and a 7-line explanation, (3) a 6-line preview note, (4) a flip toast describing two scales, (5) the switch
+area saying the scale twice, (6) a small checkbox (left to M2).
+
+**Built (2–5).**
+- Legend: the samples spaced apart (`.badge-legend-sample .opp-rank-badge + .opp-rank-badge`), the text cut to
+  "This week's opponent (vs home, @ away), colored by how tough the matchup is for his position, from your Weekly
+  file's matchup rank: 1 = easiest, 32 = hardest. After the kickoff time, and on Auto-Find's cards. Tap for more."
+- Preview note: "This file also has this week's opponents and matchup ranks (1 = easiest, 32 = hardest). They show
+  after the kickoff time on the Lineup tab and on Auto-Find's cards. Your season SoS isn't changed." (adds "; flipped,
+  as your "1 = hardest" switch says" when on; opponents only: "…opponents (no matchup ranks)…").
+- Toast without SoS: "Flipped: a 1 in your file now shows as 32 (hardest)." / "Flipped back: a 1 in your file shows
+  as 1 (easiest)."
+- The Weekly card's switch is one line: "[ ] Matchup ranks: my files rank 1 = hardest" (plus "(also flips your season
+  SoS)").
+
+**Open (1).** The owner suggested, instead of my folded-header idea, a collapsible "Lineup settings" card holding FLEX
+Kickoff Optimization and this switch (like the Trade Analyzer's Value settings), with toggles instead of checkboxes on
+both tabs. I agreed and sketched it (a header summary of what's set; the matchup toggle only when the Weekly set has
+ranks or it's on; it re-takes the Lineup screenshots); waiting on the owner's go. Until then the card stays open after
+a matchup upload (round 4).
+
+### S31, round 6: Lineup settings (owner: "Yes, build the Lineup settings card as sketched")
+
+The owner's idea in round 5, in place of my folded-header line: group the matchup switch with FLEX Kickoff
+Optimization in a collapsible "Lineup settings", like the Trade Analyzer's Value settings, with toggles instead of
+checkboxes on both tabs.
+
+**User-visible effect.**
+- Under Optimize / Copy / PNG, a folded **Lineup settings** (`<details class="sos-details-accordion
+  mls-lineup-settings" id="lineupSettings">`, not remembered: folded on every visit, like Value settings). Its summary
+  says what's set: "FLEX kickoff: on", plus " · Matchups: 1 = easiest" (or "1 = hardest") when the matchup toggle shows.
+- Inside: the FLEX Kickoff Optimization toggle row (moved, unchanged), and **"My matchup files rank 1 = hardest"**, a
+  toggle with an (i) tooltip, shown when the Weekly rankings have matchup ranks or the setting is on (so it can be turned
+  off), with "Also flips your season SoS." under it when SoS is loaded.
+- The Weekly Matchup Rankings card no longer has the switch, and folds after every upload again (round 4 undone).
+- The Roster tab's "My SoS files rank 1 = hardest" is a toggle row; its hint is unchanged.
+- The tip now ends "Reads backwards? Turn on "My matchup files rank 1 = hardest" in Lineup settings."
+
+**Where.** `lineup/index.html`, `css/mls.css` (`.mls-lineup-settings*`, `.sos-status .toggle-row`; `.sos-flip` rules
+removed), `js/mls/sos.js` (`renderLineupSettings` replaces `renderWeeklyMatchupScale`; the Roster switch's markup),
+`js/mls/main.js` (FLEX Kickoff's handler redraws the summary), `js/mls/rankings/engine.js`,
+`js/mls/rankings/uploadPreview.js`, `js/mls/opponent.js` (tip), CHANGELOG. No new key.
+
+**Tests.** `tests/mls-opponent-strength.spec.mjs`: the summary folded (with and without matchup ranks, after a flip),
+the toggle hidden without matchup ranks, the hint with SoS only, flipping from Lineup settings and from the Roster tab,
+the new tip. `tests/mls-sflex-kickoff.spec.mjs`: opens Lineup settings before turning FLEX Kickoff off and checks the
+summary follows.
+
+**Screenshots after round 6** (main and the branch rendered the same way here, `npm run pxdiff`): four change, all
+to be re-taken from CI's renders once a pull request runs:
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: the new legend line (taller by 61px and 144px).
+- `desktop/mls-league-lineup.png`, `phone/mls-league-lineup.png`: the FLEX Kickoff row became the folded "Lineup
+  settings" line (11px taller on both).
+Every other screenshot is pixel-identical to main's. **Checks:** `npm run check`: check-precache OK, 492 unit tests,
+725 Playwright tests pass; `visual.spec.mjs` fails only on the container's environment check, as on main.
+
+### S31, round 7: a third review as a user (owner: "Do 1 and 3 as described")
+
+Findings: (1) with season SoS loaded the flip toast still had the long two-scale wording; (2) the folded summary broke
+mid-phrase on phones; (3) "Matchups: 1 = hardest" could read as the app's scale; (4) one switch can't serve an SoS
+source and a Weekly source that rank opposite ways.
+
+**Built (1).** One short toast with SoS loaded too: "Flipped: a 1 in your files now shows as 32 (hardest), for
+matchups and season SoS." (or "…for season SoS." without matchup ranks); "Flipped back: a 1 in your files shows as 1
+(easiest), …". The "Keep as is" toasts after grid edits are unchanged. Specs updated (`mls-sos-scale`,
+`mls-opponent-strength`).
+
+### S31, round 8: no summary on Lineup settings, and matchups get their own switch (owner: "Yes, remove the summary and split the switch")
+
+**The owner's questions on round 7.** (2) Would the muted summary look off beside "Lineup settings", and should it go,
+since no other folded settings card has one? I agreed: it can't share the title line on a phone without wrapping, on its
+own lines the folded card is nearly as tall as an open one, and it shows set-and-forget settings. That made (3), its
+rewording, unnecessary. (4) Would splitting the switch be more future-proof? Yes, and simpler: no "also flips your
+season SoS", no manual-grid dialog from the Lineup tab, toasts that name one thing.
+
+**User-visible effect.**
+- "Lineup settings" is just the title when folded.
+- "My matchup files rank 1 = hardest" (Lineup settings) flips only matchup ranks; toast "Matchups flipped: a 1 in your
+  file now shows as 32 (hardest)." / "Matchups flipped back: …". Its tooltip says season SoS has its own switch.
+- "My SoS files rank 1 = hardest" (Roster tab) flips only season SoS; toast "SoS flipped: a 1 in your SoS files now
+  shows as 32 (hardest)." / "SoS flipped back: …"; its hint points to Lineup settings for matchups.
+- Carry-over: until the matchup toggle is first set, it follows the SoS switch, so anyone who had that on keeps
+  their matchup ranks read the same way.
+- The tip says "Turn off …" when the toggle is on.
+
+**What changed and where.** `js/shared/storage/keys.js`: **new key `mls_matchup_reversed`** ('1' / '0'; unset =
+follow `mls_sos_reversed`), `mls_` prefix so Backup / Restore and Factory Reset include it. `js/mls/state.js`:
+`State.matchupReversed`. `js/mls/opponent.js`: `renderLineupSettings` and `setMatchupReversed` (moved from sos.js,
+which is back to SoS only), the flip reads `State.matchupReversed`. `js/mls/main.js`: the `setMatchupReversed` action.
+`lineup/index.html`, `css/mls.css` (summary and hint removed), `js/mls/rankings/engine.js`,
+`js/mls/rankings/uploadPreview.js`, CHANGELOG.
+
+**Tests.** `tests/mls-opponent-strength.spec.mjs`: each toggle flips only its own (saved SoS untouched by the matchup
+toggle and the matchup badge untouched by the SoS toggle, both keys checked), the carry-over from an old SoS setting
+and setting it apart afterwards, the folded title alone, "Turn off" in the tip. `tests/mls-sos-scale.spec.mjs`: the
+new SoS toasts. `tests/mls-sflex-kickoff.spec.mjs`: no summary checks.
+
+**Checks after round 8.** `npm run check`: check-precache OK, 492 unit tests, 725 Playwright tests pass;
+`visual.spec.mjs` fails only on the container's environment check, as on main. Rendered against main the same way here:
+still exactly the four PNGs listed after round 6 (`desktop/` and `phone/mls-league-guide.png`,
+`desktop/` and `phone/mls-league-lineup.png`), to be re-taken from CI's renders.
+
+### S31, round 9: a fourth review as a user (owner: "Yes, do both")
+
+**Findings.** (1) Auto-Find's card compared this week with the season: the free agent showed "vs LAR 20" while the
+player he's measured against showed only his season SoS badge (Josh Allen's green "3", when Allen is at MIN, 32 this
+week). (2) "My matchup files rank 1 = hardest" broke as "…rank 1 =" / "hardest" on phones.
+
+**Built.**
+- With Rank By Weekly, Auto-Find's comparison line shows your player's matchup beside his name, before his season SoS
+  badge: "Would need to pass Josh Allen @ MIN 32 [3] (your QB)". Ranked matchups only (no plain "@ MIN"). Also in the
+  Whole Roster lens's "Upgrade over / Ranked ahead of" lines. Not in Check a List, whose cards don't show the free
+  agent's matchup either. `js/mls/scout/waivers.js`: `waiverCompareLine(…, withMatchup)`, `waiverVerdictParts(ctx,
+  row, { withMatchup })`.
+- "1 = hardest" kept together in both toggle labels (`.mls-nowrap`; `lineup/index.html`, `js/mls/sos.js`).
+- CHANGELOG line extended.
+
+**Tests.** `tests/mls-opponent-strength.spec.mjs`: Jayden Daniels's card names Josh Allen with his matchup rank (13);
+none with Rank By ROS. Screenshots: none newly affected (the screenshot league has no matchup ranks; labels are
+hidden or folded there).
+
+### S31: screenshot baselines from CI (PR #219, run 41917001628)
+
+CI failed only `visual.spec.mjs` › "MLS synced league tabs", on exactly the four PNGs predicted. Each `-expected.png`
+was byte-identical to the committed baseline, and the `-actual.png` renders (now committed) differ only where S31
+changes the page: `desktop/` and `phone/mls-league-lineup.png` (the FLEX Kickoff row became the folded "Lineup
+settings", +10px) and `desktop/` and `phone/mls-league-guide.png` (the new legend line, +61px and +142px). The phone
+renders also differ in a 30-row strip under the fixed, translucent bottom nav, which a full-page capture draws over
+whatever sits behind it at that height.

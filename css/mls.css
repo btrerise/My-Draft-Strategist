@@ -1258,14 +1258,32 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
     .sos-badge .sos-badge-icon { display: inline-block; }
 }
 
+/* This week's opponent with its matchup rank from your Weekly rankings (rankedOpponentBadgeHTML in js/mls/opponent.js,
+   improvements S31): "@ KC 28", in place of the plain .mls-opp text after the kickoff badge. Colored text on the SoS
+   scale (--sos-color), not a box, with a faint dotted underline in its own color that says it can be tapped (owner's
+   choice, round 3). A button reset to look like the text; padding with a matching negative margin makes it easier to
+   hit without moving anything. */
+button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-variant-numeric: inherit; line-height: inherit; text-align: inherit; cursor: pointer; padding: 4px 3px; margin: -4px -3px; border-radius: 4px; }
+.opp-rank-badge { color: var(--sos-color); text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, var(--sos-color) 55%, transparent); text-underline-offset: 2px; white-space: nowrap; }
+/* In the Guide's legend the samples are text with no boxes, so they need more room between them. */
+.badge-legend-sample .opp-rank-badge + .opp-rank-badge { margin-left: 0.75rem; }
+button.opp-rank-badge:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
+
+/* Lineup settings (improvements S31): folded under the Optimize row like the Trade Analyzer's Value settings. The
+   rows are the usual toggle rows, the last shown one without its bottom margin. */
+.mls-lineup-settings { margin-top: 0.75rem; }
+.mls-lineup-settings .accordion-body { padding-top: 0.75rem; }
+.mls-lineup-settings .toggle-row:last-child, .mls-lineup-settings .toggle-row:has(+ .toggle-row[hidden]) { margin-bottom: 0; }
+#matchupFlipRow[hidden] { display: none; }
+/* The SoS card's switch is a toggle row too (improvements S31), inside the status line's grid. */
+.sos-status .toggle-row { margin: 0; padding: 0.6rem 0.75rem; }
+
 /* The SoS card's status (renderSoSStatus in js/mls/sos.js): age, scale, the 1 = hardest switch. */
 .sos-status { margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted); display: grid; gap: 0.35rem; }
 .sos-status[hidden] { display: none; }
 .sos-status-scale { color: var(--text-main); white-space: nowrap; }
 .sos-status-muted { color: var(--text-muted); }
 .sos-status-warn { font-size: 0.8rem; }
-.sos-flip { display: inline-flex; align-items: center; gap: 0.45rem; color: var(--text-main); cursor: pointer; }
-.sos-flip input { width: 16px; height: 16px; accent-color: var(--primary-green); margin: 0; }
 .sos-flip-hint { font-size: 0.78rem; line-height: 1.4; }
 .sos-grid-note { font-size: 0.8rem; color: var(--text-muted); margin: 0.5rem 0; }
 

@@ -27,6 +27,7 @@ import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDr
 import { addManualPlayer, deletePlayer } from './leagues/addPlayer.js';
 import { importAllSleeperLeagues } from './leagues/importAll.js';
 import { explainSoS, generateSoSGrid, saveManualSoS, setSosReversed } from './sos.js';
+import { setMatchupReversed } from './opponent.js';
 import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
 import { applyWaiverScanSettingsToUI, autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
@@ -288,6 +289,8 @@ const changeActions = {
     updateWaiverScanSettingChecked() { updateWaiverScanSetting(this.dataset.setting, this.checked); },
     // The SoS card's "My SoS files rank 1 = hardest" switch (js/mls/sos.js).
     setSosReversed() { setSosReversed(this.checked); },
+    // Lineup settings' "My matchup files rank 1 = hardest" (improvements S31, js/mls/opponent.js).
+    setMatchupReversed() { setMatchupReversed(this.checked); },
     updateTradeSettingChecked() { updateTradeSetting(this.dataset.setting, this.checked); },
     updateTradeSetting() { updateTradeSetting(this.dataset.setting, this.value); },
     toggleDisconnectMode() { toggleDisconnectMode(); },

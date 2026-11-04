@@ -20,7 +20,7 @@ import { formatRankingsDiagnostic } from '../../shared/rankings/diagnostics.js';
 import { enableFileDrop } from '../../shared/ui/fileDrop.js';
 import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback.js';
     const parseFiles = async (filesWithContext, isWeekly, successMsgId, onProgress) => {
-        const { parsedData, hasNewSos, sosUpdates, diagnostics } = await parseRankingsFiles(filesWithContext, { loadSheetJS: loadSheetJS, onProgress });
+        const { parsedData, hasNewSos, sosUpdates, diagnostics } = await parseRankingsFiles(filesWithContext, { loadSheetJS: loadSheetJS, onProgress, weekly: isWeekly });
 
         // The parser module returns SoS data rather than writing to State directly (it has no
         // access to State at all -- see js/shared/rankings/parse.js). It's merged in when the preview
@@ -142,6 +142,17 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
             noteEl.textContent = State.sosReversed
                 ? `This file also includes Strength of Schedule data, which will be updated too. Its numbers will be flipped to ${SOS_SCALE_TEXT}, since your SoS setting on the Roster tab says your files rank 1 = hardest.`
                 : `This file also includes Strength of Schedule data, which will be updated too, read as ${SOS_SCALE_TEXT}. If your file ranks 1 = hardest, turn on "My SoS files rank 1 = hardest" on the Roster tab after saving.`;
+        }
+
+        // This week's opponents in a Weekly file (improvements S31), said like the SoS note above.
+        const oppNoteEl = document.getElementById('rankingsPreviewOppNote');
+        if (oppNoteEl) {
+            const withOpp = isWeekly ? parsedData.filter(p => p.opp).length : 0;
+            const withRank = isWeekly ? parsedData.filter(p => Number.isInteger(p.oppRank)).length : 0;
+            oppNoteEl.style.display = (withOpp || withRank) ? 'block' : 'none';
+            oppNoteEl.textContent = withRank
+                ? `This file also has this week's opponents and matchup ranks (${SOS_SCALE_TEXT}${State.matchupReversed ? '; flipped, as your "My matchup files rank 1 = hardest" setting says' : ''}). They show after the kickoff time on the Lineup tab and on Auto-Find's cards. Your season SoS isn't changed.`
+                : `This file also has this week's opponents (no matchup ranks). Your season SoS isn't changed.`;
         }
 
         // Unmatched-name check runs in the background (it needs Sleeper's player map) and fills

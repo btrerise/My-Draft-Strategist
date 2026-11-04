@@ -50,7 +50,7 @@ test.describe('Lineup Strategist SoS scale and age', () => {
         // The switch flips what's saved (always 1 = easiest), remembers it, and leaves the date alone.
         await page.evaluate(() => localStorage.setItem('mls_sos_updated', '1'));
         await flip(page).check();
-        await expect(toast(page, 'SoS flipped')).toBeVisible();
+        await expect(toast(page, 'SoS flipped: a 1 in your SoS files now shows as 32 (hardest).')).toBeVisible();
         let sos = await saved(page);
         expect(sos.BUF).toEqual({ QB: '31', RB: '30', WR: '29', TE: '28' });
         expect(sos.BAL.RB).toBe('8');
@@ -130,7 +130,7 @@ test.describe('Lineup Strategist SoS scale and age', () => {
         // "Flip saved SoS" flips them; the date and source stay.
         await flip(page).uncheck();
         await dialog.locator('[data-confirm-action="ok"]').click();
-        await expect(toast(page, 'SoS flipped back')).toBeVisible();
+        await expect(toast(page, 'SoS flipped back: a 1 in your SoS files shows as 1 (easiest).')).toBeVisible();
         sos = await saved(page);
         expect(sos.BUF.QB).toBe('13');
         expect(await page.evaluate(() => localStorage.getItem('mls_sos_reversed'))).toBe('0');

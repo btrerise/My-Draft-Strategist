@@ -65,6 +65,9 @@ import { mdsFetch } from '../shared/net.js';
         // 1 = hardest, so imports are flipped to the app's 1 = easiest (js/mls/sosScale.js).
         sosUpdatedAt: localStorage.getItem(KEYS.mls.sosUpdated) || null,
         sosReversed: localStorage.getItem(KEYS.mls.sosReversed) === '1',
+        // Weekly matchup ranks' own "1 = hardest" switch (improvements S31, split from SoS's in round 8). Until it's first
+        // set, it follows the SoS switch, so anyone who had that on keeps their matchup ranks read the same way.
+        matchupReversed: (() => { const v = localStorage.getItem(KEYS.mls.matchupReversed); return v === null ? localStorage.getItem(KEYS.mls.sosReversed) === '1' : v === '1'; })(),
         sosSource: readJSON(KEYS.mls.sosSource, null),
         lockedPlayersMap: readJSON(KEYS.mls.locksMap, {}),
         // Per-league, per-week list of player ids the person has explicitly told the auto-lock

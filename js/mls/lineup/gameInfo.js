@@ -15,6 +15,7 @@ import { getActiveLeague, isBestBallLeague, SIM_EXCLUDE_STATUSES } from '../help
 import { getLeagueRankings, getLeagueSeasonRankings, isAutoLockOverridden, renderLineupUI, optimizeLineup, reoptimizeProjectionlessLeagues } from '../main.js';
 import { normalizeName } from '../../shared/names.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
+import { rankedOpponentBadgeHTML, weeklyOpponentInfo } from '../opponent.js';
 import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } from './issues.js';
 
     // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
@@ -219,20 +220,27 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
     }
 
     // "@ PHI" / "vs KC" for a player's team this week, or "" when there's no game data for them
-    // (fetch hasn't resolved, bye week, free agent).
-    function getOpponentHTML(team) {
-        const g = team && State.gamesByTeam[team];
+    // (fetch hasn't resolved, bye week, free agent). With player ({ cleanName, team, pos }) and Weekly rankings that
+    // carry this week's matchups (improvements S31, js/mls/opponent.js): the colored "@ PHI 28" badge when his
+    // matchup is ranked, else the plain text, from the scoreboard or, before it loads, from the file.
+    function getOpponentHTML(team, player = null) {
+        const info = player ? weeklyOpponentInfo({ ...player, team }) : null;
+        const ranked = rankedOpponentBadgeHTML(info, player && player.pos);
+        if (ranked) return ranked;
+        const g = info || (team && State.gamesByTeam[team]);
         if (!g || !g.opp) return "";
-        return `<span class="mls-opp">${g.home ? 'vs' : '@'} ${escapeHtml(g.opp)}</span>`;
+        const at = g.home === true ? 'vs ' : g.home === false ? '@ ' : '';
+        return `<span class="mls-opp">${at}${escapeHtml(g.opp)}</span>`;
     }
 
     // The kickoff badge plus the opponent, kept together as one unit on the row's badge line so
-    // a wrapping line can't split "Sun 1:25 PM" from "vs MIA". "" whenever the kickoff badge is
-    // (both come from the same scoreboard response, so one is never present without the other).
-    export function getGameInfoHTML(team) {
+    // a wrapping line can't split "Sun 1:25 PM" from "vs MIA". Both come from the same scoreboard
+    // response; before it arrives, a Weekly file's opponent can still show on its own (player given).
+    export function getGameInfoHTML(team, player = null) {
         const badge = getKickoffBadgeHTML(team);
-        if (!badge) return "";
-        return `<span class="mls-game-info">${badge}${getOpponentHTML(team)}</span>`;
+        const opp = getOpponentHTML(team, player);
+        if (!badge && !opp) return "";
+        return `<span class="mls-game-info">${badge}${opp}</span>`;
     }
 
     // The single points figure shown at the right of a Lineup row: Sleeper's projection until the

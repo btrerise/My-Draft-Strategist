@@ -3,7 +3,7 @@ import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
 import { NFL_TEAMS, fantasyPosition } from './constants.js';
 import { State } from './state.js';
 import { showStatusFeedback } from '../shared/ui/statusFeedback.js';
-import { loadRosterTab, optimizeLineup } from './main.js';
+import { loadRosterTab, renderLineupUI } from './main.js';
 import { KEYS } from '../shared/storage/keys.js';
 import { flashButton } from '../shared/ui/flashButton.js';
 import { normalizeName } from '../shared/names.js';
@@ -110,8 +110,11 @@ import { sosBadgeMarkup } from './badges.js';
         el.innerHTML = `
             <div class="sos-status-line">${age} <span class="sos-status-sep" aria-hidden="true">&middot;</span> <span class="sos-status-scale">${SOS_SCALE_TEXT}</span></div>
             ${ratings}
-            <label class="sos-flip"><input type="checkbox" id="sosReversedToggle" data-action="setSosReversed"${State.sosReversed ? ' checked' : ''}> My SoS files rank 1 = hardest</label>
-            <div class="sos-flip-hint">Turn this on if your source lists the toughest schedule as 1. It flips the SoS saved now and every SoS you upload later: SoS files, and SoS columns in ROS or Weekly rankings files.</div>`;
+            <div class="toggle-row">
+                <span class="toggle-title"><label for="sosReversedToggle">My SoS files rank <span class="mls-nowrap">1 = hardest</span></label></span>
+                <input type="checkbox" id="sosReversedToggle" class="toggle-switch" data-action="setSosReversed"${State.sosReversed ? ' checked' : ''}>
+            </div>
+            <div class="sos-flip-hint">Turn this on if your source lists the toughest schedule as 1. It flips the SoS saved now and every SoS you upload later (SoS files, and SoS columns in ROS rankings files). Weekly matchup ranks have their own switch in the Lineup tab's Lineup settings.</div>`;
         el.hidden = false;
     }
 
@@ -135,18 +138,20 @@ import { sosBadgeMarkup } from './badges.js';
                 Object.keys(posMap || {}).forEach(pos => { posMap[pos] = reverseSosValue(posMap[pos]); });
             });
             saveSoS();
-            showToast(on ? `SoS flipped: your files rank 1 = hardest, and the app now reads them as ${SOS_SCALE_TEXT}.` : `SoS flipped back: your files rank 1 = easiest.`);
-            refreshSoSViews();
+            // One short toast (improvements S31, round 7): what a 1 in your SoS files becomes.
+            showToast(on ? 'SoS flipped: a 1 in your SoS files now shows as 32 (hardest).' : 'SoS flipped back: a 1 in your SoS files shows as 1 (easiest).');
         } else {
             renderSoSStatus();
             showToast(on ? `Saved SoS kept as is. SoS files you upload from now on are flipped to ${SOS_SCALE_TEXT}.` : `Saved SoS kept as is. SoS files you upload from now on are read as ${SOS_SCALE_TEXT}.`);
         }
+        refreshSoSViews();
     }
 
     function refreshSoSViews() {
         const activeTabEl = document.querySelector('.tab-content.active');
         const activeTab = activeTabEl ? activeTabEl.id : '';
-        if (activeTab === 'lineupTab') optimizeLineup(true);
+        // SoS never changes who starts, so the Lineup tab only redraws (a re-optimize would undo your swaps).
+        if (activeTab === 'lineupTab') renderLineupUI();
         else if (activeTab === 'rosterTab') loadRosterTab();
     }
 

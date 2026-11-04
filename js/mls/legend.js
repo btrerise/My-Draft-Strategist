@@ -16,7 +16,7 @@ import {
     BYE_BADGE_HTML, DISMISS_ICON, PICK_BADGE_HTML, STARTS_ICON, UPGRADE_ICON,
     WARNING_ICON, bestBallBadgeMarkup, edgeBadgeMarkup, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup, leagueStatusChipMarkup,
     ROOT_ICONS, moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, rankGapChipMarkup, rootCountBadgeMarkup, rootOfBadgeMarkup, rootShareMarkup, scoutPillMarkup,
-    sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, weekResultMarkup, weekStatusMarkup
+    opponentBadgeMarkup, sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, weekResultMarkup, weekStatusMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
 
@@ -123,6 +123,8 @@ const GROUPS = [
     ['Schedule', [
         [sosBadgeMarkup(1, '', { compact: true, sample: true }) + sosBadgeMarkup(16, '', { compact: true, sample: true }) + sosBadgeMarkup(32, '', { compact: true, sample: true }),
             'Strength of schedule at his position, from your SoS upload: 1 = easiest, 32 = hardest, green to red. On a phone it shows a calendar and the number. Tap for more. If your file ranks 1 = hardest, turn on that switch on the Roster tab\'s SoS card.'],
+        [opponentBadgeMarkup({ opp: 'KC', home: true, rank: 3 }, '', SAMPLE) + opponentBadgeMarkup({ opp: 'KC', home: false, rank: 28 }, '', SAMPLE) + opponentBadgeMarkup({ opp: 'KC', home: null, rank: 16 }, '', SAMPLE),
+            'This week\'s opponent (vs home, @ away), colored by how tough the matchup is for his position, from your Weekly file\'s matchup rank: 1 = easiest, 32 = hardest. After the kickoff time, and on Auto-Find\'s cards. Tap for more.'],
     ]],
 ];
 
