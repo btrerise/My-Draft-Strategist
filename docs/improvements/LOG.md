@@ -8626,3 +8626,28 @@ After saving a Weekly file with matchup ranks, the Weekly Matchup Rankings card 
 1 = hardest" switch is in view (`confirmRankingsPreview`, `js/mls/rankings/uploadPreview.js`). Other uploads fold as
 before. Spec: open after a matchup upload, folded after one without. No screenshot changes (the screenshot league's
 files have no matchup ranks).
+
+### S31, round 5: a second review as a user; the owner took 1–5 ("Do 1-5 as described"), with 1 still open
+
+**The review** (the owner's file, phone and desktop): the rows read well; the problems were (1) the open Weekly card
+pushing the lineup about a screen and a half down on phones after every upload, (2) the legend's samples running
+together and a 7-line explanation, (3) a 6-line preview note, (4) a flip toast describing two scales, (5) the switch
+area saying the scale twice, (6) a small checkbox (left to M2).
+
+**Built (2–5).**
+- Legend: the samples spaced apart (`.badge-legend-sample .opp-rank-badge + .opp-rank-badge`), the text cut to
+  "This week's opponent (vs home, @ away), colored by how tough the matchup is for his position, from your Weekly
+  file's matchup rank: 1 = easiest, 32 = hardest. After the kickoff time, and on Auto-Find's cards. Tap for more."
+- Preview note: "This file also has this week's opponents and matchup ranks (1 = easiest, 32 = hardest). They show
+  after the kickoff time on the Lineup tab and on Auto-Find's cards. Your season SoS isn't changed." (adds "; flipped,
+  as your "1 = hardest" switch says" when on; opponents only: "…opponents (no matchup ranks)…").
+- Toast without SoS: "Flipped: a 1 in your file now shows as 32 (hardest)." / "Flipped back: a 1 in your file shows
+  as 1 (easiest)."
+- The Weekly card's switch is one line: "[ ] Matchup ranks: my files rank 1 = hardest" (plus "(also flips your season
+  SoS)").
+
+**Open (1).** The owner suggested, instead of my folded-header idea, a collapsible "Lineup settings" card holding FLEX
+Kickoff Optimization and this switch (like the Trade Analyzer's Value settings), with toggles instead of checkboxes on
+both tabs. I agreed and sketched it (a header summary of what's set; the matchup toggle only when the Weekly set has
+ranks or it's on; it re-takes the Lineup screenshots); waiting on the owner's go. Until then the card stays open after
+a matchup upload (round 4).

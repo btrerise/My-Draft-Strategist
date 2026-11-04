@@ -1265,6 +1265,8 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
    hit without moving anything. */
 button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-variant-numeric: inherit; line-height: inherit; text-align: inherit; cursor: pointer; padding: 4px 3px; margin: -4px -3px; border-radius: 4px; }
 .opp-rank-badge { color: var(--sos-color); text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, var(--sos-color) 55%, transparent); text-underline-offset: 2px; white-space: nowrap; }
+/* In the Guide's legend the samples are text with no boxes, so they need more room between them. */
+.badge-legend-sample .opp-rank-badge + .opp-rank-badge { margin-left: 0.75rem; }
 button.opp-rank-badge:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
 
 /* The Weekly Matchup Rankings card's copy of the switch (renderWeeklyMatchupScale, improvements S31): the SoS status's

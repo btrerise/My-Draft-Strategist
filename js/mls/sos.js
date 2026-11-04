@@ -124,9 +124,7 @@ import { rankingsHaveMatchupRanks } from './opponent.js';
         const el = document.getElementById('weeklyMatchupScale');
         if (!el) return;
         if (!rankingsHaveMatchupRanks(State.weeklyRankings)) { el.hidden = true; el.innerHTML = ''; return; }
-        el.innerHTML = `
-            <div class="sos-status-line">Matchup ranks: <span class="sos-status-scale">${SOS_SCALE_TEXT}</span>${State.sosReversed ? ' <span class="sos-status-muted">(your file\'s order flipped)</span>' : ''}</div>
-            <label class="sos-flip"><input type="checkbox" id="weeklyMatchupReversedToggle" data-action="setSosReversed"${State.sosReversed ? ' checked' : ''}> My files rank 1 = hardest${hasSoS() ? ' <span class="sos-status-muted">(also flips your season SoS)</span>' : ''}</label>`;
+        el.innerHTML = `<label class="sos-flip"><input type="checkbox" id="weeklyMatchupReversedToggle" data-action="setSosReversed"${State.sosReversed ? ' checked' : ''}> Matchup ranks: my files rank 1 = hardest${hasSoS() ? ' <span class="sos-status-muted">(also flips your season SoS)</span>' : ''}</label>`;
         el.hidden = false;
     }
 
@@ -146,7 +144,7 @@ import { rankingsHaveMatchupRanks } from './opponent.js';
             // No season SoS to flip (the switch was used on the Weekly Matchup Rankings card).
             renderSoSStatus();
             renderWeeklyMatchupScale();
-            showToast(on ? `Flipped: your files rank 1 = hardest, and the app now reads them as ${SOS_SCALE_TEXT}.` : `Flipped back: your files rank 1 = easiest.`);
+            showToast(on ? 'Flipped: a 1 in your file now shows as 32 (hardest).' : 'Flipped back: a 1 in your file shows as 1 (easiest).');
             refreshSoSViews();
             return;
         }

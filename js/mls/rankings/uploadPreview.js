@@ -151,10 +151,9 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
             const withOpp = isWeekly ? parsedData.filter(p => p.opp).length : 0;
             const withRank = isWeekly ? parsedData.filter(p => Number.isInteger(p.oppRank)).length : 0;
             oppNoteEl.style.display = (withOpp || withRank) ? 'block' : 'none';
-            const what = withRank
-                ? `this week's opponents and matchup ranks (${withRank} player${withRank === 1 ? '' : 's'}), read as ${State.sosReversed ? `1 = hardest and flipped to ${SOS_SCALE_TEXT}, as your "My files rank 1 = hardest" switch says` : `${SOS_SCALE_TEXT} (if your file ranks 1 = hardest, flip it on the Weekly Matchup Rankings card after saving)`}`
-                : `this week's opponents (${withOpp} player${withOpp === 1 ? '' : 's'}) but no matchup ranks`;
-            oppNoteEl.textContent = `This file also has ${what}. They show after the kickoff time on the Lineup tab, and on Auto-Find's cards when Rank By is Weekly, until next week's rankings. Your season SoS isn't changed.`;
+            oppNoteEl.textContent = withRank
+                ? `This file also has this week's opponents and matchup ranks (${SOS_SCALE_TEXT}${State.sosReversed ? '; flipped, as your "1 = hardest" switch says' : ''}). They show after the kickoff time on the Lineup tab and on Auto-Find's cards. Your season SoS isn't changed.`
+                : `This file also has this week's opponents (no matchup ranks). Your season SoS isn't changed.`;
         }
 
         // Unmatched-name check runs in the background (it needs Sleeper's player map) and fills

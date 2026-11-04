@@ -72,7 +72,7 @@ test.describe('Lineup Strategist: this week\'s opponent strength', () => {
         await showTab(page, 'lineup');
         await saveWeekly(page, WEEKLY_OPP_CSV, 30);
         await openWeeklyCard(page);
-        await expect(page.locator('#weeklyMatchupScale')).toContainText('My files rank 1 = hardest (also flips your season SoS)');
+        await expect(page.locator('#weeklyMatchupScale')).toHaveText('Matchup ranks: my files rank 1 = hardest (also flips your season SoS)');
 
         await page.locator('#weeklyMatchupReversedToggle').check();
         await expect(page.locator('.toast-message').filter({ hasText: 'SoS flipped: your files rank 1 = hardest' })).toContainText('Matchup ranks follow it too.');
@@ -97,7 +97,7 @@ test.describe('Lineup Strategist: this week\'s opponent strength', () => {
 
         await uploadWeekly(page, WEEKLY_OPP_CSV, 30, 'week2.csv');
         await expect(page.locator('#rankingsPreviewOppNote')).toBeVisible();
-        await expect(page.locator('#rankingsPreviewOppNote')).toHaveText("This file also has this week's opponents and matchup ranks (29 players), read as 1 = easiest, 32 = hardest (if your file ranks 1 = hardest, flip it on the Weekly Matchup Rankings card after saving). They show after the kickoff time on the Lineup tab, and on Auto-Find's cards when Rank By is Weekly, until next week's rankings. Your season SoS isn't changed.");
+        await expect(page.locator('#rankingsPreviewOppNote')).toHaveText("This file also has this week's opponents and matchup ranks (1 = easiest, 32 = hardest). They show after the kickoff time on the Lineup tab and on Auto-Find's cards. Your season SoS isn't changed.");
         await callApp(page, 'confirmRankingsPreview');
         await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
 
@@ -132,13 +132,11 @@ test.describe('Lineup Strategist: this week\'s opponent strength', () => {
         // The card stays open after an upload with matchup ranks (owner's choice), so the switch is in view.
         await expect(page.locator('[data-action="toggleRankingsCard"][data-card="weeklyRankingsCard"]')).toHaveAttribute('aria-expanded', 'true');
         await expect(scale).toBeVisible();
-        await expect(scale).toContainText('Matchup ranks: 1 = easiest, 32 = hardest');
-        await expect(scale).not.toContainText('also flips your season SoS');
+        await expect(scale).toHaveText('Matchup ranks: my files rank 1 = hardest');
         await page.locator('#weeklyMatchupReversedToggle').check();
-        await expect(page.locator('.toast-message').filter({ hasText: 'Flipped: your files rank 1 = hardest' })).toBeVisible();
+        await expect(page.locator('.toast-message').filter({ hasText: 'Flipped: a 1 in your file now shows as 32 (hardest).' })).toBeVisible();
         await expect(oppBadge(page, 'Derrick Henry')).toHaveText('@ SEA 18', { useInnerText: true });
         await expect(oppBadge(page, "Ja'Marr Chase")).toHaveAttribute('title', "This week vs KC: one of the toughest matchups for WRs (32 of 32 with your file's order flipped, so 1 = easiest). Reads backwards? Use the switch on the Weekly Matchup Rankings card.");
-        await expect(scale).toContainText("(your file's order flipped)");
         expect(await page.evaluate(() => localStorage.getItem('mls_sos_reversed'))).toBe('1');
         expect(await page.evaluate(() => localStorage.getItem('mls_sos'))).toBeNull();
         // Remembered.
