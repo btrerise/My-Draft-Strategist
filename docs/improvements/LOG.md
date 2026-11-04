@@ -8535,3 +8535,12 @@ weren't the ones doing it.
   moving it into a row's details as the card suggests.
 - Not on the Roster tab, Check a List's cards or the Trending view, and the optimizer doesn't use it (out of scope).
 - The owner's ROS file has `ROS` and `Next 4` columns: `ROS` is read as season SoS as before; `Next 4` isn't read.
+
+**Screenshots.** This container's Chromium (153) can't reproduce the baselines, so main and this branch were rendered
+the same way here (`RENDER_ENV=any`) and compared with `npm run pxdiff`: only **`desktop/mls-league-guide.png`** and
+**`phone/mls-league-guide.png`** change (taller by 103px and 232px), from the new legend line. Every Lineup, Roster and
+Scout screenshot is pixel-identical: the screenshot fixtures' rankings have no opponent columns. Those two PNGs are
+to be re-taken from CI's renders once a pull request runs ("When your machine can't reproduce the baselines").
+
+**Checks run.** `npm run check`: check-precache OK, 492 unit tests, 723 Playwright tests pass; `visual.spec.mjs`
+fails only on the container's environment check (4 tests, 0 ms each), as on main.
