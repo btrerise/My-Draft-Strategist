@@ -97,7 +97,11 @@ test.describe('FLEX Kickoff Optimization in a superflex league', () => {
     test('with the toggle off, slots follow the rank-based fill', async ({ page }) => {
         const state = await setUp(page, RANKS_ONE_QB, 8);
         await setKickoffs(page, { BUF: ONE_PM, PHI: ONE_PM, CIN: MNF, DET: ONE_PM, MIN: ONE_PM, BAL: ONE_PM, LV: FOUR_05, DAL: FOUR_25, LAR: FOUR_05 });
+        // In Lineup settings, folded by default (improvements S31).
+        await page.locator('#lineupSettings > summary').click();
+        await expect(page.locator('#lineupSettingsSummary')).toHaveText('FLEX kickoff: on');
         await page.locator('#flexKickoffOptimizationToggle').uncheck();
+        await expect(page.locator('#lineupSettingsSummary')).toHaveText('FLEX kickoff: off');
         await callApp(page, 'optimizeLineup', true);
         expect(await starterRows(page)).toEqual([
             'QB Josh Allen', 'RB Jahmyr Gibbs', 'RB Derrick Henry', "WR Ja'Marr Chase", 'WR Justin Jefferson',

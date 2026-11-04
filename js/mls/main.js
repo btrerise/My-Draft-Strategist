@@ -26,7 +26,7 @@ import './leagues/scoutResults.js';
 import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDraftStrategistRoster } from './leagues/handoff.js';
 import { addManualPlayer, deletePlayer } from './leagues/addPlayer.js';
 import { importAllSleeperLeagues } from './leagues/importAll.js';
-import { explainSoS, generateSoSGrid, saveManualSoS, setSosReversed } from './sos.js';
+import { explainSoS, generateSoSGrid, renderLineupSettings, saveManualSoS, setSosReversed } from './sos.js';
 import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
 import { applyWaiverScanSettingsToUI, autoFindWaiverUpgrades, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
@@ -274,7 +274,7 @@ const changeActions = {
     togglePosInput() { togglePosInput(this.dataset.type, this.dataset.pos); },
     updateMarketSetting() { updateMarketSetting(this.dataset.setting, this.value); },
     updateMarketSettingChecked() { updateMarketSetting(this.dataset.setting, this.checked); },
-    updateLineupSetting() { updateLineupSetting(this.dataset.setting, this.checked); },
+    updateLineupSetting() { updateLineupSetting(this.dataset.setting, this.checked); renderLineupSettings(); },
     addEarlyTeam() { addEarlyTeam(this.value); },
     // 5C: Advanced Settings, Power Rankings, Monte Carlo and Scout tab controls
     toggleMlsHeadshots() { toggleMlsHeadshots(this.checked); },

@@ -8651,3 +8651,30 @@ Kickoff Optimization and this switch (like the Trade Analyzer's Value settings),
 both tabs. I agreed and sketched it (a header summary of what's set; the matchup toggle only when the Weekly set has
 ranks or it's on; it re-takes the Lineup screenshots); waiting on the owner's go. Until then the card stays open after
 a matchup upload (round 4).
+
+### S31, round 6: Lineup settings (owner: "Yes, build the Lineup settings card as sketched")
+
+The owner's idea in round 5, in place of my folded-header line: group the matchup switch with FLEX Kickoff
+Optimization in a collapsible "Lineup settings", like the Trade Analyzer's Value settings, with toggles instead of
+checkboxes on both tabs.
+
+**User-visible effect.**
+- Under Optimize / Copy / PNG, a folded **Lineup settings** (`<details class="sos-details-accordion
+  mls-lineup-settings" id="lineupSettings">`, not remembered: folded on every visit, like Value settings). Its summary
+  says what's set: "FLEX kickoff: on", plus " · Matchups: 1 = easiest" (or "1 = hardest") when the matchup toggle shows.
+- Inside: the FLEX Kickoff Optimization toggle row (moved, unchanged), and **"My matchup files rank 1 = hardest"**, a
+  toggle with an (i) tooltip, shown when the Weekly rankings have matchup ranks or the setting is on (so it can be turned
+  off), with "Also flips your season SoS." under it when SoS is loaded.
+- The Weekly Matchup Rankings card no longer has the switch, and folds after every upload again (round 4 undone).
+- The Roster tab's "My SoS files rank 1 = hardest" is a toggle row; its hint is unchanged.
+- The tip now ends "Reads backwards? Turn on "My matchup files rank 1 = hardest" in Lineup settings."
+
+**Where.** `lineup/index.html`, `css/mls.css` (`.mls-lineup-settings*`, `.sos-status .toggle-row`; `.sos-flip` rules
+removed), `js/mls/sos.js` (`renderLineupSettings` replaces `renderWeeklyMatchupScale`; the Roster switch's markup),
+`js/mls/main.js` (FLEX Kickoff's handler redraws the summary), `js/mls/rankings/engine.js`,
+`js/mls/rankings/uploadPreview.js`, `js/mls/opponent.js` (tip), CHANGELOG. No new key.
+
+**Tests.** `tests/mls-opponent-strength.spec.mjs`: the summary folded (with and without matchup ranks, after a flip),
+the toggle hidden without matchup ranks, the hint with SoS only, flipping from Lineup settings and from the Roster tab,
+the new tip. `tests/mls-sflex-kickoff.spec.mjs`: opens Lineup settings before turning FLEX Kickoff off and checks the
+summary follows.

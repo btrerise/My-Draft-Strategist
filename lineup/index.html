@@ -870,7 +870,6 @@
             </div>
 
             <div id="weeklyMetaDisplay" class="weekly-meta-display"></div>
-            <div id="weeklyMatchupScale" class="sos-status weekly-matchup-scale" hidden></div>
 
             <div class="input-group mb-3">
                 <label for="weeklyUploadMode">Upload Format</label>
@@ -948,20 +947,39 @@
             </button>
         </div>
 
-        <!-- FLEX Kickoff Optimization Setting -->
-        <div class="toggle-row toggle-row-flush mt-2">
-            <div class="toggle-info">
-                <span class="toggle-title">
-                    <label for="flexKickoffOptimizationToggle">FLEX Kickoff Optimization</label>
-                    <div class="tooltip-container">
-                        <div class="tooltip-icon">i</div>
-                        <span class="tooltip-text">Who starts is always decided by rank first. When this is on, we then reassign which of your starters sit in strict QB/RB/WR/TE slots vs your SFLEX, FLEX, W/T and W/R slots, so the slots that accept the most positions hold whichever eligible starters kick off latest: SFLEX first, then FLEX. Those are the slots with the most real-time swap flexibility, so this maximizes how long you can wait to lock in. Turn this off if you'd rather these slots just reflect rank order with no extra slot-shuffling.</span>
+        <!-- Lineup settings (improvements S31, owner's choice): FLEX Kickoff Optimization and the matchup ranks' 1 = hardest
+             switch, folded like the Trade Analyzer's Value settings. The summary says what's set while it's folded. -->
+        <details class="sos-details-accordion mls-lineup-settings" id="lineupSettings">
+            <summary class="sos-summary">Lineup settings <span id="lineupSettingsSummary" class="mls-lineup-settings-summary"></span></summary>
+            <div class="accordion-body">
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <span class="toggle-title">
+                            <label for="flexKickoffOptimizationToggle">FLEX Kickoff Optimization</label>
+                            <div class="tooltip-container">
+                                <div class="tooltip-icon">i</div>
+                                <span class="tooltip-text">Who starts is always decided by rank first. When this is on, we then reassign which of your starters sit in strict QB/RB/WR/TE slots vs your SFLEX, FLEX, W/T and W/R slots, so the slots that accept the most positions hold whichever eligible starters kick off latest: SFLEX first, then FLEX. Those are the slots with the most real-time swap flexibility, so this maximizes how long you can wait to lock in. Turn this off if you'd rather these slots just reflect rank order with no extra slot-shuffling.</span>
+                            </div>
+                        </span>
                     </div>
-                </span>
+                    <input type="checkbox" id="flexKickoffOptimizationToggle" class="toggle-switch" checked data-action="updateLineupSetting" data-setting="flexKickoffOptimization">
+                </div>
+                <div id="matchupFlipRow" class="toggle-row" hidden>
+                    <div class="toggle-info">
+                        <span class="toggle-title">
+                            <label for="matchupReversedToggle">My matchup files rank 1 = hardest</label>
+                            <div class="tooltip-container">
+                                <div class="tooltip-icon">i</div>
+                                <span class="tooltip-text">Your Weekly rankings' matchup ranks (the colored "@ MIN 32" after a player's kickoff time) are read as 1 = easiest, 32 = hardest. Turn this on if your file lists the toughest matchup as 1. It's the same setting as "My SoS files rank 1 = hardest" on the Roster tab's SoS card.</span>
+                            </div>
+                        </span>
+                        <span id="matchupFlipHint" class="toggle-desc" hidden>Also flips your season SoS.</span>
+                    </div>
+                    <input type="checkbox" id="matchupReversedToggle" class="toggle-switch" data-action="setSosReversed" aria-describedby="matchupFlipHint">
+                </div>
             </div>
-            <input type="checkbox" id="flexKickoffOptimizationToggle" class="toggle-switch" checked data-action="updateLineupSetting" data-setting="flexKickoffOptimization">
-        </div>
-        
+        </details>
+
         <div class="lineup-container-wrapper">
             <div id="optimalLineupContainer">
                 <div class="lineup-empty-state">

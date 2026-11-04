@@ -111,21 +111,36 @@ import { rankingsHaveMatchupRanks } from './opponent.js';
         el.innerHTML = `
             <div class="sos-status-line">${age} <span class="sos-status-sep" aria-hidden="true">&middot;</span> <span class="sos-status-scale">${SOS_SCALE_TEXT}</span></div>
             ${ratings}
-            <label class="sos-flip"><input type="checkbox" id="sosReversedToggle" data-action="setSosReversed"${State.sosReversed ? ' checked' : ''}> My SoS files rank 1 = hardest</label>
+            <div class="toggle-row">
+                <span class="toggle-title"><label for="sosReversedToggle">My SoS files rank 1 = hardest</label></span>
+                <input type="checkbox" id="sosReversedToggle" class="toggle-switch" data-action="setSosReversed"${State.sosReversed ? ' checked' : ''}>
+            </div>
             <div class="sos-flip-hint">Turn this on if your source lists the toughest schedule as 1. It flips the SoS saved now and every SoS you upload later (SoS files, and SoS columns in ROS rankings files), and the matchup ranks in your Weekly rankings.</div>`;
         el.hidden = false;
     }
 
-    // The same switch on the Lineup tab's Weekly Matchup Rankings card (improvements S31, round 3, owner's choice),
-    // shown only when the league's Weekly rankings have matchup ranks: that's where they come from, and without SoS
-    // loaded the Roster tab's copy isn't there at all. One setting (State.sosReversed): matchup ranks are stored as
-    // the file has them and flipped when shown (js/mls/opponent.js).
-    export function renderWeeklyMatchupScale() {
-        const el = document.getElementById('weeklyMatchupScale');
-        if (!el) return;
-        if (!rankingsHaveMatchupRanks(State.weeklyRankings)) { el.hidden = true; el.innerHTML = ''; return; }
-        el.innerHTML = `<label class="sos-flip"><input type="checkbox" id="weeklyMatchupReversedToggle" data-action="setSosReversed"${State.sosReversed ? ' checked' : ''}> Matchup ranks: my files rank 1 = hardest${hasSoS() ? ' <span class="sos-status-muted">(also flips your season SoS)</span>' : ''}</label>`;
-        el.hidden = false;
+    // The Lineup tab's "Lineup settings" (improvements S31, owner's choice): the same switch as "My matchup files rank
+    // 1 = hardest", shown when the league's Weekly rankings have matchup ranks (or it's already on, so it can be turned
+    // off), and the folded card's summary of what's set (FLEX kickoff too). Without SoS loaded the Roster tab's copy isn't
+    // there, so this is the only one. One setting (State.sosReversed): matchup ranks are stored as the file has them and
+    // flipped when shown (js/mls/opponent.js). Called with the rankings' meta (rankings/engine.js), on a flip and on a
+    // FLEX Kickoff change (main.js).
+    export function renderLineupSettings() {
+        const row = document.getElementById('matchupFlipRow');
+        const showMatchup = rankingsHaveMatchupRanks(State.weeklyRankings) || State.sosReversed;
+        if (row) {
+            row.hidden = !showMatchup;
+            const toggle = document.getElementById('matchupReversedToggle');
+            if (toggle) toggle.checked = State.sosReversed;
+            const hint = document.getElementById('matchupFlipHint');
+            if (hint) hint.hidden = !hasSoS();
+        }
+        const summary = document.getElementById('lineupSettingsSummary');
+        if (summary) {
+            const parts = [`FLEX kickoff: ${State.lineupSettings && State.lineupSettings.flexKickoffOptimization ? 'on' : 'off'}`];
+            if (showMatchup) parts.push(`Matchups: 1 = ${State.sosReversed ? 'hardest' : 'easiest'}`);
+            summary.textContent = parts.join(' \u00b7 ');
+        }
     }
 
     // The switch: remembered, and it flips what's already saved (which is always 1 = easiest), so a
@@ -141,9 +156,9 @@ import { rankingsHaveMatchupRanks } from './opponent.js';
         // Weekly matchup ranks follow the switch when shown (improvements S31); only saved SoS is rewritten.
         const matchups = rankingsHaveMatchupRanks(State.weeklyRankings) ? ' Matchup ranks follow it too.' : '';
         if (!hasSoS()) {
-            // No season SoS to flip (the switch was used on the Weekly Matchup Rankings card).
+            // No season SoS to flip (the switch was used in the Lineup tab's Lineup settings).
             renderSoSStatus();
-            renderWeeklyMatchupScale();
+            renderLineupSettings();
             showToast(on ? 'Flipped: a 1 in your file now shows as 32 (hardest).' : 'Flipped back: a 1 in your file shows as 1 (easiest).');
             refreshSoSViews();
             return;
@@ -163,7 +178,7 @@ import { rankingsHaveMatchupRanks } from './opponent.js';
             renderSoSStatus();
             showToast((on ? `Saved SoS kept as is. SoS files you upload from now on are flipped to ${SOS_SCALE_TEXT}.` : `Saved SoS kept as is. SoS files you upload from now on are read as ${SOS_SCALE_TEXT}.`) + matchups);
         }
-        renderWeeklyMatchupScale();
+        renderLineupSettings();
         refreshSoSViews();
     }
 
@@ -171,7 +186,7 @@ import { rankingsHaveMatchupRanks } from './opponent.js';
         const activeTabEl = document.querySelector('.tab-content.active');
         const activeTab = activeTabEl ? activeTabEl.id : '';
         // SoS and matchup ranks never change who starts, so the Lineup tab only redraws (a re-optimize would undo
-        // your swaps when the switch is used on its Weekly Matchup Rankings card, improvements S31).
+        // your swaps when the switch is used in its Lineup settings, improvements S31).
         if (activeTab === 'lineupTab') renderLineupUI();
         else if (activeTab === 'rosterTab') loadRosterTab();
     }

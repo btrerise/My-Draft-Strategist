@@ -7,7 +7,7 @@ import { State } from '../state.js';
 import { updatePulsePrompts } from '../init.js';
 import { populateRankingSetDropdown } from './sets.js';
 import { getFreshness } from '../../shared/freshness.js';
-import { renderWeeklyMatchupScale } from '../sos.js';
+import { renderLineupSettings } from '../sos.js';
 
     export const toggleRankingsCard = function(cardId) {
         const card = document.getElementById(cardId);
@@ -75,8 +75,8 @@ import { renderWeeklyMatchupScale } from '../sos.js';
             }
         }
 
-        // The matchup ranks' 1 = hardest switch, when the Weekly rankings have them (improvements S31).
-        renderWeeklyMatchupScale();
+        // Lineup settings: the matchup ranks' 1 = hardest switch shows when the Weekly rankings have them (improvements S31).
+        renderLineupSettings();
 
         populateRankingSetDropdown('ros');
         populateRankingSetDropdown('weekly');

@@ -1269,10 +1269,15 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .badge-legend-sample .opp-rank-badge + .opp-rank-badge { margin-left: 0.75rem; }
 button.opp-rank-badge:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
 
-/* The Weekly Matchup Rankings card's copy of the switch (renderWeeklyMatchupScale, improvements S31): the SoS status's
-   look, closer to the meta line above it. */
-.sos-status.weekly-matchup-scale { margin: 0 0 0.75rem; }
-.sos-status.weekly-matchup-scale[hidden] { display: none; }
+/* Lineup settings (improvements S31): folded under the Optimize row like the Trade Analyzer's Value settings. The
+   summary after its title says what's set; the rows are the usual toggle rows, the last without its bottom margin. */
+.mls-lineup-settings { margin-top: 0.75rem; }
+.mls-lineup-settings .accordion-body { padding-top: 0.75rem; }
+.mls-lineup-settings .toggle-row:last-child, .mls-lineup-settings .toggle-row:has(+ .toggle-row[hidden]) { margin-bottom: 0; }
+.mls-lineup-settings-summary { margin-left: 0.4rem; font-weight: 500; font-size: 0.8rem; color: var(--text-muted); }
+#matchupFlipRow[hidden], #matchupFlipHint[hidden] { display: none; }
+/* The SoS card's switch is a toggle row too (improvements S31), inside the status line's grid. */
+.sos-status .toggle-row { margin: 0; padding: 0.6rem 0.75rem; }
 
 /* The SoS card's status (renderSoSStatus in js/mls/sos.js): age, scale, the 1 = hardest switch. */
 .sos-status { margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted); display: grid; gap: 0.35rem; }
@@ -1280,8 +1285,6 @@ button.opp-rank-badge:focus-visible { outline: 2px solid var(--primary-green); o
 .sos-status-scale { color: var(--text-main); white-space: nowrap; }
 .sos-status-muted { color: var(--text-muted); }
 .sos-status-warn { font-size: 0.8rem; }
-.sos-flip { display: inline-flex; align-items: center; gap: 0.45rem; color: var(--text-main); cursor: pointer; }
-.sos-flip input { width: 16px; height: 16px; accent-color: var(--primary-green); margin: 0; }
 .sos-flip-hint { font-size: 0.78rem; line-height: 1.4; }
 .sos-grid-note { font-size: 0.8rem; color: var(--text-muted); margin: 0.5rem 0; }
 

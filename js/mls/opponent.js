@@ -86,7 +86,7 @@ export function matchupWords(rank) {
 export function opponentTip({ opp, home, rank }, pos) {
     const where = home === true ? `vs ${opp}` : home === false ? `at ${opp}` : `against ${opp}`;
     const scale = State.sosReversed ? `${rank} of 32 with your file's order flipped, so 1 = easiest` : `${rank} of 32, where 1 = easiest`;
-    return `This week ${where}: ${matchupWords(rank)} for ${pos ? posPlural(pos) : 'his position'} (${scale}). Reads backwards? Use the switch on the Weekly Matchup Rankings card.`;
+    return `This week ${where}: ${matchupWords(rank)} for ${pos ? posPlural(pos) : 'his position'} (${scale}). Reads backwards? Turn on "My matchup files rank 1 = hardest" in Lineup settings.`;
 }
 
 // This week's opponent from the Weekly rankings for a player ({ cleanName, team, pos }), or null when the
