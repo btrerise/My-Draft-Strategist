@@ -76,7 +76,7 @@ test.describe('Lineup Strategist: this week\'s opponent strength', () => {
         await expect(page.locator('#matchupFlipHint')).toHaveText('Also flips your season SoS.');
 
         await page.locator('#matchupReversedToggle').check();
-        await expect(page.locator('.toast-message').filter({ hasText: 'SoS flipped: your files rank 1 = hardest' })).toContainText('Matchup ranks follow it too.');
+        await expect(page.locator('.toast-message').filter({ hasText: 'Flipped: a 1 in your files now shows as 32 (hardest), for matchups and season SoS.' })).toBeVisible();
         await expect(oppBadge(page, 'Derrick Henry')).toHaveText('@ SEA 18', { useInnerText: true });
         expect((await savedSoS(page)).BAL.RB).toBe('8');
         await showTab(page, 'roster');

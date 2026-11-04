@@ -173,7 +173,9 @@ import { rankingsHaveMatchupRanks } from './opponent.js';
                 Object.keys(posMap || {}).forEach(pos => { posMap[pos] = reverseSosValue(posMap[pos]); });
             });
             saveSoS();
-            showToast((on ? `SoS flipped: your files rank 1 = hardest, and the app now reads them as ${SOS_SCALE_TEXT}.` : `SoS flipped back: your files rank 1 = easiest.`) + matchups);
+            // One short toast (improvements S31, round 7): what a 1 in your files becomes, and for what.
+            const what = matchups ? 'for matchups and season SoS' : 'for season SoS';
+            showToast(on ? `Flipped: a 1 in your files now shows as 32 (hardest), ${what}.` : `Flipped back: a 1 in your files shows as 1 (easiest), ${what}.`);
         } else {
             renderSoSStatus();
             showToast((on ? `Saved SoS kept as is. SoS files you upload from now on are flipped to ${SOS_SCALE_TEXT}.` : `Saved SoS kept as is. SoS files you upload from now on are read as ${SOS_SCALE_TEXT}.`) + matchups);

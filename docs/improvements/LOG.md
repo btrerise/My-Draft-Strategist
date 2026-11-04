@@ -8686,3 +8686,14 @@ to be re-taken from CI's renders once a pull request runs:
   settings" line (11px taller on both).
 Every other screenshot is pixel-identical to main's. **Checks:** `npm run check`: check-precache OK, 492 unit tests,
 725 Playwright tests pass; `visual.spec.mjs` fails only on the container's environment check, as on main.
+
+### S31, round 7: a third review as a user (owner: "Do 1 and 3 as described")
+
+Findings: (1) with season SoS loaded the flip toast still had the long two-scale wording; (2) the folded summary broke
+mid-phrase on phones; (3) "Matchups: 1 = hardest" could read as the app's scale; (4) one switch can't serve an SoS
+source and a Weekly source that rank opposite ways.
+
+**Built (1).** One short toast with SoS loaded too: "Flipped: a 1 in your files now shows as 32 (hardest), for
+matchups and season SoS." (or "…for season SoS." without matchup ranks); "Flipped back: a 1 in your files shows as 1
+(easiest), …". The "Keep as is" toasts after grid edits are unchanged. Specs updated (`mls-sos-scale`,
+`mls-opponent-strength`).
