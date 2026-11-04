@@ -34,6 +34,18 @@ export function rankingsHaveOpponents(rows) {
     return has;
 }
 
+// Whether a set's rows carry any matchup rank (not just opponents): the Weekly card's switch shows only then.
+const _hasRankCache = new WeakMap();
+export function rankingsHaveMatchupRanks(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) return false;
+    let has = _hasRankCache.get(rows);
+    if (has === undefined) {
+        has = rows.some(r => r && Number.isInteger(r.oppRank));
+        _hasRankCache.set(rows, has);
+    }
+    return has;
+}
+
 // True when the active league's Weekly rankings have opponents and are this week's.
 export function weeklyOpponentsShown(now = Date.now()) {
     return rankingsHaveOpponents(State.weeklyRankings) && isSameRankingsWeek(State.weeklyRankingsUpdatedAt, now);
@@ -73,8 +85,8 @@ export function matchupWords(rank) {
 // The tap / hover text, plain (escaped by the caller). Only for a ranked matchup.
 export function opponentTip({ opp, home, rank }, pos) {
     const where = home === true ? `vs ${opp}` : home === false ? `at ${opp}` : `against ${opp}`;
-    const flipped = State.sosReversed ? ' Flipped, since your SoS setting says your files rank 1 = hardest.' : '';
-    return `This week ${where}: ${matchupWords(rank)} for ${pos ? posPlural(pos) : 'his position'} (${rank} of 32, where 1 = easiest).${flipped} Already reflected in your Weekly ranks.`;
+    const scale = State.sosReversed ? `${rank} of 32 with your file's order flipped, so 1 = easiest` : `${rank} of 32, where 1 = easiest`;
+    return `This week ${where}: ${matchupWords(rank)} for ${pos ? posPlural(pos) : 'his position'} (${scale}). Reads backwards? Use the switch on the Weekly Matchup Rankings card.`;
 }
 
 // This week's opponent from the Weekly rankings for a player ({ cleanName, team, pos }), or null when the

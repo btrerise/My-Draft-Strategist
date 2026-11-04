@@ -8582,3 +8582,40 @@ text on phones, no guess for a bare team, the worded tips (easy, middling, flipp
 plain "vs NYJ" before a Weekly file, the badge replacing it (kickoff kept, plain text gone), the scoreboard's "@ JAX"
 over a file that says "@ SEA" (no rank then), and an agreeing file; Top Available without it, Auto-Find with it on
 Weekly and not on ROS. Screenshots: still only the two Guide PNGs (the legend line).
+
+### S31, round 3: colored text, and the switch on the Weekly card (owner: "Yes, build both as sketched")
+
+**The owner's questions.** (1) Color the text instead of a badge, to ease the clash with the position chips, still
+tappable? (2) Drop "Already reflected in your Weekly ranks" (we can't know what the analyst did), and put a note about
+the flip switch, or the switch itself, on the Lineup tab. I agreed with both and found a gap: the Roster tab's switch
+only exists once season SoS is loaded, so a matchup-only user couldn't flip at all. Sketched: colored text with a faint
+dotted underline; the same switch inside the Lineup tab's Weekly Matchup Rankings card, shown only when the Weekly set
+has matchup ranks.
+
+**User-visible effect.**
+- "@ MIN 32" is colored text (the SoS color for its rank) with a faint dotted underline in its own color, no box. It's
+  still a button (tap or hover explains it), with a slightly larger hit area than the text.
+- Tap text: "This week at MIN: one of the toughest matchups for QBs (32 of 32, where 1 = easiest). Reads backwards?
+  Use the switch on the Weekly Matchup Rankings card." Flipped: "(32 of 32 with your file's order flipped, so 1 =
+  easiest)".
+- The Weekly Matchup Rankings card (Lineup tab), under "Loaded: N players": "Matchup ranks: 1 = easiest, 32 = hardest"
+  and "[ ] My files rank 1 = hardest", plus "(also flips your season SoS)" when SoS is loaded and "(your file's order
+  flipped)" when on. One setting with the Roster tab's switch (`mls_sos_reversed`); each shows the other's state.
+- With no season SoS, the switch flips only how matchup ranks read ("Flipped: your files rank 1 = hardest…"); with SoS
+  it behaves as before (asks first after grid edits) and its toast adds "Matchup ranks follow it too."
+- A flip on the Lineup tab redraws it instead of re-optimizing (SoS and matchups never change who starts; a re-optimize
+  would undo manual swaps). The Roster tab still reloads.
+- The preview note points to the Weekly card; the Roster switch's hint now says it flips SoS files, SoS columns in ROS
+  files, and Weekly matchup ranks (Weekly files no longer carry season SoS). Legend line reworded.
+
+**Note.** The Weekly card folds after a save, so the switch is one tap away (the card's header); the tip names the card.
+
+**Where.** `js/mls/badges.js` (`opponentBadgeMarkup`: `mls-opp opp-rank-badge`), `css/mls.css`, `js/mls/opponent.js`
+(tip, `rankingsHaveMatchupRanks`), `js/mls/sos.js` (`renderWeeklyMatchupScale`, `setSosReversed` without SoS, the Lineup
+redraw), `js/mls/rankings/engine.js` (draws it with the card's meta), `lineup/index.html` (`#weeklyMatchupScale`),
+`js/mls/rankings/uploadPreview.js`, `js/mls/legend.js`, CHANGELOG. No new key.
+
+**Tests.** `tests/mls-opponent-strength.spec.mjs`: text style (no background or border, dotted underline), the new
+tips, the Weekly card's switch with no SoS (flips 15→18, toast, remembered, no `mls_sos` written), and with SoS (label,
+toast, saved SoS flipped, the Roster switch checked, back from the Roster tab); hidden without matchup ranks.
+Screenshots: still only the two Guide PNGs.

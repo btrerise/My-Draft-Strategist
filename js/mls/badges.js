@@ -37,14 +37,15 @@ export function sosBadgeMarkup(rank, tip, { compact = false, sample = false } = 
 
 // --- THIS WEEK'S OPPONENT (opponent.js, rankedOpponentBadgeHTML; improvements S31) ---
 // "vs KC 28" / "@ KC 3" / "KC 16" (home or away unknown): this week's opponent with his matchup rank from your
-// Weekly rankings, colored on the SoS scale (1 = easiest, green; 32 = hardest, red). It stands where the plain
-// "vs KC" follows the kickoff time (lineup/gameInfo.js). opp: a team code; home: true, false or null;
-// rank: 1-32. tip: already escaped.
+// Weekly rankings. Colored text, not a box (owner's choice, round 3: boxes in green and red sat too close to the
+// position chips' colors), on the SoS scale (1 = easiest, green; 32 = hardest, red), with a faint dotted underline
+// that says it can be tapped. It stands where the plain "vs KC" (.mls-opp) follows the kickoff time
+// (lineup/gameInfo.js). opp: a team code; home: true, false or null; rank: 1-32. tip: already escaped.
 export function opponentBadgeMarkup({ opp, home = null, rank }, tip, { sample = false } = {}) {
     const style = ` style="${sosColorStyle(rank)}"`;
     const inner = `${home === true ? 'vs ' : home === false ? '@ ' : ''}${escapeHtml(opp)} ${rank}`;
-    if (sample) return `<span class="badge opp-badge"${style}>${inner}</span>`;
-    return `<button type="button" class="badge opp-badge"${style} data-action="explainSoS" data-tip="${tip}" title="${tip}" aria-label="${tip}">${inner}</button>`;
+    if (sample) return `<span class="mls-opp opp-rank-badge"${style}>${inner}</span>`;
+    return `<button type="button" class="mls-opp opp-rank-badge"${style} data-action="explainSoS" data-tip="${tip}" title="${tip}" aria-label="${tip}">${inner}</button>`;
 }
 
 // --- RANK-CHANGE CHIPS (rankings/moveChips.js, rankMoveChip) ---

@@ -1259,11 +1259,18 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
 }
 
 /* This week's opponent with its matchup rank from your Weekly rankings (rankedOpponentBadgeHTML in js/mls/opponent.js,
-   improvements S31): "@ KC 28", in place of the plain .mls-opp text after the kickoff badge, colored on the SoS scale
-   through the same --sos-color / --sos-bg. A button that explains itself on tap, like button.sos-badge. */
-.badge.opp-badge { font-size: 0.65rem; padding: 1px 4px; white-space: nowrap; background: var(--sos-bg); border: 1px solid var(--sos-color); color: var(--sos-color); }
-button.opp-badge { font-family: inherit; font-variant-numeric: inherit; line-height: inherit; text-align: inherit; cursor: pointer; }
-button.opp-badge:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
+   improvements S31): "@ KC 28", in place of the plain .mls-opp text after the kickoff badge. Colored text on the SoS
+   scale (--sos-color), not a box, with a faint dotted underline in its own color that says it can be tapped (owner's
+   choice, round 3). A button reset to look like the text; padding with a matching negative margin makes it easier to
+   hit without moving anything. */
+button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-variant-numeric: inherit; line-height: inherit; text-align: inherit; cursor: pointer; padding: 4px 3px; margin: -4px -3px; border-radius: 4px; }
+.opp-rank-badge { color: var(--sos-color); text-decoration: underline dotted; text-decoration-color: color-mix(in srgb, var(--sos-color) 55%, transparent); text-underline-offset: 2px; white-space: nowrap; }
+button.opp-rank-badge:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
+
+/* The Weekly Matchup Rankings card's copy of the switch (renderWeeklyMatchupScale, improvements S31): the SoS status's
+   look, closer to the meta line above it. */
+.sos-status.weekly-matchup-scale { margin: 0 0 0.75rem; }
+.sos-status.weekly-matchup-scale[hidden] { display: none; }
 
 /* The SoS card's status (renderSoSStatus in js/mls/sos.js): age, scale, the 1 = hardest switch. */
 .sos-status { margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted); display: grid; gap: 0.35rem; }

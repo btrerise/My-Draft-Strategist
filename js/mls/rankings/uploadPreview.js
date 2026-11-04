@@ -151,7 +151,7 @@ import { SPINNER_SVG, setProcessingStatus } from '../../shared/ui/statusFeedback
             const withRank = isWeekly ? parsedData.filter(p => Number.isInteger(p.oppRank)).length : 0;
             oppNoteEl.style.display = (withOpp || withRank) ? 'block' : 'none';
             const what = withRank
-                ? `this week's opponents and matchup ranks (${withRank} player${withRank === 1 ? '' : 's'}), read as ${State.sosReversed ? `1 = hardest and flipped to ${SOS_SCALE_TEXT}, as your SoS setting on the Roster tab says` : SOS_SCALE_TEXT}`
+                ? `this week's opponents and matchup ranks (${withRank} player${withRank === 1 ? '' : 's'}), read as ${State.sosReversed ? `1 = hardest and flipped to ${SOS_SCALE_TEXT}, as your "My files rank 1 = hardest" switch says` : `${SOS_SCALE_TEXT} (if your file ranks 1 = hardest, flip it on the Weekly Matchup Rankings card after saving)`}`
                 : `this week's opponents (${withOpp} player${withOpp === 1 ? '' : 's'}) but no matchup ranks`;
             oppNoteEl.textContent = `This file also has ${what}. They show after the kickoff time on the Lineup tab, and on Auto-Find's cards when Rank By is Weekly, until next week's rankings. Your season SoS isn't changed.`;
         }

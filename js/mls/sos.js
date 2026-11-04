@@ -3,7 +3,7 @@ import { getSleeperPlayerMap } from '../shared/api/sleeper.js';
 import { NFL_TEAMS, fantasyPosition } from './constants.js';
 import { State } from './state.js';
 import { showStatusFeedback } from '../shared/ui/statusFeedback.js';
-import { loadRosterTab, optimizeLineup } from './main.js';
+import { loadRosterTab, renderLineupUI } from './main.js';
 import { KEYS } from '../shared/storage/keys.js';
 import { flashButton } from '../shared/ui/flashButton.js';
 import { normalizeName } from '../shared/names.js';
@@ -14,6 +14,7 @@ import { escapeHtml } from '../shared/html.js';
 import { getFreshness } from '../shared/freshness.js';
 import { SOS_SCALE_TEXT, looksLikeRatings, reverseSosValue, sosValues } from './sosScale.js';
 import { sosBadgeMarkup } from './badges.js';
+import { rankingsHaveMatchupRanks } from './opponent.js';
 
     // --- SOS ENGINE ---
     export function generateSoSGrid() {
@@ -111,7 +112,21 @@ import { sosBadgeMarkup } from './badges.js';
             <div class="sos-status-line">${age} <span class="sos-status-sep" aria-hidden="true">&middot;</span> <span class="sos-status-scale">${SOS_SCALE_TEXT}</span></div>
             ${ratings}
             <label class="sos-flip"><input type="checkbox" id="sosReversedToggle" data-action="setSosReversed"${State.sosReversed ? ' checked' : ''}> My SoS files rank 1 = hardest</label>
-            <div class="sos-flip-hint">Turn this on if your source lists the toughest schedule as 1. It flips the SoS saved now and every SoS you upload later: SoS files, and SoS columns in ROS or Weekly rankings files.</div>`;
+            <div class="sos-flip-hint">Turn this on if your source lists the toughest schedule as 1. It flips the SoS saved now and every SoS you upload later (SoS files, and SoS columns in ROS rankings files), and the matchup ranks in your Weekly rankings.</div>`;
+        el.hidden = false;
+    }
+
+    // The same switch on the Lineup tab's Weekly Matchup Rankings card (improvements S31, round 3, owner's choice),
+    // shown only when the league's Weekly rankings have matchup ranks: that's where they come from, and without SoS
+    // loaded the Roster tab's copy isn't there at all. One setting (State.sosReversed): matchup ranks are stored as
+    // the file has them and flipped when shown (js/mls/opponent.js).
+    export function renderWeeklyMatchupScale() {
+        const el = document.getElementById('weeklyMatchupScale');
+        if (!el) return;
+        if (!rankingsHaveMatchupRanks(State.weeklyRankings)) { el.hidden = true; el.innerHTML = ''; return; }
+        el.innerHTML = `
+            <div class="sos-status-line">Matchup ranks: <span class="sos-status-scale">${SOS_SCALE_TEXT}</span>${State.sosReversed ? ' <span class="sos-status-muted">(your file\'s order flipped)</span>' : ''}</div>
+            <label class="sos-flip"><input type="checkbox" id="weeklyMatchupReversedToggle" data-action="setSosReversed"${State.sosReversed ? ' checked' : ''}> My files rank 1 = hardest${hasSoS() ? ' <span class="sos-status-muted">(also flips your season SoS)</span>' : ''}</label>`;
         el.hidden = false;
     }
 
@@ -125,6 +140,16 @@ import { sosBadgeMarkup } from './badges.js';
         if (on === State.sosReversed) return;
         State.sosReversed = on;
         localStorage.setItem(KEYS.mls.sosReversed, on ? '1' : '0');
+        // Weekly matchup ranks follow the switch when shown (improvements S31); only saved SoS is rewritten.
+        const matchups = rankingsHaveMatchupRanks(State.weeklyRankings) ? ' Matchup ranks follow it too.' : '';
+        if (!hasSoS()) {
+            // No season SoS to flip (the switch was used on the Weekly Matchup Rankings card).
+            renderSoSStatus();
+            renderWeeklyMatchupScale();
+            showToast(on ? `Flipped: your files rank 1 = hardest, and the app now reads them as ${SOS_SCALE_TEXT}.` : `Flipped back: your files rank 1 = easiest.`);
+            refreshSoSViews();
+            return;
+        }
         let flipSaved = true;
         if (State.sosSource && State.sosSource.kind === 'grid') {
             flipSaved = await showConfirm(`You've edited the manual grid since your last upload, and the grid is always ${SOS_SCALE_TEXT}. Flip the SoS you have now too?\n\nEither way, SoS you upload from now on ${on ? 'is flipped' : "isn't flipped"}.`,
@@ -135,18 +160,21 @@ import { sosBadgeMarkup } from './badges.js';
                 Object.keys(posMap || {}).forEach(pos => { posMap[pos] = reverseSosValue(posMap[pos]); });
             });
             saveSoS();
-            showToast(on ? `SoS flipped: your files rank 1 = hardest, and the app now reads them as ${SOS_SCALE_TEXT}.` : `SoS flipped back: your files rank 1 = easiest.`);
-            refreshSoSViews();
+            showToast((on ? `SoS flipped: your files rank 1 = hardest, and the app now reads them as ${SOS_SCALE_TEXT}.` : `SoS flipped back: your files rank 1 = easiest.`) + matchups);
         } else {
             renderSoSStatus();
-            showToast(on ? `Saved SoS kept as is. SoS files you upload from now on are flipped to ${SOS_SCALE_TEXT}.` : `Saved SoS kept as is. SoS files you upload from now on are read as ${SOS_SCALE_TEXT}.`);
+            showToast((on ? `Saved SoS kept as is. SoS files you upload from now on are flipped to ${SOS_SCALE_TEXT}.` : `Saved SoS kept as is. SoS files you upload from now on are read as ${SOS_SCALE_TEXT}.`) + matchups);
         }
+        renderWeeklyMatchupScale();
+        refreshSoSViews();
     }
 
     function refreshSoSViews() {
         const activeTabEl = document.querySelector('.tab-content.active');
         const activeTab = activeTabEl ? activeTabEl.id : '';
-        if (activeTab === 'lineupTab') optimizeLineup(true);
+        // SoS and matchup ranks never change who starts, so the Lineup tab only redraws (a re-optimize would undo
+        // your swaps when the switch is used on its Weekly Matchup Rankings card, improvements S31).
+        if (activeTab === 'lineupTab') renderLineupUI();
         else if (activeTab === 'rosterTab') loadRosterTab();
     }
 
