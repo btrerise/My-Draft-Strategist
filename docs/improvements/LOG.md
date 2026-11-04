@@ -8462,3 +8462,76 @@ for the new file during install isn't kept and the real file is cached once it's
   with `404.html` in place, the owner chose to **keep everything**: the `data-optional` banner fix (a blocker or a
   dropped request on the optional counter must never show the fatal banner), the service worker's HTML-for-asset
   guard (v2.9.0, mostly redundant once `404.html` exists, kept as a safety net) and `404.html`.
+
+## S31 — Lineup tab: this week's opponent strength from your weekly rankings
+
+**The reproduction first.** On main, a Weekly rankings file with a `Matchup` column (or `SoS`, `Schedule`, `ROS`) in
+the single-list layout was read as season SoS by the parser's vertical engine and saved over the Roster tab's season
+SoS grid on Save (the SoS card then said "from your Weekly rankings"). `tests/mls-opponent-strength.spec.mjs`'s first
+test uploads an SoS file, then saves such a Weekly file, and checks the SoS, its source and the Roster badge are
+unchanged: it failed on main (commit c831d1e) and passes now. The owner's own weekly file is the side-by-side layout
+(`QB Player … QB Opponent … QB Matchup`), read by the horizontal engine, which never read SoS, so the owner's files
+weren't the ones doing it.
+
+**The owner's answers** (from the file "Weekly-Rankings-All-11-3.csv", plus a ROS file for reference):
+1. Headers: my suggestion, plus **a position may come before the keyword** ("WR Opponent", "WR Matchup", as in the
+   file). Opponent's team: `Opp`, `Opponent`, `Opp Team`, `Opponent Team`, `vs`. Matchup rank: `Matchup`,
+   `Matchup Rank`, `Matchup Rk`, `Opp Rank`, `Opp Rk`, `Opponent Rank`, `OPRK`. **A Weekly file never writes season
+   SoS** (its SoS / Schedule / ROS columns are ignored); SoS files, ROS rankings files and the manual grid still do.
+2. Scale 1 = easiest like SoS, and **one switch**: "My SoS files rank 1 = hardest" flips it too.
+3. **A badge in the row's meta line** ("vs KC 28", "@ KC 3"), green to red on the SoS colors, explained on tap;
+   **"vs KC" with no rank too** ("include opponent always"); and **yes on the Waiver Wire's Weekly mode** ("that could
+   impact a user's decision to pick up the player or not").
+
+**User-visible effect.**
+- Lineup tab: each row (starters and bench) with this week's opponent gets a badge at the end of its meta line, after
+  the rank: "vs KC 28" (home), "@ KC 28" (away), coloured like the SoS badge (1 green, 32 red), or "vs KC" in plain
+  badge colours when the file has no rank for him (the owner's file has none for K and DEF). Tap or hover: "This week:
+  at SEA, matchup 15 of 32 for RBs (1 = easiest, 32 = hardest), from your Weekly rankings." On phones and touch
+  screens "vs" / "@" is hidden ("KC 28"), as the SoS badge drops "SoS: ".
+- Waiver Wire Assistant: the same badge on Top Available rows and Auto-Find cards when Rank By is Weekly (not ROS, not
+  Check a List's cards). Top Available still has no SoS badge (S7 round 3).
+- Shown only when the league's Weekly set has opponent data and was uploaded this rankings week
+  (`isSameRankingsWeek`, Tuesday 10:00 UTC to Tuesday), so last week's matchups never show as this week's.
+- "vs" / "@": from the file ("vs KC", "@ KC", "at KC"); for a bare "KC" from ESPN's scoreboard when it names the same
+  opponent; else "vs". A row with a Matchup rank but no Opp column takes the opponent from the scoreboard
+  (`State.gamesByTeam`, `refreshGameTimes`).
+- The upload preview says so: "This file also has this week's opponents and matchup ranks (29 players), read as 1 =
+  easiest, 32 = hardest [or: read as 1 = hardest and flipped…]. They show on the Lineup tab, and in the Waiver Wire
+  Assistant when Rank By is Weekly, until next week's rankings. Your season SoS isn't changed."
+- Fixed: a Weekly file no longer changes season SoS.
+- Guide → What the badges mean → Schedule: a new line with three samples (vs KC 3, @ KC 28, vs KC).
+
+**What changed and where.**
+- `js/shared/rankings/parse.js`: `parseRankingsFiles(…, { weekly })`. With it, the vertical engine reads no season
+  SoS and reads `Opp` / `Matchup` (any of the headers above, optionally after a position); the horizontal engine reads
+  each section's `<pos> Opponent` / `<pos> Matchup`. Stored on the player as `opp` (team code, aliases JAC→JAX,
+  WSH→WAS), `oppHome` (true / false / null) and `oppRank` (1–32 as the file has it, never flipped when stored). Blank
+  or non-team cells add nothing. New exports `parseOpponentCell`, `parseOpponentRank`. ROS uploads are read as before.
+- `js/mls/rankings/uploadPreview.js`: passes `weekly`; the new `#rankingsPreviewOppNote` (`lineup/index.html`).
+- `js/mls/opponent.js` (new, in `PRECACHE_ASSETS`): when to show, the flip at display time (`State.sosReversed`),
+  the scoreboard fallback, the tip, `getOpponentBadgeHTML(player)`.
+- `js/mls/badges.js`: `opponentBadgeMarkup` (a button with `data-action="explainSoS"`, which toasts `data-tip`;
+  `{ sample }` for the legend) and `sosColorStyle(rank)`, now shared with `sosBadgeMarkup` (same output as before).
+- `js/mls/render/lineup.js` (both row kinds), `js/mls/scout/waivers.js` (`waiverOpponentBadge`, Auto-Find cards),
+  `js/mls/scout/topAvailable.js` (rows). `js/mls/legend.js`: the legend line. `css/mls.css`: `.opp-badge*`.
+- No storage key: the fields live in the Weekly set's rows (`mls_ranking_sets_weekly`, and `mls_weekly`), so Backup /
+  Restore carries them. The optimizer doesn't read them.
+- `sw.js`: `opponent.js` precached; `CACHE_NAME` v2.9.1. CHANGELOG: two lines under Lineup Strategist.
+
+**Tests.**
+- `tests/unit/rankingsParser.test.mjs`: opponent cells ("vs KC", "vs. kc", "@ KC", "@KC", "at KC", bare "KC", "ATL",
+  aliases, blanks, "BYE", "LA", full names), matchup cells (1–32, "#5", "4.4", 0, 33, text), a vertical Weekly file
+  (blanks, a DEF row, no season SoS), position-prefixed and alternative headers, a Weekly file's SoS / Schedule / ROS /
+  Matchup columns giving no SoS, a ROS upload unchanged, and the owner's side-by-side layout (QB, WR, DEF, FLEX-only,
+  K with and without an opponent).
+- `tests/mls-opponent-strength.spec.mjs` (both widths) with `tests/fixtures/rankings-weekly-opponents.csv`: the
+  reproduction; the preview note; Lineup badges' text (phone without "vs" / "@"), colour, tip, toast, a blank row
+  without one, and the switch flipping 15 to 18; empty states (a Weekly file without the columns, the same set a
+  week old, a ROS upload with the columns); the scoreboard fallback; the Waiver Wire with Rank By Weekly and ROS.
+
+**Leftovers.**
+- On phones the badge often wraps to its own line under the rank. S32 (phone rows) is the place to tidy it, perhaps
+  moving it into a row's details as the card suggests.
+- Not on the Roster tab, Check a List's cards or the Trending view, and the optimizer doesn't use it (out of scope).
+- The owner's ROS file has `ROS` and `Next 4` columns: `ROS` is read as season SoS as before; `Next 4` isn't read.

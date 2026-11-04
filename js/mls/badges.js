@@ -20,15 +20,34 @@ export const PICK_BADGE_HTML = `<span class="badge pos-badge FLEX mls-pos-badge-
 export const SOS_CALENDAR_ICON = `<svg class="sos-badge-icon" aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;
 
 // rank: 1-32, colored green (1, easiest) to red (32, hardest). tip: already escaped.
+// The green-to-red scale's colors for a rank, as the style attribute's custom properties. Shared with the
+// opponent badge below (improvements S31), so a 28 is the same red on both.
+export function sosColorStyle(rank) {
+    const hue = Math.max(0, 120 - ((rank - 1) * 3.87));
+    return `--sos-color:hsl(${hue}, 80%, 65%); --sos-bg:hsl(${hue}, 80%, 15%);`;
+}
+
 export function sosBadgeMarkup(rank, tip, { compact = false, sample = false } = {}) {
-    let hue = Math.max(0, 120 - ((rank - 1) * 3.87));
-    let color = `hsl(${hue}, 80%, 65%)`;
-    let bg = `hsl(${hue}, 80%, 15%)`;
     const cls = `badge sos-badge${compact ? ' sos-badge-compact' : ''}`;
-    const style = `--sos-color:${color}; --sos-bg:${bg};`;
+    const style = sosColorStyle(rank);
     const inner = `${SOS_CALENDAR_ICON}<span class="sos-badge-label">SoS: </span>${rank}`;
     if (sample) return `<span class="${cls}" style="${style}">${inner}</span>`;
     return `<button type="button" class="${cls}" style="${style}" data-action="explainSoS" data-tip="${tip}" title="${tip}" aria-label="${tip}">${inner}</button>`;
+}
+
+// --- THIS WEEK'S OPPONENT (opponent.js, getOpponentBadgeHTML; improvements S31) ---
+// "vs KC 28" / "@ KC 28": this week's opponent from your Weekly rankings and how tough he is for the
+// position, colored on the SoS scale (1 = easiest, green; 32 = hardest, red). With no rank it's "vs KC" in
+// the plain badge colors. On phones and touch screens "vs" / "@" is dropped ("KC 28"), as the SoS badge drops
+// "SoS: "; the tap says it all. opp: a team code; home: false for an away game ("@"), else "vs".
+// rank: 1-32 or null. tip: already escaped.
+export function opponentBadgeMarkup({ opp, home = null, rank = null }, tip, { sample = false } = {}) {
+    const rated = Number.isInteger(rank) && rank >= 1 && rank <= 32;
+    const cls = `badge opp-badge${rated ? '' : ' opp-badge-unrated'}`;
+    const style = rated ? ` style="${sosColorStyle(rank)}"` : '';
+    const inner = `<span class="opp-badge-at">${home === false ? '@' : 'vs'} </span>${escapeHtml(opp)}${rated ? ` ${rank}` : ''}`;
+    if (sample) return `<span class="${cls}"${style}>${inner}</span>`;
+    return `<button type="button" class="${cls}"${style} data-action="explainSoS" data-tip="${tip}" title="${tip}" aria-label="${tip}">${inner}</button>`;
 }
 
 // --- RANK-CHANGE CHIPS (rankings/moveChips.js, rankMoveChip) ---

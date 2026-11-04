@@ -31,7 +31,7 @@ import { getActiveLeague, isConnectionError } from '../helpers.js';
 import { getByeBadgeHTML } from '../lineup/gameInfo.js';
 import { findFreeAgents, FLEX_POSITIONS, matchesPosFilter } from './waiverScanner.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
-import { applyWaiverScanSettingsToUI, buildWaiverContext, resolveWaiverBasis, updateWaiverScanSetting, waiverDerivedNotes, WAIVER_MODES } from './waivers.js';
+import { applyWaiverScanSettingsToUI, buildWaiverContext, resolveWaiverBasis, updateWaiverScanSetting, waiverDerivedNotes, waiverOpponentBadge, WAIVER_MODES } from './waivers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
@@ -166,6 +166,7 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
     // cross-position number for the basis on the right (Weekly Flex for RB/WR/TE, ROS Overall). No SoS
     // badge: improvements S7 added one and the owner took it out again (round 3). This is a list to
     // browse, and schedule is weighed where a free agent meets your player (Auto-Find, Check a List).
+    // This week's opponent does show when Rank By is Weekly (improvements S31, owner's choice).
     function rowHTML(ctx, fa, i) {
         const row = ctx.evaluate(fa);
         const sleeperId = ctx.meta[fa.cleanName] && ctx.meta[fa.cleanName].id;
@@ -186,7 +187,7 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
             <span class="mls-ta-player">
                 <span class="mls-ta-name">${escapeHtml(fa.name)}</span>
                 ${player.team ? `<span class="mls-ta-team">${escapeHtml(player.team)}</span>` : ''}
-                <span class="badge pos-badge ${escapeHtml(player.pos)} mls-ta-pos">${posRank}${tier}</span>${rankMoveChip(ctx.scan.season ? 'season' : ctx.scan.basis, fa.cleanName)}${adds ? trendBadgeHTML(adds) : ''}${injBadge}${getByeBadgeHTML(player.team)}
+                <span class="badge pos-badge ${escapeHtml(player.pos)} mls-ta-pos">${posRank}${tier}</span>${rankMoveChip(ctx.scan.season ? 'season' : ctx.scan.basis, fa.cleanName)}${adds ? trendBadgeHTML(adds) : ''}${injBadge}${getByeBadgeHTML(player.team)}${waiverOpponentBadge(ctx, fa.cleanName, player)}
             </span>
             ${starts}
             <span class="mls-ta-num">${cross ? `#${cross}` : '&ndash;'}</span>

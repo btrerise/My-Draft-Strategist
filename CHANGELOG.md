@@ -124,6 +124,14 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **This week's opponent on the Lineup tab.** When your Weekly rankings file has an opponent column (Opp, or
+  "WR Opponent" in a side-by-side file) and a matchup rank (Matchup, Opp Rank or OPRK, 1 = easiest, 32 = hardest),
+  each player's row shows a small badge such as "vs KC 28" or "@ KC 3", green for an easy matchup and red for a hard
+  one; tap it for what it means. The Waiver Wire Assistant shows it too when Rank By is Weekly. It shows only while
+  those Weekly rankings are this week's, and the Roster tab's "My SoS files rank 1 = hardest" switch flips it like SoS.
+- **Fixed: a Weekly rankings file could overwrite your season strength of schedule.** A Weekly file with a Matchup
+  (or SoS, Schedule or ROS) column replaced the Roster tab's season SoS with that one week's numbers. Weekly files no
+  longer change season SoS; SoS files, ROS rankings files and the manual grid still do.
 - **Fixed: "Something went wrong loading the app" after the last update.** During a deploy, a phone could be handed
   the home page in place of a new file, keep it for hours, and show the full-screen error banner on every load until
   its cache was cleared. The app no longer keeps a page where a script or stylesheet belongs, and the optional visitor

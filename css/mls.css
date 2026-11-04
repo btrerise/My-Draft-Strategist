@@ -1258,6 +1258,18 @@ button.sos-badge:focus-visible { outline: 2px solid var(--primary-green); outlin
     .sos-badge .sos-badge-icon { display: inline-block; }
 }
 
+/* This week's opponent (getOpponentBadgeHTML in js/mls/opponent.js, improvements S31): "vs KC 28", colored on
+   the SoS scale through the same --sos-color / --sos-bg; with no rank ("vs KC") the plain badge colors. A button
+   that explains itself on tap, like button.sos-badge. On phones and touch screens "vs" / "@" is dropped. */
+.badge.opp-badge { font-size: 0.65rem; margin-left: 4px; padding: 1px 4px; white-space: nowrap; }
+.badge.opp-badge:not(.opp-badge-unrated) { background: var(--sos-bg); border: 1px solid var(--sos-color); color: var(--sos-color); }
+button.opp-badge { font-family: inherit; font-variant-numeric: inherit; line-height: inherit; text-align: inherit; cursor: pointer; }
+button.opp-badge.opp-badge-unrated { border: 1px solid transparent; }
+button.opp-badge:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 1px; }
+@media (max-width: 600px), (hover: none) and (pointer: coarse) {
+    .opp-badge .opp-badge-at { display: none; }
+}
+
 /* The SoS card's status (renderSoSStatus in js/mls/sos.js): age, scale, the 1 = hardest switch. */
 .sos-status { margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted); display: grid; gap: 0.35rem; }
 .sos-status[hidden] { display: none; }

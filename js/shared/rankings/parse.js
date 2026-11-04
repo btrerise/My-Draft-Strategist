@@ -83,6 +83,44 @@ export function parseSosValue(cell) {
     return nums && nums.length === 1 ? String(Number(nums[0])) : "";
 }
 
+// --- THIS WEEK'S OPPONENT (Weekly uploads only; improvements S31) ---
+// A Weekly rankings file can carry each player's opponent this week ("Opp": "vs KC", "@ KC", "KC") and how
+// tough that opponent is for his position ("Matchup": a rank from 1 to 32). Headers may start with a position,
+// as in the side-by-side layout ("WR Opponent", "WR Matchup"; owner's choice). In a Weekly file these columns
+// describe one week, so they never feed the season SoS grid; ROS files keep reading Matchup as season SoS.
+const OPP_POS_PREFIX = '(?:(?:qb|rb|wr|te|k|pk|def|dst|d/st|flex)\\s+)?';
+const OPP_TEAM_HEADER = new RegExp(`^${OPP_POS_PREFIX}(?:opp|opponent|opp team|opponent team|vs)$`);
+const OPP_RANK_HEADER = new RegExp(`^${OPP_POS_PREFIX}(?:matchup|matchup rank|matchup rk|opp rank|opp rk|opponent rank|oprk)$`);
+// The same two, for one section of the side-by-side layout: "wr opponent", "wr matchup".
+const sectionHeaderIs = (h, section, re) => h.startsWith(section + ' ') && re.test(h);
+
+// Opponent cell -> { opp: 'KC', home: true | false | null }, or null when it isn't a team ("", "BYE").
+// "vs KC" / "vs. KC" is a home game, "@ KC" / "at KC" an away one; a bare "KC" doesn't say.
+export function parseOpponentCell(cell) {
+    const m = String(cell == null ? '' : cell).trim().toUpperCase().match(/^(VS\.?|@|AT)?\s*([A-Z]{2,3})$/);
+    if (!m) return null;
+    const team = TEAM_ALIASES[m[2]] || m[2];
+    if (!NFL_TEAMS.includes(team)) return null;
+    const home = !m[1] ? null : (m[1] === '@' || m[1] === 'AT') ? false : true;
+    return { opp: team, home };
+}
+
+// Matchup cell -> a whole rank from 1 to 32, or null. Stored as the file has it: the SoS card's
+// "My SoS files rank 1 = hardest" switch is applied when it's shown (js/mls/opponent.js).
+export function parseOpponentRank(cell) {
+    const v = parseSosValue(cell == null ? '' : cell);
+    const n = v === '' ? NaN : Math.round(Number(v));
+    return Number.isInteger(n) && n >= 1 && n <= 32 ? n : null;
+}
+
+// Writes a row's opponent cells onto its player. A blank cell leaves what another file (or section) gave.
+function applyOpponent(p, oppCell, rankCell) {
+    const o = oppCell === undefined ? null : parseOpponentCell(oppCell);
+    if (o) { p.opp = o.opp; p.oppHome = o.home; }
+    const r = rankCell === undefined ? null : parseOpponentRank(rankCell);
+    if (r !== null) p.oppRank = r;
+}
+
 // Combined horizontal sheet (old format or the newer 'wk1' format): positions side by side,
 // each with its own rank/name columns. Only applies to single-file uploads. Recognized by the
 // name columns the horizontal parser reads ("QB Player" ... "FLEX Player", "DEF Team"), since a
@@ -204,7 +242,7 @@ export function stripTitleLines(text) {
  * @param {{value: boolean}} hasNewSosRef - boxed boolean so this function can report "found new
  *   SoS data" back alongside the diagnostic it resolves with.
  */
-function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasNewSosRef, showToast) {
+function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasNewSosRef, showToast, weekly = false) {
     return new Promise((resolve) => {
         const file = fileObj.file;
         const parseContext = fileObj.context;
@@ -265,6 +303,11 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                                     // tells a real positional list from the single-file fallback. Without
                                     // it, every rank would equal its posRank and positions would be renumbered.
                                     let p = combinedPlayers[clean];
+                                    if (weekly) {
+                                        const oppIdx = headers.findIndex(x => sectionHeaderIs(x, sectionKey, OPP_TEAM_HEADER));
+                                        const rankIdx = headers.findIndex(x => sectionHeaderIs(x, sectionKey, OPP_RANK_HEADER));
+                                        applyOpponent(p, oppIdx !== -1 ? rows[r][oppIdx] : undefined, rankIdx !== -1 ? rows[r][rankIdx] : undefined);
+                                    }
                                     if (isFlexCol) {
                                         p.flexRank = rVal;
                                         p.flexTier = tVal;
@@ -292,7 +335,12 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                 // several ranking exports label this column "ROS" (rest-of-season) even though
                 // it's the same team+position schedule-strength value, not an overall rank (the
                 // overall rank column is caught separately below via 'rank'/'overall').
-                let sosColIdx = headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup' || h === 'ros');
+                // A Weekly file's columns describe this week, so it never writes season SoS (improvements S31: a
+                // Weekly file's Matchup column used to overwrite the season grid with one week's numbers). Its
+                // Opp and Matchup columns are this week's opponent instead (applyOpponent, above).
+                let sosColIdx = weekly ? -1 : headers.findIndex(h => h === 'sos' || h === 'schedule' || h === 'matchup' || h === 'ros');
+                const oppColIdx = weekly ? headers.findIndex(h => OPP_TEAM_HEADER.test(h)) : -1;
+                const oppRankColIdx = weekly ? headers.findIndex(h => OPP_RANK_HEADER.test(h)) : -1;
                 let teamColIdx = headers.findIndex(h => h === 'team' || h === 'tm');
                 let posColIdx = headers.findIndex(h => h === 'pos' || h === 'position');
                 let explicitPosRankColIdx = headers.findIndex(h => h === 'pos rank' || h === 'position rank' || h === 'positional rank');
@@ -377,6 +425,10 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
                             }
                             p.flexRank = overallRankVal;
                             p.flexTier = tierVal;
+                        }
+
+                        if (oppColIdx !== -1 || oppRankColIdx !== -1) {
+                            applyOpponent(p, oppColIdx !== -1 ? rows[i][oppColIdx] : undefined, oppRankColIdx !== -1 ? rows[i][oppRankColIdx] : undefined);
                         }
 
                         // SoS Extraction
@@ -525,6 +577,8 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
  * @param {Function} options.loadSheetJS - (onSuccess, onError) => void; loads the SheetJS lib.
  * @param {Function} [options.onProgress] - (completedCount, totalCount) => void.
  * @param {Function} [options.showToast] - (message, options) => void; defaults to js/shared/ui/toast.js's.
+ * @param {boolean} [options.weekly] - a Weekly upload: reads this week's opponent (Opp, Matchup) into each
+ *   player as opp / oppHome / oppRank, and never returns season SoS (improvements S31).
  * @returns {Promise<{parsedData: Array, hasNewSos: boolean, sosUpdates: Object, diagnostics: Array}>}
  *
  * `diagnostics` lists, in upload order, one entry per file that contributed NO players, plus
@@ -548,7 +602,7 @@ function parseSingleFile(fileObj, loadSheetJS, combinedPlayers, sosUpdates, hasN
  *   - sheetName: set for multi-sheet workbooks, naming the tab the diagnostic describes
  * formatRankingsDiagnostic (js/shared/rankings/diagnostics.js) turns one into the user-facing message.
  */
-export async function parseRankingsFiles(filesWithContext, { loadSheetJS, onProgress, showToast = defaultShowToast } = {}) {
+export async function parseRankingsFiles(filesWithContext, { loadSheetJS, onProgress, showToast = defaultShowToast, weekly = false } = {}) {
     let combinedPlayers = {};
     let sosUpdates = {};
     let hasNewSosRef = { value: false };
@@ -558,7 +612,7 @@ export async function parseRankingsFiles(filesWithContext, { loadSheetJS, onProg
     if (typeof onProgress === 'function') onProgress(completed, total);
 
     const perFile = await Promise.all(filesWithContext.map(f =>
-        parseSingleFile(f, loadSheetJS, combinedPlayers, sosUpdates, hasNewSosRef, showToast).then(diags => {
+        parseSingleFile(f, loadSheetJS, combinedPlayers, sosUpdates, hasNewSosRef, showToast, weekly).then(diags => {
             completed++;
             if (typeof onProgress === 'function') onProgress(completed, total);
             return diags;
