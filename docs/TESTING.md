@@ -310,8 +310,8 @@ done or dropped, remove its line here in the same change. Background for each is
 **Handed on by M2 to later Material 3 cards** (the owner's decision, after M2; details in docs/improvements/LOG.md, M2).
 The card named does the item in its own session; remove the line when it's done.
 - **M5 (text fields): every text field and drop-down 48px tall.** Today `.form-input` fields and selects are 44 to 45px
-  (Material 3's touch minimum is 48px; its own text field is 56px, which the owner's reviewer judged too bulky on
-  phones). Give `.form-input` (inputs, selects, textareas' single-line cousins) `min-height: 48px` in css/base.css. Both
+  (Material 3's touch minimum is 48px; its own text field is 56px, which M2 suggested is too bulky on phones, and the
+  owner sent 48px here). Give `.form-input` inputs and selects `min-height: 48px` in css/base.css. Both
   header pickers follow (css/base.css, HEADER PICKER: Lineup Strategist's league menu, Draft Strategist's draft menu),
   so bring the buttons beside them to 48px too, keeping the header even: the league arrows on phones
   (`.league-nav-btn`, css/base.css's phone block, 44px today) and Draft Strategist's Sync (`#headerSyncBtn`,
