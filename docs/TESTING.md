@@ -253,6 +253,18 @@ shot and S10 took four runs for 14.)
   is slid back inside the window (`place`, CSS `translate: var(--tt-dx)`), and capped at the window's width. Don't
   give a tooltip its own `translate`. `tooltips-onscreen.spec.mjs` taps every tooltip on both apps' tabs at 375px and
   1280px and fails on any that crosses an edge; a new tooltip in a state it doesn't reach should get a line there.
+- **Touch targets, focus and press feedback** (improvements M2, Material 3): `css/base.css`'s last section gives every
+  button, link, summary and `role=button` an invisible `::after` that grows it to 48x48px where it's smaller, one
+  `:focus-visible` ring (2px green, 2px gap; text fields on their own border), and a `::before` state layer for hover
+  and press (no lifts, shrinks or brightness filters). All at zero specificity (`:where()`), so a component's own rule
+  wins. Don't give a control its own focus outline, hover tint or press transform; don't put `overflow: hidden` on a
+  group of buttons (it clips their areas; round the end buttons instead, as `.mls-segmented` does). Where two controls
+  sit closer than 48px, they split the gap (rules after the shared one). `touch-targets.spec.mjs` hit-tests every
+  tab at 375px and fails on a control under 48px that isn't on its `ALLOW` list (with a reason), on a hit area that
+  covers part of a neighbour, or on a page that scrolls sideways; `focus-ring.spec.mjs` tabs through every tab and
+  fails on a focused control without a 2px outline. A hit area that reaches up out of the Lineup tab's matchup strip, or
+  past a switch drawn with `transform: scale()`, changed a few anti-aliased pixels in the screenshots: if a new area
+  moves pixels, aim it elsewhere.
 - **Image exports** (improvements S19, round 12): html2canvas draws text without the page's `tabular-nums`, so a new
   export calls `useProportionalDigits(clonedRoot)` (`js/shared/ui/exportImage.js`) in its `onclone`;
   `export-numerals.spec.mjs` checks three exports' clones; the Scoreboard's Export (improvements S22) is checked in
@@ -294,6 +306,38 @@ done or dropped, remove its line here in the same change. Background for each is
   (the worker picks per iteration); until then the Scoreboard shows no chance for Best Ball (S21, mid-game replay).
 - Save the name → position lookup (`window.sleeperPosByName`) so a new page doesn't rebuild it from the player map.
   Only a speed-up, and it needs a new storage key (3G).
+
+**Handed on by M2 to later Material 3 cards** (the owner's decision, after M2; details in docs/improvements/LOG.md, M2).
+The card named does the item in its own session; remove the line when it's done.
+- **M5 (text fields): every text field and drop-down 48px tall.** Today `.form-input` fields and selects are 44 to 45px
+  (Material 3's touch minimum is 48px; its own text field is 56px, which M2 suggested is too bulky on phones, and the
+  owner sent 48px here). Give `.form-input` inputs and selects `min-height: 48px` in css/base.css. Both
+  header pickers follow (css/base.css, HEADER PICKER: Lineup Strategist's league menu, Draft Strategist's draft menu),
+  so bring the buttons beside them to 48px too, keeping the header even: the league arrows on phones
+  (`.league-nav-btn`, css/base.css's phone block, 44px today) and Draft Strategist's Sync (`#headerSyncBtn`,
+  css/mds.css, `min-width: 44px`). Then remove the `input:not([type=checkbox]), select, textarea` entry from `ALLOW`
+  in tests/touch-targets.spec.mjs (the spec must still pass), and re-take the screenshots this changes (most of both
+  apps': every form and the header).
+- **M14 (surfaces and corners): no hover lift on cards.** After M2 the only lifts left on the site are cards: the
+  Tracker's player cards (`.player-card:hover`, css/mds.css: `translateY(-2px)` and a shadow), the Scout tab's result
+  cards (`.scout-result-card:hover`, css/mls.css: `translateY(-1px)`) and the guide banner (`.guide-banner:hover`,
+  css/base.css: `translateY(-2px)`). Replace each lift with M14's surface-tone change (or the shared state layer if the
+  card is a button). Computers only; no screenshot shows a hover.
+- **M4 (chips and segmented controls): 48px targets for the chips and segments.** On `ALLOW` in
+  tests/touch-targets.spec.mjs until then: the position chips (`.pos-filter`; Scout's rows are 8px apart, the Roster's
+  position counts 3px apart, so neighbours split the gap) with the Badges link and its "i" beside them, and Lineup
+  Strategist's segmented controls (26 to 35px tall). When M4 resizes them, give them room for 48px, remove their
+  `ALLOW` entry, and keep `.mls-segmented` free of `overflow: hidden` (M2 removed it: it clipped the buttons' hit
+  areas; the end buttons round their own corners, which moved 9 to 10 anti-aliased pixels at one end of each).
+- **M3 (motion tokens): move M2's two timings onto the tokens.** `--press-morph` in css/base.css's `:root` (350ms
+  `cubic-bezier(0.42, 1.67, 0.21, 0.90)`, Expressive's fast spatial curve: a pressed button's corners going 6 → 4px)
+  and the state layer's 150ms `background-color` fade (css/base.css, STATE LAYERS, the `::before` rule). Reduce Motion keeps
+  turning both off.
+- **No card yet (S32 or a Dashboard card):** the other dense spots on `ALLOW`, each with its reason there: the phone
+  header's menu button, the Scoreboard's lists and fold toggles (rows 2 to 6px apart), the Command Center's Edit /
+  Fold all and first card, "This lineup needs you" above its fix button, the Trade Analyzer's Clear above its search,
+  the Team tab's Undo buttons, a dynasty Roster row's badge above its gap chip. S32 already takes the Lineup row's swap
+  and lock (and the Roster rows).
 
 **Speed (improvements S17, details in docs/improvements/performance.md)**
 - T-Score blocks the main thread for about 1.1 s on every load (Total Blocking Time 1,102 ms on a 4x-slowed CPU, cached

@@ -94,25 +94,32 @@
     </div>
     
     <!-- HEADER CONTROL DROPDOWN -->
-<div class="header-controls" style="display: flex; align-items: center; gap: 0.5rem;">
-    <select id="draftProfileSelect" class="form-input" style="font-weight: 600; font-size: 0.85rem; height: 32px; width: auto; max-width: 180px;" data-action="switchDraftProfile" aria-label="Select Active Draft">
-        <option value="">No Drafts</option>
-    </select>
+<div class="header-controls">
+  <div class="cluster cluster-sm">
+    <!-- The draft's name is drawn by the label laid over the drop-down, as Lineup Strategist's league picker
+         (css/base.css, HEADER PICKER; improvements M2), so a long name ends in "…"; tapping still opens the picker. -->
+    <span class="header-picker">
+        <select id="draftProfileSelect" class="form-input" data-action="switchDraftProfile" aria-label="Select Active Draft">
+            <option value="">No Drafts</option>
+        </select>
+        <span id="draftProfileLabel" class="header-picker-label" aria-hidden="true">No Drafts</span>
+    </span>
 
-    <button id="headerSyncBtn" class="btn-header" data-action="handleSmartSync" title="Manual Sync (or click to stop Live Sync)" aria-label="Sync draft now" style="padding: 0 8px; height: 32px; display: flex; align-items: center; justify-content: center;">
-        <span id="syncIconWrap" style="display: flex; align-items: center; gap: 4px;">
+    <button id="headerSyncBtn" class="btn-header" data-action="handleSmartSync" title="Manual Sync (or click to stop Live Sync)" aria-label="Sync draft now">
+        <span id="syncIconWrap">
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             <span class="hide-on-mobile">Sync</span>
         </span>
         <!-- Text and styling are driven by renderLiveSyncStatus() in js/mds/sleeperSync.js: this reads
              "LIVE" while the 3s poll is landing, and amber "LIVE · stalled" plus the last
              good sync time once it has missed enough ticks in a row. -->
-        <span id="liveIconWrap" style="display: none; align-items: center; gap: 4px; font-weight: bold;">
+        <span id="liveIconWrap" style="display: none; font-weight: bold;">
             <span class="pulse-dot"></span>
             <span id="liveStatusLabel">LIVE</span>
             <span id="liveStatusStamp" class="live-sync-stamp hide-on-mobile"></span>
         </span>
     </button>
+  </div>
 </div>
 </header>
 

@@ -35,6 +35,9 @@
 /* --- SHARED CSS VARIABLES & ROOT DESIGN TOKENS --- */
 :root {
     color-scheme: dark;
+    /* A pressed button's corners tighten (improvements M2): Material 3 Expressive's fast spatial curve (a little overshoot).
+       M3's motion tokens can replace it. */
+    --press-morph: 350ms cubic-bezier(0.42, 1.67, 0.21, 0.90);
     /* Deeper, more premium dark mode backgrounds */
     --bg-color: #0a0e17; 
     --card-bg: #131b2c; 
@@ -226,11 +229,8 @@ body {
         display: none;
     }
     
-    /* 5. Keep the dropdown contained and leave room for the arrows. (Lineup Strategist's league drop-down
-       sizes itself to the free space instead: css/mls.css, "Header league picker", improvements S16.) */
-        #draftProfileSelect { 
-            max-width: 130px !important; 
-        }
+    /* 5. (Draft Strategist's draft drop-down used to be capped at 130px here; since improvements M2 it takes the free
+       space like Lineup Strategist's: HEADER PICKER.) */
 
     /* 6. Bigger, easier-to-tap prev/next league buttons on mobile. Desktop keeps the
        original compact size (set inline via .league-nav-btn's base rule below) --
@@ -651,6 +651,38 @@ html { scroll-padding-top: 5rem; }
     align-items: center; 
     gap: 0.75rem; 
 }
+
+/* HEADER PICKER: Lineup Strategist's league and Draft Strategist's draft (improvements S16, owner's choice; shared and
+   used by Draft Strategist since M2, owner: "consistent with Lineup Strategist"). The name is drawn by a label laid
+   over the drop-down (#headerLeagueLabel / #draftProfileLabel, kept in step by syncHeaderLeagueLabel in
+   js/mls/leagues/sync.js and refreshDraftDropdown in js/mds/state.js), so a long name ends in "…" instead of a cut
+   letter; the drop-down itself is still what you tap, with its text made transparent. Desktop: the drop-down fits the
+   longest name, up to 22rem. Phones: the logo button hides (the tab bar's Dashboard does the same) and the name takes
+   all the room the menu button and the buttons beside it leave, at any width. T-Score has no picker, so keeps its logo. */
+.header-picker { position: relative; display: block; flex: 0 1 auto; min-width: 0; max-width: 22rem; }
+.header-picker > select.form-input { width: auto; max-width: 100%; color: transparent; }  /* beats select.form-input, later in this file */
+.header-picker > select option { color: var(--text-main); background-color: var(--card-bg); }
+.header-picker-label {
+    position: absolute;
+    top: 50%;
+    left: 17px;   /* the drop-down's 1px border + 16px padding */
+    right: 34px;  /* clear of the arrow (it sits in the drop-down's last 31px); the 7px of slack keeps a name the
+                     drop-down was sized to fit from ending in "…" */
+    transform: translateY(-50%);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    pointer-events: none;
+}
+@media (max-width: 767px) {
+    .header:has(.header-picker) .logo-container { display: none; }
+    .header:has(.header-picker) .header-controls { flex: 1 1 auto; min-width: 0; justify-content: flex-end; }
+    .header:has(.header-picker) .header-controls > .cluster { flex: 1 1 auto; min-width: 0; }
+    .header-picker { flex: 1 1 auto; max-width: none; }
+    .header-picker > select.form-input { width: 100%; }
+}
 /* --- BOTTOM TAB NAVIGATION --- */
 .nav-bar { 
     position: fixed; 
@@ -714,14 +746,8 @@ html { scroll-padding-top: 5rem; }
 }
 
 /* Hover & Active States */
-.nav-bar .nav-btn:hover { 
-    color: var(--text-main); 
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.nav-bar .nav-btn:active {
-    transform: scale(0.92); /* Satisfying spring compression when tapped */
-}
+.nav-bar .nav-btn:hover { color: var(--text-main); }
+/* Hover and press: the shared state layer (STATE LAYERS, end of this file; improvements M2), not a tint and a 92% shrink. */
 
 .nav-bar .nav-btn.active { 
     color: var(--primary-green); 
@@ -896,11 +922,8 @@ html { scroll-padding-top: 5rem; }
     transition: border-color 0.2s, box-shadow 0.2s;
     font-family: inherit;
 }
-.form-input:focus {
-    outline: none;
-    border-color: var(--primary-green);
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
-}
+/* Focus: the 2px green outline from FOCUS (end of this file) on the field's border (improvements M2). */
+.form-input:focus { border-color: var(--primary-green); }
 .text-center { text-align: center; }
 
 /* Grid Layouts */
@@ -958,7 +981,6 @@ label.toggle-title,
     border-radius: 12px;
     position: relative;
     cursor: pointer;
-    outline: none;
     transition: background 0.3s ease;
     flex-shrink: 0;
 }
@@ -980,10 +1002,6 @@ label.toggle-title,
 .toggle-switch:checked::after {
     transform: translateX(20px);
 }
-.toggle-switch:focus-visible {
-    outline: 2px solid var(--primary-green);
-    outline-offset: 2px;
-}
 
 /* --- BUTTONS --- */
 .btn { 
@@ -998,26 +1016,23 @@ label.toggle-title,
     font-size: 0.95rem; 
     cursor: pointer; 
     width: 100%; 
-    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, filter 0.2s;
+    transition: border-radius var(--press-morph);
     font-family: inherit;
 }
-.btn:hover { transform: translateY(-1px); }
-.btn:active { transform: translateY(1px) scale(0.98); }
+/* Hover and press: the shared state layer and pressed corners (STATE LAYERS, end of this file; improvements M2), which
+   replaced the 1px lift, the 98% press and the primary's brightness filter. */
 
 .btn-primary { 
     background: var(--primary-green); 
     color: #0a0e17; 
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
 }
-.btn-primary:hover { box-shadow: 0 6px 16px rgba(16, 185, 129, 0.25); filter: brightness(1.1); }
 
 .btn-secondary { background: var(--border); color: var(--text-main); }
-.btn-secondary:hover { background: #2d3748; }
 
 .btn-blue { background: var(--btn-blue-bg); color: #0a0e17; }
 .btn-purple { background: var(--btn-purple-bg); color: #0a0e17; }
 .btn-danger { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid #ef4444; }
-.btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
 /* Base small button styling with smooth spring transitions */
 .btn-sm { 
     padding: 0.4rem 0.8rem; 
@@ -1027,7 +1042,7 @@ label.toggle-title,
     font-size: 0.75rem; 
     cursor: pointer; 
     font-family: inherit;
-    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-radius var(--press-morph);
     letter-spacing: 0.3px;
 }
 /* .swap-btn / .lock-btn (MLS roster swap+lock controls) defined near their actual
@@ -1044,17 +1059,11 @@ label.toggle-title,
     align-items: center;
     justify-content: center;
     border-radius: 6px;
-    transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+    transition: color 0.2s ease;
 }
 
-.hamburger-btn:hover {
-    color: var(--text-main);
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.hamburger-btn:active { 
-    transform: scale(0.92); 
-}
+/* Hover and press: the shared state layer (STATE LAYERS, end of this file; improvements M2), not a tint and a shrink. */
+.hamburger-btn:hover { color: var(--text-main); }
 
 /* --- UTILITIES --- */
 .flex-column { display: flex; flex-direction: column; }
@@ -1207,8 +1216,6 @@ label.toggle-title,
    makes iOS Safari deliver the tap to the document-level handler at all. */
 .tooltip-icon { cursor: pointer; }
 .tooltip-icon:focus-visible {
-    outline: 2px solid var(--primary-green);
-    outline-offset: 2px;
     background: var(--border);
     color: var(--text-main);
 }
@@ -1221,11 +1228,6 @@ label.toggle-title,
 /* Icon-less tooltips, where the badge/status icon/cell itself is the trigger (data-tt-self is
    set by initTooltips in js/shared/ui/tooltips.js): League Command Center status icons and badges, Power
    Rankings cells, the T-Score badge on Draft Tracker cards. */
-.tooltip-container[data-tt-self]:focus-visible {
-    outline: 2px solid var(--primary-green);
-    outline-offset: 2px;
-    border-radius: 4px;
-}
 .tooltip-container[data-tt-self]:focus-visible > .tooltip-text:not(.tt-dismissed) {
     visibility: visible; opacity: 1; transform: translateY(0);
 }
@@ -1576,11 +1578,7 @@ select {
 }
 
 select.form-input:focus,
-select:focus {
-    outline: none;
-    border-color: var(--primary-green);
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
-}
+select:focus { border-color: var(--primary-green); }
 
 /* Forces dropdown option lists to respect dark theme where supported */
 select option {
@@ -1679,10 +1677,6 @@ input[type="file"]::-webkit-file-upload-button:hover {
   -webkit-appearance: none;
   appearance: none;
   cursor: pointer;
-}
-.btn-bare:focus-visible {
-  outline: 2px solid var(--primary-green);
-  outline-offset: 2px;
 }
 
 /* --- TOAST NOTIFICATIONS --- */
@@ -1807,14 +1801,7 @@ input[type="file"]::-webkit-file-upload-button:hover {
     position: relative;
 }
 
-.close-banner-btn::after {
-    content: '';
-    position: absolute;
-    top: -8px;
-    bottom: -8px;
-    left: -8px;
-    right: -8px;
-}
+/* Its 48px hit area: TOUCH TARGETS, end of this file (improvements M2). */
 /* Remove default browser underlines from link buttons */
 a.nav-btn,
 .nav-btn {
@@ -2233,11 +2220,8 @@ a.nav-btn,
 }
 
 .pos-filter:hover { 
-    background: rgba(255, 255, 255, 0.05);
     color: var(--text-main);
-    transform: translateY(-2px);
-    
-    /* Slightly illuminate when hovering over an inactive filter */
+    /* No lift or tint (improvements M2): the shared state layer shows the hover. Slightly illuminate when hovering over an inactive filter */
     opacity: 0.7;
     filter: grayscale(40%);
 }
@@ -2264,11 +2248,7 @@ button.pos-filter {
   -webkit-appearance: none;
   appearance: none;
 }
-.pos-filter:focus-visible {
-  outline: 2px solid var(--primary-green);
-  outline-offset: 2px;
-  opacity: 1;
-}
+.pos-filter:focus-visible { opacity: 1; }
 
 /* --- FLEX-TYPE BADGES (both apps) ---
    A badge or button for a slot that takes several positions: a border blended from those positions'
@@ -2303,7 +2283,6 @@ button.pos-filter {
 }
 .badge-legend-link { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.8rem; font-weight: 600; color: var(--primary-green); white-space: nowrap; cursor: pointer; }
 .badge-legend-link:hover { text-decoration: underline; }
-.badge-legend-link:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; border-radius: 4px; }
 /* On phones the link reads "Badges", so the card titles beside it keep their line. */
 .badge-legend-link-short { display: none; }
 @media (max-width: 480px) {
@@ -2552,4 +2531,95 @@ button.pos-filter {
 /* "Don't count this device" / "Count this device again" at the end of each Visitor Counts line (improvements A1;
    js/shared/analytics.js swaps the text). The site's green, like the Guide's badge-legend link. */
 a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-space: nowrap; text-underline-offset: 2px; }
-a[data-nocount-link]:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; border-radius: 4px; }
+
+/* --- FOCUS, TOUCH TARGETS AND STATE LAYERS (improvements M2, Material 3) ---
+   Every page (both apps and T-Score) loads this file, so these rules hold site-wide. Per-component rules that only
+   repeated them are gone; what's left differs for a reason (an inset ring where a parent clips it). */
+
+/* FOCUS: one ring for every control a keyboard reaches: 2px green with a 2px gap (the owner's pick). Text fields and
+   selects: the 2px green outline sits on the field's own border instead (Material 3's focused text field). */
+:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
+:is(input:not([type=checkbox], [type=radio], [type=range], [type=button], [type=submit]), select, textarea):focus-visible {
+    outline-offset: -1px;
+}
+
+/* TOUCH TARGETS: Material 3's 48dp target. Each control gets an invisible ::after, centred on it, that grows it to 48px
+   in any direction where it's smaller (the pattern .close-banner-btn already used); a control 48px or bigger gets none.
+   :where() keeps both at zero specificity, so a component's own position or ::after wins. Not for .rankings-card-toggle,
+   whose ::after already stretches over its whole card header and whose chevron is placed against that header. Inputs and selects can't have an
+   ::after; the toggle switches use ::before instead (their ::after is the handle). Left out: the Lineup row's swap and
+   lock (stacked on phones until S32: the lock's area covered the swap), and tooltip containers that are position: static
+   on purpose (their popup is placed against the card or table, and so would the area be). tests/touch-targets.spec.mjs
+   measures every tab at 375px and fails when an area covers a neighbour. */
+:where(button, a[href], summary, [role=button], [role=tab]):where(:not(.rankings-card-toggle, .skip-link, .swap-btn, .lock-btn, .mls-lc-status > .tooltip-container, .mls-power-table td .tooltip-container)) { position: relative; }
+:where(button, a[href], summary, [role=button], [role=tab]):where(:not(.rankings-card-toggle, .skip-link, .swap-btn, .lock-btn, .mls-lc-status > .tooltip-container, .mls-power-table td .tooltip-container))::after,
+.toggle-switch::before {
+    content: '';
+    position: absolute;
+    top: min(0px, (100% - 48px) / 2);
+    bottom: min(0px, (100% - 48px) / 2);
+    left: min(0px, (100% - 48px) / 2);
+    right: min(0px, (100% - 48px) / 2);
+}
+/* Where neighbours sit closer than 48px, they split the gap (LOG M2). A close button grows away from what it closes (a
+   banner's link or text sits to its left). The phone header's menu button sits right before the league arrow
+   (Lineup) or 8px before the logo (T-Score). */
+.close-banner-btn::after { left: 0; right: min(0px, 100% - 48px); }
+.header #prevLeagueBtn::after { left: 0; right: -4px; }   /* touches the menu button; 8px before the league menu */
+.header .logo-container::after { left: -4px; }            /* 8px after the menu button */
+/* The menu button sits 8px from the top-left corner; its area stops 4px short of it, so the corner (where the
+   screenshots park the mouse, tests/visual.spec.mjs) hovers nothing. */
+.header .hamburger-btn::after { top: -4px; }
+/* Draft Strategist's Tracker card: the queue star and the colour dot sit 2px apart, so the star grows left and the dot
+   right. */
+.player-card [data-action="toggleQueue"]::after { left: min(0px, 100% - 47px); right: -1px; }
+.player-card [data-action="cycleAffinity"]::after { left: -1px; right: min(0px, 100% - 47px); }
+/* A card header's "i" 12px after the Badges link (half the gap each), and the Scoreboard's Refresh right after its "i"
+   (Refresh doesn't grow toward it). */
+.header-actions-inline .badge-legend-link ~ .tooltip-container .tooltip-icon::after { left: -6px; }
+.mls-week-refresh::after { left: 0; }
+/* Lists whose rows sit 2 to 4px apart (Who to root for): each row keeps its own half of the gap. */
+.mls-root-player::after { top: -1px; bottom: -1px; }
+/* A dynasty league's Roster row: the In-Season | Dyn badge sits 3px above the gap chip ("Long-term > now"). */
+.mls-rank-dual-tip::after { bottom: -1px; }
+.mls-gap-chip::after { top: -1px; }
+/* Best available's View sits 6px under the "N dismissed · Restore" line on phones; Fetch Market Value 16px above
+   "Powered by FantasyCalc"; the Scoreboard's fold toggles close above one another (found on CI's fonts, where they're
+   2px shorter than in a cloud session). */
+.mls-ba-actions .mls-btn-sm::after { top: -3px; }
+.market-attribution a::after { top: -12px; bottom: -16px; }
+.mls-week-fold-toggle::after { top: -4px; bottom: -4px; }
+/* "This lineup needs you" (a full-width title) sits right above its first fix button. */
+.lineup-needs-box .mls-btn-sm::after { top: 0; }
+/* Live Sync and Auto-Sync are drawn at 85% (an inline transform in index.html): an area reaching past them changed how
+   Chromium drew the scaled switch (a blurrier handle). They keep their own size; their label beside them toggles them. */
+#trackerSyncToggle::before, #boardSyncToggle::before { inset: 0; }
+/* The Lineup tab's live matchup strip grows down into its own margin, not up: reaching above it changed how Chromium
+   rasterised the rest of the tab (a few anti-aliased pixels in the screenshots). */
+.mls-matchup-strip::after { top: 0; bottom: min(0px, 100% - 48px); }
+
+/* STATE LAYERS: hover, focus and press answer the same way on every button (Material 3's states): the content's own
+   colour laid over the control, 8% on hover (only where there's a pointer that hovers), 10% while pressed, fading in
+   150ms. Nothing moves or shrinks any more. Disabled controls get none. The owner also picked Expressive's pressed shape
+   morph: the site's 6px buttons tighten to 4px while pressed (--press-morph, :root), never with Reduce Motion. */
+:where(button, [role=button], a.btn, a.btn-sm):where(:not(.premium-link-btn, .rankings-card-toggle))::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: transparent;
+    pointer-events: none;
+    transition: background-color 150ms linear;
+}
+/* A colour, not opacity: an always-present opacity: 0 layer over the text changed how CI's Chromium anti-aliased every
+   button's label (a few hundred pixels per screenshot), though it drew nothing. */
+@media (hover: hover) {
+    :where(button, [role=button], a.btn, a.btn-sm):where(:not(:disabled, [aria-disabled=true])):hover::before { background-color: color-mix(in srgb, currentColor 8%, transparent); }
+}
+:where(button, [role=button], a.btn, a.btn-sm):where(:not(:disabled, [aria-disabled=true])):active::before { background-color: color-mix(in srgb, currentColor 10%, transparent); }
+/* :is(), not :where(): the corners must beat each button's own border-radius. */
+:is(.btn, .btn-sm, .mds-btn-sm, .mls-btn-sm, .btn-header):active:not(:disabled) { border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) {
+    :where(button, [role=button], a.btn, a.btn-sm)::before { transition: none; }
+    :is(.btn, .btn-sm, .mds-btn-sm, .mls-btn-sm, .btn-header) { transition-property: none; }
+}

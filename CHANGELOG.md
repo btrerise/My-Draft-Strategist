@@ -15,6 +15,16 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Easier to tap, clearer to tab, and every tap answers (here and on the T-Score page).** Small buttons keep their look
+  but take a tap anywhere in a 48px square around them (Material 3's size): Taken and Pick, the "i" icons, the queue
+  star and colour dot, the toast's close button, text buttons like Badges. Pressing a button now shades it a little and
+  tightens its corners while your finger is down, instead of shrinking it; hovering with a mouse shades it too, instead
+  of lifting it. Tabbing with a keyboard shows the same green ring with a small gap on every control, and a text field
+  you're typing in gets a green outline instead of a faint glow.
+- **The header matches Lineup Strategist's.** The draft menu is as tall as Lineup Strategist's league menu and, on a
+  phone, takes the whole row beside the menu button (the logo makes room, as it does in Lineup Strategist; the
+  Dashboard tab is in the bottom bar). A long draft name ends in "…" instead of a cut-off letter. Sync is as tall as
+  the menu and easier to tap.
 - **Fixed: "Something went wrong loading the app" after the last update.** During a deploy, a phone could be handed
   the home page in place of a new file, keep it for hours, and show the full-screen error banner on every load until
   its cache was cleared. The app no longer keeps a page where a script or stylesheet belongs, and the optional visitor
@@ -124,6 +134,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Easier to tap, clearer to tab, and every tap answers.** Small buttons keep their look but take a tap anywhere in a
+  48px square around them (Material 3's size): the "i" icons, the toast's close button, the league arrows, the
+  Dashboard's fold buttons and links, the Scoreboard's Refresh. Pressing a button now shades it a little and tightens its corners
+  while your finger is down, instead of shrinking it; hovering with a mouse shades it too, instead of lifting it.
+  Tabbing with a keyboard shows the same green ring with a small gap on every control, and a text field you're typing
+  in gets a green outline instead of a faint glow. (The Lineup row's swap and lock come with the phone row redesign.)
 - **This week's matchup on the Lineup tab.** When your Weekly rankings file has a matchup rank (Matchup, Opp Rank or
   OPRK, or "WR Matchup" in a side-by-side file; 1 = easiest, 32 = hardest), the opponent after each player's kickoff
   time is shown in color with the rank, such as "@ MIN 32": green for an easy matchup, red for a tough one. Tap it for

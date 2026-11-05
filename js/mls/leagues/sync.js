@@ -57,7 +57,7 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
     }
 
     // The header shows the league's name in a label over the drop-down (improvements S16; css/mls.css,
-    // .league-select-label), so a long name ends in "…" (a <select> can't). Call it after anything sets the
+    // .header-picker-label), so a long name ends in "…" (a <select> can't). Call it after anything sets the
     // drop-down's value. textContent, so an outside league name is never read as HTML.
     export function syncHeaderLeagueLabel() {
         const select = document.getElementById('headerLeagueSelect');
