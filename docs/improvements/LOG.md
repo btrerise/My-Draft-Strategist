@@ -8938,3 +8938,30 @@ committed baseline first, and the two runs' renders checked identical):
 - Lineup Strategist, 8 (`mls-empty-setup`, `mls-league-{setup,lineup,scout}`, desktop and phone): button-label
   anti-aliasing (500 to 2,900 pixels each, e.g. Sync Sleeper, Find RB, Upload) and the segmented controls' end corners.
 - T-Score, 6 (desktop, every tab): "Back to Draft"'s label (545 pixels each).
+
+## Tooling: Playwright 1.56.1 → 1.63.0, the cloud image's Chromium (owner's request, 2026-11-05)
+
+Not a runbook card: the owner asked, after M2, why sessions keep saying the test browser is out of date, and whether it
+can be fixed. No app code; `CACHE_NAME` unchanged (tests and docs only).
+
+**Why.** The repo pinned `@playwright/test` 1.56.1 (Chromium 141, revision 1194); CI installs exactly that. The Claude
+Code cloud image preinstalls 1.63.0's Chromium 153 (revision 1243) and not 1194, so cloud sessions ran every spec on a
+newer browser than CI (`tests/browser.mjs`'s fallback, S23) and could see failures CI didn't, or miss ones it did.
+1.63.0 is the release whose Chromium the image has (checked from each release's `browsers.json`: 1.60 → 1223,
+1.62 → 1234, **1.63 → 1243**, 1.64 → 1248); the newest, 1.64.1, would put cloud sessions back on the fallback.
+
+**What changed.**
+- tests/package.json and the lockfile: `@playwright/test` 1.63.0. `node render-env.mjs` here now finds the pinned
+  build (no fallback).
+- tests/render-env.mjs: `BASELINE_ENV` 1.63.0 / 1243, and a new `fonts` check. Same browser, the cloud image still
+  draws text differently from CI: since 2026-10-03 it has `56-prefer-inter.conf` and `12-unhinted-grayscale.conf` in
+  `/etc/fonts/conf.d` (F1, S9). Re-taken here, every PNG came out a different height. With the browser matching, a
+  cloud session would otherwise get 42 diffs instead of one message; now it gets one naming those two files, with a
+  pointer to "When your machine can't reproduce the baselines".
+- tests/browser.mjs keeps its fallback for when the image moves ahead again; comment updated. CLAUDE.md and
+  docs/TESTING.md say what's pinned and why screenshots still come from CI.
+- **All 42 baselines re-taken from CI's renders** on the PR (the procedure in "Upgrading Playwright or the CI runner",
+  with CI as the renderer since a cloud session can't be): listed below once taken.
+
+**Effect for sessions.** Specs and features run on the same Chromium as CI; screenshot work is unchanged (compare
+main and the branch in the container, take baselines from CI).

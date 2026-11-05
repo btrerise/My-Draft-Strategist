@@ -1,7 +1,8 @@
 // Which Chromium the tests launch (improvements S23). Normally the one this Playwright version installs
-// (revision 1194 for 1.56.1; CI installs it). Claude Code cloud images preinstall Chromium under
-// /opt/pw-browsers, and since 2026-10 theirs (revision 1243, Chromium 153) has been ahead of the pin, so the
-// pinned build isn't there and every launch failed with "Executable doesn't exist". Then this falls back to
+// (revision 1243 for 1.63.0; CI installs it, and the cloud image preinstalls the same since 2026-11-05). Claude Code
+// cloud images preinstall Chromium under /opt/pw-browsers; from 2026-10 to 2026-11-05 theirs (revision 1243) was ahead
+// of the pin (1194), so the pinned build wasn't there and every launch failed with "Executable doesn't exist". If
+// that happens again, this falls back to
 // the preinstalled one (its headless shell, as Playwright and CI use). Specs and features run on it; the screenshots can't match it (render-env.mjs says so
 // in one message), so a session compares main and its branch instead ("When your machine can't reproduce the
 // baselines" in docs/TESTING.md).

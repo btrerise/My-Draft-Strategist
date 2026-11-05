@@ -33,14 +33,14 @@ cd tests && npm ci && npm run check   # check-precache + node --test + Playwrigh
 
 CI (`.github/workflows/check.yml`) runs the same on every pull request. Screenshots must stay pixel-identical
 unless the change is meant to be visible; see "Accepting an intended visual change" in `docs/TESTING.md`.
-In cloud sessions Chromium is preinstalled at `/opt/pw-browsers`: don't run `playwright install`. The image's build can be
-newer than the one Playwright pins (since 2026-10: Chromium 153, revision 1243, against the pinned 1194); then the tests
-launch the preinstalled one by themselves (`tests/browser.mjs`). Features and specs run on it, but screenshots can't match
-and `visual.spec.mjs` fails with one message saying so, and newer Chromium can surface errors CI's doesn't: compare main
-and your branch in the same container ("When your machine can't reproduce the baselines" in `docs/TESTING.md`) and
-let CI judge. `cd tests && node render-env.mjs` shows which browser runs.
-Baselines are tied to Playwright 1.56.1 on Ubuntu 24.04 (`tests/render-env.mjs`); upgrading either means re-taking
-all of them ("Upgrading Playwright or the CI runner" in `docs/TESTING.md`).
+In cloud sessions Chromium is preinstalled at `/opt/pw-browsers`: don't run `playwright install`. The pinned Playwright
+(1.63.0, Chromium 153, revision 1243) matches the image's build since 2026-11-05, so specs run on the same browser as CI.
+If the image moves ahead again, the tests launch the preinstalled one by themselves (`tests/browser.mjs`). Screenshots
+still can't match in a cloud session: the image adds font rules CI doesn't have, and `visual.spec.mjs` fails with one
+message saying so. Compare main and your branch in the same container ("When your machine can't reproduce the
+baselines" in `docs/TESTING.md`) and let CI judge. `cd tests && node render-env.mjs` shows the browser and fonts.
+Baselines are tied to Playwright 1.63.0 on Ubuntu 24.04 with CI's fonts (`tests/render-env.mjs`); upgrading either means
+re-taking all of them ("Upgrading Playwright or the CI runner" in `docs/TESTING.md`).
 
 ## Rules that bite
 
