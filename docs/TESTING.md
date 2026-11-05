@@ -37,10 +37,11 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
   `node --test tests/unit/rankingsParser.test.mjs`. One Playwright spec: `npx playwright test mls-sim.spec.mjs`.
 - **Chromium:** Claude Code cloud sessions have it preinstalled at `/opt/pw-browsers`; don't run
   `playwright install` there. Elsewhere (CI, a laptop): `npx playwright install --with-deps chromium`. The pinned
-  `@playwright/test` (1.56.1) uses Chromium revision 1194. The cloud image's build can run ahead of it (since 2026-10
-  it's Chromium 153, revision 1243, and 1194 isn't there): then `tests/browser.mjs` has both configs launch
-  `/opt/pw-browsers/chromium` instead (improvements S23; before, every test failed with "Executable doesn't exist").
-  `node render-env.mjs` names the browser in use, and `visual.spec.mjs` fails with one message rather than 40 diffs.
+  `@playwright/test` (1.63.0) uses Chromium 153, revision 1243: the build the cloud image preinstalls (pinned to it on
+  2026-11-05; before, 1.56.1's revision 1194 wasn't in the image). If the image runs ahead again, `tests/browser.mjs`
+  has both configs launch `/opt/pw-browsers/chromium` instead (improvements S23; before, every test failed with
+  "Executable doesn't exist"). `node render-env.mjs` names the browser and fonts in use, and `visual.spec.mjs` fails
+  with one message rather than 42 diffs: in a cloud session the fonts still differ (below).
   Compare main and your branch for screenshots (below) and treat a failure that main shows in the same container as
   the container's, not yours.
 - **check-precache** (`scripts/check-precache.mjs`) walks the import graph from each page's scripts, adds
@@ -111,9 +112,11 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
   `npx playwright test --ignore-snapshots` there, which still runs every test and skips only the pixel comparisons,
   and leave screenshots to CI and the cloud sessions. A plain run fails and writes `baselines/win32/` (or
   `darwin/`); `.gitignore` keeps those out of commits. CI runs on
-  ubuntu-24.04 with Playwright's `--with-deps` font set, the same fonts as the cloud sessions.
+  ubuntu-24.04 with Playwright's `--with-deps` font set; the cloud sessions have the same plus extra fonts and rules (below).
 - **The rendering environment is checked** (`tests/render-env.mjs`, 10A). `BASELINE_ENV` there records what the
-  Linux baselines were made with: Playwright 1.56.1 (Chromium revision 1194) on Ubuntu 24.04. On Linux,
+  Linux baselines were made with: Playwright 1.63.0 (Chromium revision 1243) on Ubuntu 24.04 with CI's fonts (no
+  `56-prefer-inter.conf` or `12-unhinted-grayscale.conf` in `/etc/fonts/conf.d`, which the cloud image has had since
+  2026-10-03; checked since 2026-11-05, so a cloud session gets one message instead of 42 diffs). On Linux,
   `visual.spec.mjs` fails before taking any screenshot if this machine differs, naming what changed, and CI checks
   it in its own step ("Rendering environment matches the baselines", which also prints both, plus the runner
   image). `cd tests && node render-env.mjs` shows the same locally. The runner image's weekly version isn't

@@ -15,7 +15,7 @@
     "perf:tabs": "playwright test -c tools/playwright.config.mjs tab-switch"
   },
   "devDependencies": {
-    "@playwright/test": "1.56.1",
+    "@playwright/test": "1.63.0",
     "html2canvas": "1.4.1",
     "lighthouse": "13.5.0",
     "papaparse": "5.4.1"
