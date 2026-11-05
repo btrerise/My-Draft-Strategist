@@ -8920,3 +8920,21 @@ CI's Ubuntu fonts make some controls 2px shorter than in a cloud session, which 
   layer: an always-present `::before` at `opacity: 0` over the label. It now fades a colour instead
   (`color-mix(in srgb, currentColor 8% / 10%, transparent)`), so nothing with opacity sits over the text; the look is
   the same. If CI still shows label-only diffs, they're taken from CI's renders and listed here.
+
+### M2: screenshots re-taken from CI (PR #220)
+
+Two more CI runs showed the button-label differences weren't from the state layer's opacity (the colour fade, kept, is
+equivalent) or from dropping `transform` / `filter` from the buttons' transition lists (put back and reverted: CI's
+renders were pixel-identical with and without). On CI's Chromium the labels of buttons now draw with sub-pixel
+(coloured-fringe) anti-aliasing where main drew them in grayscale; most likely because every button is now
+`position: relative` (the shared hit area), which changes how Chromium rasterises its text. Nothing moves; only
+anti-aliasing inside button labels. A cloud session's Chromium shows none of it.
+
+**30 PNGs re-taken from run 42043497525's `-actual.png`** (each `-expected.png` checked byte-for-byte against the
+committed baseline first, and the two runs' renders checked identical):
+- Draft Strategist, all 16 (`mds-empty-{setup,tracker,team,board,guide}`, `mds-draft-{tracker,team,board}`, desktop and
+  phone): the header is like Lineup Strategist's (round 2), 8px (desktop) or 11px (phone) taller on CI, so the page
+  below moves down; plus the button-label anti-aliasing.
+- Lineup Strategist, 8 (`mls-empty-setup`, `mls-league-{setup,lineup,scout}`, desktop and phone): button-label
+  anti-aliasing (500 to 2,900 pixels each, e.g. Sync Sleeper, Find RB, Upload) and the segmented controls' end corners.
+- T-Score, 6 (desktop, every tab): "Back to Draft"'s label (545 pixels each).
