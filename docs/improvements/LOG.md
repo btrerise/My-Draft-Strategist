@@ -8863,3 +8863,36 @@ the Lineup tab (63 to 104 px), and the 85% sync switches' areas blurred their ha
   "Long-term > now" chip 3px below it reached 15px up over it. They now split the gap (1px each).
 - `--press-morph` should move onto M3's motion tokens when M3 lands; the state layer's 150ms fade too.
 - S15 is now fully covered once M6 lands (its contrast half).
+
+### M2, round 2: Draft Strategist's header like Lineup Strategist's
+
+**The owner, after reading the summary:** "Update Draft Strategist's header; it'll be better to have it be consistent
+with Lineup Strategist anyways." (Its draft menu and Sync were on the allowlist: 118x32 and 30x32 on phones.)
+
+**What changed.**
+- The header picker is shared: Lineup Strategist's league-picker rules moved from css/mls.css to css/base.css ("HEADER
+  PICKER"), renamed `.league-select-wrap` / `.league-select-label` → `.header-picker` / `.header-picker-label`
+  (lineup/index.html, the comment in js/mls/leagues/sync.js). Its phone rules (logo hidden, picker fills the row) apply
+  to a `.header` that has a picker, so T-Score keeps its logo. The picker's transparent-text rule is
+  `.header-picker > select.form-input`, so it still beats `select.form-input` further down base.css (the first try lost
+  to it and drew Lineup Strategist's league name twice; caught by comparing screenshots).
+- index.html: the draft drop-down sits in a `.header-picker` with a `#draftProfileLabel` over it, in a `.cluster` like
+  Lineup Strategist's; its inline height, font and width are gone, and so is css/mds.css's own look for it and
+  base.css's 130px cap on phones: it now looks like the league picker (45px, `.form-input`). `refreshDraftDropdown`
+  (js/mds/state.js) keeps the label in step (every switch goes through it) and, with no drafts, leaves a "No Drafts"
+  option instead of an empty drop-down.
+- Sync (`#headerSyncBtn`): its inline sizes moved to css/mds.css: as tall as the picker, at least 44px wide (the league
+  arrows' size), padded like them. Its custom hit area is gone (the shared one now gives it 48px).
+- tests/touch-targets.spec.mjs: Sync is off the allowlist; the header entry now says the menu button touches the draft
+  menu in Draft Strategist too.
+
+**User-visible effect.** On phones Draft Strategist's header is the menu button, the draft menu filling the row, and
+Sync (44x45); the logo hides as Lineup Strategist's does. From 768px the logo and title show, and the draft menu and
+Sync are 45px tall beside them. A long draft name ends in "…".
+
+**Screenshots: all 16 of Draft Strategist's re-take** (8 tabs/states x 2 widths: `mds-empty-{setup,tracker,team,board,
+guide}` and `mds-draft-{tracker,team,board}`, desktop and phone): the header is 10px (desktop) or 13px (phone) taller,
+so everything below moves down. Lineup Strategist's and T-Score's are unchanged (compared with main in this container:
+only the three segmented-control corners above). **Not committed yet:** this container's Chromium can't render CI's
+baselines; they come from CI's renders once a pull request runs the check ("When your machine can't reproduce the
+baselines", docs/TESTING.md).

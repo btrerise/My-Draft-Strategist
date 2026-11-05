@@ -229,11 +229,8 @@ body {
         display: none;
     }
     
-    /* 5. Keep the dropdown contained and leave room for the arrows. (Lineup Strategist's league drop-down
-       sizes itself to the free space instead: css/mls.css, "Header league picker", improvements S16.) */
-        #draftProfileSelect { 
-            max-width: 130px !important; 
-        }
+    /* 5. (Draft Strategist's draft drop-down used to be capped at 130px here; since improvements M2 it takes the free
+       space like Lineup Strategist's: HEADER PICKER.) */
 
     /* 6. Bigger, easier-to-tap prev/next league buttons on mobile. Desktop keeps the
        original compact size (set inline via .league-nav-btn's base rule below) --
@@ -653,6 +650,38 @@ html { scroll-padding-top: 5rem; }
     display: flex; 
     align-items: center; 
     gap: 0.75rem; 
+}
+
+/* HEADER PICKER: Lineup Strategist's league and Draft Strategist's draft (improvements S16, owner's choice; shared and
+   used by Draft Strategist since M2, owner: "consistent with Lineup Strategist"). The name is drawn by a label laid
+   over the drop-down (#headerLeagueLabel / #draftProfileLabel, kept in step by syncHeaderLeagueLabel in
+   js/mls/leagues/sync.js and refreshDraftDropdown in js/mds/state.js), so a long name ends in "…" instead of a cut
+   letter; the drop-down itself is still what you tap, with its text made transparent. Desktop: the drop-down fits the
+   longest name, up to 22rem. Phones: the logo button hides (the tab bar's Dashboard does the same) and the name takes
+   all the room the menu button and the buttons beside it leave, at any width. T-Score has no picker, so keeps its logo. */
+.header-picker { position: relative; display: block; flex: 0 1 auto; min-width: 0; max-width: 22rem; }
+.header-picker > select.form-input { width: auto; max-width: 100%; color: transparent; }  /* beats select.form-input, later in this file */
+.header-picker > select option { color: var(--text-main); background-color: var(--card-bg); }
+.header-picker-label {
+    position: absolute;
+    top: 50%;
+    left: 17px;   /* the drop-down's 1px border + 16px padding */
+    right: 34px;  /* clear of the arrow (it sits in the drop-down's last 31px); the 7px of slack keeps a name the
+                     drop-down was sized to fit from ending in "…" */
+    transform: translateY(-50%);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    pointer-events: none;
+}
+@media (max-width: 767px) {
+    .header:has(.header-picker) .logo-container { display: none; }
+    .header:has(.header-picker) .header-controls { flex: 1 1 auto; min-width: 0; justify-content: flex-end; }
+    .header:has(.header-picker) .header-controls > .cluster { flex: 1 1 auto; min-width: 0; }
+    .header-picker { flex: 1 1 auto; max-width: none; }
+    .header-picker > select.form-input { width: 100%; }
 }
 /* --- BOTTOM TAB NAVIGATION --- */
 .nav-bar { 
@@ -2533,11 +2562,11 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
     right: min(0px, (100% - 48px) / 2);
 }
 /* Where neighbours sit closer than 48px, they split the gap (LOG M2). A close button grows away from what it closes (a
-   banner's link or text sits to its left). */
+   banner's link or text sits to its left). The phone header's menu button sits right before the league arrow
+   (Lineup) or 8px before the logo (T-Score). */
 .close-banner-btn::after { left: 0; right: min(0px, 100% - 48px); }
 .header #prevLeagueBtn::after { left: 0; right: -4px; }   /* touches the menu button; 8px before the league menu */
 .header .logo-container::after { left: -4px; }            /* 8px after the menu button */
-#headerSyncBtn::after { left: -4px; right: -8px; }         /* 8px after the draft menu, 8px from the screen's edge */
 /* The menu button sits 8px from the top-left corner; its area stops 4px short of it, so the corner (where the
    screenshots park the mouse, tests/visual.spec.mjs) hovers nothing. */
 .header .hamburger-btn::after { top: -4px; }

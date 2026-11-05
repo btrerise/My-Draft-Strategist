@@ -120,6 +120,11 @@ import { showToast } from '../shared/ui/toast.js';
             const isActive = d.draftId === State.activeDraftId;
             select.appendChild(new Option(d.name, d.draftId, isActive, isActive));
         });
+        if (!select.options.length) select.appendChild(new Option('No Drafts', ''));
+        // The name shown is the label laid over the drop-down (css/base.css, HEADER PICKER; improvements M2).
+        const label = document.getElementById('draftProfileLabel');
+        const opt = select.options[select.selectedIndex];
+        if (label) label.textContent = opt ? opt.textContent : '';
     }
 
     export const switchDraftProfile = function(draftId) {

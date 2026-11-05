@@ -21,6 +21,10 @@ What changed for users in each version of the two apps, in plain language. Newes
   tightens its corners while your finger is down, instead of shrinking it; hovering with a mouse shades it too, instead
   of lifting it. Tabbing with a keyboard shows the same green ring with a small gap on every control, and a text field
   you're typing in gets a green outline instead of a faint glow.
+- **The header matches Lineup Strategist's.** The draft menu is as tall as Lineup Strategist's league menu and, on a
+  phone, takes the whole row beside the menu button (the logo makes room, as it does in Lineup Strategist; the
+  Dashboard tab is in the bottom bar). A long draft name ends in "…" instead of a cut-off letter. Sync is as tall as
+  the menu and easier to tap.
 - **Fixed: "Something went wrong loading the app" after the last update.** During a deploy, a phone could be handed
   the home page in place of a new file, keep it for hours, and show the full-screen error banner on every load until
   its cache was cleared. The app no longer keeps a page where a script or stylesheet belongs, and the optional visitor

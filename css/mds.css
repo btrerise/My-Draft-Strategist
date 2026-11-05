@@ -1,26 +1,10 @@
 /* Draft Strategist only (index.html). Loaded after css/base.css. Split from styles.css in refactor
    chunk 4A; rules keep their original relative order. */
 
-/* --- Header League Select --- */
-#draftProfileSelect { 
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
-    background-color: rgba(0, 0, 0, 0.3);
-    color: var(--text-main);
-    border: 1px solid var(--border);
-    padding: 0.4rem 2.2rem 0.4rem 0.75rem; 
-    border-radius: 6px;
-    font-family: inherit;
-    font-size: 0.85rem;
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 0.75rem center;
-    background-size: 1rem;
-}
+/* --- Header: the draft picker looks and sizes like Lineup Strategist's league picker (css/base.css, HEADER PICKER;
+   improvements M2), and Sync is as tall as it, at least 44px wide (the league arrows' size). --- */
+#headerSyncBtn { align-self: stretch; min-width: 44px; justify-content: center; padding: 0 0.85rem; }
+#headerSyncBtn > span { display: flex; align-items: center; gap: 4px; }
 
 /* --- CARDS & LAYOUT --- */
 .centered-header {

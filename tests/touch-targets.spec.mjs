@@ -26,7 +26,7 @@ const ALLOW = [
     { sel: 'input:not([type=checkbox]), select, textarea', why: "text fields and selects (44 to 45px tall; Draft Strategist's header draft menu 32px) can't have an ::after; growing them changes how every form looks (LOG M2, for the owner)" },
     { sel: '.mls-lc-status > .tooltip-container, .mls-power-table td .tooltip-container', why: "League card status chips and Power Rankings cells: position: static so their tooltip is placed against the card or table, which an ::after would follow too" },
     // Neighbours closer than 48px: they split the gap (css/base.css, TOUCH TARGETS; LOG M2).
-    { sel: '.header .hamburger-btn, .header .logo-container, #headerSyncBtn', why: 'the phone header is full: the menu button touches the league arrow (Lineup) or sits 8px from the logo (Draft, T-Score), Sync 8px from the draft menu' },
+    { sel: '.header .hamburger-btn, .header .logo-container', why: 'the phone header is full: the menu button touches the league arrow (Lineup) or the draft menu (Draft), or sits 8px from the logo (T-Score)' },
     { sel: '.pos-filter, .badge-legend-link, .badge-legend-link ~ .tooltip-container .tooltip-icon', why: 'position chips in rows 8px apart (Scout) or columns 3px apart (Roster counts), with the Badges link and its "i" right beside them; M4 resizes the chips' },
     { sel: '.mls-root-player, .mls-root-window-head, .mls-week-fold-toggle', why: "Scoreboard lists: rows 2 to 6px apart, each row's full width its target" },
     { sel: '.mls-week-refresh, .mls-week-info .tooltip-icon', why: "the Scoreboard's \"i\" and Refresh sit side by side" },
