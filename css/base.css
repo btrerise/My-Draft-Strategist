@@ -2583,6 +2583,12 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
 /* A dynasty league's Roster row: the In-Season | Dyn badge sits 3px above the gap chip ("Long-term > now"). */
 .mls-rank-dual-tip::after { bottom: -1px; }
 .mls-gap-chip::after { top: -1px; }
+/* Best available's View sits 6px under the "N dismissed · Restore" line on phones; Fetch Market Value 16px above
+   "Powered by FantasyCalc"; the Scoreboard's fold toggles close above one another (found on CI's fonts, where they're
+   2px shorter than in a cloud session). */
+.mls-ba-actions .mls-btn-sm::after { top: -3px; }
+.market-attribution a::after { top: -12px; bottom: -16px; }
+.mls-week-fold-toggle::after { top: -4px; bottom: -4px; }
 /* "This lineup needs you" (a full-width title) sits right above its first fix button. */
 .lineup-needs-box .mls-btn-sm::after { top: 0; }
 /* Live Sync and Auto-Sync are drawn at 85% (an inline transform in index.html): an area reaching past them changed how
@@ -2601,15 +2607,16 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    background: currentColor;
-    opacity: 0;
+    background-color: transparent;
     pointer-events: none;
-    transition: opacity 150ms linear;
+    transition: background-color 150ms linear;
 }
+/* A colour, not opacity: an always-present opacity: 0 layer over the text changed how CI's Chromium anti-aliased every
+   button's label (a few hundred pixels per screenshot), though it drew nothing. */
 @media (hover: hover) {
-    :where(button, [role=button], a.btn, a.btn-sm):where(:not(:disabled, [aria-disabled=true])):hover::before { opacity: 0.08; }
+    :where(button, [role=button], a.btn, a.btn-sm):where(:not(:disabled, [aria-disabled=true])):hover::before { background-color: color-mix(in srgb, currentColor 8%, transparent); }
 }
-:where(button, [role=button], a.btn, a.btn-sm):where(:not(:disabled, [aria-disabled=true])):active::before { opacity: 0.1; }
+:where(button, [role=button], a.btn, a.btn-sm):where(:not(:disabled, [aria-disabled=true])):active::before { background-color: color-mix(in srgb, currentColor 10%, transparent); }
 /* :is(), not :where(): the corners must beat each button's own border-radius. */
 :is(.btn, .btn-sm, .mds-btn-sm, .mls-btn-sm, .btn-header):active:not(:disabled) { border-radius: 4px; }
 @media (prefers-reduced-motion: reduce) {

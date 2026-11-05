@@ -331,7 +331,7 @@ The card named does the item in its own session; remove the line when it's done.
   areas; the end buttons round their own corners, which moved 9 to 10 anti-aliased pixels at one end of each).
 - **M3 (motion tokens): move M2's two timings onto the tokens.** `--press-morph` in css/base.css's `:root` (350ms
   `cubic-bezier(0.42, 1.67, 0.21, 0.90)`, Expressive's fast spatial curve: a pressed button's corners going 6 → 4px)
-  and the state layer's 150ms `opacity` fade (css/base.css, STATE LAYERS, the `::before` rule). Reduce Motion keeps
+  and the state layer's 150ms `background-color` fade (css/base.css, STATE LAYERS, the `::before` rule). Reduce Motion keeps
   turning both off.
 - **No card yet (S32 or a Dashboard card):** the other dense spots on `ALLOW`, each with its reason there: the phone
   header's menu button, the Scoreboard's lists and fold toggles (rows 2 to 6px apart), the Command Center's Edit /

@@ -8907,3 +8907,16 @@ cards and the guide banner; **M4** 48px targets for the position chips and segme
 removed, `.mls-segmented` kept free of `overflow: hidden`; **M3** `--press-morph` and the state layer's 150ms fade
 onto the motion tokens. The remaining dense spots (Scoreboard lists, Command Center toolbar and others) stay on `ALLOW`
 with no card yet; S32 already has the Lineup and Roster rows.
+
+### M2, PR #220's first CI run
+
+CI's Ubuntu fonts make some controls 2px shorter than in a cloud session, which the session couldn't see:
+- **Three overlaps** (fixed, css/base.css after the split-gap rules, and on `ALLOW` as split gaps): on phones Best
+  available's View reached up over its "N dismissed · Restore" line (mls-best-available.spec.mjs timed out clicking
+  Restore); "Powered by FantasyCalc" reached up into Fetch Market Value's share of their 16px gap; the Scoreboard's
+  fold toggles overlapped.
+- **Button labels anti-aliased differently** in every Lineup Strategist and T-Score screenshot with buttons (a few
+  hundred pixels each, only inside button labels, e.g. T-Score's "Back to Draft"). The cause looks like the state
+  layer: an always-present `::before` at `opacity: 0` over the label. It now fades a colour instead
+  (`color-mix(in srgb, currentColor 8% / 10%, transparent)`), so nothing with opacity sits over the text; the look is
+  the same. If CI still shows label-only diffs, they're taken from CI's renders and listed here.
