@@ -8760,3 +8760,104 @@ changes the page: `desktop/` and `phone/mls-league-lineup.png` (the FLEX Kickoff
 settings", +10px) and `desktop/` and `phone/mls-league-guide.png` (the new legend line, +61px and +142px). The phone
 renders also differ in a 30-row strip under the fixed, translucent bottom nav, which a full-page capture draws over
 whatever sits behind it at that height.
+
+## M2 — Material 3: 48px touch targets, one focus ring, and press and hover feedback
+
+From M1's review (proposals 1, 2 and 3) and round 2's correction 3. **Also does S15's focus half** (S15's contrast half
+is M6).
+
+**The owner's answers** (asked before building, with Playwright screenshots at 375px of a Lineup row, a Tracker card
+and the Add/Sync League card, today and after, at rest, with keyboard focus and while pressed, plus the hit areas drawn):
+1. **Focus ring: 2px green with a 2px gap**, inset where a parent clips it, and a 2px green outline on text fields
+   (the suggestion).
+2. **Press feedback: the state layer plus Expressive's pressed shape morph**, the corners tightening 2px while pressed
+   (the suggestion; not "state layer only" or "a slight press-in").
+3. **Phone primaries and the league arrows keep their look with a bigger hit area** (the suggestion; not 44 → 48px),
+   so no screenshot changes.
+
+**What changed and where.**
+- **css/base.css, new last section "FOCUS, TOUCH TARGETS AND STATE LAYERS"**, every page (both apps and T-Score):
+  - FOCUS: one `:focus-visible` rule, 2px `--primary-green` with a 2px offset; inputs, selects and textareas get it at
+    -1px, on their own border. T-Score had none; it gets this one.
+  - TOUCH TARGETS: every `button`, `a[href]`, `summary`, `[role=button]` and `[role=tab]` gets `position: relative`
+    and an invisible `::after` centred on it whose insets are `min(0px, (100% - 48px) / 2)`: it grows the control to
+    48px only in a direction where it's smaller. The toggle switches use `::before` (their `::after` is the handle).
+    Both rules are `:where()`, zero specificity, so a component's own position or `::after` wins (an earlier draft had
+    the exclusions in a plain `:not()`, whose specificity beat those rules). Left out: `.rankings-card-toggle` (its
+    `::after` already covers its card header), the skip link, the Lineup row's swap and lock (the lock's area covered
+    the swap: S32), and the two tooltip containers that are `position: static` on purpose (`.mls-lc-status`, the
+    Power Rankings table: their area would have stretched over the whole card or table, as their popup does).
+  - Split gaps (rules right after it), where neighbours sit closer than 48px: the close buttons on banners grow away
+    from what they close (right, not left); the header's menu button stops 4px short of the top-left corner (where the
+    screenshots park the mouse) and shares the gap with the league arrow (Lineup) or the logo (Draft, T-Score); Sync
+    stops at the screen's edge (it widened the phone page by 1px) and shares 8px with the draft menu; the Tracker card's
+    star grows left and its colour dot right; a card header's "i" takes half of its 12px gap to the Badges link; the
+    Scoreboard's Refresh doesn't grow toward its "i"; Who to root for's rows (2px apart) take 1px each; "This lineup
+    needs you" and its first fix button don't overlap; the matchup strip grows down, not up; Live Sync and Auto-Sync
+    (drawn at 85%) keep their own size.
+  - STATE LAYERS: a `::before` in `currentColor` on every button, `role=button` and `a.btn`, 8% on hover inside
+    `@media (hover: hover)`, 10% on `:active`, fading in 150ms; none on `:disabled` / `aria-disabled`. `.btn`, `.btn-sm`,
+    `.mds-btn-sm`, `.mls-btn-sm` and `.btn-header` go from 6px to 4px corners while pressed, on `--press-morph`
+    (new in `:root`: 350ms `cubic-bezier(0.42, 1.67, 0.21, 0.90)`, Expressive's fast spatial curve; M3's tokens can
+    replace it). Reduce Motion: no fade and no morph animation; the layer and the corners still change.
+- **Removed, because the shared rules now do it:** `.btn`'s hover lift and press shrink, `.btn-primary:hover`'s
+  brightness filter and glow, the hover backgrounds of `.btn-secondary`, `.btn-danger`, `.btn-warning`, the
+  hamburger's tint and 92% press, the bottom bar's 5% tint and 92% press, `.pos-filter`'s 2px hover lift and tint,
+  `.btn-header`'s lift and 96% press, Taken's and Pick's (`.btn-draft`, `.btn-mine`) hover lifts, tints, brightness
+  and 95% press, `.mls-week-step`'s hover tint and its own `::before` hit area; `transform` and `filter` dropped from
+  the small buttons' transitions (`border-radius` added). Focus rules that only repeated the ring: base.css's
+  `.toggle-switch`, `.tooltip-icon` and `.tooltip-container[data-tt-self]` outlines, `.btn-bare`, `.pos-filter`,
+  `.badge-legend-link`, `a[data-nocount-link]`; mls.css's `button.sos-badge`, `button.opp-rank-badge`,
+  `.mls-lc-name-btn`, `.mls-week-step`, `.mls-week-tile-btn`, `button.ir-slot-badge`, `.mls-move-chip`,
+  `.mls-week-fold-toggle`, `.mls-week-extreme`, `.mls-gap-chip`, `.mls-root-player`, `.mls-root-window-head`; mds.css's
+  `.edit-link`; and every `outline: none` plus faint glow on `.form-input`, `select`, `.scout-textarea`, `.sos-input`
+  and the switches. **Kept because they differ for a reason:** `.mls-segmented-btn` (-2px, inside its group),
+  `.close-chip` (-4px, inside a chip), the skip link (white on its green), the slider (rings its thumb), and the
+  tooltips' "show the popup on focus" rules (which no longer draw a ring of their own).
+- **css/mls.css:** `.mls-segmented` lost `overflow: hidden` (it clipped its buttons' areas); the end buttons round their
+  own corners (7px inside the 8px border).
+- **tests/touch-targets.spec.mjs** (new, phone project only): at 375px with the fixture data, on every tab of both apps
+  (empty and seeded) and T-Score, plus the toast, hit-tests a 48x48px square around each visible control (centred, or
+  pushed to either side as far as the control still fills it, for split gaps) and fails on a miss unless the control is
+  on `ALLOW` with a reason; fails on any control whose own box another control's area covers, allowlisted or not; and
+  fails when the page scrolls sideways. `DISCOVER=1` prints every short control and what took each missed point.
+- **tests/focus-ring.spec.mjs** (new, desktop project only): tabs through every tab of both apps and T-Score (until
+  focus comes round) and fails on any focused control without a solid outline of at least 2px.
+- Both fail on main (checked by running them in a worktree of main): Chromium's own 1px `auto` ring on most controls,
+  and short controls on every tab.
+- `docs/TESTING.md`: a Conventions entry for these rules and specs, and an "owner's decision" follow-up for text
+  fields. `CHANGELOG.md`: a line under each app (Draft Strategist's names T-Score too). `sw.js`: `CACHE_NAME` v2.9.2.
+
+**The allowlist, with reasons** (in the spec): links inside a sentence; the Lineup row's swap and lock (S32); **text
+fields and selects** (44 to 45px; the header draft menu 32px; they can't take an `::after`, and growing them changes
+every form, so it's left for the owner, below); the static tooltip chips and Power Rankings cells; and the split gaps
+above: the phone header (menu button 40px wide, Sync 42px), the position chips with the Badges link and its "i" (rows
+8px apart on Scout, columns 3px apart in the Roster counts; M4 resizes chips), the Scoreboard's lists and fold toggles
+(rows 2 to 6px apart), its "i" and Refresh, the Command Center's Edit / Fold all and the first card's fold button and
+name, "This lineup needs you" and its fix button, the Trade Analyzer's Clear above its search, Draft Strategist's Team
+tab Undo buttons, the Tracker's star and dot (47px with rounding), and the 85% Live Sync / Auto-Sync switches (their
+label beside them toggles them).
+
+**User-visible effect.** Small buttons look the same but take taps in a 48px square (Taken and Pick, the "i" icons,
+the toast's ✕, the header buttons, the league arrows, text buttons like Badges, Fold all and Check). Hover shades a
+button instead of lifting it; pressing shades it and tightens its corners instead of shrinking it, so a tap on a phone
+now shows at once. Keyboard focus is the same green ring with a gap on every control on all three pages (T-Score had
+the browser's), and a text field being typed in has a 2px green outline instead of a faint glow. Cards (the Tracker's
+player cards, Scout result cards, the guide banner) still lift on hover: they're cards, not buttons.
+
+**Screenshots.** None re-taken. In this container (Chromium 153, so rendering main and the branch the same way and
+comparing with pxdiff), three PNGs differ, by 9 to 10 pixels each, all at the left end of a segmented control
+(anti-aliasing of the rounded end button instead of the clipped group): desktop `mls-league-setup` (10),
+phone `mls-league-setup` (9), phone `mls-league-scout` (9), within the 10-pixel tolerance. Two other side effects were
+found this way and fixed rather than accepted: the matchup strip's area reaching upward shifted anti-aliasing across
+the Lineup tab (63 to 104 px), and the 85% sync switches' areas blurred their handle (300 px).
+
+**Left over.**
+- **For the owner:** text fields and selects stay 44 to 45px (header draft menu 32px). Making them 48px is a visible
+  change to every form; it fits M5 (text fields) or M7/M8 (type scale). Recorded under "Open follow-ups".
+- The dense spots on the allowlist are a layout question each: the phone header, the Roster's position counts, the
+  Scoreboard lists, the Command Center toolbar. S32 takes the Lineup and Roster rows; M4 the chips.
+- The spec measures each tab as the fixture leaves it (folds as they open by default); dialogs, the upload preview and
+  opened folds aren't measured.
+- `--press-morph` should move onto M3's motion tokens when M3 lands; the state layer's 150ms fade too.
+- S15 is now fully covered once M6 lands (its contrast half).

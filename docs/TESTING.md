@@ -253,6 +253,18 @@ shot and S10 took four runs for 14.)
   is slid back inside the window (`place`, CSS `translate: var(--tt-dx)`), and capped at the window's width. Don't
   give a tooltip its own `translate`. `tooltips-onscreen.spec.mjs` taps every tooltip on both apps' tabs at 375px and
   1280px and fails on any that crosses an edge; a new tooltip in a state it doesn't reach should get a line there.
+- **Touch targets, focus and press feedback** (improvements M2, Material 3): `css/base.css`'s last section gives every
+  button, link, summary and `role=button` an invisible `::after` that grows it to 48x48px where it's smaller, one
+  `:focus-visible` ring (2px green, 2px gap; text fields on their own border), and a `::before` state layer for hover
+  and press (no lifts, shrinks or brightness filters). All at zero specificity (`:where()`), so a component's own rule
+  wins. Don't give a control its own focus outline, hover tint or press transform; don't put `overflow: hidden` on a
+  group of buttons (it clips their areas; round the end buttons instead, as `.mls-segmented` does). Where two controls
+  sit closer than 48px, they split the gap (rules after the shared one). `touch-targets.spec.mjs` hit-tests every
+  tab at 375px and fails on a control under 48px that isn't on its `ALLOW` list (with a reason), on a hit area that
+  covers part of a neighbour, or on a page that scrolls sideways; `focus-ring.spec.mjs` tabs through every tab and
+  fails on a focused control without a 2px outline. A hit area that reaches up out of the Lineup tab's matchup strip, or
+  past a switch drawn with `transform: scale()`, changed a few anti-aliased pixels in the screenshots: if a new area
+  moves pixels, aim it elsewhere.
 - **Image exports** (improvements S19, round 12): html2canvas draws text without the page's `tabular-nums`, so a new
   export calls `useProportionalDigits(clonedRoot)` (`js/shared/ui/exportImage.js`) in its `onclone`;
   `export-numerals.spec.mjs` checks three exports' clones; the Scoreboard's Export (improvements S22) is checked in
@@ -277,6 +289,9 @@ done or dropped, remove its line here in the same change. Background for each is
   Trade Analyzer, "To make it fair" and the Future column. Not needed in season (improvements S19, round 4).
 
 **Needs the owner's decision first**
+- Text fields and selects are 44 to 45px tall (Draft Strategist's header draft menu 32px), under Material 3's 48px, and
+  can't take an invisible hit area like buttons. Growing them changes how every form looks (most screenshots); M5 (text
+  fields) or M7/M8 (type scale) could take it. Allowlisted in `touch-targets.spec.mjs` until then (improvements M2).
 - Keep market values for each format (S23 follow-up, the Scout tab after a league switch). Market values are one set
   from the last fetch; a league that plays another format (redraft vs. dynasty, 1QB vs. Superflex, PPR, TE premium)
   only gets a warning saying so. Keeping one set per format, fetched as each league needs it, would give every

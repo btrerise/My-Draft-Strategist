@@ -79,7 +79,6 @@
 
 /* --- BUTTONS --- */
 .btn-warning { background: rgba(245, 158, 11, 0.15); color: #fde047; border: 1px solid #f59e0b; }
-.btn-warning:hover { background: rgba(245, 158, 11, 0.25); }
 .btn-header { 
     background-color: var(--primary-green); 
     color: #0a0e17; /* Dark text on bright button for high contrast */
@@ -92,19 +91,8 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    /* Spring-like transitions for hover/press states */
-    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
-    box-shadow: 0 0 0 rgba(16, 185, 129, 0);
-}
-
-.btn-header:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-}
-
-.btn-header:active {
-    transform: translateY(1px) scale(0.96); /* Simulates a physical click */
-    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
+    /* Hover and press: the shared state layer and pressed corners (css/base.css, STATE LAYERS; improvements M2). */
+    transition: border-radius var(--press-morph);
 }
 
 /* MDS-namespaced small button (Tracker/Queue: Pick, Taken, Undo, Save, Cancel, reorder arrows).
@@ -122,7 +110,7 @@
     font-size: 0.75rem; 
     cursor: pointer; 
     font-family: inherit;
-    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-radius var(--press-morph);
     letter-spacing: 0.3px;
 }
 
@@ -133,15 +121,7 @@
     border: 1px solid var(--border); 
 }
 
-.btn-draft:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--text-main);
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-.btn-draft:active {
-    transform: scale(0.95); /* Simulates a physical press */
-}
+/* Hover and press for Taken and Pick: the shared state layer (css/base.css, STATE LAYERS; improvements M2). */
 
 /* 'My Pick' button - Premium primary style with subtle glow */
 .btn-mine { 
@@ -151,17 +131,6 @@
     border: 1px solid transparent;
 }
 
-.btn-mine:hover {
-    background-color: #10b981; 
-    filter: brightness(1.1);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-    transform: translateY(-1px);
-}
-
-.btn-mine:active {
-    transform: scale(0.95) translateY(0);
-    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
-}
 
 /* --- LAYOUT PRIMITIVES --- */
 .text-green { color: var(--primary-green); }
@@ -770,11 +739,7 @@ button.edit-link {
   border: none;
   padding: 0;
 }
-.edit-link:focus-visible {
-  outline: 2px solid var(--primary-green);
-  outline-offset: 2px;
-  opacity: 1;
-}
+.edit-link:focus-visible { opacity: 1; }
 
 /* --- MOBILE COLLAPSIBLE CARDS --- */
 .btn-expand {
