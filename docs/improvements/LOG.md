@@ -8962,9 +8962,13 @@ newer browser than CI (`tests/browser.mjs`'s fallback, S23) and could see failur
   docs/TESTING.md say what's pinned and why screenshots still come from CI.
 - **All 42 baselines re-taken from CI's renders** (PR #221, run 42057964808 attempt 2; the procedure in "Upgrading
   Playwright or the CI runner", with CI as the renderer since a cloud session can't be). Checked first: every
-  `-expected.png` byte-identical to the committed baseline, and no page changed size. Chromium 153 draws text and
-  content identically to 141; the only differences are a colour level of 1 (out of 255) in the translucent, blurred
-  header and navigation rail (about 41,500 pixels per desktop PNG, 4,000 to 17,000 per phone PNG).
+  `-expected.png` byte-identical to the committed baseline, and no page changed size. Chromium 153 draws almost
+  everything identically to 141. Most differing pixels are one colour level (out of 255) in the translucent, blurred
+  header and navigation rail (about 41,500 per desktop PNG, 4,000 to 17,000 per phone PNG). Larger ones, looked at in
+  crops, are rendering details only: the edge anti-aliasing of the gradient "TIER" dividers' letters (Tracker), a
+  textarea's resize grip, a few glyph edges (Guide, Scout), and on phones the page seen blurred through the
+  translucent bottom bar (the strip at y 781-844, which F1's entry already noted draws differently). Nothing moved,
+  resized or changed colour.
 - CI's first run was cancelled at the job's 30-minute limit, not by this change: the runner's `apt` mirror served the
   font packages at 25 kB/s (16.6 MB in 11 minutes) while the new Chromium downloaded in 7 seconds. Re-run once: 20.3
   minutes, only the screenshots failing, as expected.
