@@ -8896,3 +8896,14 @@ so everything below moves down. Lineup Strategist's and T-Score's are unchanged 
 only the three segmented-control corners above). **Not committed yet:** this container's Chromium can't render CI's
 baselines; they come from CI's renders once a pull request runs the check ("When your machine can't reproduce the
 baselines", docs/TESTING.md).
+
+### M2: hand-offs to later cards (owner, after round 2)
+
+The owner asked for explicit notes so the cards that take M2's leftovers know. They're in docs/TESTING.md, "Open
+follow-ups", under **"Handed on by M2 to later Material 3 cards"** (every session reads that list), one line per card:
+**M5** every text field and drop-down 48px tall, with the header's league arrows and Draft Strategist's Sync to 48px
+to match, and the fields' `ALLOW` entry removed; **M14** no hover lift on the Tracker's player cards, Scout's result
+cards and the guide banner; **M4** 48px targets for the position chips and segmented controls, their `ALLOW` entries
+removed, `.mls-segmented` kept free of `overflow: hidden`; **M3** `--press-morph` and the state layer's 150ms fade
+onto the motion tokens. The remaining dense spots (Scoreboard lists, Command Center toolbar and others) stay on `ALLOW`
+with no card yet; S32 already has the Lineup and Roster rows.
