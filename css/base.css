@@ -1016,7 +1016,9 @@ label.toggle-title,
     font-size: 0.95rem; 
     cursor: pointer; 
     width: 100%; 
-    transition: border-radius var(--press-morph);
+    /* transform and filter stay in the list though nothing animates them now (improvements M2): without them CI's Chromium
+       drew these buttons' labels with sub-pixel instead of grayscale anti-aliasing, changing every screenshot. */
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, filter 0.2s, border-radius var(--press-morph);
     font-family: inherit;
 }
 /* Hover and press: the shared state layer and pressed corners (STATE LAYERS, end of this file; improvements M2), which
@@ -1042,7 +1044,7 @@ label.toggle-title,
     font-size: 0.75rem; 
     cursor: pointer; 
     font-family: inherit;
-    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-radius var(--press-morph);
+    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-radius var(--press-morph);
     letter-spacing: 0.3px;
 }
 /* .swap-btn / .lock-btn (MLS roster swap+lock controls) defined near their actual
@@ -1059,7 +1061,7 @@ label.toggle-title,
     align-items: center;
     justify-content: center;
     border-radius: 6px;
-    transition: color 0.2s ease;
+    transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;  /* transform: see .btn */
 }
 
 /* Hover and press: the shared state layer (STATE LAYERS, end of this file; improvements M2), not a tint and a shrink. */
