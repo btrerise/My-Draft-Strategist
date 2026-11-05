@@ -2551,6 +2551,9 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
 .mls-week-refresh::after { left: 0; }
 /* Lists whose rows sit 2 to 4px apart (Who to root for): each row keeps its own half of the gap. */
 .mls-root-player::after { top: -1px; bottom: -1px; }
+/* A dynasty league's Roster row: the In-Season | Dyn badge sits 3px above the gap chip ("Long-term > now"). */
+.mls-rank-dual-tip::after { bottom: -1px; }
+.mls-gap-chip::after { top: -1px; }
 /* "This lineup needs you" (a full-width title) sits right above its first fix button. */
 .lineup-needs-box .mls-btn-sm::after { top: 0; }
 /* Live Sync and Auto-Sync are drawn at 85% (an inline transform in index.html): an area reaching past them changed how

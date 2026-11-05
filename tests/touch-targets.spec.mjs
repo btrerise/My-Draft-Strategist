@@ -32,6 +32,7 @@ const ALLOW = [
     { sel: '.mls-week-refresh, .mls-week-info .tooltip-icon', why: "the Scoreboard's \"i\" and Refresh sit side by side" },
     { sel: '.mls-lc-fold-all, .mls-lc-fold, .mls-lc-name-btn', why: "League Command Center: Edit and Fold all 14px apart, right above the first card's fold button and name" },
     { sel: '.lineup-needs-title, .lineup-needs-box .mls-btn-sm', why: '"This lineup needs you" sits right above its first fix button' },
+    { sel: '.mls-rank-dual-tip, .mls-gap-chip', why: "a dynasty league's Roster row: the In-Season | Dyn badge 3px above the gap chip (not in this spec's fixture; mls-now-and-later.spec.mjs clicks both)" },
     { sel: '.mls-trade-side .mls-btn-sm', why: "the Trade Analyzer's Clear sits right above its player search" },
     { sel: '#teamTab .btn-draft', why: "Draft Strategist's Team tab: Undo buttons in rows closer than 48px" },
     { sel: '#trackerSyncToggle, #boardSyncToggle', why: "Live Sync and Auto-Sync, drawn at 85% (an inline transform): an area past them blurred the scaled switch, so they keep their size; their label beside them toggles them too" },

@@ -8857,7 +8857,9 @@ the Lineup tab (63 to 104 px), and the 85% sync switches' areas blurred their ha
   change to every form; it fits M5 (text fields) or M7/M8 (type scale). Recorded under "Open follow-ups".
 - The dense spots on the allowlist are a layout question each: the phone header, the Roster's position counts, the
   Scoreboard lists, the Command Center toolbar. S32 takes the Lineup and Roster rows; M4 the chips.
-- The spec measures each tab as the fixture leaves it (folds as they open by default); dialogs, the upload preview and
-  opened folds aren't measured.
+- The spec measures each tab as the fixture leaves it (folds as they open by default) in a redraft league; dialogs, the
+  upload preview, opened folds and dynasty-only rows aren't measured. One of those was caught by an existing spec:
+  `mls-now-and-later.spec.mjs` (phone) timed out clicking a dynasty Roster row's In-Season | Dyn badge, because the
+  "Long-term > now" chip 3px below it reached 15px up over it. They now split the gap (1px each).
 - `--press-morph` should move onto M3's motion tokens when M3 lands; the state layer's 150ms fade too.
 - S15 is now fully covered once M6 lands (its contrast half).
