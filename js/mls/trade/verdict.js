@@ -107,9 +107,9 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
         return verdictHTML;
     }
 
+    // How old the market values are (improvements S14, round 6, owner's choice): always dated, and amber with a
     // nudge from the day after they were fetched (calendar days since 2026-11, the shared getFreshness), since trade
     // values move with every injury and depth-chart change.
-    // nudge once they're more than a day old, since trade values move with every injury and depth-chart change.
     // On screen only: Export Trade copies the banners and notes, not this line.
     function marketAgeHTML() {
         if (State.marketRankings.length === 0) return '';
