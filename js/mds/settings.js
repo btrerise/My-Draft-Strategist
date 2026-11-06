@@ -63,7 +63,7 @@ import { getFreshness } from '../shared/freshness.js';
                 metaEl.style.display = 'block';
                 const fresh = getFreshness(State.rankingsMeta.updatedAt, RANKINGS_STALE_AFTER_DAYS);
                 if (fresh) {
-                    metaEl.innerHTML = `Loaded: ${escapeHtml(State.rankingsMeta.count)} players <span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">• ${fresh.label}${fresh.isStale ? ' — consider refreshing' : ''}</span>`;
+                    metaEl.innerHTML = `Loaded: ${escapeHtml(State.rankingsMeta.count)} players <span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">• ${fresh.detail}${fresh.isStale ? ' — consider refreshing' : ''}</span>`;
                 } else {
                     metaEl.innerText = `Loaded: ${State.rankingsMeta.count} players on ${State.rankingsMeta.date}`;
                 }
@@ -78,7 +78,7 @@ import { getFreshness } from '../shared/freshness.js';
                 adpEl.style.display = 'block';
                 const fresh = getFreshness(State.adpMeta.updatedAt, ADP_STALE_AFTER_DAYS, 'Fetched');
                 if (fresh) {
-                    adpEl.innerHTML = `${escapeHtml(State.adpMeta.format)} <span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">• ${fresh.label}${fresh.isStale ? ' — fetch again before you draft' : ''}</span>`;
+                    adpEl.innerHTML = `${escapeHtml(State.adpMeta.format)} <span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">• ${fresh.detail}${fresh.isStale ? ' — fetch again before you draft' : ''}</span>`;
                 } else {
                     adpEl.innerText = `Fetched: ${State.adpMeta.format} on ${State.adpMeta.date}`;
                 }

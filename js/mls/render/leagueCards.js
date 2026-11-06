@@ -104,9 +104,9 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
             const syncFresh = getFreshness(l.lastSyncedAt, 2, 'Synced');
             if (l.lastSyncFailedAt) {
                 const staleFor = syncFresh ? syncFresh.label.replace(/^Synced /, 'from ') : 'never synced';
-                sync = { cls: 'sync-failed', text: `Last sync failed · roster ${staleFor}` };
+                sync = { cls: 'sync-failed', text: `Last sync failed · roster ${staleFor}`, title: syncFresh ? syncFresh.title : '' };
             } else {
-                sync = { cls: (!syncFresh || syncFresh.isStale) ? 'freshness-stale' : 'freshness-ok', text: syncFresh ? syncFresh.label : 'Last sync unknown' };
+                sync = { cls: (!syncFresh || syncFresh.isStale) ? 'freshness-stale' : 'freshness-ok', text: syncFresh ? syncFresh.label : 'Last sync unknown', title: syncFresh ? syncFresh.title : '' };
             }
         }
         return { rankingsFresh, lineup, early, sync, format: l.formatBadge || '' };
@@ -143,7 +143,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         const needsYou = !!(line && line.needs) || urgentSleeper;
         const count = (line ? needsYouCount(line.items) : 0) + (urgentSleeper ? 1 : 0);
         // The sync age only when it's worth a look (old, unknown or failed), not "Synced today" on every card.
-        const syncNote = st.sync && st.sync.cls !== 'freshness-ok' ? `<span class="${st.sync.cls}">${st.sync.text}</span>` : '';
+        const syncNote = st.sync && st.sync.cls !== 'freshness-ok' ? `<span class="${st.sync.cls}"${st.sync.title ? ` title="${st.sync.title}"` : ''}>${st.sync.text}</span>` : '';
         const meta = [st.format ? `<span class="mls-lc-format">${escapeHtml(st.format)}</span>` : '', syncNote]
             .filter(Boolean).join('<span class="mls-lc-sep"> · </span>');
 

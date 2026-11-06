@@ -35,18 +35,19 @@ import { renderLineupSettings } from '../opponent.js';
                 const fresh = getFreshness(State.rosRankingsUpdatedAt, 14); // ROS: occasional refresh is normal
                 const countText = `Loaded: ${State.rosRankings.length} players`;
                 if (fresh) {
-                    rosMetaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">• ${fresh.label}${fresh.isStale ? ' — consider refreshing' : ''}</span>`;
+                    rosMetaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">• ${fresh.detail}${fresh.isStale ? ' — consider refreshing' : ''}</span>`;
                     if (rosHeaderEl) {
                         rosHeaderEl.textContent = fresh.label;
+                        rosHeaderEl.title = fresh.title;
                         rosHeaderEl.classList.toggle('freshness-stale', fresh.isStale);
                     }
                 } else {
                     rosMetaEl.innerText = countText;
-                    if (rosHeaderEl) { rosHeaderEl.textContent = `${State.rosRankings.length} players`; rosHeaderEl.classList.remove('freshness-stale'); }
+                    if (rosHeaderEl) { rosHeaderEl.textContent = `${State.rosRankings.length} players`; rosHeaderEl.removeAttribute('title'); rosHeaderEl.classList.remove('freshness-stale'); }
                 }
             } else {
                 rosMetaEl.style.display = 'none';
-                if (rosHeaderEl) rosHeaderEl.textContent = '';
+                if (rosHeaderEl) { rosHeaderEl.textContent = ''; rosHeaderEl.removeAttribute('title'); }
                 setRankingsCardExpanded('rosRankingsCard', true); // nothing loaded yet -- show the actionable UI
             }
         }
@@ -59,18 +60,19 @@ import { renderLineupSettings } from '../opponent.js';
                 const fresh = getFreshness(State.weeklyRankingsUpdatedAt, 6); // Weekly: expected to refresh every week
                 const countText = `Loaded: ${State.weeklyRankings.length} players`;
                 if (fresh) {
-                    weeklyMetaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">• ${fresh.label}${fresh.isStale ? ' — likely stale, re-upload for this week' : ''}</span>`;
+                    weeklyMetaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">• ${fresh.detail}${fresh.isStale ? ' — likely stale, re-upload for this week' : ''}</span>`;
                     if (weeklyHeaderEl) {
                         weeklyHeaderEl.textContent = fresh.label;
+                        weeklyHeaderEl.title = fresh.title;
                         weeklyHeaderEl.classList.toggle('freshness-stale', fresh.isStale);
                     }
                 } else {
                     weeklyMetaEl.innerText = countText;
-                    if (weeklyHeaderEl) { weeklyHeaderEl.textContent = `${State.weeklyRankings.length} players`; weeklyHeaderEl.classList.remove('freshness-stale'); }
+                    if (weeklyHeaderEl) { weeklyHeaderEl.textContent = `${State.weeklyRankings.length} players`; weeklyHeaderEl.removeAttribute('title'); weeklyHeaderEl.classList.remove('freshness-stale'); }
                 }
             } else {
                 weeklyMetaEl.style.display = 'none';
-                if (weeklyHeaderEl) weeklyHeaderEl.textContent = '';
+                if (weeklyHeaderEl) { weeklyHeaderEl.textContent = ''; weeklyHeaderEl.removeAttribute('title'); }
                 setRankingsCardExpanded('weeklyRankingsCard', true); // nothing loaded yet -- show the actionable UI
             }
         }

@@ -7,6 +7,10 @@
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, WAIVER_RANKINGS_CSV, FIXTURE_LEAGUE_ID } from './helpers.mjs';
 
+// The sync note shows the time of day ("synced today at 4:00 PM"), so pin the zone and the locale.
+test.use({ timezoneId: 'UTC', locale: 'en-US' });
+
+
 const out = (page) => page.locator('#waiverOutput');
 const chip = (page, pos) => page.locator(`#waiverPosChips [data-pos="${pos}"]`);
 const mode = (page, m) => page.locator(`#waiverModeToggle [data-mode="${m}"]`);
@@ -39,7 +43,7 @@ test.describe('Lineup Strategist Top Available', () => {
         await loadMlsRankings(page, WAIVER_RANKINGS_CSV, 30);
         await showTab(page, 'scout');
         await expect(out(page)).toContainText('Top available players in Fixture League by Weekly rank.');
-        await expect(out(page)).toContainText("Ownership is from this league's last sync (synced today). Re-run Sync All on the Dashboard");
+        await expect(out(page)).toContainText("Ownership is from this league's last sync (synced today at 4:00 PM). Re-run Sync All on the Dashboard");
 
         // All: grouped by position, best first; K and DEF aren't ranked, so they're left out.
         await expect(out(page).locator('.mls-ta-title')).toHaveText([
