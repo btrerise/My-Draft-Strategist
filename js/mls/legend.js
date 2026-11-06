@@ -19,6 +19,9 @@ import {
     opponentBadgeMarkup, sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, weekResultMarkup, weekStatusMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
+import { openSheet } from '../shared/ui/sheet.js';
+
+const GUIDE_ICON = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>';
 
 const SAMPLE = { sample: true };
 const posBadge = (pos, text = pos, extra = '') => `<span class="badge pos-badge ${pos}${extra}">${text}</span>`;
@@ -159,4 +162,20 @@ export function focusBadgeLegend() {
     const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     section.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
     if (title) title.focus({ preventScroll: true });
+}
+
+// "What do these mean?" (data-action="openBadgeLegend") opens the legend in the shared sheet over the tab you're on
+// (improvements M11; js/shared/ui/sheet.js), scrolled to the group named by the link's data-legend-group. The same
+// HTML as the Guide's copy (buildBadgeLegendHTML), so nothing is worded twice. Its foot links to the Guide.
+export function openBadgeLegendSheet(opener, openGuide) {
+    const group = opener && opener.dataset ? opener.dataset.legendGroup : '';
+    return openSheet({
+        title: 'What the badges mean',
+        body: `<div class="badge-legend-body">${buildBadgeLegendHTML()}</div>`,
+        opener,
+        className: 'badge-legend-sheet',
+        scrollTo: (body) => group ? [...body.querySelectorAll('.badge-legend-group')]
+            .find(g => g.querySelector('.badge-legend-group-title').textContent === group) : null,
+        footer: { label: 'Open the Guide', icon: GUIDE_ICON, onClick: openGuide },
+    });
 }

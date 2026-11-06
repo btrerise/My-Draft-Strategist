@@ -14,7 +14,7 @@ import './constants.js';
 import { State, redoLineupChange, undoLineupChange, updateLineupSetting } from './state.js';
 import './helpers.js';
 import { navigateFromDrawer, showTab, toggleDrawer, updateDrawerActiveState } from './nav.js';
-import { focusBadgeLegend } from './legend.js';
+import { focusBadgeLegend, openBadgeLegendSheet } from './legend.js';
 import { exportMlsSettings, factoryReset, importMlsSettings } from './backup.js';
 import { goToSetupStep, onload } from './init.js';
 import { toggleMlsHeadshots } from './lineup/headshots.js';
@@ -105,9 +105,9 @@ const clickActions = {
     toggleDrawer() { toggleDrawer(); },
     navigateFromDrawer() { navigateFromDrawer(this.dataset.tab); },
     showTab() { showTab(this.dataset.tab); },
-    // "What do these mean?" on the Waiver Wire Assistant and the Lineup and Roster tabs (improvements S10):
-    // the Guide tab, scrolled to its badge legend.
-    openBadgeLegend() { updateDrawerActiveState('guide'); showTab('guide').then(focusBadgeLegend); },
+    // "What do these mean?" on the Waiver Wire Assistant and the Lineup and Roster tabs (improvements S10): the
+    // legend in the shared sheet over the tab (M11); its foot opens the Guide tab, scrolled to the legend.
+    openBadgeLegend() { openBadgeLegendSheet(this, () => { updateDrawerActiveState('guide'); showTab('guide').then(focusBadgeLegend); }); },
     cycleLeague() { cycleLeague(Number(this.dataset.direction)); },
     // Setup tab: banners, Draft Strategist handoff, Command Center, Add/Sync League, requirements
     dismissBannerAndReveal() { dismissBannerAndReveal(this.dataset.banner, this.dataset.storageKey, this.dataset.nextBanner, this.dataset.nextStorageKey); },

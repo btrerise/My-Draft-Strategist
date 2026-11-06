@@ -8975,3 +8975,49 @@ newer browser than CI (`tests/browser.mjs`'s fallback, S23) and could see failur
 
 **Effect for sessions.** Specs and features run on the same Chromium as CI; screenshot work is unchanged (compare
 main and the branch in the container, take baselines from CI).
+
+## M11 — Material 3: the badge legend in a sheet (and a shared sheet for S32)
+
+From round 2 of the Material 3 review (proposal 15, `docs/improvements/material3-review-2.md`). Branch
+`claude/cool-babbage-vtr3bk`.
+
+**User-visible effect.** "What do these mean?" ("Badges" on phones) on the Lineup, Roster and Scout tabs and on Draft
+Strategist's Tracker no longer switches to the Guide tab. The legend opens in a sheet over the tab you're on: from the
+right on windows 840px and wider (400px wide, full height), from the bottom below that (half height, scrolling inside;
+drag the handle up for nearly full height, tap the handle to switch between half and full, swipe down or tap the scrim
+to close). It opens scrolled to the group for the card you came from. Escape, Back, the close button and the scrim close
+it, and focus goes back to the link. "Open the Guide" at its foot closes it and opens the Guide at the legend, as the
+link did before.
+
+**Owner's answers (2026-11-06, after screenshots at 375 and 1280px).** (1) The full legend, scrolled to the card's group
+(Lineup and Tracker: Positions and slots; Roster: Ranks and tiers; Scout's Waiver Wire: Changes and trends; the link's
+`data-legend-group`). (2) Yes, an "Open the Guide" link at its foot.
+
+**What changed.**
+- `js/shared/ui/sheet.js` (new, in `PRECACHE_ASSETS`): `openSheet({ title, body, opener, scrollTo, footer, className })`
+  and `closeSheet()`, each returning a promise that resolves once it's closed and its history entry is off. Modal
+  (`role=dialog`, `aria-modal`, labelled by its title), focus moved to the title and trapped (`focusTrap.js`), Escape,
+  the scrim, the close button (48px), Back (the history-entry pattern from `navMenu.js`, S26 round 6, with a capturing
+  popstate listener so it runs before the apps' tab listener), and on phones the drag handle (a button, 48px target,
+  `aria-expanded`) and a drag on the handle or header. Pointer capture starts only once a drag moves 4px, so a tap
+  still clicks the handle.
+- `css/base.css`, "THE SHEET": the scrim, bottom sheet (28px top corners) and side sheet from 840px (16px leading
+  corners), and the legend's rows stacked inside it. Motion: Material 3's emphasized decelerate in (400ms) and
+  accelerate out (200ms), the menu's tokens, since M3's Expressive tokens aren't merged; none with Reduce Motion.
+  **For M3:** move `.sheet` and `.sheet-scrim`'s transitions onto its tokens.
+- `js/mls/legend.js`, `js/mds/legend.js`: `openBadgeLegendSheet(opener, openGuide)`, which opens the sheet with
+  `buildBadgeLegendHTML()` (the Guide keeps its own copy; nothing is worded twice). Both `main.js` files' `openBadgeLegend`
+  call it; its foot runs the old Guide behaviour.
+- `index.html`, `lineup/index.html`: the four links get `data-legend-group` and `aria-haspopup="dialog"`; their
+  accessible name drops "Opens the Guide".
+- `sw.js`: `sheet.js` precached; `CACHE_NAME` v2.9.5.
+- Tests: `tests/sheet.spec.mjs` (new: side vs bottom geometry, dialog name, Tab trapped, close button / Escape / Back /
+  scrim each close it with focus back on the link and the tab kept, the history entry taken off, swipe down and drag
+  up / tap the handle on phones at 375px, Reduce Motion, Draft Strategist). `tests/badge-legend.spec.mjs` now checks
+  the legend in the sheet, each card's group scrolled to the top, and "Open the Guide".
+- Screenshots: none re-taken (the sheet is closed in the baselines).
+
+**For S32.** Reuse `openSheet` for the Lineup row's details: pass the row's button as `opener`, the details' HTML as
+`body`, and a `className` for its own styles. One sheet at a time; opening another replaces it.
+
+**Left over.** None from the card.

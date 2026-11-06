@@ -15,6 +15,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **"What do these mean?" opens the badge legend over the Tracker, so you keep your place.** It used to switch to the
+  Guide tab. Now the legend slides in from the right on a computer, or up from the bottom on a phone (half height;
+  drag the handle up for more, swipe it down or tap outside to close). Escape and Back close it too, and "Open the
+  Guide" at its foot still takes you to the Guide.
+
 - **"Updated today" means today where you are, and the time is shown.** The rankings and ADP lines counted 24-hour
   periods, so rankings loaded at 9 PM said "today" until 9 PM the next day. They now count calendar days in your time
   zone, and give the time: "Updated today at 9:12 AM", "Fetched yesterday at 9:49 PM", "Updated 3 days ago (Tue,
@@ -137,6 +142,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 ## Lineup Strategist
 
 ### Unreleased
+
+- **"What do these mean?" opens the badge legend over the tab you're on, so you keep your place.** On the Lineup,
+  Roster and Scout tabs it used to switch to the Guide. Now the legend slides in from the right on a computer, or up
+  from the bottom on a phone (half height; drag the handle up for more, swipe it down or tap outside to close),
+  scrolled to the badges of the card you came from. Escape and Back close it too, and "Open the Guide" at its foot
+  still takes you to the Guide.
 
 - **"Updated today" means today where you are, and the time is shown.** Every "Updated / Synced … ago" label counted
   24-hour periods, so Weekly rankings uploaded at 9 PM said "today" until 9 PM the next day. They now count calendar

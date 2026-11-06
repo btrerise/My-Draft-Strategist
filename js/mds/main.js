@@ -9,7 +9,7 @@ import './migrateKeys.js';
 import './init.js';
 import { draftPlayer, switchDraftProfile, undoDraft } from './state.js';
 import { saveInlineEdit, setPosFilter, showTab, toggleCardDetails, toggleEditBar, toggleMenu } from './ui.js';
-import { focusBadgeLegend } from './legend.js';
+import { focusBadgeLegend, openBadgeLegendSheet } from './legend.js';
 import { resetPicksOnly, saveSettings } from './settings.js';
 import { exportMdsSettings, hardReset, importMdsSettings } from './backup.js';
 import { addAndSyncSleeperDraft, createManualDraft, handleSmartSync, renderLiveSyncStatus, toggleAutoSync } from './sleeperSync.js';
@@ -47,8 +47,9 @@ window.exportMdsSettings = exportMdsSettings;
 const clickActions = {
     toggleMenu() { toggleMenu(); },
     showTab() { showTab(this.dataset.tab); },
-    // "What do these mean?" on the Tracker (improvements S10): the Guide tab, scrolled to its badge legend.
-    openBadgeLegend() { showTab('guide').then(focusBadgeLegend); },
+    // "What do these mean?" on the Tracker (improvements S10): the legend in the shared sheet over the tab (M11);
+    // its foot opens the Guide tab, scrolled to the legend.
+    openBadgeLegend() { openBadgeLegendSheet(this, () => showTab('guide').then(focusBadgeLegend)); },
     handleSmartSync() { handleSmartSync(); },
     dismissBanner() { dismissBanner(this.dataset.banner, this.dataset.storageKey); },
     // The Setup Progress checklist's "Show me ↓" links (setupGuide.js, 8A)
