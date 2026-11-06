@@ -181,8 +181,8 @@ test('season record in a league with divisions: division place, and seeds with t
     assert.deepEqual([me.standing, me.division, me.divisionRank, me.seed, me.playoffTeams], [3, 'Troop 269', 2, 4, 6]);
     // The division winners are seeds 1-3 in record order; the best of the rest follow, whatever their division.
     assert.deepEqual([4, 5, 1, 6, 8, 11].map(id => seasonRecord(rosters, id, league).seed), [1, 2, 3, 4, 5, 6]);
-    // Outside the playoff spots: no seed, still a division place.
-    assert.equal(seasonRecord(rosters, 9, league).seed, null);
+    // Outside the playoff spots: the place in the playoff order, past playoffTeams.
+    assert.equal(seasonRecord(rosters, 9, league).seed, 7);
     assert.equal(seasonRecord(rosters, 9, league).divisionRank, 2);
     // A division with no name in the metadata.
     assert.equal(seasonRecord(rosters, 6, { settings: { divisions: 3 } }).division, 'Division 2');

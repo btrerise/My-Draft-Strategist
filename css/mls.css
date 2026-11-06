@@ -2064,8 +2064,15 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 /* The Roster tab's season record under the league name (S21). */
 .mls-roster-head { align-items: flex-start; }
 .mls-roster-titles { min-width: 0; flex: 1 1 auto; }
-.mls-roster-record { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.9rem; margin: 0.35rem 0 0; font-size: 0.85rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* The record line: items split by a muted dot. Each item's dot sits in the gap before it, and the list starts one gap
+   to the left inside a clipped box, so the dot of whichever item starts a line (the first, or one that wrapped) is
+   cut off. PF and PA are one item, so they wrap together. */
+.mls-roster-record { margin: 0.35rem 0 0; overflow: hidden; font-size: 0.85rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .mls-roster-record[hidden] { display: none; }
+.mls-roster-record-list { display: flex; flex-wrap: wrap; align-items: baseline; row-gap: 0.2rem; margin-left: -1.1rem; }
+.mls-roster-record-part { position: relative; padding-left: 1.1rem; white-space: nowrap; }
+.mls-roster-record-part::before { content: '\00b7'; position: absolute; left: 0.45rem; opacity: 0.7; }
+.mls-roster-record-dot { margin: 0 0.45rem; opacity: 0.7; }
 .mls-roster-record-wl { color: var(--text-main); font-size: 0.95rem; }
 .mls-roster-record abbr { text-decoration: none; }
 /* Phones: the name across the card, then the format, then the record (S21, owner's request). */

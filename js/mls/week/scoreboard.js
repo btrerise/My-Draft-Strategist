@@ -200,9 +200,10 @@ export const isGuillotine = (settings) => !!(settings && settings.type === 3);
 // 1 = first. Sleeper sends no standings, so they're worked out here the way Sleeper orders them: win percentage (a tie
 // counts as half a win), then points for, then points against.
 // With divisions (league.settings.divisions over 1, and a division on the rosters): division is its name from the
-// league's metadata (division_1, ...; "Division 2" without one), divisionRank your place in it, and seed your playoff
-// seed as Sleeper seeds a league with divisions: the division winners take the top seeds, in that order, then the
-// best of the rest regardless of division. seed is null when you're outside the league's playoff_teams.
+// league's metadata (division_1, ...; "Division 2" without one), divisionRank your place in it, and seed your place in
+// the playoff order as Sleeper seeds a league with divisions: the division winners take the top seeds, in that order,
+// then the best of the rest regardless of division. playoffTeams is how many get in (null if Sleeper doesn't say); a
+// seed above it means you're out for now.
 // Without divisions those four are null. null before anyone has played, or without your roster.
 export function seasonRecord(rosters, rosterId, league) {
     const list = Array.isArray(rosters) ? rosters.filter(r => r && r.settings) : [];
@@ -238,8 +239,7 @@ export function seasonRecord(rosters, rosterId, league) {
         });
         const order = winners.concat(table.filter(r => !winners.includes(r)));
         playoffTeams = Number(settings.playoff_teams) || null;
-        const place = order.indexOf(mine) + 1;
-        seed = (!playoffTeams || place <= playoffTeams) ? place : null;
+        seed = order.indexOf(mine) + 1;
     }
     return { wins, losses, ties, pf, pa, standing, pfRank: rankBy('fpts', pf), paRank: rankBy('fpts_against', pa), of: list.length,
         division, divisionRank, seed, playoffTeams };

@@ -579,35 +579,38 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(rec.locator('.mls-roster-record-wl')).toHaveText('0–1');
         // Above the header's line, with the league's name.
         expect(await rec.evaluate(el => !!el.closest('header.card-header'))).toBe(true);
-        await expect(rec.locator('.mls-roster-record-part')).toHaveText(['0–1 (2nd of 2)', 'PF 1st (120.0)', 'PA 1st (110.0)']);
+        await expect(rec.locator('.mls-roster-record-part')).toHaveText(['0–1 (2nd of 2)', 'PF 1st (120.0)·PA 1st (110.0)']);
         expect(await rec.locator('abbr').evaluateAll(els => els.map(e => e.title))).toEqual(['Points for', 'Points against']);
         // No divisions: no division place or seed.
         await expect(rec.locator('.mls-roster-record-division, .mls-roster-record-seed')).toHaveCount(0);
         await expectClean(page, state);
     });
 
-    test('in a league with divisions, the Roster tab adds your place in your division and your playoff seed', async ({ page }) => {
-        // Fixture League with two divisions and two playoff spots: you (0-1, Troop <510>, which also checks the name is escaped) lead your division alone, so
-        // as a division winner you're the 2nd seed, behind Rival (1-0, Troop 269), and 2nd of 2 overall.
-        const routes = async (p) => {
-            await p.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}$`), route => {
-                const league = JSON.parse(fixture('league.json'));
-                league.settings = { ...league.settings, divisions: 2, playoff_teams: 2 };
-                league.metadata = { ...(league.metadata || {}), division_1: 'Troop <510>', division_2: 'Troop 269' };
-                return route.fulfill({ json: league });
-            });
-            await p.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/rosters$`), route => {
-                const rosters = JSON.parse(fixture('league-rosters.json'));
-                rosters.forEach(r => { r.settings = { ...r.settings, division: r.roster_id }; });
-                return route.fulfill({ json: rosters });
-            });
-        };
-        const { state } = await setup(page, { routes });
-        await page.selectOption('#headerLeagueSelect', FIXTURE_LEAGUE_ID);
-        await showTab(page, 'roster');
-        const rec = page.locator('#rosterRecord');
-        await expect(rec.locator('.mls-roster-record-part')).toHaveText(
-            ['0–1 (2nd of 2)', '1st in Troop <510>', '2nd seed', 'PF 1st (120.0)', 'PA 1st (110.0)']);
-        await expectClean(page, state);
-    });
+    // Fixture League with two divisions: you (0-1, Troop <510>, which also checks the name is escaped) lead your
+    // division alone, so as a division winner you're the 2nd seed, behind Rival (1-0, Troop 269). With two playoff
+    // spots you're in; with one you're out. The seed stands in for the overall place ("(2nd of 2)").
+    for (const [playoffTeams, seed] of [[2, '2nd seed of 2'], [1, 'Out of playoffs (2nd)']]) {
+        test(`in a league with divisions, the Roster tab shows your division place and seed (${playoffTeams} playoff teams)`, async ({ page }) => {
+            const routes = async (p) => {
+                await p.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}$`), route => {
+                    const league = JSON.parse(fixture('league.json'));
+                    league.settings = { ...league.settings, divisions: 2, playoff_teams: playoffTeams };
+                    league.metadata = { ...(league.metadata || {}), division_1: 'Troop <510>', division_2: 'Troop 269' };
+                    return route.fulfill({ json: league });
+                });
+                await p.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/rosters$`), route => {
+                    const rosters = JSON.parse(fixture('league-rosters.json'));
+                    rosters.forEach(r => { r.settings = { ...r.settings, division: r.roster_id }; });
+                    return route.fulfill({ json: rosters });
+                });
+            };
+            const { state } = await setup(page, { routes });
+            await page.selectOption('#headerLeagueSelect', FIXTURE_LEAGUE_ID);
+            await showTab(page, 'roster');
+            const rec = page.locator('#rosterRecord');
+            await expect(rec.locator('.mls-roster-record-part')).toHaveText(
+                ['0–1', '1st in Troop <510>', seed, 'PF 1st (120.0)·PA 1st (110.0)']);
+            await expectClean(page, state);
+        });
+    }
 });
