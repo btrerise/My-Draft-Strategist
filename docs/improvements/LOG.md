@@ -9058,6 +9058,8 @@ Strategist's post-draft ask (~10k, before August); **K7** supporter perks (~8k, 
 **The owner's decisions.** Pending: the seven questions at the end of support.md. To be recorded here, then the cards
 written into the runbook.
 
-**Checks.** `npm run check` (see the commit). `git diff --stat main` lists only `docs/improvements/`.
+**Checks.** `npm run check` in the session: check-precache and the unit tests pass; Playwright 750 passed, 48 skipped;
+the 4 failures are `visual.spec.mjs` refusing this cloud image's fonts (the environment check), as on main. The diff
+against main is only `docs/improvements/`.
 
 **Left over.** The owner's picks; then K2 onward in the runbook. `docs/TESTING.md`'s open follow-ups: none touched.
