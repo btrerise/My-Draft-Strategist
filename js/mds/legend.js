@@ -12,6 +12,9 @@
 // tests/unit/badgeLegend.test.mjs fails when a badge class used in js/mds or index.html isn't in the HTML
 // this builds. Imports only modules with no app state, so that test can load it in Node.
 import { STACK_BADGE_HTML, byeWarningMarkup, slotLabelMarkup, tScoreBadgeMarkup, tierChipMarkup, valueBadgeMarkup } from './badges.js';
+import { openSheet } from '../shared/ui/sheet.js';
+
+const GUIDE_ICON = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>';
 
 const POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 const boardCell = (pos, mine) => `<div class="draft-cell picked ${pos}${mine ? ' mine' : ''}"><div style="display:flex; flex-direction:column; align-items:center;"><div class="draft-cell-first">${mine ? 'Your' : 'Their'}</div><div class="draft-cell-last">Pick</div></div></div>`;
@@ -81,4 +84,20 @@ export function focusBadgeLegend() {
     const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     section.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
     if (title) title.focus({ preventScroll: true });
+}
+
+// "What do these mean?" (data-action="openBadgeLegend") opens the legend in the shared sheet over the tab you're on
+// (improvements M11; js/shared/ui/sheet.js), scrolled to the group named by the link's data-legend-group. The same
+// HTML as the Guide's copy (buildBadgeLegendHTML), so nothing is worded twice. Its foot links to the Guide.
+export function openBadgeLegendSheet(opener, openGuide) {
+    const group = opener && opener.dataset ? opener.dataset.legendGroup : '';
+    return openSheet({
+        title: 'What the badges mean',
+        body: `<div class="badge-legend-body">${buildBadgeLegendHTML()}</div>`,
+        opener,
+        className: 'badge-legend-sheet',
+        scrollTo: (body) => group ? [...body.querySelectorAll('.badge-legend-group')]
+            .find(g => g.querySelector('.badge-legend-group-title').textContent === group) : null,
+        footer: { label: 'Open the Guide', icon: GUIDE_ICON, onClick: openGuide },
+    });
 }
