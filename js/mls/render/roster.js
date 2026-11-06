@@ -339,19 +339,39 @@ import { KEYS } from '../../shared/storage/keys.js';
         if (seasonSet) fitRosterRankBadges(rosterListEl);
     }
 
-// Your season record under the Roster tab's league name (improvements S21, the owner's ask): W-L, and where your
-// points for and against rank in the league (1st = the most), as of the league's last sync (league.record, set by
-// processSleeperData). Hidden for manual leagues, a league synced before S21, and before anyone has played.
+// Your season record under the Roster tab's league name (improvements S21, the owner's ask), as of the league's last
+// sync (league.record, set by processSleeperData). Without divisions: "6–2 (3rd of 12) · PF 5th (1152.4) · PA 10th
+// (1027.8)". With divisions the seed stands in for the overall place: "6–2 · 2nd in Troop 269 · 4th seed of 6 · PF ...",
+// or "Out of playoffs (7th)" below the playoff line. PF / PA: 1st = the most. PF and PA wrap together, and the dot
+// that would start a wrapped line is clipped (.mls-roster-record-list). Hidden for manual leagues, a league synced
+// before S21, and before anyone has played; a league last synced before the standing was added shows the W-L alone.
 function renderRosterRecord(league) {
     const el = document.getElementById('rosterRecord');
     if (!el) return;
     const r = league && league.record;
     if (!r) { el.hidden = true; el.textContent = ''; return; }
     const wl = `${r.wins}\u2013${r.losses}${r.ties ? `\u2013${r.ties}` : ''}`;
-    el.innerHTML = `<span class="mls-roster-record-part">Record <strong class="mls-roster-record-wl">${wl}</strong></span>`
-        + `<span class="mls-roster-record-part">Points for ${ordinal(r.pfRank)} of ${r.of} <span class="text-helper">(${r.pf.toFixed(1)})</span></span>`
-        + `<span class="mls-roster-record-part">Points against ${ordinal(r.paRank)} of ${r.of} <span class="text-helper">(${r.pa.toFixed(1)})</span></span>`;
-    el.title = 'This season, as of your last sync. 1st = the most points in your league.';
+    const part = (cls, html) => `<span class="mls-roster-record-part${cls ? ` ${cls}` : ''}">${html}</span>`;
+    const divisions = !!(r.division && r.divisionRank);
+    let seed = '';
+    if (divisions && r.seed) {
+        seed = (!r.playoffTeams || r.seed <= r.playoffTeams)
+            ? part('mls-roster-record-seed', `${ordinal(r.seed)} seed${r.playoffTeams ? ` of ${r.playoffTeams}` : ''}`)
+            : part('mls-roster-record-seed is-out', `Out of playoffs (${ordinal(r.seed)})`);
+    }
+    const points = (abbr, title, rank, total) =>
+        `<abbr title="${title}">${abbr}</abbr> ${ordinal(rank)} <span class="text-helper">(${total.toFixed(1)})</span>`;
+    el.innerHTML = '<span class="mls-roster-record-list">'
+        + part('', `<strong class="mls-roster-record-wl">${wl}</strong>`
+            + (r.standing && !seed ? ` <span class="mls-roster-record-standing">(${ordinal(r.standing)} of ${r.of})</span>` : ''))
+        + (divisions ? part('mls-roster-record-division', `${ordinal(r.divisionRank)} in ${escapeHtml(r.division)}`) : '')
+        + seed
+        + part('mls-roster-record-points', points('PF', 'Points for', r.pfRank, r.pf)
+            + '<span class="mls-roster-record-dot" aria-hidden="true">\u00b7</span>' + points('PA', 'Points against', r.paRank, r.pa))
+        + '</span>';
+    el.title = 'This season, as of your last sync. Places go by record, then points for, then points against.'
+        + (seed ? ' Seeds: the division winners first, then the best of the rest.' : '')
+        + ' PF / PA: 1st = the most points in your league.';
     el.hidden = false;
 }
 

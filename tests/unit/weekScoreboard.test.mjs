@@ -150,11 +150,50 @@ test('from a sync: team names, median, guillotine and your season record', () =>
     assert.equal(playsMedian({ league_average_match: 0 }), false);
     assert.equal(isGuillotine({ type: 3 }), true);
     assert.equal(isGuillotine({ type: 0 }), false);
-    assert.deepEqual(seasonRecord(rosters, 1), { wins: 5, losses: 2, ties: 0, pf: 812.4, pa: 760.1, pfRank: 2, paRank: 2, of: 3 });
+    assert.deepEqual(seasonRecord(rosters, 1), { wins: 5, losses: 2, ties: 0, pf: 812.4, pa: 760.1, standing: 1, pfRank: 2, paRank: 2, of: 3,
+        division: null, divisionRank: null, seed: null, playoffTeams: null });
+    assert.equal(seasonRecord(rosters, 2).standing, 2);
+    // Same record: points for breaks the tie; a tie counts as half a win.
+    const tied = [
+        { roster_id: 1, settings: { wins: 4, losses: 3, ties: 0, fpts: 800 } },
+        { roster_id: 2, settings: { wins: 4, losses: 3, ties: 0, fpts: 850 } },
+        { roster_id: 3, settings: { wins: 4, losses: 2, ties: 1, fpts: 700 } },
+    ];
+    assert.deepEqual([1, 2, 3].map(id => seasonRecord(tied, id).standing), [3, 2, 1]);
     // Nobody has played (a guillotine league's rosters, or week 1): no record.
     assert.equal(seasonRecord([{ roster_id: 1, settings: { wins: 0, losses: 0, ties: 0 } }], 1), null);
     assert.equal(seasonRecord(rosters, 9), null);
     assert.deepEqual([1, 2, 3, 4, 11, 12, 13, 21, 22].map(ordinal), ['1st', '2nd', '3rd', '4th', '11th', '12th', '13th', '21st', '22nd']);
+});
+
+test('season record in a league with divisions: division place, and seeds with the division winners first', () => {
+    // Draft Scouts of America after week 8 (Sleeper, 2026-11-06): 3 divisions, 6 playoff teams. [roster, division,
+    // W, L, PF]. You (6) are 3rd overall, 2nd in Troop 269 behind roster 5 on points for, and the 4th seed: roster 1
+    // (5-3) wins Troop 510 and takes a top seed ahead of you.
+    const teams = [[4, 3, 7, 1, 1362.37], [5, 2, 6, 2, 1249.97], [6, 2, 6, 2, 1152.35], [1, 1, 5, 3, 1326.22],
+        [8, 2, 5, 3, 1254.64], [11, 1, 4, 4, 1119.38], [9, 3, 4, 4, 1026.4], [3, 3, 3, 5, 1076.61], [7, 2, 3, 5, 1005.59],
+        [12, 1, 2, 6, 1058.06], [2, 3, 2, 6, 879.36], [10, 1, 1, 7, 835.24]];
+    const rosters = teams.map(([id, division, wins, losses, pf]) => ({ roster_id: id, settings: {
+        division, wins, losses, ties: 0, fpts: Math.floor(pf), fpts_decimal: Math.round((pf % 1) * 100), fpts_against: 1000 } }));
+    const league = { settings: { divisions: 3, playoff_teams: 6 },
+        metadata: { division_1: 'Troop 510', division_2: 'Troop 269', division_3: 'Troop 415' } };
+    const me = seasonRecord(rosters, 6, league);
+    assert.deepEqual([me.standing, me.division, me.divisionRank, me.seed, me.playoffTeams], [3, 'Troop 269', 2, 4, 6]);
+    // The division winners are seeds 1-3 in record order; the best of the rest follow, whatever their division.
+    assert.deepEqual([4, 5, 1, 6, 8, 11].map(id => seasonRecord(rosters, id, league).seed), [1, 2, 3, 4, 5, 6]);
+    // Outside the playoff spots: the place in the playoff order, past playoffTeams.
+    assert.equal(seasonRecord(rosters, 9, league).seed, 7);
+    assert.equal(seasonRecord(rosters, 9, league).divisionRank, 2);
+    // A division with no name in the metadata.
+    assert.equal(seasonRecord(rosters, 6, { settings: { divisions: 3 } }).division, 'Division 2');
+    // No divisions (or no league): the overall standing only.
+    const plain = seasonRecord(rosters, 6, { settings: { divisions: 0, playoff_teams: 6 } });
+    assert.deepEqual([plain.standing, plain.division, plain.divisionRank, plain.seed], [3, null, null, null]);
+    assert.equal(seasonRecord(rosters, 6).seed, null);
+    // Same record and points for: points against breaks it.
+    const pa = [{ roster_id: 1, settings: { wins: 1, losses: 0, fpts: 100, fpts_against: 90 } },
+        { roster_id: 2, settings: { wins: 1, losses: 0, fpts: 100, fpts_against: 95 } }];
+    assert.deepEqual([1, 2].map(id => seasonRecord(pa, id).standing), [2, 1]);
 });
 
 test('?week= in the address picks the week to show (for testing); anything else is ignored', () => {
