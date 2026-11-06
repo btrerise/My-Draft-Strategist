@@ -11,6 +11,10 @@
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, FIXED_NOW, RANKINGS_CSV, confirmMdsPreview } from './helpers.mjs';
 
+// The status lines show the time of day ("Updated today at 4:00 PM"), so pin the zone and the locale.
+test.use({ timezoneId: 'UTC', locale: 'en-US' });
+
+
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = FIXED_NOW.getTime();
 const AMBER = 'rgb(245, 158, 11)';   // .freshness-stale
@@ -58,20 +62,20 @@ test('saved rankings and ADP show their age, amber past 14 and 3 days; meta save
         adp: { format: fmt, date: OLD_DATE, updatedAt: NOW },
     });
     expect(await readStatus(page, '#metaDisplay')).toEqual({
-        text: 'Loaded: 220 players • Updated 3 days ago',
-        label: { text: '• Updated 3 days ago', cls: 'freshness-ok', color: MUTED },
+        text: 'Loaded: 220 players • Updated 3 days ago (Sat, Sep 12 at 4:00 PM)',
+        label: { text: '• Updated 3 days ago (Sat, Sep 12 at 4:00 PM)', cls: 'freshness-ok', color: MUTED },
     });
     expect(await readStatus(page, '#adpStatusDisplay')).toEqual({
-        text: `${fmt} • Fetched today`,
-        label: { text: '• Fetched today', cls: 'freshness-ok', color: MUTED },
+        text: `${fmt} • Fetched today at 4:00 PM`,
+        label: { text: '• Fetched today at 4:00 PM', cls: 'freshness-ok', color: MUTED },
     });
 
     await openWithMeta(page, {
         rankings: { count: 220, date: OLD_DATE, updatedAt: NOW - 14 * DAY },
         adp: { format: fmt, date: OLD_DATE, updatedAt: NOW - 3 * DAY },
     });
-    expect((await readStatus(page, '#metaDisplay')).label).toEqual({ text: '• Updated 14 days ago', cls: 'freshness-ok', color: MUTED });
-    expect((await readStatus(page, '#adpStatusDisplay')).label).toEqual({ text: '• Fetched 3 days ago', cls: 'freshness-ok', color: MUTED });
+    expect((await readStatus(page, '#metaDisplay')).label).toEqual({ text: '• Updated 14 days ago (Tue, Sep 1 at 4:00 PM)', cls: 'freshness-ok', color: MUTED });
+    expect((await readStatus(page, '#adpStatusDisplay')).label).toEqual({ text: '• Fetched 3 days ago (Sat, Sep 12 at 4:00 PM)', cls: 'freshness-ok', color: MUTED });
 
     // Stale from the next day.
     await openWithMeta(page, {
@@ -79,12 +83,12 @@ test('saved rankings and ADP show their age, amber past 14 and 3 days; meta save
         adp: { format: fmt, date: OLD_DATE, updatedAt: NOW - 4 * DAY },
     });
     expect(await readStatus(page, '#metaDisplay')).toEqual({
-        text: 'Loaded: 220 players • Updated 15 days ago — consider refreshing',
-        label: { text: '• Updated 15 days ago — consider refreshing', cls: 'freshness-stale', color: AMBER },
+        text: 'Loaded: 220 players • Updated 15 days ago (Mon, Aug 31 at 4:00 PM) — consider refreshing',
+        label: { text: '• Updated 15 days ago (Mon, Aug 31 at 4:00 PM) — consider refreshing', cls: 'freshness-stale', color: AMBER },
     });
     expect(await readStatus(page, '#adpStatusDisplay')).toEqual({
-        text: `${fmt} • Fetched 4 days ago — fetch again before you draft`,
-        label: { text: '• Fetched 4 days ago — fetch again before you draft', cls: 'freshness-stale', color: AMBER },
+        text: `${fmt} • Fetched 4 days ago (Fri, Sep 11 at 4:00 PM) — fetch again before you draft`,
+        label: { text: '• Fetched 4 days ago (Fri, Sep 11 at 4:00 PM) — fetch again before you draft', cls: 'freshness-stale', color: AMBER },
     });
 
     // Saved before 8B: no updatedAt, today's text and no label.
@@ -98,7 +102,7 @@ test('saved rankings and ADP show their age, amber past 14 and 3 days; meta save
     // The ADP format is saved text (a restored backup can hold anything): shown as text, not markup.
     await openWithMeta(page, { rankings: null, adp: { format: 'FFC: <b>Mock</b>', date: OLD_DATE, updatedAt: NOW } });
     await expect(page.locator('#metaDisplay')).toBeHidden();
-    expect((await readStatus(page, '#adpStatusDisplay')).text).toBe('FFC: <b>Mock</b> • Fetched today');
+    expect((await readStatus(page, '#adpStatusDisplay')).text).toBe('FFC: <b>Mock</b> • Fetched today at 4:00 PM');
     await expect(page.locator('#adpStatusDisplay b')).toHaveCount(0);
 
     await expectClean(page, state);
@@ -132,7 +136,7 @@ test('a rankings import shows the processing line, then the success line and a f
     const success = page.locator('#rankingsSuccessMsg');
     await expect(success).toBeVisible();
     await expect(success).toHaveText('Rankings loaded successfully!');
-    await expect(page.locator('#metaDisplay')).toHaveText('Loaded: 24 players • Updated today');
+    await expect(page.locator('#metaDisplay')).toHaveText('Loaded: 24 players • Updated today at 4:00 PM');
 
     const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('mds_meta')));
     expect(meta.count).toBe(24);
@@ -175,7 +179,7 @@ test('Fetch Market Value shows the processing line, then the success line; a fai
     await expect(processing).toBeHidden();
     await expect(page.locator('#adpSuccessMsg')).toBeVisible();
     await expect(page.locator('#adpSuccessMsg')).toHaveText('Market value updated!');
-    await expect(page.locator('#adpStatusDisplay')).toHaveText('FFC: Redraft - 1QB (PPR) • Fetched today');
+    await expect(page.locator('#adpStatusDisplay')).toHaveText('FFC: Redraft - 1QB (PPR) • Fetched today at 4:00 PM');
     const meta = await page.evaluate(() => JSON.parse(localStorage.getItem('mds_adp_meta')));
     expect(meta.updatedAt).toBe(NOW);
     await expect(page.locator('#adpSuccessMsg')).toBeHidden({ timeout: 5000 });
@@ -187,7 +191,7 @@ test('Fetch Market Value shows the processing line, then the success line; a fai
     await expect(toast(page, 'Failed to fetch live Market Value.')).toBeVisible();
     await expect(processing).toBeHidden();
     await expect(page.locator('#adpSuccessMsg')).toBeHidden();
-    await expect(page.locator('#adpStatusDisplay')).toHaveText('FFC: Redraft - 1QB (PPR) • Fetched today');
+    await expect(page.locator('#adpStatusDisplay')).toHaveText('FFC: Redraft - 1QB (PPR) • Fetched today at 4:00 PM');
 
     // The failed fetch's HTTP 500 and console.error (fetchMarketValue's catch) are expected here.
     state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !e.includes('Fantasy Football Calculator Error: boom') && !e.includes('/api/ffc/')));

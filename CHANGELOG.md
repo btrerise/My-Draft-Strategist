@@ -15,6 +15,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **"Updated today" means today where you are, and the time is shown.** The rankings and ADP lines counted 24-hour
+  periods, so rankings loaded at 9 PM said "today" until 9 PM the next day. They now count calendar days in your time
+  zone, and give the time: "Updated today at 9:12 AM", "Fetched yesterday at 9:49 PM", "Updated 3 days ago (Tue,
+  Nov 3 at 9:49 PM)". The same goes for the T-Score page's "Sheet data" line.
 - **Easier to tap, clearer to tab, and every tap answers (here and on the T-Score page).** Small buttons keep their look
   but take a tap anywhere in a 48px square around them (Material 3's size): Taken and Pick, the "i" icons, the queue
   star and colour dot, the toast's close button, text buttons like Badges. Pressing a button now shades it a little and
@@ -134,6 +138,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **"Updated today" means today where you are, and the time is shown.** Every "Updated / Synced … ago" label counted
+  24-hour periods, so Weekly rankings uploaded at 9 PM said "today" until 9 PM the next day. They now count calendar
+  days in your time zone, and the "likely stale" warnings go by the same days. A card's status line gives the time
+  ("Updated today at 9:12 AM", "Updated 3 days ago (Tue, Nov 3 at 9:49 PM)"), so you can tell a Sunday-morning
+  re-upload from the first one; the short label in a card's header and a league card's sync note show the full date
+  and time when you hover over them. So do market values, SoS, and the Trade tab's market line.
 - **Your standing on the Roster tab, and a shorter record line.** Beside your record: your place in the league, and
   in a league with divisions your place in your division and your playoff seed instead (division winners take the top
   seeds, then the best of the rest, as Sleeper seeds them), or "Out of playoffs" below the line: "6–2 · 2nd in Troop

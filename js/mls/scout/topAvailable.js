@@ -324,7 +324,7 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
             const notes = [];
             if (knowsWholeLeague) {
                 const fresh = getFreshness(league.lastSyncedAt, 2, 'synced');
-                notes.push(`Ownership is from this league's last sync${fresh ? ` (${fresh.label})` : ''}. Re-run <strong>Sync All</strong> on the Dashboard if a recent add or drop is missing.`);
+                notes.push(`Ownership is from this league's last sync${fresh ? ` (${fresh.detail})` : ''}. Re-run <strong>Sync All</strong> on the Dashboard if a recent add or drop is missing.`);
             } else {
                 notes.push(`This is a manual league, so the app only knows your own roster. Everyone below is off your roster, but some may be on other teams - check your league before putting in a claim.`);
             }

@@ -6,6 +6,10 @@
 import { test, expect } from '@playwright/test';
 import { openApp, FIXED_NOW } from './helpers.mjs';
 
+// The status lines show the time of day ("Updated today at 4:00 PM"), so pin the zone and the locale.
+test.use({ timezoneId: 'UTC', locale: 'en-US' });
+
+
 const WR_CSV = [
     'Rank,Player,T-Score (A),Label,ADP,Exp T-Score,T-Score Diff,Classification,Yds/Gm,1st D/Gm,RZ Tgts',
     "2,Ja'Marr Chase,91.5,Elite,3.2,80.1,11.4,Value,98.1,4.9,22",
@@ -49,7 +53,7 @@ test('Refresh pulls both sheets, re-renders every table and caches them for the 
     expect(requested.sort()).toEqual(['rb', 'wr']);
     await expect(btn).toBeEnabled();
     expect(await btn.innerHTML()).toBe(origHtml);
-    await expect(page.locator('#tscoreFreshness')).toHaveText('Sheet data: Updated today');
+    await expect(page.locator('#tscoreFreshness')).toHaveText('Sheet data: Updated today at 4:00 PM');
 
     const after = await bodies(page);
     // Top 50 sorted by rank; the name is escaped; an unknown label falls back to label-depth.
@@ -99,7 +103,7 @@ test('Refresh pulls both sheets, re-renders every table and caches them for the 
     await page.waitForLoadState('networkidle');
     expect(requested).toEqual([]);
     expect(await bodies(page)).toEqual(after);
-    await expect(page.locator('#tscoreFreshness')).toHaveText('Sheet data: Updated today');
+    await expect(page.locator('#tscoreFreshness')).toHaveText('Sheet data: Updated today at 4:00 PM');
     await expectNoErrors(state);
 });
 

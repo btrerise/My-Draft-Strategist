@@ -7,6 +7,10 @@ import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp } from './helpers.mjs';
 
+// The status lines show the time of day ("Updated today at 4:00 PM"), so pin the zone and the locale.
+test.use({ timezoneId: 'UTC', locale: 'en-US' });
+
+
 async function runTrade(page, get, give) {
     // Each side is picked with a search (trade/picker.js); setTradePlayers sets a whole side at once.
     await callApp(page, 'setTradePlayers', 'get', get.split('\n').filter(Boolean));
@@ -412,7 +416,7 @@ test.describe('Trade Analyzer: how your team changes', () => {
             State.marketUpdatedAt = String(Date.now() - 3 * 24 * 3600 * 1000);
         });
         await analyze(page);
-        await expect(out.locator('.mls-trade-market-age')).toHaveText('Market values: Updated 3 days ago. Refresh them in Trade Finder (below) before you trade.');
+        await expect(out.locator('.mls-trade-market-age')).toHaveText('Market values: Updated 3 days ago (Sat, Sep 12 at 4:00 PM). Refresh them in Trade Finder (below) before you trade.');
         await expect(out.locator('.mls-trade-market-age')).toHaveClass(/is-stale/);
         await expect(out).toContainText("2027 1st isn't in the Market Consensus data");
         // Fresh today: dated, not amber.
@@ -421,7 +425,7 @@ test.describe('Trade Analyzer: how your team changes', () => {
             State.marketUpdatedAt = String(Date.now());
         });
         await analyze(page);
-        await expect(out.locator('.mls-trade-market-age')).toHaveText('Market values: Updated today.');
+        await expect(out.locator('.mls-trade-market-age')).toHaveText('Market values: Updated today at 4:00 PM.');
         await expect(out.locator('.mls-trade-market-age')).not.toHaveClass(/is-stale/);
         expect(await noSideScroll(page)).toBe(true);
         await expect(out.locator('[data-pick-note]')).toHaveCount(0); // the pick has no value yet

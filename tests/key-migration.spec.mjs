@@ -13,6 +13,10 @@ import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab } from './helpers.mjs';
 
+// The status lines show the time of day ("Updated today at 4:00 PM"), so pin the zone and the locale.
+test.use({ timezoneId: 'UTC', locale: 'en-US' });
+
+
 const PRE_6B = JSON.parse(readFileSync(new URL('./fixtures/pre-6b/storage.json', import.meta.url), 'utf8'));
 
 // The rename, written out independently of keys.js.
@@ -97,7 +101,7 @@ test.describe('pre-6B storage', () => {
 
         // --- T-Score ---
         state = await openApp(page, '/t-score/');
-        await expect(page.locator('#tscoreFreshness')).toHaveText('Sheet data: Updated today');
+        await expect(page.locator('#tscoreFreshness')).toHaveText('Sheet data: Updated today at 4:00 PM');
         s = await dumpStorage(page);
         expect(s.tscore_cache).toBe(PRE_6B.mds_tscore_cache);
         expect(s.tscore_cache_updated).toBe(PRE_6B.mds_tscore_cache_updated);
@@ -110,7 +114,7 @@ test.describe('pre-6B storage', () => {
     test('T-Score opened first still shows its freshness label, and deletes only its old cache names', async ({ page }) => {
         await seedPre6b(page);
         let state = await openApp(page, '/t-score/');
-        await expect(page.locator('#tscoreFreshness')).toHaveText('Sheet data: Updated today');
+        await expect(page.locator('#tscoreFreshness')).toHaveText('Sheet data: Updated today at 4:00 PM');
         const s = await dumpStorage(page);
         expect(s.tscore_cache).toBe(PRE_6B.mds_tscore_cache);
         expect(s.tscore_cache_updated).toBe(PRE_6B.mds_tscore_cache_updated);

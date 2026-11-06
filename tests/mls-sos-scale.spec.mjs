@@ -7,6 +7,10 @@
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, seedMls, callApp, FIXED_NOW, RANKINGS_CSV } from './helpers.mjs';
 
+// The age line shows the time of day ("SoS updated today at 4:00 PM"), so pin the zone and the locale.
+test.use({ timezoneId: 'UTC', locale: 'en-US' });
+
+
 const status = (page) => page.locator('#sosStatus');
 const flip = (page) => page.locator('#sosReversedToggle');
 const saved = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('mls_sos') || '{}'));
@@ -39,7 +43,7 @@ test.describe('Lineup Strategist SoS scale and age', () => {
         await uploadSoS(page, ['Team,QB,RB,WR,TE', 'BUF,2,3,4,5', 'BAL,15,25,32,17', 'CIN,6,28,10,11'].join('\n'));
         await expect(status(page)).toBeVisible();
         // Where it came from (round 6), as well as when.
-        await expect(status(page)).toContainText('SoS updated today from sos.csv');
+        await expect(status(page)).toContainText('SoS updated today at 4:00 PM from sos.csv');
         await expect(status(page)).toContainText('1 = easiest, 32 = hardest');
         await expect(status(page).locator('.freshness-ok')).toBeVisible();
         await expect(flip(page)).not.toBeChecked();
@@ -89,7 +93,7 @@ test.describe('Lineup Strategist SoS scale and age', () => {
         }, FIXED_NOW.getTime());
         await page.reload();
         await showTab(page, 'roster');
-        await expect(status(page).locator('.freshness-stale')).toHaveText('SoS updated 8 days ago - consider refreshing');
+        await expect(status(page).locator('.freshness-stale')).toHaveText('SoS updated 8 days ago (Mon, Sep 7 at 4:00 PM) - consider refreshing');
 
         // SoS saved before dates were kept.
         await page.evaluate(() => localStorage.removeItem('mls_sos_updated'));
@@ -101,18 +105,18 @@ test.describe('Lineup Strategist SoS scale and age', () => {
         await uploadSoS(page, ['Team,QB,RB,WR,TE', 'BUF,1,2,3,4', 'MIA,5,4,3,2'].join('\n'));
         await expect(toast(page, 'look like 1-5 ratings')).toBeVisible();
         await expect(status(page).locator('.sos-status-warn')).toContainText('look like 1-5 ratings');
-        await expect(status(page)).toContainText('SoS updated today');
+        await expect(status(page)).toContainText('SoS updated today at 4:00 PM');
 
         // The manual grid saves with today's date too, and real ranks clear the warning.
         await page.evaluate((now) => localStorage.setItem('mls_sos_updated', String(now - 3 * 24 * 60 * 60 * 1000)), FIXED_NOW.getTime());
         await page.reload();
         await showTab(page, 'roster');
-        await expect(status(page)).toContainText('SoS updated 3 days ago');
+        await expect(status(page)).toContainText('SoS updated 3 days ago (Sat, Sep 12 at 4:00 PM)');
         await page.locator('.sos-details-accordion summary', { hasText: 'Edit Manual SoS Grid' }).click();
         await expect(page.locator('.sos-grid-note')).toHaveText('Each team\'s matchup rank at each position: 1 = easiest, 32 = hardest.');
         await page.fill('#sos_BUF_QB', '20');
         await page.locator('[data-action="saveManualSoS"]').click();
-        await expect(status(page)).toContainText('SoS updated today from the manual grid');
+        await expect(status(page)).toContainText('SoS updated today at 4:00 PM from the manual grid');
         await expect(status(page).locator('.sos-status-warn')).toHaveCount(0);
         expect(JSON.parse(await page.evaluate(() => localStorage.getItem('mls_sos_source')))).toEqual({ kind: 'grid' });
 
@@ -134,7 +138,7 @@ test.describe('Lineup Strategist SoS scale and age', () => {
         sos = await saved(page);
         expect(sos.BUF.QB).toBe('13');
         expect(await page.evaluate(() => localStorage.getItem('mls_sos_reversed'))).toBe('0');
-        await expect(status(page)).toContainText('SoS updated today from the manual grid');
+        await expect(status(page)).toContainText('SoS updated today at 4:00 PM from the manual grid');
 
         await expectClean(page, state);
     });
@@ -168,7 +172,7 @@ test.describe('Lineup Strategist SoS scale and age', () => {
         const sos = await saved(page);
         expect(sos.CIN.WR).toBe('32');
         expect(sos.BAL.RB).toBe('18');
-        await expect(status(page)).toContainText('SoS updated today from your ROS rankings (rankings.csv)');
+        await expect(status(page)).toContainText('SoS updated today at 4:00 PM from your ROS rankings (rankings.csv)');
         await expect(flip(page)).toBeChecked();
         await expect(rosterBadge(page, 'Derrick Henry')).toHaveText('SoS: 18');
 

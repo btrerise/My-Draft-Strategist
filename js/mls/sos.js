@@ -103,7 +103,7 @@ import { sosBadgeMarkup } from './badges.js';
         if (!hasSoS()) { el.hidden = true; el.innerHTML = ''; return; }
         const fresh = getFreshness(State.sosUpdatedAt, SOS_STALE_DAYS);
         const age = fresh
-            ? `<span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">SoS ${fresh.label.charAt(0).toLowerCase()}${fresh.label.slice(1)}${fresh.isStale ? ' - consider refreshing' : ''}</span>${sosSourceText() ? ` <span class="sos-status-source">${sosSourceText()}</span>` : ''}`
+            ? `<span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">SoS ${fresh.detail.charAt(0).toLowerCase()}${fresh.detail.slice(1)}${fresh.isStale ? ' - consider refreshing' : ''}</span>${sosSourceText() ? ` <span class="sos-status-source">${sosSourceText()}</span>` : ''}`
             : `<span class="sos-status-muted">Upload date unknown (saved before dates were kept)</span>`;
         const ratings = looksLikeRatings(sosValues(State.sosMap))
             ? `<div class="sos-status-warn freshness-stale">These numbers only go up to 5, so they look like 1-5 ratings rather than 1-32 ranks; the badges will read nearly every one as easy.</div>` : '';

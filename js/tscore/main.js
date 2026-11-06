@@ -157,7 +157,7 @@ function updateTscoreFreshnessLabel(timestamp) {
     if (!el) return;
     const fresh = getFreshness(timestamp, Infinity);
     if (!fresh) { el.textContent = ''; return; }
-    el.textContent = `Sheet data: ${fresh.label}`;
+    el.textContent = `Sheet data: ${fresh.detail}`;
 }
 
 async function refreshTScoreData(btn) {

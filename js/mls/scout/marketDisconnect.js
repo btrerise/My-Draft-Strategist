@@ -258,7 +258,7 @@ import { getPowerLeagueKind } from '../power/directionLabels.js';
                 // stale line sits much tighter than ROS (14) or Weekly (6).
                 const fresh = getFreshness(State.marketUpdatedAt, 3);
                 if (fresh) {
-                    metaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">• ${fresh.label}${fresh.isStale ? ' — pull fresh values before trading' : ''}</span>`;
+                    metaEl.innerHTML = `${countText} <span class="${fresh.isStale ? 'freshness-stale' : 'freshness-ok'}">• ${fresh.detail}${fresh.isStale ? ' — pull fresh values before trading' : ''}</span>`;
                 } else {
                     metaEl.innerText = countText;
                 }

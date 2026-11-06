@@ -107,7 +107,8 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
         return verdictHTML;
     }
 
-    // How old the market values are (improvements S14, round 6, owner's choice): always dated, and amber with a
+    // nudge from the day after they were fetched (calendar days since 2026-11, the shared getFreshness), since trade
+    // values move with every injury and depth-chart change.
     // nudge once they're more than a day old, since trade values move with every injury and depth-chart change.
     // On screen only: Export Trade copies the banners and notes, not this line.
     function marketAgeHTML() {
@@ -116,7 +117,7 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
         // Values fetched for another format than this league's (S23 follow-up): said under the age, in the same amber.
         const warning = marketFormatWarning();
         return (fresh
-            ? `<div class="mls-trade-market-age${fresh.isStale ? ' is-stale' : ''}">Market values: ${fresh.label}${fresh.isStale ? '. Refresh them in Trade Finder (below) before you trade.' : '.'}</div>`
+            ? `<div class="mls-trade-market-age${fresh.isStale ? ' is-stale' : ''}">Market values: ${fresh.detail}${fresh.isStale ? '. Refresh them in Trade Finder (below) before you trade.' : '.'}</div>`
             : '')
             + (warning ? `<div class="mls-trade-market-age is-stale">${escapeHtml(warning)} Fetch again in Trade Finder (below).</div>` : '');
     }
