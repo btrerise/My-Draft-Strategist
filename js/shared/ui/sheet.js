@@ -150,7 +150,8 @@ function takeHistoryEntryOff() {
     });
 }
 
-window.addEventListener('popstate', (e) => {
+// Guarded: tests/unit/badgeLegend.test.mjs loads the legend modules (which import this one) in Node, with no window.
+if (typeof window !== 'undefined') window.addEventListener('popstate', (e) => {
     if (pendingPops.length) {
         e.stopImmediatePropagation();
         pendingPops.shift()();
@@ -169,7 +170,11 @@ function wireDrag(host, sheet) {
     const onMove = (e) => {
         if (!start || e.pointerId !== start.id) return;
         const dy = e.clientY - start.y;
-        if (Math.abs(dy) > 4) start.moved = true;
+        // Capture only once it's a drag, so a plain tap still clicks the handle (capture moves the click to the zone).
+        if (!start.moved && Math.abs(dy) > 4) {
+            start.moved = true;
+            if (start.zone.setPointerCapture) start.zone.setPointerCapture(e.pointerId);
+        }
         // Down follows the finger; up is resisted (the sheet expands on release instead of stretching).
         sheet.style.transform = `translateY(${dy > 0 ? dy : dy / 4}px)`;
         start.lastY = e.clientY; start.lastT = e.timeStamp;
@@ -196,10 +201,9 @@ function wireDrag(host, sheet) {
         zone.addEventListener('pointerdown', (e) => {
             if (!isBottomSheet() || e.button > 0) return;
             if (e.target.closest('.sheet-close')) return;
-            start = { id: e.pointerId, y: e.clientY, t: e.timeStamp, moved: false };
+            start = { id: e.pointerId, zone, y: e.clientY, t: e.timeStamp, moved: false };
             host._dragged = false;
             sheet.classList.add('is-dragging');
-            zone.setPointerCapture && zone.setPointerCapture(e.pointerId);
         });
         zone.addEventListener('pointermove', onMove);
         zone.addEventListener('pointerup', onUp);
