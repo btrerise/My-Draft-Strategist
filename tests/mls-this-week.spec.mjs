@@ -570,7 +570,7 @@ test.describe('This week: every league\'s matchup', () => {
         await expectClean(page, state);
     });
 
-    test('the Roster tab shows your season record and points for / against ranks', async ({ page }) => {
+    test('the Roster tab shows your season record, standing and points for / against ranks', async ({ page }) => {
         const { state } = await setup(page);
         await page.selectOption('#headerLeagueSelect', FIXTURE_LEAGUE_ID);
         await showTab(page, 'roster');
@@ -580,6 +580,7 @@ test.describe('This week: every league\'s matchup', () => {
         await expect(rec).toContainText('Record 0–1');
         // Above the header's line, with the league's name.
         expect(await rec.evaluate(el => !!el.closest('header.card-header'))).toBe(true);
+        await expect(rec.locator('.mls-roster-record-standing')).toHaveText('2nd of 2');
         await expect(rec).toContainText('Points for 1st of 2');
         await expect(rec).toContainText('Points against 1st of 2');
         await expectClean(page, state);

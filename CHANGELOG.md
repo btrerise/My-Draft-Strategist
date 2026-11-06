@@ -134,6 +134,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Your standing on the Roster tab.** Beside your record: your place in the league ("Standing 2nd of 12"), by
+  record and then points for, as Sleeper sorts it. Shows after the league's next sync.
 - **Easier to tap, clearer to tab, and every tap answers.** Small buttons keep their look but take a tap anywhere in a
   48px square around them (Material 3's size): the "i" icons, the toast's close button, the league arrows, the
   Dashboard's fold buttons and links, the Scoreboard's Refresh. Pressing a button now shades it a little and tightens its corners

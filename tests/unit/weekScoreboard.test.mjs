@@ -150,7 +150,15 @@ test('from a sync: team names, median, guillotine and your season record', () =>
     assert.equal(playsMedian({ league_average_match: 0 }), false);
     assert.equal(isGuillotine({ type: 3 }), true);
     assert.equal(isGuillotine({ type: 0 }), false);
-    assert.deepEqual(seasonRecord(rosters, 1), { wins: 5, losses: 2, ties: 0, pf: 812.4, pa: 760.1, pfRank: 2, paRank: 2, of: 3 });
+    assert.deepEqual(seasonRecord(rosters, 1), { wins: 5, losses: 2, ties: 0, pf: 812.4, pa: 760.1, standing: 1, pfRank: 2, paRank: 2, of: 3 });
+    assert.equal(seasonRecord(rosters, 2).standing, 2);
+    // Same record: points for breaks the tie; a tie counts as half a win.
+    const tied = [
+        { roster_id: 1, settings: { wins: 4, losses: 3, ties: 0, fpts: 800 } },
+        { roster_id: 2, settings: { wins: 4, losses: 3, ties: 0, fpts: 850 } },
+        { roster_id: 3, settings: { wins: 4, losses: 2, ties: 1, fpts: 700 } },
+    ];
+    assert.deepEqual([1, 2, 3].map(id => seasonRecord(tied, id).standing), [3, 2, 1]);
     // Nobody has played (a guillotine league's rosters, or week 1): no record.
     assert.equal(seasonRecord([{ roster_id: 1, settings: { wins: 0, losses: 0, ties: 0 } }], 1), null);
     assert.equal(seasonRecord(rosters, 9), null);

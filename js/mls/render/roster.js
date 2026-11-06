@@ -339,9 +339,10 @@ import { KEYS } from '../../shared/storage/keys.js';
         if (seasonSet) fitRosterRankBadges(rosterListEl);
     }
 
-// Your season record under the Roster tab's league name (improvements S21, the owner's ask): W-L, and where your
-// points for and against rank in the league (1st = the most), as of the league's last sync (league.record, set by
-// processSleeperData). Hidden for manual leagues, a league synced before S21, and before anyone has played.
+// Your season record under the Roster tab's league name (improvements S21, the owner's ask): W-L, your place in the
+// standings, and where your points for and against rank in the league (1st = the most), as of the league's last sync
+// (league.record, set by processSleeperData). Hidden for manual leagues, a league synced before S21, and before anyone
+// has played. The standing is left out for a league last synced before it was added (no record.standing).
 function renderRosterRecord(league) {
     const el = document.getElementById('rosterRecord');
     if (!el) return;
@@ -349,9 +350,10 @@ function renderRosterRecord(league) {
     if (!r) { el.hidden = true; el.textContent = ''; return; }
     const wl = `${r.wins}\u2013${r.losses}${r.ties ? `\u2013${r.ties}` : ''}`;
     el.innerHTML = `<span class="mls-roster-record-part">Record <strong class="mls-roster-record-wl">${wl}</strong></span>`
+        + (r.standing ? `<span class="mls-roster-record-part">Standing <strong class="mls-roster-record-standing">${ordinal(r.standing)} of ${r.of}</strong></span>` : '')
         + `<span class="mls-roster-record-part">Points for ${ordinal(r.pfRank)} of ${r.of} <span class="text-helper">(${r.pf.toFixed(1)})</span></span>`
         + `<span class="mls-roster-record-part">Points against ${ordinal(r.paRank)} of ${r.of} <span class="text-helper">(${r.pa.toFixed(1)})</span></span>`;
-    el.title = 'This season, as of your last sync. 1st = the most points in your league.';
+    el.title = 'This season, as of your last sync. Standing: by record, then points for. 1st = the most points in your league.';
     el.hidden = false;
 }
 

@@ -194,8 +194,10 @@ export function teamNamesFrom(users, rosters) {
 export const playsMedian = (settings) => !!(settings && settings.league_average_match === 1);
 export const isGuillotine = (settings) => !!(settings && settings.type === 3);
 
-// Your season record from the league's rosters, for the Roster tab: { wins, losses, ties, pf, pa, pfRank, paRank, of }.
-// Ranks: 1 = the most points for (or against) in the league. null before anyone has played, or without your roster.
+// Your season record from the league's rosters, for the Roster tab:
+// { wins, losses, ties, pf, pa, standing, pfRank, paRank, of }. pfRank / paRank: 1 = the most points for (or against)
+// in the league. standing: your place in the league table, 1 = first: by win percentage (a tie counts as half a win),
+// then points for (Sleeper's default tiebreaker). null before anyone has played, or without your roster.
 export function seasonRecord(rosters, rosterId) {
     const list = Array.isArray(rosters) ? rosters.filter(r => r && r.settings) : [];
     const mine = list.find(r => r.roster_id === rosterId);
@@ -206,7 +208,16 @@ export function seasonRecord(rosters, rosterId) {
     if (wins + losses + ties === 0) return null;
     const pf = round1(pts(mine, 'fpts')), pa = round1(pts(mine, 'fpts_against'));
     const rankBy = (k, mineVal) => list.filter(r => round1(pts(r, k)) > mineVal).length + 1;
-    return { wins, losses, ties, pf, pa, pfRank: rankBy('fpts', pf), paRank: rankBy('fpts_against', pa), of: list.length };
+    const winPct = (r) => {
+        const w = Number(r.settings.wins) || 0, l = Number(r.settings.losses) || 0, t = Number(r.settings.ties) || 0;
+        return (w + l + t) ? (w + t / 2) / (w + l + t) : 0;
+    };
+    const myPct = winPct(mine);
+    const standing = list.filter(r => {
+        const pct = winPct(r);
+        return pct > myPct || (pct === myPct && round1(pts(r, 'fpts')) > pf);
+    }).length + 1;
+    return { wins, losses, ties, pf, pa, standing, pfRank: rankBy('fpts', pf), paRank: rankBy('fpts_against', pa), of: list.length };
 }
 
 // 1st, 2nd, 3rd, 4th... 11th, 12th, 13th, 21st.
