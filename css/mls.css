@@ -2067,6 +2067,7 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .mls-roster-record { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.9rem; margin: 0.35rem 0 0; font-size: 0.85rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .mls-roster-record[hidden] { display: none; }
 .mls-roster-record-wl { color: var(--text-main); font-size: 0.95rem; }
+.mls-roster-record abbr { text-decoration: none; }
 /* Phones: the name across the card, then the format, then the record (S21, owner's request). */
 @media (max-width: 600px) {
     .mls-roster-head h3 { display: block; }

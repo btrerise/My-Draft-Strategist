@@ -195,10 +195,16 @@ export const playsMedian = (settings) => !!(settings && settings.league_average_
 export const isGuillotine = (settings) => !!(settings && settings.type === 3);
 
 // Your season record from the league's rosters, for the Roster tab:
-// { wins, losses, ties, pf, pa, standing, pfRank, paRank, of }. pfRank / paRank: 1 = the most points for (or against)
-// in the league. standing: your place in the league table, 1 = first: by win percentage (a tie counts as half a win),
-// then points for (Sleeper's default tiebreaker). null before anyone has played, or without your roster.
-export function seasonRecord(rosters, rosterId) {
+// { wins, losses, ties, pf, pa, standing, pfRank, paRank, of, division, divisionRank, seed, playoffTeams }.
+// pfRank / paRank: 1 = the most points for (or against) in the league. standing: your place in the whole league,
+// 1 = first. Sleeper sends no standings, so they're worked out here the way Sleeper orders them: win percentage (a tie
+// counts as half a win), then points for, then points against.
+// With divisions (league.settings.divisions over 1, and a division on the rosters): division is its name from the
+// league's metadata (division_1, ...; "Division 2" without one), divisionRank your place in it, and seed your playoff
+// seed as Sleeper seeds a league with divisions: the division winners take the top seeds, in that order, then the
+// best of the rest regardless of division. seed is null when you're outside the league's playoff_teams.
+// Without divisions those four are null. null before anyone has played, or without your roster.
+export function seasonRecord(rosters, rosterId, league) {
     const list = Array.isArray(rosters) ? rosters.filter(r => r && r.settings) : [];
     const mine = list.find(r => r.roster_id === rosterId);
     if (!mine) return null;
@@ -212,12 +218,31 @@ export function seasonRecord(rosters, rosterId) {
         const w = Number(r.settings.wins) || 0, l = Number(r.settings.losses) || 0, t = Number(r.settings.ties) || 0;
         return (w + l + t) ? (w + t / 2) / (w + l + t) : 0;
     };
-    const myPct = winPct(mine);
-    const standing = list.filter(r => {
-        const pct = winPct(r);
-        return pct > myPct || (pct === myPct && round1(pts(r, 'fpts')) > pf);
-    }).length + 1;
-    return { wins, losses, ties, pf, pa, standing, pfRank: rankBy('fpts', pf), paRank: rankBy('fpts_against', pa), of: list.length };
+    // Best first; roster id last, so the order is the same on every sync.
+    const better = (a, b) => (winPct(b) - winPct(a)) || (pts(b, 'fpts') - pts(a, 'fpts'))
+        || (pts(b, 'fpts_against') - pts(a, 'fpts_against')) || (a.roster_id - b.roster_id);
+    const table = list.slice().sort(better);
+    const standing = table.indexOf(mine) + 1;
+
+    let division = null, divisionRank = null, seed = null, playoffTeams = null;
+    const settings = (league && league.settings) || {};
+    const myDiv = Number(s.division) || 0;
+    if (Number(settings.divisions) > 1 && myDiv) {
+        const meta = (league && league.metadata) || {};
+        division = meta[`division_${myDiv}`] || `Division ${myDiv}`;
+        divisionRank = table.filter(r => Number(r.settings.division) === myDiv).indexOf(mine) + 1;
+        const winners = [];
+        table.forEach(r => {
+            const d = Number(r.settings.division) || 0;
+            if (d && !winners.some(w => Number(w.settings.division) === d)) winners.push(r);
+        });
+        const order = winners.concat(table.filter(r => !winners.includes(r)));
+        playoffTeams = Number(settings.playoff_teams) || null;
+        const place = order.indexOf(mine) + 1;
+        seed = (!playoffTeams || place <= playoffTeams) ? place : null;
+    }
+    return { wins, losses, ties, pf, pa, standing, pfRank: rankBy('fpts', pf), paRank: rankBy('fpts_against', pa), of: list.length,
+        division, divisionRank, seed, playoffTeams };
 }
 
 // 1st, 2nd, 3rd, 4th... 11th, 12th, 13th, 21st.

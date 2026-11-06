@@ -339,21 +339,27 @@ import { KEYS } from '../../shared/storage/keys.js';
         if (seasonSet) fitRosterRankBadges(rosterListEl);
     }
 
-// Your season record under the Roster tab's league name (improvements S21, the owner's ask): W-L, your place in the
-// standings, and where your points for and against rank in the league (1st = the most), as of the league's last sync
-// (league.record, set by processSleeperData). Hidden for manual leagues, a league synced before S21, and before anyone
-// has played. The standing is left out for a league last synced before it was added (no record.standing).
+// Your season record under the Roster tab's league name (improvements S21, the owner's ask), as of the league's last
+// sync (league.record, set by processSleeperData): W-L with your place in the league ("6–2 (3rd of 12)"), then in a
+// league with divisions your place in yours and your playoff seed, then where your points for and against rank (PF /
+// PA, 1st = the most). Hidden for manual leagues, a league synced before S21, and before anyone has played. A league
+// last synced before the standing was added shows the W-L alone; the division and seed only when the sync found them.
 function renderRosterRecord(league) {
     const el = document.getElementById('rosterRecord');
     if (!el) return;
     const r = league && league.record;
     if (!r) { el.hidden = true; el.textContent = ''; return; }
     const wl = `${r.wins}\u2013${r.losses}${r.ties ? `\u2013${r.ties}` : ''}`;
-    el.innerHTML = `<span class="mls-roster-record-part">Record <strong class="mls-roster-record-wl">${wl}</strong></span>`
-        + (r.standing ? `<span class="mls-roster-record-part">Standing <strong class="mls-roster-record-standing">${ordinal(r.standing)} of ${r.of}</strong></span>` : '')
-        + `<span class="mls-roster-record-part">Points for ${ordinal(r.pfRank)} of ${r.of} <span class="text-helper">(${r.pf.toFixed(1)})</span></span>`
-        + `<span class="mls-roster-record-part">Points against ${ordinal(r.paRank)} of ${r.of} <span class="text-helper">(${r.pa.toFixed(1)})</span></span>`;
-    el.title = 'This season, as of your last sync. Standing: by record, then points for. 1st = the most points in your league.';
+    const part = (html) => `<span class="mls-roster-record-part">${html}</span>`;
+    el.innerHTML = part(`<strong class="mls-roster-record-wl">${wl}</strong>`
+            + (r.standing ? ` <span class="mls-roster-record-standing">(${ordinal(r.standing)} of ${r.of})</span>` : ''))
+        + (r.division && r.divisionRank ? part(`<span class="mls-roster-record-division">${ordinal(r.divisionRank)} in ${escapeHtml(r.division)}</span>`) : '')
+        + (r.seed ? part(`<span class="mls-roster-record-seed">${ordinal(r.seed)} seed</span>`) : '')
+        + part(`<abbr title="Points for">PF</abbr> ${ordinal(r.pfRank)} <span class="text-helper">(${r.pf.toFixed(1)})</span>`)
+        + part(`<abbr title="Points against">PA</abbr> ${ordinal(r.paRank)} <span class="text-helper">(${r.pa.toFixed(1)})</span>`);
+    el.title = 'This season, as of your last sync. Places go by record, then points for, then points against.'
+        + (r.seed ? ' Seeds: the division winners first, then the best of the rest.' : '')
+        + ' PF / PA: 1st = the most points in your league.';
     el.hidden = false;
 }
 

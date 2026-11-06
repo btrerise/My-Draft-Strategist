@@ -713,11 +713,12 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
                 // For the Dashboard's This week card (improvements S21): each team's name by roster id, whether the
                 // league also plays the median, and whether it's a guillotine league (Sleeper type 3, which the
                 // format badge reads as Redraft: it is one, with no opponent). And for the Roster tab, your season
-                // record and where your points for and against rank (null before anyone has played).
+                // record, standing (and division place and playoff seed in a league with divisions) and where your points for
+                // and against rank (null before anyone has played).
                 teamNames: teamNamesFrom(usersData, rosters),
                 medianMatch: playsMedian(ls),
                 guillotine: isGuillotine(ls),
-                record: myTeam ? seasonRecord(rosters, myTeam.roster_id) : null,
+                record: myTeam ? seasonRecord(rosters, myTeam.roster_id, leagueData) : null,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 globalPosMap: globalPosMap, sleeperStarters: sleeperStarters,
                 // Needed by the Matchup Simulator: rosterId identifies "us" within this

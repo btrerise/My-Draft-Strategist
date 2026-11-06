@@ -134,8 +134,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **Your standing on the Roster tab.** Beside your record: your place in the league ("Standing 2nd of 12"), by
-  record and then points for, as Sleeper sorts it. Shows after the league's next sync.
+- **Your standing on the Roster tab, and a shorter record line.** Your place in the league goes beside your record,
+  and in a league with divisions your place in your division and your playoff seed (division winners take the top
+  seeds, then the best of the rest, as Sleeper seeds them): "6–2 (3rd of 12) · 2nd in Troop 269 · 4th seed · PF 5th
+  (1152.4) · PA 10th (1027.8)". Places go by record, then points for, then points against. Points for and against
+  are now PF and PA. Shows after the league's next sync.
 - **Easier to tap, clearer to tab, and every tap answers.** Small buttons keep their look but take a tap anywhere in a
   48px square around them (Material 3's size): the "i" icons, the toast's close button, the league arrows, the
   Dashboard's fold buttons and links, the Scoreboard's Refresh. Pressing a button now shades it a little and tightens its corners
