@@ -9021,3 +9021,43 @@ link did before.
 `body`, and a `className` for its own styles. One sheet at a time; opening another replaces it.
 
 **Left over.** None from the card.
+
+## K1 — Research: Ko-fi tips, a polite ask, supporter perks and sharing
+
+**What changed, where.** Research only, no app files: `docs/improvements/support.md` (findings, recommendations, the
+staged plan, the questions for the owner) and its 21 mock-up PNGs in `docs/improvements/support/` (375 and 1280px of
+each placement, plus three 1200×630 link-preview drafts). The mock-ups were made by a Playwright script kept outside the
+repo: it opened the real pages from `tests/serve.mjs` with the test fixtures, injected mock markup and a mock stylesheet
+built from the site's tokens, and took screenshots. `css/`, `js/`, the pages and `sw.js` are untouched, so no
+`CACHE_NAME` bump and no screenshot baselines change.
+
+**User-visible effect.** None yet.
+
+**Findings worth knowing outside K1.**
+- Ko-fi's badge is a third-party PNG whose alt text says "Buy Me a Coffee" (another service's name); offline or behind
+  a blocker it shows as that text. The two `.hero-kofi` links lack `rel="noopener noreferrer"`.
+- `/lineup/`'s `og:title` starts with a space, its `og:url` is the site root (so a shared `/lineup/` link can preview as
+  the Draft page), its `og:image` is a 512×512 icon under `summary_large_image`, and it has no meta description. `/` and
+  `/t-score/` use an SVG `og:image`, which most chat apps don't preview.
+- **FantasyCalc's Terms of Usage (effective 2026-10-10)** ask for responses "cached and reused across users" (the apps
+  call it from each browser), written permission at 1,000+ monthly active users, and no substitute for their trade
+  calculator. A separate card could route it through a cached Pages Function as FFC is (support.md, Terms).
+- **Sleeper's API** is "free to use for non-commercial purposes"; **ESPN's** scoreboard falls under Disney's Terms of
+  Use (personal, noncommercial; no automated access). Questions for the owner to ask are in support.md.
+- Ko-fi's own site and help centre answer this session with Cloudflare's bot check, so Ko-fi's fees and membership
+  features come from search results quoting its help pages and 2026 reviews, marked for the owner to confirm. For the
+  rest, the owner's Default environment now allows `ko-fi.com`, `help.ko-fi.com`, `docs.sleeper.com`,
+  `fantasycalc.com`, `www.fantasycalc.com`, `disneytermsofuse.com` and `developer.mozilla.org` (approved in this
+  session).
+
+**Proposed cards** (sizes and order in support.md, section 6): **K2** Ko-fi easier to find + Share (~12k, any time);
+**K3** link previews + `?ref=share` (~6k, alongside K2); **K4** the polite rules + Lineup Strategist's Final-week ask and
+season thank-you (~15k, by week 12); **K5** "Share image…" in M9's split button (~6k, after M9); **K6** Draft
+Strategist's post-draft ask (~10k, before August); **K7** supporter perks (~8k, only with a membership).
+
+**The owner's decisions.** Pending: the seven questions at the end of support.md. To be recorded here, then the cards
+written into the runbook.
+
+**Checks.** `npm run check` (see the commit). `git diff --stat main` lists only `docs/improvements/`.
+
+**Left over.** The owner's picks; then K2 onward in the runbook. `docs/TESTING.md`'s open follow-ups: none touched.
