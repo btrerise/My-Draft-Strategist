@@ -78,7 +78,7 @@ async function storePerPositionRanks(page) {
 
 // A FantasyCalc answer listing the file's players in `names` order (best first), with their positions.
 function stubMarket(page, names) {
-    return page.route(/^https:\/\/api\.fantasycalc\.com\//, (route) => route.fulfill({
+    return page.route(/\/api\/fantasycalc\?/, (route) => route.fulfill({
         status: 200, contentType: 'application/json',
         body: JSON.stringify(names.map((name, i) => ({ player: { name, position: POS[name] }, overallRank: i + 1 })))
     }));
