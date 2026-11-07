@@ -518,3 +518,186 @@ use apply to the site. That loses the one-tap convenience, so I'd only fall back
 6. **Stages:** K2 + K3 now, K4 by week 12, K6 before August, K5 after M9, K7 only with a membership. OK?
 7. **Terms:** will you email Sleeper (non-commercial question) and FantasyCalc (users, caching, Trade Analyzer)? And
    should a separate card route FantasyCalc through a cached Pages Function, as FFC is?
+
+---
+
+## Build cards (from the owner's decisions, 2026-11-07)
+
+Written for the runbook in its card format (goal, asks you, scope, avoid, done). Every card follows the runbook's
+"Rules for every session" and reads `docs/improvements/support.md` and the K1 entry in `docs/improvements/LOG.md`
+first. The mock-ups they build from are in `docs/improvements/support/`.
+
+**Order.** K8 first (the owner's priority: the data terms), with K2 and K3 beside it (different files); K4 by week 12;
+K6 before August; K5 after M9; K7 only with a membership.
+
+| Card | Title | Size | Needs | Runs beside | When |
+|---|---|---|---|---|---|
+| **K8** | FantasyCalc through a cached Pages Function, and clear attribution | ~10k tok | none | K2, K3 | now (weeks 10–11) |
+| **K2** | Ko-fi easier to find, and a Share button | ~12k tok | none | K8, K3 | now (weeks 10–11) |
+| **K3** | Link previews for all three pages, and `?ref=share` | ~6k tok | none | K8, K2 | now (weeks 10–11) |
+| **K4** | The polite rules, and Lineup Strategist's Final-week ask and thank-you | ~15k tok | K2 | not alongside S27-type Scoreboard cards | by week 12 |
+| **K5** | "Share image…" in the Share split button | ~6k tok | M9, K2 | | after M9, before August |
+| **K6** | Draft Strategist's post-draft ask | ~10k tok | K4 | | spring or summer, before 15 July |
+| **K7** | Supporter perks | ~8k tok (+~8k accents after M6/M14) | K4, a membership decision | | only if the owner starts a membership |
+
+### K8 — FantasyCalc through a cached Pages Function, and clear attribution (~10k tok, needs nothing)
+
+**Goal.** FantasyCalc's [Terms of Usage](https://fantasycalc.com/terms-of-usage) (effective 2026-10-10) and
+[API docs](https://fantasycalc.com/api-docs) require responses to be "cached and reused across users and requests",
+refreshed at most every three hours; attribution ("FantasyCalc" with a link to fantasycalc.com) near the data on every
+page that shows it, with at least one link in the initial HTML; and only `GET /values/current`. Today
+`js/shared/api/market.js` calls `api.fantasycalc.com` from each browser, so nothing is shared. The owner keeps
+FantasyCalc while the site is under 1,000 monthly active users (Umami shows the count; written permission above it).
+Visible effect: the same values, served by the site; a clear "Market: FantasyCalc" credit on the Trade Analyzer card
+and wherever FantasyCalc's ranks show.
+
+**Asks you.** Before building the credit, show where it goes on the Trade Analyzer card (a screenshot at 375 and 1280px)
+and the exact words.
+
+**Scope.**
+- Read `functions/api/ffc/[format].js` and its tests (`tests/unit/ffc.test.mjs`, the `/api/ffc` stubs in
+  `tests/helpers.mjs`, `tests/mds-sync.spec.mjs`) first, and mirror them: a Pages Function, say
+  `functions/api/fantasycalc.js`, serving `GET /api/fantasycalc?isDynasty=&numQbs=&numTeams=&ppr=&isTEP=`.
+- Validate every parameter against the values the app can send (read `js/mls/settings.js`'s market settings and the
+  league sizes the app passes); anything else answers 400, so the function can't be used to fetch other things.
+  Check the parameter names against FantasyCalc's API docs (the docs' example uses `tep=none`; the app sends
+  `isTEP=`): if they differ, say so in LOG and keep what FantasyCalc answers correctly.
+- Cache each parameter set in Cloudflare's cache (`caches.default`) for three hours; on an upstream failure, serve the
+  last good copy if the cache still has one, else 502 with `{ error }`. Only `/values/current` is ever called.
+- `js/shared/api/market.js` fetches `/api/fantasycalc?...` (same-origin) instead of `api.fantasycalc.com`; the shape it
+  returns to callers doesn't change (it reads only `overallRank`). Same error messages in the UI.
+- Attribution: a visible credit with a link on the **Trade Analyzer card**, next to the market side (the owner's
+  request); check Market Disconnect and the ROS rankings source when FantasyCalc is chosen show it too; keep
+  `#attributionLink` in `/lineup/`'s HTML. A line in the README's data sources and in the Guide.
+- Tests: unit tests for the parameter check and the cache key; a Playwright spec that the market fetch goes to
+  `/api/fantasycalc` and never to `api.fantasycalc.com`, and that the Trade Analyzer shows the credit. CHANGELOG
+  (Lineup), `CACHE_NAME`. Re-take only the screenshots the credit changes.
+
+**Avoid.** Other FantasyCalc endpoints; storing anything about users; changing how the app turns ranks into values.
+
+**Done.** No browser request to `api.fantasycalc.com`; three-hour shared cache; the credit on the Trade Analyzer;
+LOG has a reminder to check Umami's monthly users and email FantasyCalc (fantasycalcff@gmail.com) before 1,000.
+
+### K2 — Ko-fi easier to find, and a Share button (~12k tok, needs nothing)
+
+**Goal.** support.md sections 1 and 5, as decided: all four placements, no floating widget, the header cup on
+computers only, and a Share button.
+
+**Scope.**
+- **Our button** (Feather `coffee` icon inline, `aria-hidden="true"`, `stroke="currentColor"`; "Support on Ko-fi";
+  `--primary-green`; 48px tall) replaces Ko-fi's PNG in the three drawers' `.menu-footer`, with "Made by one person, for
+  fun. No ads." under it, and in both `.hero-kofi` blocks (the Dashboard feet), which become the foot line of the
+  mock-up ("Lineup Strategist is free, with no ads. One person builds it." + "Tip on Ko-fi" + "Share with your
+  league"). Every Ko-fi link gets `rel="noopener noreferrer"`. No request to `storage.ko-fi.com` remains; remove
+  `.kofi-img`.
+- **Header cup**, computers only (from 840px, where the menu is in the rail): a link at the header's right end,
+  `aria-label="Support this site on Ko-fi"`, a tooltip, muted until hover. Hidden below 840px.
+- **"About this project"** at the top of both Guides (support.md's text) with the two buttons; one line at the end of
+  T-Score's The Research.
+- **Share:** `js/shared/ui/share.js` (in `PRECACHE_ASSETS`): `navigator.share({ title, text, url })` where it exists,
+  otherwise `navigator.clipboard.writeText(url)` and a toast "Link copied"; `AbortError` stays silent; other errors
+  fall back to copying. Texts and URLs from support.md section 5, each URL with `?ref=share`. Used by "Share this site"
+  in all three drawers, the Guide notes and the Dashboard feet, through `data-action` and `delegate()`.
+- **Umami events** (A1's attributes, no code): `data-umami-event="Ko-fi"` and `"Share"`, each with
+  `data-umami-event-where` (header, drawer, guide, foot). Update the Guides' "Visitor Counts" line, T-Score's line and
+  the README's privacy section: taps on the Ko-fi and Share buttons are counted too.
+- Tests: the share helper with `navigator.share` stubbed (called with the right data), absent (clipboard and toast),
+  and cancelled (silent); no page requests `storage.ko-fi.com`; the header cup shows at 1280 and not at 390; every
+  Ko-fi link has `rel`. CHANGELOG (both apps), `CACHE_NAME`. Re-take the Guide and Dashboard screenshots
+  ("Accepting an intended visual change"), listed in LOG.
+
+**Avoid.** Ko-fi's script or widget; Ko-fi's logo artwork; the polite ask (K4).
+
+**Done.** As above; checks pass.
+
+### K3 — Link previews for all three pages, and `?ref=share` (~6k tok, needs nothing)
+
+**Goal.** Shared links show a picture in group chats (support.md section 5), with option C, the owner's choice: the
+hero logo (`images/logo.svg`, `images/mls-logo.svg`) on the site's navy, one line under it, "mydraftstrategist.com ·
+free, no ads" at the foot; T-Score uses Draft Strategist's logo with "The T-Score Model". Drafts:
+`docs/improvements/support/og-*-hero.png`.
+
+**Scope.**
+- Three 1200×630 PNGs under `images/` with a version in the name (`og-draft-1.png`, `og-lineup-1.png`,
+  `og-tscore-1.png`; chat apps cache previews for days), under ~100 KB each, drawn by an opt-in tool
+  (`tests/tools/og-images.mjs`, Playwright, like the K1 mock-up script) so they can be redrawn. Not in
+  `PRECACHE_ASSETS` (only link crawlers fetch them); check `scripts/check-precache.mjs` agrees.
+- Head tags on all three pages: `og:title` (remove `/lineup/`'s leading space), `og:url` (`/lineup/` for Lineup),
+  `og:type=website`, `og:site_name`, `og:image` + `og:image:width`/`height`/`alt`, `twitter:image`, and a
+  `<meta name="description">` for `/lineup/`.
+- `js/shared/analytics.js`: read `ref=share` as it reads `?nocount=`, take it out of the address bar (keep other
+  parameters and the hash), and when counting send one Umami event `Shared link opened` with the page, once the
+  script has loaded. Unit and spec tests as for `?nocount`.
+- CHANGELOG (both apps), `CACHE_NAME`. No screenshots change.
+
+**Avoid.** Changing the site's own header or hero.
+
+### K4 — The polite rules, and Lineup Strategist's Final-week ask and thank-you (~15k tok, needs K2)
+
+**Goal.** support.md sections 2 and 3, as decided. A small card under the Week Recap once the week turns Final, at most
+once a season, plus one thank-you after the user's championship week. Never on a Sunday crunch.
+
+**Scope.**
+- `js/shared/support/askRules.js` (in `PRECACHE_ASSETS`): a pure `shouldAsk(state, now, ctx)` with no DOM or storage,
+  covering both apps' rules so K6 only adds its moment. Unit tests for every rule with fixed dates.
+- Lineup rules: moments counted are weeks seen Final (distinct), Waiver Wire runs and Trade Analyzer runs (never asked
+  on); first ask after **2 Final weeks** this season (3 from 2027: a constant by season); window from **week 4** to the
+  end of the user's season; **one ask per season**; "Maybe later" or × quiet for **30 days**; "I already chipped in"
+  never again; "Support on Ko-fi" counts as asked. Thank-you once after the championship week if not chipped in and
+  the last ask was 30+ days ago (championship: what sync stores of Sleeper's `playoff_week_start` and rounds, or the
+  league's status `complete`; else week 17 Final; read `js/mls/leagues/sync.js` and say which).
+- Quiet window: never from 3 hours before the kickoff of any game with one of the user's starters (all synced
+  leagues) until that game is final (`State.gameTimesByTeam`, `State.gamesByTeam`); no kickoff data, no ask; only for
+  the current week, never a past week chosen in S28's picker.
+- Storage: `KEYS.mls.supportAsk` = `mls_support_ask` in `js/shared/storage/keys.js` (one JSON object, support.md
+  section 3), so Backup carries it and Factory Reset clears it. Reads and writes in try/catch.
+- The card (mock-up `support/mls-ask-final-*.png`): heart icon, title by result ("Week N is final. Glad it helped." on
+  a winning week, "Week N is final. On to next week." otherwise), two sentences, Support on Ko-fi, Share with your
+  league (K2's helper), Maybe later, I already chipped in, × (= Maybe later). In the page's flow under
+  `#thisWeekCard`, never over a control, never a modal. Umami events (`Ask shown`, `Ko-fi` where=ask-final,
+  `Maybe later`, `Chipped in`).
+- The Guide's "About this project" gains one honest line: "Once a season, after a week goes final, a small card may
+  ask too."
+- Tests: a Playwright spec with the Final fixture (as `tests/mls-this-week.spec.mjs`, the K1 mock-up script shows the
+  setup): shown after the 2nd Final week, not when Provisional, not inside the quiet window, not on a past week, each
+  button's effect survives a reload; the fixtures used by the screenshot tests stay below the threshold so no baseline
+  changes. CHANGELOG (Lineup), `CACHE_NAME`.
+
+**Avoid.** Modals, toasts or notifications for the ask; anything on a server; counting page opens.
+
+### K5 — "Share image…" in the Share split button (~6k tok, needs M9 and K2)
+
+**Goal.** A third item, "Share image…", in M9's Share split button (Copy as text, Save image) on the lineup, the Week
+Recap, Export Trade and Draft Strategist's Export Team, shown only when `navigator.canShare({ files })` is true.
+Mock-up: `support/mls-share-menu-*.png`.
+
+**Scope.** Draw the image when the menu opens (or reuse the last drawn), and share it on the item's tap, so the share
+sheet opens within the tap's activation (html2canvas loads and draws too slowly otherwise: `NotAllowedError`). If the
+browser still refuses, save the image and say so in a toast; `AbortError` stays silent. Umami event `Share` where=image.
+Tests with `canShare`/`share` stubbed. CHANGELOG (both apps), `CACHE_NAME`.
+
+### K6 — Draft Strategist's post-draft ask (~10k tok, needs K4)
+
+**Goal.** support.md sections 2 and 3, Draft Strategist's rules as decided: a card under the Draft Recap on the Team
+tab once a draft is complete.
+
+**Scope.**
+- Draft complete: Sleeper's draft `status === 'complete'` (read it in `processSleeperDraftData`,
+  `js/mds/sleeperSync.js`, and keep it on the draft) or picks = teams × rounds; manual drafts: `draftedPlayers.length`
+  = teams × rounds; fallback: your roster full, live sync off and 10 minutes without a pick. Never while live sync is
+  on and the draft isn't complete.
+- Rules in `askRules.js`: first ask after **1 completed draft**; window **15 July to 15 September**; once per draft id;
+  "Maybe later" quiet **15 days**; **at most two asks per draft season, at least 15 days apart**; "I already chipped in"
+  never again.
+- `KEYS.mds.supportAsk` = `mds_support_ask`. The card as K4's (mock-up `support/mds-ask-team-*.png`), placed after
+  `#draftRecapCard`. Ask the owner whether live sync should also stop by itself once the draft is complete (today it
+  keeps polling).
+- Tests: complete by Sleeper status, by pick count, manual; not mid-draft; the two-ask cap and 15-day spacing; the
+  season window. CHANGELOG (Draft), `CACHE_NAME`.
+
+### K7 — Supporter perks (~8k tok; only if the owner starts a membership)
+
+An "I support on Ko-fi" switch in both apps' Settings (the same flag as "I already chipped in"); a "Thanks to
+supporters" list in both Guides (opt-in names, edited by hand); after M6 and M14, two extra accent colors behind the
+switch (the current look stays the default). Ko-fi tiers, posts, polls and preview links are the owner's, on Ko-fi. No
+webhook checking (support.md section 4).

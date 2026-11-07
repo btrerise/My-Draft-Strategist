@@ -9086,8 +9086,18 @@ Strategist's post-draft ask (~10k, before August); **K7** supporter perks (~8k, 
   meet its terms (a cached Pages Function, attribution checks, an email about the user count and the Trade Analyzer);
   fall back to user uploads only if they say no. Open: keep FantasyCalc?
 
+**Round 3 (2026-11-07).**
+- **5. Option C**: the link previews use the colored hero logo.
+- **7. Keep FantasyCalc** while under 1,000 monthly users. Make the attribution unmistakable, with a direct credit on
+  the Trade Analyzer card. Add the cached-fetch card, **prioritized first** (card K8; numbered after K7 because K2–K7
+  were already named, but it runs first). The owner may have K8 done in this session after K1.
+- **Cards written**: K8, K2, K3, K4, K5, K6, K7, in full in support.md ("Build cards"), with sizes, needs and order.
+  Not yet added to the runbook page: it needs a full read of the page before it can be republished, left for the next
+  step (see "Left over").
+
 **Checks.** `npm run check` in the session: check-precache and the unit tests pass; Playwright 750 passed, 48 skipped;
 the 4 failures are `visual.spec.mjs` refusing this cloud image's fonts (the environment check), as on main. The diff
 against main is only `docs/improvements/`.
 
-**Left over.** The owner's picks; then K2 onward in the runbook. `docs/TESTING.md`'s open follow-ups: none touched.
+**Left over.** Add K2–K8 to the runbook page (cards, the order's steps, a "Site and support" lane); K8 first.
+`docs/TESTING.md`'s open follow-ups: none touched.
