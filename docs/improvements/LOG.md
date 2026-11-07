@@ -9041,7 +9041,7 @@ branch, which K8's branch `claude/wonderful-noether-qfsx9c` carries until it mer
   line: "I build My Draft Strategist and Lineup Strategist on my own, for fun, in my spare time. / There are no ads,
   nothing is locked, and your leagues and rankings stay in this browser. / Tips pay for the domain and the odd late
   night, and sharing the site with your league helps just as much. / Thanks for using it. I hope it helps you as much
-  as it helps me." T-Score's The Research ends with one line ("I build the T-Score model and both apps on my own, for
+  as it helps me!" T-Score's The Research ends with one line ("I build the T-Score model and both apps on my own, for
   fun, with no ads. Tips and sharing keep it going.") and the same two buttons, just above Visitor counts.
 - **Share this site** is a new row at the end of every drawer's links. Share opens the phone's (or browser's) share
   sheet with the page's title, text and `?ref=share` link (support.md section 5); where there's none (Firefox on
