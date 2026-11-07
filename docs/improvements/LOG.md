@@ -9056,7 +9056,8 @@ branch, which K8's branch `claude/wonderful-noether-qfsx9c` carries until it mer
   `Share`, each with `data-umami-event-where` = `header`, `drawer`, `guide` or `foot` (T-Score's Research line counts
   as `guide`).
 - `css/base.css`: "Footer & Ko-fi" and `.hero-kofi` rewritten (`.kofi-img` removed); `.kofi-btn`, `.share-btn`,
-  `.kofi-note`, `.support-actions`, `.about-project`, `.header-kofi` (its tooltip is a `::before`, since `::after` is
+  `.kofi-note`, `.support-actions`, `.about-project` (its text runs the card's full width like the rest of the Guide;
+  a 68ch cap was taken out at the owner's request: "Looks off"), `.header-kofi` (its tooltip is a `::before`, since `::after` is
   M2's touch target; `margin-block: -8px` keeps the header's height). `css/tscore.css`: `.tscore-support`.
 - `sw.js`: `share.js` precached; `CACHE_NAME` v2.9.7 (K8's branch has v2.9.6).
 - CHANGELOG under both apps; README (privacy and the drawer line).
