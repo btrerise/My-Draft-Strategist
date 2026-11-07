@@ -9260,3 +9260,68 @@ request runs ("When your machine can't reproduce the baselines"):
   `.share-btn` / `.support-actions` styles; it adds its sentence to the Guide's "About this project".
 - K3 reads `?ref=share` in the analytics loader; until it merges, a shared link opens with `?ref=share` in the address
   bar (harmless; A1's `data-exclude-search` already keeps it out of Umami's page URLs).
+
+### E1 (proposed card, from the owner during K2): easter eggs
+
+The owner, during K2 (2026-11-07): "I love it when sites have easter eggs (e.g., Android's in their version numbers)."
+From the ideas offered, the owner picked five. Not built here: K2 stays to its card. **For the runbook:** add this as
+card E1 (it isn't on the runbook page yet).
+
+**E1 — Easter eggs: the octopus, the version taps, a hidden code, and two football moments** (~15k tok, Feature,
+needs K2; not alongside K4 or S27, which edit the Scoreboard and the Guide's "About this project").
+
+**Goal.** A few hidden surprises that never get in the way. Visible effect, only for whoever finds them: an octopus
+that waves from the Guide's "About this project", a message after tapping the version 8 times and another at 18
+(Justin Jefferson's number), a football that spirals across the screen after a hidden code, a line when you draft a
+kicker or defense in rounds 1–3, and a line on the Scoreboard when a matchup ends within a point.
+
+**Asks you** (before building each part; sketches at 375 and 1280px):
+1. The octopus: two or three looks to pick from (our own SVG, Feather-like strokes in the site's green, or a filled
+   friendly shape), and the line it says.
+2. The words for the 8-tap and 18-tap messages (drafts below).
+3. The hidden code on phones, which have no keyboard (for example: a long press on the hero logo, or tapping the
+   Dashboard tab's icon in a pattern).
+4. The kicker or defense pick: a toast right after your pick, or a calmer line in the Draft Recap once the draft is
+   done (a toast mid-draft goes against "never during a draft"; the recap is my pick).
+
+**The eggs.**
+- **The octopus** (the mascot; owner's favourite animal). Tapping the "About this project" heading 8 times (eight
+  arms; the heading, not the Ko-fi button, so nothing opens Ko-fi) makes a small original SVG octopus rise from the
+  box's bottom edge, wave one arm and stay until the tab changes. With Reduce Motion it just appears. Both Guides. It
+  can reappear as the "keeper" in the other eggs (in the toasts' icon, or riding the football).
+- **The version, 8 taps** (Android's egg; ties to the note's "nothing is locked"): tapping the version at the foot of
+  either Dashboard 8 times shows "You've unlocked… nothing. Everything was already unlocked."
+- **The version, 18 taps** (Justin Jefferson, WR, Vikings, #18; the owner's favourite player): keep tapping to 18 for
+  a Jefferson nod, for example "18. Best route-runner in football." in purple and gold. Text only: his name and number,
+  no photo beyond Sleeper's headshots, no team logo.
+- **The hidden code.** Typing a code anywhere outside a text field sends a small SVG football spiralling across the
+  screen (once; with Reduce Motion a short fade instead). Codes to choose from: the classic ↑ ↑ ↓ ↓ ← → ← → B A,
+  "hut hut hike", or "jjettas" (Jefferson's nickname: the football in purple and gold, or with "18" on it). Plus the
+  phone trigger from ask 3.
+- **Kicker or defense in rounds 1–3** (Draft Strategist): when *your* pick in rounds 1–3 is a K or DEF: "Bold strategy.
+  We respect it." Where it shows: ask 4. Once per draft.
+- **Within a point** (Lineup Strategist's Scoreboard): when your matchup is Final and the margin is under 1 point, a
+  line under it: "Lost by 0.4. That one stings." or "Won by 0.3. Whew." Final weeks only, never while games are live.
+
+**Scope and rules.**
+- One shared module, `js/shared/ui/easterEggs.js` (in `PRECACHE_ASSETS`): the tap counter, the key-sequence detector
+  (pure functions, unit-tested), the octopus and football SVGs; wired through `data-action` and `delegate()` or a
+  document `keydown` listener that ignores inputs, selects, textareas and contenteditable.
+- Never during a crunch: no egg shows while a dialog or sheet is open, while Live Sync is on, or in the hour before a
+  kickoff with one of your starters (K4's quiet window, if it has merged; else skip the Scoreboard line while live).
+- Inline SVG only, no emoji (`noEmoji.test.mjs`); Reduce Motion respected; nothing is announced loudly (toasts are
+  polite); no storage key unless the owner wants an egg to show only once (then one key in `keys.js`, e.g.
+  `mls_eggs` / `mds_eggs`).
+- The screenshot fixtures must not trigger any egg (check the Final fixture's margins in `mls-this-week.spec.mjs`), so
+  no baseline changes. No Guide legend line (they're hidden), and the CHANGELOG says only "A few hidden surprises."
+- Trademarks: no Star Wars or Batman names, logos, characters or quotes (the owner's other loves; a later card could
+  add a "May the Fourth" line on 4 May, or a generic bat silhouette on Halloween, if wanted).
+- Tests: unit tests for the sequence detector, the tap counter's reset (taps more than ~2 s apart start over) and the
+  margin line's wording; a spec per egg (each trigger shows it once, a near miss doesn't, Reduce Motion, not inside a
+  text field, not during Live Sync).
+
+**Avoid.** Anything that blocks a control or needs closing; sounds; ads or links out (beyond what K2 added);
+other people's artwork.
+
+**Done.** The five eggs as the owner chose them; unit and spec tests; CHANGELOG line under both apps; `CACHE_NAME`
+bumped; screenshots identical; checks pass.
