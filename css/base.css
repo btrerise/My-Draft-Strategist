@@ -589,29 +589,40 @@ html { scroll-padding-top: 5rem; }
     transform: translateX(3px); /* Cute little arrow scoot on hover */
 }
 
-/* Footer & Ko-fi */
+/* Footer & Ko-fi: our own "Support on Ko-fi" button (improvements K2), in place of Ko-fi's PNG badge from
+   storage.ko-fi.com. Nothing loads from Ko-fi; the green, the cup (Feather's coffee) and the words are ours. */
 .menu-footer {
     padding: 1.5rem;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
     background: rgba(0, 0, 0, 0.1);
 }
 
-.kofi-link {
-    display: block;
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.kofi-link:hover {
-    transform: scale(1.03);
-}
-
-.kofi-img {
-    height: 36px;
+/* SUPPORT (K2): the Ko-fi button and "Share with your league" (drawer foot, Dashboard feet, the Guides' note). */
+.btn.kofi-btn, .btn.share-btn {
     width: auto;
-    max-width: 100%;
+    min-height: 48px;
+    padding: 0 1.25rem;
     border-radius: 8px;
-    border: none;
+    text-decoration: none;
+}
+.btn.share-btn {
+    background: transparent;
+    color: var(--text-main);
+    border: 1px solid var(--modal-edge, #374151);
+}
+.kofi-note {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+.support-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
 }
 
 /* --- LOGO & TITLE --- */
@@ -797,10 +808,82 @@ html { scroll-padding-top: 5rem; }
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
+/* The Dashboard foot (both apps, K2): a line, then Support on Ko-fi and Share with your league. */
 .hero-kofi {
-    margin-top: 1.25rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+.hero-kofi .kofi-note { font-size: 0.9rem; }
+.hero-kofi .support-actions { justify-content: center; }
+
+/* "About this project", the first thing in both Guides (K2). */
+.about-project {
+    border-left: 3px solid var(--primary-green);
+    background: rgba(16, 185, 129, 0.06);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.25rem;
+}
+.about-project h4 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    color: var(--text-main);
+}
+.about-project p {
+    margin: 0 0 1rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    max-width: 68ch;
+    text-wrap: pretty;
+}
+
+/* The header's Ko-fi cup (K2): computers only, from 840px (where the menu is in the rail), at the header's right end.
+   Muted until hovered so it doesn't compete with the picker; its tooltip is a ::before (::after is the touch target). */
+.header-kofi { display: none; }
+@media (min-width: 840px) {
+    .header-kofi {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        margin-block: -8px;   /* a 48px target that doesn't make the header taller (T-Score's is the shortest) */
+        flex: none;
+        border-radius: 50%;
+        color: var(--text-muted);
+        transition: color 150ms linear, background-color 150ms linear;
+    }
+    .header-kofi:hover, .header-kofi:focus-visible {
+        color: var(--primary-green);
+        background-color: color-mix(in srgb, var(--primary-green) 10%, transparent);
+    }
+    .header-kofi::before {
+        content: attr(data-tip);
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        white-space: nowrap;
+        padding: 0.35rem 0.6rem;
+        border-radius: 6px;
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        color: var(--text-main);
+        font-size: 0.8rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 150ms linear, visibility 150ms linear;
+    }
+    .header-kofi:hover::before, .header-kofi:focus-visible::before { opacity: 1; visibility: visible; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .header-kofi, .header-kofi::before { transition: none; }
 }
 
 /* --- GUIDE BANNER --- */

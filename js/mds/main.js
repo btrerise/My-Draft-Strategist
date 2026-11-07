@@ -23,6 +23,7 @@ import { toggleRecapMath } from './recap.js';
 import { exportTeam } from './export.js';
 import { cycleAffinity } from './affinity.js';
 import { delegate } from '../shared/ui/delegate.js';
+import { shareSite } from '../shared/ui/share.js';
 import { dismissBanner } from '../shared/ui/banners.js';
 import { goToSetupStep } from './setupGuide.js';
 
@@ -47,6 +48,8 @@ window.exportMdsSettings = exportMdsSettings;
 const clickActions = {
     toggleMenu() { toggleMenu(); },
     showTab() { showTab(this.dataset.tab); },
+    // "Share this site" (drawer), "Share with your league" (Guide note, Dashboard foot): improvements K2
+    shareSite() { shareSite(this.dataset.share); },
     // "What do these mean?" on the Tracker (improvements S10): the legend in the shared sheet over the tab (M11);
     // its foot opens the Guide tab, scrolled to the legend.
     openBadgeLegend() { openBadgeLegendSheet(this, () => showTab('guide').then(focusBadgeLegend)); },

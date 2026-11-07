@@ -9021,3 +9021,77 @@ link did before.
 `body`, and a `className` for its own styles. One sheet at a time; opening another replaces it.
 
 **Left over.** None from the card.
+
+## K2 — Ko-fi easier to find, and a Share button
+
+K1's stage 1 as the owner decided (`docs/improvements/support.md`, sections 1 and 5, and its "Build cards"; on K1's
+branch, which K8's branch `claude/wonderful-noether-qfsx9c` carries until it merges). Branch
+`claude/determined-heisenberg-esboof`, from main at 6825c64 (M11 merged).
+
+**User-visible effect.**
+- Ko-fi's image badge ("Buy Me a Coffee at ko-fi.com", loaded from storage.ko-fi.com) is gone from all three drawers
+  and both Dashboards. In its place is our own green **Support on Ko-fi** button (Feather's cup, 48px tall). In the
+  drawer it sits at the foot with "Made by one person, for fun. No ads." under it.
+- The **Dashboard's foot** (both apps, under Danger Zone / Reset Controls, above the version) is now a line ("Lineup
+  Strategist is free, with no ads. One person builds it.", or Draft Strategist), then Support on Ko-fi and an outlined
+  **Share with your league** button.
+- **On computers (840px and up)** a muted cup sits at the header's right end on all three pages; it turns green on
+  hover with a "Support this site on Ko-fi" tooltip. Hidden below 840px.
+- **"About this project"** opens both Guides (support.md's text, green edge) with the two buttons. T-Score's The
+  Research ends with one line ("The T-Score model and both apps are built by one person, for fun, with no ads. Tips and
+  sharing keep it going.") and the same two buttons, just above Visitor counts.
+- **Share this site** is a new row at the end of every drawer's links. Share opens the phone's (or browser's) share
+  sheet with the page's title, text and `?ref=share` link (support.md section 5); where there's none (Firefox on
+  computers) it copies the link and says "Link copied". Closing the sheet does nothing; any other refusal copies
+  instead; if copying fails too, an error toast shows the link.
+- The Visitor Counts lines (both Guides, T-Score) and the README's privacy section say taps on the Ko-fi and Share
+  buttons are counted.
+
+**What changed.**
+- `js/shared/ui/share.js` (new, in `PRECACHE_ASSETS`): `SHARE_DATA` (texts and URLs per app) and
+  `shareSite(app)`. Each page's `main.js` has a `shareSite` data-action (`data-share="mds" | "mls" | "tscore"`).
+- `index.html`, `lineup/index.html`, `t-score/index.html`: the drawer row, the drawer foot, the header cup, the
+  Dashboard feet, the Guide notes, T-Score's line. Every Ko-fi link has `target="_blank" rel="noopener noreferrer"`
+  (the two Dashboard links had no `rel`). Umami events by attribute only (A1's script picks them up): `Ko-fi` and
+  `Share`, each with `data-umami-event-where` = `header`, `drawer`, `guide` or `foot` (T-Score's Research line counts
+  as `guide`).
+- `css/base.css`: "Footer & Ko-fi" and `.hero-kofi` rewritten (`.kofi-img` removed); `.kofi-btn`, `.share-btn`,
+  `.kofi-note`, `.support-actions`, `.about-project`, `.header-kofi` (its tooltip is a `::before`, since `::after` is
+  M2's touch target; `margin-block: -8px` keeps the header's height). `css/tscore.css`: `.tscore-support`.
+- `sw.js`: `share.js` precached; `CACHE_NAME` v2.9.7 (K8's branch has v2.9.6).
+- CHANGELOG under both apps; README (privacy and the drawer line).
+- Tests: `tests/unit/share.test.mjs` (share stubbed and called with each app's data; absent: clipboard and "Link
+  copied"; AbortError: silent; other errors: copy; copy failing: error toast with the link).
+  `tests/support.spec.mjs` (all three pages: no request to and no markup from storage.ko-fi.com, every Ko-fi link with
+  rel and its Umami attributes, the cup at 1280 and not at 390 or 839, its colour and tooltip on hover; Share from the
+  drawer stubbed, absent and cancelled; the Guide notes, the Dashboard feet, T-Score's line, the drawer foot's 48px
+  button). `tests/nav-rail.spec.mjs`: the menu's rows now end with "Share this site".
+
+**Decisions made here (not asked).**
+- The Dashboard foot uses the card's 48px green button and an outlined Share button, not the mock-up's two text links
+  ("Tip on Ko-fi", "Share with your league"): the card asks for our button in both `.hero-kofi` blocks, and one button
+  everywhere reads the same.
+- The header cup is on T-Score too (after "Back to Draft"), at the same widths: the card says "the header", and T-Score
+  has no rail, so its cup still hides below 840px as on the apps.
+- T-Score's line has the two buttons rather than two links in a sentence: inline, the links' 48px tap areas overlapped
+  on phones and `touch-targets.spec.mjs` failed.
+
+**Screenshots** (cloud container: main and this branch rendered the same way with `RENDER_ENV=any`, compared with
+`npm run pxdiff`). 27 PNGs change, all from this card; none re-taken here, to be taken from CI's renders once a pull
+request runs ("When your machine can't reproduce the baselines"):
+- The header's right end on every desktop screen (the cup, and the picker moved left to make room; nothing else):
+  `desktop/mds-draft-board`, `mds-draft-team`, `mds-draft-tracker`, `mds-empty-board`, `mds-empty-team`,
+  `mds-empty-tracker`, `mls-league-lineup`, `mls-league-roster`, `mls-league-scoreboard`, `mls-league-scout`,
+  `tscore-avoidsTab`, `tscore-sleepersTab`, `tscore-tab-2024`, `tscore-top50Tab`, `tscore-valuesTab`.
+- The Guides (the note, plus the Visitor Counts line): `desktop/` and `phone/mds-empty-guide`, `mls-league-guide`.
+- The Dashboards (the new foot): `desktop/` and `phone/mds-empty-setup`, `mls-empty-setup`, `mls-league-setup`
+  (desktop also the header cup).
+- T-Score's The Research (the line and buttons, the longer Visitor counts line): `desktop/` and
+  `phone/tscore-researchTab` (desktop also the cup).
+
+**Left over.**
+- K4 (the Final-week ask) can now use `shareSite('mls')` for its "Share with your league" and the `.kofi-btn` /
+  `.share-btn` / `.support-actions` styles; it adds its sentence to the Guide's "About this project".
+- K3 reads `?ref=share` in the analytics loader; until it merges, a shared link opens with `?ref=share` in the address
+  bar (harmless; A1's `data-exclude-search` already keeps it out of Umami's page URLs).
+- When K8's branch (with K1's docs) merges, this LOG entry may need moving below K1's and K8's to keep the order.

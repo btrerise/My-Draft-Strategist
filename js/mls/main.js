@@ -64,6 +64,7 @@ import { scrollToPowerRankings } from './power/snapshot.js';
 import './scout/waiverInsights.js';
 import { lookupSimPlayer, runMatchupSim } from './sim/matchup.js';
 import { delegate } from '../shared/ui/delegate.js';
+import { shareSite } from '../shared/ui/share.js';
 import { dismissBannerAndReveal, dismissBanner } from '../shared/ui/banners.js';
 
 // Re-exported for the modules that evaluate before the ones these live in (refactor 3E, moved here
@@ -103,6 +104,8 @@ window.onload = onload;
 const clickActions = {
     // Drawer, header, bottom nav
     toggleDrawer() { toggleDrawer(); },
+    // "Share this site" (drawer), "Share with your league" (Guide note, Dashboard foot): improvements K2
+    shareSite() { shareSite(this.dataset.share); },
     navigateFromDrawer() { navigateFromDrawer(this.dataset.tab); },
     showTab() { showTab(this.dataset.tab); },
     // "What do these mean?" on the Waiver Wire Assistant and the Lineup and Roster tabs (improvements S10): the

@@ -13,10 +13,10 @@ const RAIL_W = 96;
 
 const APPS = [
     { name: 'Draft Strategist', path: '/', tabs: ['setup', 'tracker', 'team', 'board'], seed: seedMds,
-        menuNames: ['Dashboard', 'Tracker', 'Team', 'Board', 'Guide', 'T-Score', 'My Lineup Strategist'] },
+        menuNames: ['Dashboard', 'Tracker', 'Team', 'Board', 'Guide', 'T-Score', 'My Lineup Strategist', 'Share this site'] },
     { name: 'Lineup Strategist', path: '/lineup/', tabs: ['setup', 'roster', 'lineup', 'scoreboard', 'scout'],
         seed: async (page) => { await seedMls(page); await loadMlsRankings(page); },
-        menuNames: ['Dashboard', 'Roster', 'Lineup', 'Scoreboard', 'Scout', 'Guide', 'T-Score', 'My Draft Strategist'] },
+        menuNames: ['Dashboard', 'Roster', 'Lineup', 'Scoreboard', 'Scout', 'Guide', 'T-Score', 'My Draft Strategist', 'Share this site'] },
 ];
 
 // Each width runs in the desktop project only (it sets its own viewport); the phone project's touch adds nothing here.

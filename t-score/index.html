@@ -76,6 +76,10 @@
         <a href="../index.html" class="btn-secondary btn-sm" style="text-decoration: none; display: inline-flex; align-items: center;">
             ← Back to Draft
         </a>
+        <!-- Ko-fi, computers only (840px and up, css/base.css "SUPPORT"; improvements K2) -->
+        <a href="https://ko-fi.com/btrerise" target="_blank" rel="noopener noreferrer" class="header-kofi" aria-label="Support this site on Ko-fi" data-tip="Support this site on Ko-fi" data-umami-event="Ko-fi" data-umami-event-where="header">
+            <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+        </a>
     </div>
 </header>
 
@@ -101,12 +105,18 @@
             My Lineup Strategist 
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
         </a>
+        <button type="button" class="nav-btn share-site-btn" data-action="shareSite" data-share="tscore" data-umami-event="Share" data-umami-event-where="drawer">
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+            Share this site
+        </button>
     </div>
     <div id="shared-feedback-container"></div>
     <div class="menu-footer">
-        <a href="https://ko-fi.com/btrerise" target="_blank" rel="noopener noreferrer" class="kofi-link">
-            <img class="kofi-img" src="https://storage.ko-fi.com/cdn/kofi1.png?v=3" alt="Buy Me a Coffee at ko-fi.com" width="274" height="36" />
+        <a href="https://ko-fi.com/btrerise" target="_blank" rel="noopener noreferrer" class="btn btn-primary kofi-btn" data-umami-event="Ko-fi" data-umami-event-where="drawer">
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+            Support on Ko-fi
         </a>
+        <p class="kofi-note">Made by one person, for fun. No ads.</p>
     </div>
 </nav>
 
@@ -320,7 +330,21 @@
             </div>
         </details>
 
-        <p class="tscore-privacy"><strong>Visitor counts:</strong> to see how many people use it, the site counts visits with Umami, without cookies: the page opened, the site that linked to it, and the browser, device type, screen size, language and rough location (country and city). Nothing that identifies you is kept. <a href="?nocount=1" data-nocount-link>Don't count this device</a></p>
+        <!-- About this project, T-Score's version (improvements K2): one line and the Guides' two buttons -->
+        <div class="tscore-support">
+            <p>The T-Score model and both apps are built by one person, for fun, with no ads. Tips and sharing keep it going.</p>
+            <div class="support-actions">
+                <a href="https://ko-fi.com/btrerise" target="_blank" rel="noopener noreferrer" class="btn btn-primary kofi-btn" data-umami-event="Ko-fi" data-umami-event-where="guide">
+                    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+                    Support on Ko-fi
+                </a>
+                <button type="button" class="btn share-btn" data-action="shareSite" data-share="tscore" data-umami-event="Share" data-umami-event-where="guide">
+                    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>
+                    Share with your league
+                </button>
+            </div>
+        </div>
+        <p class="tscore-privacy"><strong>Visitor counts:</strong> to see how many people use it, the site counts visits with Umami, without cookies: the page opened, the site that linked to it, and the browser, device type, screen size, language and rough location (country and city). Nothing that identifies you is kept. Taps on the Support on Ko-fi and Share buttons are counted too: only that one was tapped, and where. <a href="?nocount=1" data-nocount-link>Don't count this device</a></p>
     </div>
 </div>
 
