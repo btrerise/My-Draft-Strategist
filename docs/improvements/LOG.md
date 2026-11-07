@@ -9092,12 +9092,14 @@ Strategist's post-draft ask (~10k, before August); **K7** supporter perks (~8k, 
   the Trade Analyzer card. Add the cached-fetch card, **prioritized first** (card K8; numbered after K7 because K2–K7
   were already named, but it runs first). The owner may have K8 done in this session after K1.
 - **Cards written**: K8, K2, K3, K4, K5, K6, K7, in full in support.md ("Build cards"), with sizes, needs and order.
-  Not yet added to the runbook page: it needs a full read of the page before it can be republished, left for the next
-  step (see "Left over").
+  Added to the runbook page (2026-11-07, version 37): the seven cards marked "New Nov 7" with their session prompts;
+  K8, K2 and K3 in the weeks 10–11 step (K8 first), K4 in weeks 12–13, K6 and K5 in spring and summer, K7 left out of
+  the order until a membership decision; the "Site and support" lane; a "Support (K1, 2026-11-07)" entry under "Your
+  answers so far". The runbook's MERGED list wasn't touched (A1, M2, M11, S27 and S31 are merged but not marked there).
 
 **Checks.** `npm run check` in the session: check-precache and the unit tests pass; Playwright 750 passed, 48 skipped;
 the 4 failures are `visual.spec.mjs` refusing this cloud image's fonts (the environment check), as on main. The diff
 against main is only `docs/improvements/`.
 
-**Left over.** Add K2–K8 to the runbook page (cards, the order's steps, a "Site and support" lane); K8 first.
-`docs/TESTING.md`'s open follow-ups: none touched.
+**Left over.** K8 next (the owner may run it in this session). The runbook's MERGED list needs A1, M2, M11, S27, S31
+(and K1 once merged) with their PR numbers. `docs/TESTING.md`'s open follow-ups: none touched.
