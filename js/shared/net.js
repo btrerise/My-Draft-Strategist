@@ -54,6 +54,8 @@ function mdsFetchServiceName(url) {
     }
     // Our own proxy for Fantasy Football Calculator (functions/api/ffc/, refactor 7A).
     if (host === window.location.hostname && path.startsWith('/api/ffc/')) return 'Fantasy Football Calculator';
+    // And for FantasyCalc (functions/api/fantasycalc.js, improvements K8).
+    if (host === window.location.hostname && path === '/api/fantasycalc') return 'FantasyCalc';
     const match = MDS_FETCH_SERVICES.find(([domain]) => host === domain || host.endsWith('.' + domain));
     return match ? match[1] : 'The server';
 }

@@ -6,7 +6,7 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import * as market from '../../js/shared/api/market.js';
-import { fetchMarketConsensusData } from '../../js/shared/api/market.js';
+import { fetchMarketConsensusData, fantasyCalcUrl, fcTeamSize } from '../../js/shared/api/market.js';
 
 let routes = {};
 const requested = [];
@@ -17,13 +17,14 @@ globalThis.fetch = async (url) => {
     return { ok: r.status === 200, status: r.status, json: async () => r.body, text: async () => JSON.stringify(r.body) };
 };
 
-const FC = 'https://api.fantasycalc.com/values/current';
+// Since improvements K8 the browser asks the site's cached copy (functions/api/fantasycalc.js), never FantasyCalc.
+const FC = '/api/fantasycalc';
 
 beforeEach(() => { routes = {}; requested.length = 0; });
 
 describe('fetchMarketConsensusData, FantasyCalc', () => {
     test('normalizes FantasyCalc rows and passes the settings through', async () => {
-        routes[`${FC}?isDynasty=true&numQbs=2&numTeams=10&ppr=0.5&isTEP=true`] = { status: 200, body: [
+        routes[`${FC}?isDynasty=true&numQbs=2&numTeams=10&ppr=0.5&tep=te%2B`] = { status: 200, body: [
             { player: { name: "Ja'Marr Chase", position: 'WR' }, overallRank: 2 },
             { player: { name: 'Bijan Robinson', position: 'RB' }, overallRank: '1' },
             { player: { name: 'No Rank' }, overallRank: null },
@@ -41,8 +42,25 @@ describe('fetchMarketConsensusData, FantasyCalc', () => {
     });
 
     test('a FantasyCalc error keeps its wording', async () => {
-        routes[`${FC}?isDynasty=false&numQbs=1&numTeams=12&ppr=1&isTEP=false`] = { status: 500, body: null };
+        routes[`${FC}?isDynasty=false&numQbs=1&numTeams=12&ppr=1&tep=none`] = { status: 500, body: null };
         await assert.rejects(fetchMarketConsensusData('fantasycalc', 'redraft', '1', '1', 'false', 12), { message: 'FantasyCalc API Error: 500' });
+    });
+});
+
+describe('fantasyCalcUrl (improvements K8)', () => {
+    test('same-origin, in the function\'s parameter order, with FantasyCalc\'s own names', () => {
+        assert.equal(fantasyCalcUrl(true, '2', 12, '0.5', 'true'), '/api/fantasycalc?isDynasty=true&numQbs=2&numTeams=12&ppr=0.5&tep=te%2B');
+        assert.equal(fantasyCalcUrl(false, '1', 12, '1', 'false'), '/api/fantasycalc?isDynasty=false&numQbs=1&numTeams=12&ppr=1&tep=none');
+    });
+    test('TE premium goes as tep (FantasyCalc never read isTEP)', () => {
+        assert.match(fantasyCalcUrl(false, '1', 12, '1', 'true'), /&tep=te%2B$/);
+        assert.doesNotMatch(fantasyCalcUrl(false, '1', 12, '1', 'true'), /isTEP/);
+    });
+    test('league sizes snap to FantasyCalc\'s 8, 10, 12, 14', () => {
+        assert.deepEqual([4, 6, 8, 9, 10, 11, 12, 13, 14, 16, 32, undefined, 'x'].map(fcTeamSize), [8, 8, 8, 8, 10, 10, 12, 12, 14, 14, 14, 12, 12]);
+    });
+    test('an unexpected ppr or QB value falls back to what the function accepts', () => {
+        assert.equal(fantasyCalcUrl(false, '3', 12, '2', 'false'), '/api/fantasycalc?isDynasty=false&numQbs=1&numTeams=12&ppr=1&tep=none');
     });
 });
 
@@ -53,6 +71,6 @@ describe('LeagueLogs is gone (refactor 7A)', () => {
     });
 
     test('fetchLeagueLogsMarket is no longer exported', () => {
-        assert.deepEqual(Object.keys(market), ['fetchMarketConsensusData']);
+        assert.deepEqual(Object.keys(market).sort(), ['FC_TEAM_SIZES', 'FC_TEP_ON', 'fantasyCalcUrl', 'fcTeamSize', 'fetchMarketConsensusData']);
     });
 });

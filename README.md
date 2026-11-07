@@ -65,6 +65,7 @@ js/
   tscore/main.js         The T-Score page's script
 
 functions/api/ffc/       Cloudflare Pages Function: proxies Fantasy Football Calculator's ADP API (no CORS)
+functions/api/fantasycalc.js  Pages Function: FantasyCalc's market values, one cached copy for every user (its terms)
 images/                  Logos, favicons and app icons
 scripts/, tests/         Development checks (see below). Not used by the site
 docs/TESTING.md          How to run the checks, how the tests work, and the repo's conventions

@@ -116,8 +116,14 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
         const fresh = getFreshness(State.marketUpdatedAt, 0);
         // Values fetched for another format than this league's (S23 follow-up): said under the age, in the same amber.
         const warning = marketFormatWarning();
+        // Values fetched from FantasyCalc (State.marketFormat is set only by a fetch; a file upload clears it) name it,
+        // with a link, right under the numbers its ranks gave (improvements K8: FantasyCalc's terms ask for a credit
+        // near its data; the owner chose this line). An uploaded file keeps the plain wording.
+        const source = State.marketFormat
+            ? `Market values from <a href="https://fantasycalc.com" target="_blank" rel="noopener noreferrer">FantasyCalc</a>, ${fresh ? fresh.detail.charAt(0).toLowerCase() + fresh.detail.slice(1) : ''}`
+            : `Market values: ${fresh ? fresh.detail : ''}`;
         return (fresh
-            ? `<div class="mls-trade-market-age${fresh.isStale ? ' is-stale' : ''}">Market values: ${fresh.detail}${fresh.isStale ? '. Refresh them in Trade Finder (below) before you trade.' : '.'}</div>`
+            ? `<div class="mls-trade-market-age${fresh.isStale ? ' is-stale' : ''}">${source}${fresh.isStale ? '. Refresh them in Trade Finder (below) before you trade.' : '.'}</div>`
             : '')
             + (warning ? `<div class="mls-trade-market-age is-stale">${escapeHtml(warning)} Fetch again in Trade Finder (below).</div>` : '');
     }
