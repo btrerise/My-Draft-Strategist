@@ -481,7 +481,7 @@ test.describe('What changed after Replace Set', () => {
             'Saquon Barkley', 'Puka Nacua', 'Malik Nabers', 'Amon-Ra St. Brown', 'Christian McCaffrey', 'Brock Bowers',
             'Nico Collins', 'Josh Allen', 'Lamar Jackson', 'Derrick Henry', 'Drake London', 'Trey McBride', 'Jalen Hurts',
             'A.J. Brown', "De'Von Achane", 'Joe Burrow', 'George Kittle', 'Kyren Williams'];
-        await page.route(/^https:\/\/api\.fantasycalc\.com\//, (route) => route.fulfill({
+        await page.route(/\/api\/fantasycalc\?/, (route) => route.fulfill({
             status: 200, contentType: 'application/json',
             body: JSON.stringify(fc.map((name, i) => ({ player: { name, position: '' }, overallRank: i + 1 })))
         }));

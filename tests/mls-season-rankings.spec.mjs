@@ -415,7 +415,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
         const { state, ids } = await setUp(page);
         await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + 2000)); // a new set id (they're 'rset_' + Date.now())
         const urls = [];
-        await page.route(/^https:\/\/api\.fantasycalc\.com\//, (route) => {
+        await page.route(/\/api\/fantasycalc\?/, (route) => {
             urls.push(route.request().url());
             return route.fulfill({ status: 200, contentType: 'application/json',
                 body: JSON.stringify([...THEIRS, ...MINE].map((name, i) => ({ player: { name, position: byName[name][2] }, overallRank: i + 1 }))) });
@@ -531,7 +531,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
     test('a new dynasty league: the one-tap In-Season set counts as its ROS step', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
-        await page.route(/^https:\/\/api\.fantasycalc\.com\//, (route) => route.fulfill({ status: 200, contentType: 'application/json',
+        await page.route(/\/api\/fantasycalc\?/, (route) => route.fulfill({ status: 200, contentType: 'application/json',
             body: JSON.stringify([...THEIRS, ...MINE].map((name, i) => ({ player: { name, position: byName[name][2] }, overallRank: i + 1 }))) }));
         await patchLeagues(page, { 'Fixture League': { leagueType: 'dynasty' } });
         await showTab(page, 'setup');

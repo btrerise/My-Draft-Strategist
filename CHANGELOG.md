@@ -143,6 +143,13 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Market values now come through the site, and TE Premium works.** Fetch Market Value (Trade Finder) and Auto-Fetch
+  ROS Rankings used to ask FantasyCalc from your browser; they now get one copy the site keeps for everyone and
+  refreshes at most every three hours, as FantasyCalc's terms ask (it's also a much smaller download). The TE Premium
+  switch never changed anything, because FantasyCalc ignored the setting the app sent; with it on, values now use
+  FantasyCalc's TE premium, so TEs rank higher. League sizes FantasyCalc doesn't offer use the nearest one (16 teams as
+  14). The Trade Analyzer's line under the verdicts now says "Market values from FantasyCalc" with a link, and Auto-Fetch
+  ROS Rankings shows "Powered by FantasyCalc" like Trade Finder.
 - **"What do these mean?" opens the badge legend over the tab you're on, so you keep your place.** On the Lineup,
   Roster and Scout tabs it used to switch to the Guide. Now the legend slides in from the right on a computer, or up
   from the bottom on a phone (half height; drag the handle up for more, swipe it down or tap outside to close),

@@ -9021,3 +9021,160 @@ link did before.
 `body`, and a `className` for its own styles. One sheet at a time; opening another replaces it.
 
 **Left over.** None from the card.
+
+## K1 — Research: Ko-fi tips, a polite ask, supporter perks and sharing
+
+**What changed, where.** Research only, no app files: `docs/improvements/support.md` (findings, recommendations, the
+staged plan, the questions for the owner) and its 21 mock-up PNGs in `docs/improvements/support/` (375 and 1280px of
+each placement, plus three 1200×630 link-preview drafts). The mock-ups were made by a Playwright script kept outside the
+repo: it opened the real pages from `tests/serve.mjs` with the test fixtures, injected mock markup and a mock stylesheet
+built from the site's tokens, and took screenshots. `css/`, `js/`, the pages and `sw.js` are untouched, so no
+`CACHE_NAME` bump and no screenshot baselines change.
+
+**User-visible effect.** None yet.
+
+**Findings worth knowing outside K1.**
+- Ko-fi's badge is a third-party PNG whose alt text says "Buy Me a Coffee" (another service's name); offline or behind
+  a blocker it shows as that text. The two `.hero-kofi` links lack `rel="noopener noreferrer"`.
+- `/lineup/`'s `og:title` starts with a space, its `og:url` is the site root (so a shared `/lineup/` link can preview as
+  the Draft page), its `og:image` is a 512×512 icon under `summary_large_image`, and it has no meta description. `/` and
+  `/t-score/` use an SVG `og:image`, which most chat apps don't preview.
+- **FantasyCalc's Terms of Usage (effective 2026-10-10)** ask for responses "cached and reused across users" (the apps
+  call it from each browser), written permission at 1,000+ monthly active users, and no substitute for their trade
+  calculator. A separate card could route it through a cached Pages Function as FFC is (support.md, Terms).
+- **Sleeper's API** is "free to use for non-commercial purposes"; **ESPN's** scoreboard falls under Disney's Terms of
+  Use (personal, noncommercial; no automated access). Questions for the owner to ask are in support.md.
+- Ko-fi's own site and help centre answer this session with Cloudflare's bot check, so Ko-fi's fees and membership
+  features come from search results quoting its help pages and 2026 reviews, marked for the owner to confirm. For the
+  rest, the owner's Default environment now allows `ko-fi.com`, `help.ko-fi.com`, `docs.sleeper.com`,
+  `fantasycalc.com`, `www.fantasycalc.com`, `disneytermsofuse.com` and `developer.mozilla.org` (approved in this
+  session).
+
+**Proposed cards** (sizes and order in support.md, section 6): **K2** Ko-fi easier to find + Share (~12k, any time);
+**K3** link previews + `?ref=share` (~6k, alongside K2); **K4** the polite rules + Lineup Strategist's Final-week ask and
+season thank-you (~15k, by week 12); **K5** "Share image…" in M9's split button (~6k, after M9); **K6** Draft
+Strategist's post-draft ask (~10k, before August); **K7** supporter perks (~8k, only with a membership).
+
+**The owner's decisions (2026-11-07), round 1.**
+1. **Finding Ko-fi: yes to all four** (our button in place of the PNG, the header cup, "About this project" in the
+   Guides, the Dashboard foot line), and no floating widget. **The header cup on computers only** (phones keep the
+   drawer, the Guide and the Dashboard foot).
+2. **Moments: as recommended.** The owner corrected my wording: something is due early in the week (waivers are
+   submitted Tuesday and run Wednesday), so the Final-week card's calm is "no lineup locks for days", and it stays out
+   of the Waiver Wire. support.md fixed.
+3. **Polite rules: as recommended**, except Draft Strategist's "Maybe later": 30 days is fine, and the owner asked
+   whether 15 days fits better since draft season runs about two months with several drafts. Open (see round 2).
+4. **Perks and membership: tips only for now**; decide on a membership next summer.
+5. **Sharing: open.** The owner asked why the preview drafts colour "Strategist" green when the header shows "My Draft"
+   muted and "Strategist" bold white. No reason: the first draft was an arbitrary choice. A header-coloured version is
+   now in support.md (B). The owner is also considering changing the site's text.
+6. **Stages: as proposed.**
+7. **Terms: open.** The owner recalled that the apps take FantasyCalc's rankings and work out their own values. Checked:
+   `js/shared/api/market.js` reads only `overallRank`, never FantasyCalc's `value`. support.md corrected. Whether to
+   keep FantasyCalc comes first, then the caching card. On ESPN: the risk is the script access, which exists with or
+   without tips (not a certainty either way); the alternatives (Sleeper's schedule, nflverse's times) are in support.md.
+
+**Round 2 (2026-11-07).**
+- **3. Draft Strategist: "Maybe later" quiets it for 15 days, with at most two asks per draft season** (each after a
+  completed draft, 15+ days apart). The draft season window widens to 15 July – 15 September (my proposal, to cover
+  the two months the owner described). Lineup's rules stay as in round 1.
+- **5.** By "header text" the owner meant the **colored hero image** (`images/logo.svg`, `images/mls-logo.svg`). A third
+  set of preview drafts uses that logo as it is (support.md, option C). Open: A, B or C.
+- **7.** The owner asked for an alternative to FantasyCalc without the same concerns. Checked FFC's ADP (empty in
+  season), Sleeper's `search_rank` and trending, DynastyProcess (FantasyPros' numbers underneath), FantasyPros and
+  KeepTradeCut: none is a market from real trades with clean terms. Recommendation in support.md: keep FantasyCalc and
+  meet its terms (a cached Pages Function, attribution checks, an email about the user count and the Trade Analyzer);
+  fall back to user uploads only if they say no. Open: keep FantasyCalc?
+
+**Round 3 (2026-11-07).**
+- **5. Option C**: the link previews use the colored hero logo.
+- **7. Keep FantasyCalc** while under 1,000 monthly users. Make the attribution unmistakable, with a direct credit on
+  the Trade Analyzer card. Add the cached-fetch card, **prioritized first** (card K8; numbered after K7 because K2–K7
+  were already named, but it runs first). The owner may have K8 done in this session after K1.
+- **Cards written**: K8, K2, K3, K4, K5, K6, K7, in full in support.md ("Build cards"), with sizes, needs and order.
+  Added to the runbook page (2026-11-07, version 37): the seven cards marked "New Nov 7" with their session prompts;
+  K8, K2 and K3 in the weeks 10–11 step (K8 first), K4 in weeks 12–13, K6 and K5 in spring and summer, K7 left out of
+  the order until a membership decision; the "Site and support" lane; a "Support (K1, 2026-11-07)" entry under "Your
+  answers so far". The runbook's MERGED list wasn't touched (A1, M2, M11, S27 and S31 are merged but not marked there).
+
+**Checks.** `npm run check` in the session: check-precache and the unit tests pass; Playwright 750 passed, 48 skipped;
+the 4 failures are `visual.spec.mjs` refusing this cloud image's fonts (the environment check), as on main. The diff
+against main is only `docs/improvements/`.
+
+**Left over.** K8 next (the owner may run it in this session). The runbook's MERGED list needs A1, M2, M11, S27, S31
+(and K1 once merged) with their PR numbers. `docs/TESTING.md`'s open follow-ups: none touched.
+
+## K8 — FantasyCalc through a cached Pages Function, and a clear FantasyCalc credit
+
+**Why.** K1's terms check: FantasyCalc's [Terms of Usage](https://fantasycalc.com/terms-of-usage) (effective
+2026-10-10) and [API docs](https://fantasycalc.com/api-docs) let sites under 1,000 monthly active users use its values
+for free if responses are "cached and reused across users and requests" (each parameter set refreshed at most every
+three hours), only `GET /values/current` is called, and "FantasyCalc" is credited with a link near the data. The app
+called FantasyCalc from every browser. The owner keeps FantasyCalc while under 1,000 monthly users.
+
+**User-visible effect.** Market values (Trade Finder's Fetch Market Value, the Roster tab's Auto-Fetch ROS Rankings)
+come from the site's own cached copy, and the download is ~10 KB instead of ~200 KB. **TE Premium now works**: it
+never did, because the app sent `isTEP=true`, which FantasyCalc ignores (checked 2026-11-07: TE ranks identical with
+it on or off; FantasyCalc's parameter is `tep=none | te+ | te++`, and `te+` moves Brock Bowers 12th → 9th in redraft).
+League sizes FantasyCalc lacks use the nearest one (FantasyCalc offers 8, 10, 12, 14; 16 → 14, 6 → 8). The Trade
+Analyzer's line under the verdicts reads "Market values from FantasyCalc, updated today at …" with a link when the
+values came from FantasyCalc (a file upload keeps "Market values: Updated …"), and Auto-Fetch ROS Rankings has the
+same "Powered by FantasyCalc" mark as Trade Finder.
+
+**The owner's decisions (2026-11-07).** Credit option **A** (the existing line names FantasyCalc, linked; not B, which
+added the "Powered by" mark there too), shown with screenshots at 375 and 1280px. **TE Premium stays a switch; on means
+`te+`** (not a three-way Off / TE+ / TE++ choice, so the saved setting's shape doesn't change).
+
+**What changed, where.**
+- `functions/api/fantasycalc.js` (new Pages Function): `GET /api/fantasycalc?isDynasty=&numQbs=&numTeams=&ppr=&tep=`,
+  every parameter required once and checked against FantasyCalc's documented values (anything else 400, so at most
+  144 cache entries); one copy per parameter set in `caches.default`, kept a day with the time it was fetched, served
+  as is under three hours old, refreshed after; FantasyCalc down → the older copy (`x-fc-stale: 1`), or 502 with
+  nothing cached. Rows trimmed to `{ player: { name, position }, overallRank }`. Pages Functions aren't served files,
+  so `PRECACHE_ASSETS` is unchanged; `sw.js` already leaves `/api/` alone.
+- `js/shared/api/market.js`: `fantasyCalcUrl` (same-origin, the function's parameter order), `fcTeamSize`,
+  `FC_TEP_ON = 'te+'`; `fetchMarketConsensusData` keeps its signature and what it returns.
+- `js/shared/net.js`: a timeout on `/api/fantasycalc` names FantasyCalc.
+- `js/mls/trade/verdict.js` (`marketAgeHTML`) and `css/mls.css`: the credit in the line under the verdicts, from
+  `State.marketFormat` (set only by a fetch). `lineup/index.html`: the mark under Auto-Fetch ROS Rankings. `README.md`:
+  the function in the project structure. `CHANGELOG.md`: a line under Lineup Strategist. `CACHE_NAME` v2.9.5 → v2.9.6.
+  The app's footer version is unchanged (the recent cards haven't bumped it either).
+- Tests: `tests/unit/fantasycalc.test.mjs` (new: parameter checks, the cache, three-hour refresh, stale fallback, 502,
+  errors not cached), `tests/unit/market.test.mjs` (the URL, TE premium, league sizes), `tests/mls-fantasycalc.spec.mjs`
+  (new: requests go to `/api/fantasycalc` and never to api.fantasycalc.com; the Trade Analyzer's credit, and the plain
+  wording for a file; the Auto-Fetch mark; TE Premium → `tep=te+`, 16 teams → 14). Six specs that stubbed
+  `api.fantasycalc.com` now stub `/api/fantasycalc`.
+
+**Checked.** `npm run check` in the session: check-precache OK (156 files), 514 unit tests pass, 754 Playwright tests
+pass; the 4 failures are `visual.spec.mjs` refusing this container's fonts (the environment check), as on main.
+Screenshots: main and this branch rendered the same way here (`RENDER_ENV=any`) and compared with `npm run pxdiff`:
+exactly two PNGs change, `desktop/mls-league-roster.png` (1280x2768 → 1280x2804) and `phone/mls-league-roster.png`
+(390x2708 → 390x2744), 36px taller for the "Powered by FantasyCalc" mark under Auto-Fetch ROS Rankings. Re-taken from CI
+(below).
+
+**Checked on the branch preview** (the owner allowed `*.pages.dev`, 2026-11-07), on Cloudflare itself:
+`/api/fantasycalc?isDynasty=false&numQbs=1&numTeams=12&ppr=1&tep=none` answered 197 rows in 13.7 KB; the same set in
+another order came from the cache (the same `x-fc-fetched-at`); `numTeams=16` and the old `isTEP` answered 400 with a
+plain message; `tep=te+` moved Brock Bowers 13th → 9th. In a browser, Lineup Strategist's Fetch Market Value on the
+preview made one request, to `/api/fantasycalc`, none to api.fantasycalc.com, saved 197 players, and logged no errors.
+
+**Screenshots from CI (PR btrerise/My-Draft-Strategist#225, run 42417769798).** CI failed on exactly the two PNGs
+found above: `desktop/mls-league-roster.png` 1280x2710 → 1280x2744 and `phone/mls-league-roster.png` 390x2596 →
+390x2630 (34px taller in CI's fonts). Each `-expected.png` was byte-identical to the committed baseline. In the new
+images everything above the credit is identical; below it, the page is the same moved down 34px, except where the
+fixed header, rail and bottom bar sit (they stay put in a full-page screenshot while the page moves under them). The
+`-actual.png` files are the new baselines.
+
+**After deploying to the live site**, the same check there: open
+`https://mydraftstrategist.com/api/fantasycalc?isDynasty=false&numQbs=1&numTeams=12&ppr=1&tep=none` (a JSON list), then
+Fetch Market Value in Trade Finder. A second visit within three hours should answer with the same `x-fc-fetched-at`
+header (DevTools, Network). If Bot Fight Mode challenges `/api/` (A1's note), the fetch fails the way FFC's would.
+
+**Left over.**
+- **1,000 monthly users:** watch Umami's monthly unique visitors to `/lineup/`; before 1,000, write to FantasyCalc
+  (fantasycalcff@gmail.com) for permission, and ask whether the Trade Analyzer turning its ranks into the app's own
+  values is fine.
+- **Export Trade's image** shows market values but no FantasyCalc credit (the line under the verdicts isn't part of
+  the image). Not changed here; ask the owner whether the image should carry "Market: FantasyCalc".
+- Anyone who had TE Premium on gets different TE values on their next fetch (the fix). Their saved market values
+  change only when they fetch again.

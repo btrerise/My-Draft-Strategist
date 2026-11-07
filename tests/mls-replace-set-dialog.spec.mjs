@@ -121,7 +121,7 @@ test.describe('the Replace Set dialog', () => {
 
     test("Auto-Fetch's confirm says the same", async ({ page }) => {
         const { state } = await setUp(page);
-        await page.route(/^https:\/\/api\.fantasycalc\.com\//, (route) => route.fulfill({ status: 200, contentType: 'application/json',
+        await page.route(/\/api\/fantasycalc\?/, (route) => route.fulfill({ status: 200, contentType: 'application/json',
             body: JSON.stringify([{ player: { name: "Ja'Marr Chase", position: 'WR' }, overallRank: 1 }, { player: { name: 'Josh Allen', position: 'QB' }, overallRank: 2 }]) }));
         await openRosCard(page);
         await page.locator('#autoFetchRosBtn').click();

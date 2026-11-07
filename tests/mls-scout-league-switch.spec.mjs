@@ -12,7 +12,7 @@ const rows = RANKINGS_CSV.trim().split('\n').slice(1).map(l => l.split(','));
 
 async function setUp(page) {
     const state = await openApp(page, '/lineup/');
-    await page.route(/^https:\/\/api\.fantasycalc\.com\//, (route) => route.fulfill({ status: 200, contentType: 'application/json',
+    await page.route(/\/api\/fantasycalc\?/, (route) => route.fulfill({ status: 200, contentType: 'application/json',
         body: JSON.stringify(rows.slice().reverse().map((r, i) => ({ player: { name: r[1], position: r[2] }, overallRank: i + 1 }))) }));
     await seedMls(page);
     await page.fill('#sleeperLeagueId', FIXTURE_LEAGUE2_ID);
