@@ -9261,6 +9261,23 @@ request runs ("When your machine can't reproduce the baselines"):
 - K3 reads `?ref=share` in the analytics loader; until it merges, a shared link opens with `?ref=share` in the address
   bar (harmless; A1's `data-exclude-search` already keeps it out of Umami's page URLs).
 
+### K2: screenshots re-taken from CI (PR #226, run 42424203741)
+
+**The 27 PNGs listed above were re-taken from CI's `-actual.png`.** Each `-expected.png` was checked byte-for-byte
+against the committed baseline. `npm run pxdiff` of old against new shows:
+- The 15 header-only screens differ only in the header's right end (x ≈ 954–1255, y 12–54; T-Score x 1076–1255).
+- The Guides, Dashboards and T-Score's Research tab grow taller by the note, the foot and the line.
+
+The run's only other failure was `badge-legend.spec.mjs`, desktop, "Lineup Strategist: the Waiver Wire Assistant's
+link opens the legend…" ("Expected: 0, Received: 153" elements past the screen's edge). It isn't K2's code; it's a race
+in M11's test. `openSheet` focuses the title at once but adds `is-open` (which starts the slide-in) two frames later
+(`js/shared/ui/sheet.js`). `expectLegendOpen` waited for the focus, then for `getAnimations()`. Read inside those two
+frames there's no animation yet, so it measured the side sheet still off-screen. The fix (in this PR): wait for
+`.sheet-host.is-open` first.
+
+Checked with `is-open` delayed by 300ms in `sheet.js` on purpose: the old test fails the same way (348 elements), the
+new one passes. Main's CI never hit the gap.
+
 ### E1 (proposed card, from the owner during K2): easter eggs
 
 The owner, during K2 (2026-11-07): "I love it when sites have easter eggs (e.g., Android's in their version numbers)."
