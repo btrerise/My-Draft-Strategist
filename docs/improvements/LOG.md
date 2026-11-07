@@ -9103,3 +9103,58 @@ against main is only `docs/improvements/`.
 
 **Left over.** K8 next (the owner may run it in this session). The runbook's MERGED list needs A1, M2, M11, S27, S31
 (and K1 once merged) with their PR numbers. `docs/TESTING.md`'s open follow-ups: none touched.
+
+## K8 — FantasyCalc through a cached Pages Function, and a clear FantasyCalc credit
+
+**Why.** K1's terms check: FantasyCalc's [Terms of Usage](https://fantasycalc.com/terms-of-usage) (effective
+2026-10-10) and [API docs](https://fantasycalc.com/api-docs) let sites under 1,000 monthly active users use its values
+for free if responses are "cached and reused across users and requests" (each parameter set refreshed at most every
+three hours), only `GET /values/current` is called, and "FantasyCalc" is credited with a link near the data. The app
+called FantasyCalc from every browser. The owner keeps FantasyCalc while under 1,000 monthly users.
+
+**User-visible effect.** Market values (Trade Finder's Fetch Market Value, the Roster tab's Auto-Fetch ROS Rankings)
+come from the site's own cached copy, and the download is ~10 KB instead of ~200 KB. **TE Premium now works**: it
+never did, because the app sent `isTEP=true`, which FantasyCalc ignores (checked 2026-11-07: TE ranks identical with
+it on or off; FantasyCalc's parameter is `tep=none | te+ | te++`, and `te+` moves Brock Bowers 12th → 9th in redraft).
+League sizes FantasyCalc lacks use the nearest one (FantasyCalc offers 8, 10, 12, 14; 16 → 14, 6 → 8). The Trade
+Analyzer's line under the verdicts reads "Market values from FantasyCalc, updated today at …" with a link when the
+values came from FantasyCalc (a file upload keeps "Market values: Updated …"), and Auto-Fetch ROS Rankings has the
+same "Powered by FantasyCalc" mark as Trade Finder.
+
+**The owner's decisions (2026-11-07).** Credit option **A** (the existing line names FantasyCalc, linked; not B, which
+added the "Powered by" mark there too), shown with screenshots at 375 and 1280px. **TE Premium stays a switch; on means
+`te+`** (not a three-way Off / TE+ / TE++ choice, so the saved setting's shape doesn't change).
+
+**What changed, where.**
+- `functions/api/fantasycalc.js` (new Pages Function): `GET /api/fantasycalc?isDynasty=&numQbs=&numTeams=&ppr=&tep=`,
+  every parameter required once and checked against FantasyCalc's documented values (anything else 400, so at most
+  144 cache entries); one copy per parameter set in `caches.default`, kept a day with the time it was fetched, served
+  as is under three hours old, refreshed after; FantasyCalc down → the older copy (`x-fc-stale: 1`), or 502 with
+  nothing cached. Rows trimmed to `{ player: { name, position }, overallRank }`. Pages Functions aren't served files,
+  so `PRECACHE_ASSETS` is unchanged; `sw.js` already leaves `/api/` alone.
+- `js/shared/api/market.js`: `fantasyCalcUrl` (same-origin, the function's parameter order), `fcTeamSize`,
+  `FC_TEP_ON = 'te+'`; `fetchMarketConsensusData` keeps its signature and what it returns.
+- `js/shared/net.js`: a timeout on `/api/fantasycalc` names FantasyCalc.
+- `js/mls/trade/verdict.js` (`marketAgeHTML`) and `css/mls.css`: the credit in the line under the verdicts, from
+  `State.marketFormat` (set only by a fetch). `lineup/index.html`: the mark under Auto-Fetch ROS Rankings. `README.md`:
+  the function in the project structure. `CHANGELOG.md`: a line under Lineup Strategist. `CACHE_NAME` v2.9.5 → v2.9.6.
+  The app's footer version is unchanged (the recent cards haven't bumped it either).
+- Tests: `tests/unit/fantasycalc.test.mjs` (new: parameter checks, the cache, three-hour refresh, stale fallback, 502,
+  errors not cached), `tests/unit/market.test.mjs` (the URL, TE premium, league sizes), `tests/mls-fantasycalc.spec.mjs`
+  (new: requests go to `/api/fantasycalc` and never to api.fantasycalc.com; the Trade Analyzer's credit, and the plain
+  wording for a file; the Auto-Fetch mark; TE Premium → `tep=te+`, 16 teams → 14). Six specs that stubbed
+  `api.fantasycalc.com` now stub `/api/fantasycalc`.
+
+**Not checked here.** A session can't run the function on Cloudflare. After deploying: open
+`https://mydraftstrategist.com/api/fantasycalc?isDynasty=false&numQbs=1&numTeams=12&ppr=1&tep=none` (a JSON list), then
+Fetch Market Value in Trade Finder. A second visit within three hours should answer with the same `x-fc-fetched-at`
+header (DevTools, Network). If Bot Fight Mode challenges `/api/` (A1's note), the fetch fails the way FFC's would.
+
+**Left over.**
+- **1,000 monthly users:** watch Umami's monthly unique visitors to `/lineup/`; before 1,000, write to FantasyCalc
+  (fantasycalcff@gmail.com) for permission, and ask whether the Trade Analyzer turning its ranks into the app's own
+  values is fine.
+- **Export Trade's image** shows market values but no FantasyCalc credit (the line under the verdicts isn't part of
+  the image). Not changed here; ask the owner whether the image should carry "Market: FantasyCalc".
+- Anyone who had TE Premium on gets different TE values on their next fetch (the fix). Their saved market values
+  change only when they fetch again.
