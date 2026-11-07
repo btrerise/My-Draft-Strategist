@@ -138,7 +138,9 @@ test.describe('Ko-fi and Share', () => {
             const note = page.locator('#guideTab .about-project');
             await expect(note).toBeVisible();
             await expect(note.getByRole('heading', { name: 'About this project' })).toBeVisible();
-            await expect(note).toContainText('built by one person, for fun, in spare time. There are no ads, nothing is locked');
+            await expect(note).toContainText('I build My Draft Strategist and Lineup Strategist on my own, for fun, in my spare time.');
+            await expect(note).toContainText('Thanks for using it. I hope it helps you as much as it helps me.');
+            expect(await note.locator('p br').count()).toBe(3); // one sentence (or pair) per line
             // The first thing in the Guide's steps (after Lineup Strategist's welcome line).
             expect(await page.evaluate(() => document.querySelector('#guideTab .guide-step').compareDocumentPosition(document.querySelector('#guideTab .about-project')) & Node.DOCUMENT_POSITION_PRECEDING)).toBeTruthy();
             const kofi = note.getByRole('link', { name: 'Support on Ko-fi' });
@@ -166,7 +168,7 @@ test.describe('Ko-fi and Share', () => {
         await stubShare(page, 'share');
         await openApp(page, '/t-score/');
         const line = page.locator('#researchTab .tscore-support');
-        await expect(line).toContainText('built by one person, for fun, with no ads');
+        await expect(line).toContainText('I build the T-Score model and both apps on my own, for fun, with no ads.');
         await expect(line.getByRole('link', { name: 'Support on Ko-fi' })).toHaveAttribute('data-umami-event-where', 'guide');
         await expect(line.locator('+ .tscore-privacy')).toContainText('Taps on the Support on Ko-fi and Share buttons are counted too');
         await line.getByRole('button', { name: 'Share with your league' }).click();

@@ -9037,9 +9037,12 @@ branch, which K8's branch `claude/wonderful-noether-qfsx9c` carries until it mer
   **Share with your league** button.
 - **On computers (840px and up)** a muted cup sits at the header's right end on all three pages; it turns green on
   hover with a "Support this site on Ko-fi" tooltip. Hidden below 840px.
-- **"About this project"** opens both Guides (support.md's text, green edge) with the two buttons. T-Score's The
-  Research ends with one line ("The T-Score model and both apps are built by one person, for fun, with no ads. Tips and
-  sharing keep it going.") and the same two buttons, just above Visitor counts.
+- **"About this project"** opens both Guides (green edge) with the two buttons, in the owner's voice, one sentence per
+  line: "I build My Draft Strategist and Lineup Strategist on my own, for fun, in my spare time. / There are no ads,
+  nothing is locked, and your leagues and rankings stay in this browser. / Tips pay for the domain and the odd late
+  night, and sharing the site with your league helps just as much. / Thanks for using it. I hope it helps you as much
+  as it helps me." T-Score's The Research ends with one line ("I build the T-Score model and both apps on my own, for
+  fun, with no ads. Tips and sharing keep it going.") and the same two buttons, just above Visitor counts.
 - **Share this site** is a new row at the end of every drawer's links. Share opens the phone's (or browser's) share
   sheet with the page's title, text and `?ref=share` link (support.md section 5); where there's none (Firefox on
   computers) it copies the link and says "Link copied". Closing the sheet does nothing; any other refusal copies
@@ -9068,12 +9071,17 @@ branch, which K8's branch `claude/wonderful-noether-qfsx9c` carries until it mer
   drawer stubbed, absent and cancelled; the Guide notes, the Dashboard feet, T-Score's line, the drawer foot's 48px
   button). `tests/nav-rail.spec.mjs`: the menu's rows now end with "Share this site".
 
-**Decisions made here (not asked).**
+**Decisions** (the owner's are marked; the rest made here without asking).
 - The Dashboard foot uses the card's 48px green button and an outlined Share button, not the mock-up's two text links
   ("Tip on Ko-fi", "Share with your league"): the card asks for our button in both `.hero-kofi` blocks, and one button
   everywhere reads the same.
 - The header cup is on T-Score too (after "Back to Draft"), at the same widths: the card says "the header", and T-Score
   has no rail, so its cup still hides below 840px as on the apps.
+- **The note's wording (owner, after seeing it):** first person throughout, one sentence per line (`<br>`; the last two
+  short sentences share a line) instead of a 68ch cap, and a thank-you line added; T-Score's line in first person too.
+  The short captions stay as they are ("Made by one person, for fun. No ads." in the drawer, "One person builds it." on
+  the Dashboards). **For K4:** its Guide sentence ("Once a season, after a week goes final, a small card may ask too.")
+  should go on its own line in the same voice.
 - T-Score's line has the two buttons rather than two links in a sentence: inline, the links' 48px tap areas overlapped
   on phones and `touch-targets.spec.mjs` failed.
 
