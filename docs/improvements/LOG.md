@@ -9149,10 +9149,23 @@ added the "Powered by" mark there too), shown with screenshots at 375 and 1280px
 pass; the 4 failures are `visual.spec.mjs` refusing this container's fonts (the environment check), as on main.
 Screenshots: main and this branch rendered the same way here (`RENDER_ENV=any`) and compared with `npm run pxdiff`:
 exactly two PNGs change, `desktop/mls-league-roster.png` (1280x2768 → 1280x2804) and `phone/mls-league-roster.png`
-(390x2708 → 390x2744), 36px taller for the "Powered by FantasyCalc" mark under Auto-Fetch ROS Rankings. Re-take both
-from CI once a PR is open (docs/TESTING.md, "When your machine can't reproduce the baselines").
+(390x2708 → 390x2744), 36px taller for the "Powered by FantasyCalc" mark under Auto-Fetch ROS Rankings. Re-taken from CI
+(below).
 
-**Not checked here.** A session can't run the function on Cloudflare. After deploying: open
+**Checked on the branch preview** (the owner allowed `*.pages.dev`, 2026-11-07), on Cloudflare itself:
+`/api/fantasycalc?isDynasty=false&numQbs=1&numTeams=12&ppr=1&tep=none` answered 197 rows in 13.7 KB; the same set in
+another order came from the cache (the same `x-fc-fetched-at`); `numTeams=16` and the old `isTEP` answered 400 with a
+plain message; `tep=te+` moved Brock Bowers 13th → 9th. In a browser, Lineup Strategist's Fetch Market Value on the
+preview made one request, to `/api/fantasycalc`, none to api.fantasycalc.com, saved 197 players, and logged no errors.
+
+**Screenshots from CI (PR btrerise/My-Draft-Strategist#225, run 42417769798).** CI failed on exactly the two PNGs
+found above: `desktop/mls-league-roster.png` 1280x2710 → 1280x2744 and `phone/mls-league-roster.png` 390x2596 →
+390x2630 (34px taller in CI's fonts). Each `-expected.png` was byte-identical to the committed baseline. In the new
+images everything above the credit is identical; below it, the page is the same moved down 34px, except where the
+fixed header, rail and bottom bar sit (they stay put in a full-page screenshot while the page moves under them). The
+`-actual.png` files are the new baselines.
+
+**After deploying to the live site**, the same check there: open
 `https://mydraftstrategist.com/api/fantasycalc?isDynasty=false&numQbs=1&numTeams=12&ppr=1&tep=none` (a JSON list), then
 Fetch Market Value in Trade Finder. A second visit within three hours should answer with the same `x-fc-fetched-at`
 header (DevTools, Network). If Bot Fight Mode challenges `/api/` (A1's note), the fetch fails the way FFC's would.
