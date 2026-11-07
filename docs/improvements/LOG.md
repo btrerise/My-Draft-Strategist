@@ -9145,6 +9145,13 @@ added the "Powered by" mark there too), shown with screenshots at 375 and 1280px
   wording for a file; the Auto-Fetch mark; TE Premium → `tep=te+`, 16 teams → 14). Six specs that stubbed
   `api.fantasycalc.com` now stub `/api/fantasycalc`.
 
+**Checked.** `npm run check` in the session: check-precache OK (156 files), 514 unit tests pass, 754 Playwright tests
+pass; the 4 failures are `visual.spec.mjs` refusing this container's fonts (the environment check), as on main.
+Screenshots: main and this branch rendered the same way here (`RENDER_ENV=any`) and compared with `npm run pxdiff`:
+exactly two PNGs change, `desktop/mls-league-roster.png` (1280x2768 → 1280x2804) and `phone/mls-league-roster.png`
+(390x2708 → 390x2744), 36px taller for the "Powered by FantasyCalc" mark under Auto-Fetch ROS Rankings. Re-take both
+from CI once a PR is open (docs/TESTING.md, "When your machine can't reproduce the baselines").
+
 **Not checked here.** A session can't run the function on Cloudflare. After deploying: open
 `https://mydraftstrategist.com/api/fantasycalc?isDynasty=false&numQbs=1&numTeams=12&ppr=1&tep=none` (a JSON list), then
 Fetch Market Value in Trade Finder. A second visit within three hours should answer with the same `x-fc-fetched-at`
