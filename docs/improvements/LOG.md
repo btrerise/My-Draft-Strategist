@@ -9074,6 +9074,18 @@ Strategist's post-draft ask (~10k, before August); **K7** supporter perks (~8k, 
    keep FantasyCalc comes first, then the caching card. On ESPN: the risk is the script access, which exists with or
    without tips (not a certainty either way); the alternatives (Sleeper's schedule, nflverse's times) are in support.md.
 
+**Round 2 (2026-11-07).**
+- **3. Draft Strategist: "Maybe later" quiets it for 15 days, with at most two asks per draft season** (each after a
+  completed draft, 15+ days apart). The draft season window widens to 15 July – 15 September (my proposal, to cover
+  the two months the owner described). Lineup's rules stay as in round 1.
+- **5.** By "header text" the owner meant the **colored hero image** (`images/logo.svg`, `images/mls-logo.svg`). A third
+  set of preview drafts uses that logo as it is (support.md, option C). Open: A, B or C.
+- **7.** The owner asked for an alternative to FantasyCalc without the same concerns. Checked FFC's ADP (empty in
+  season), Sleeper's `search_rank` and trending, DynastyProcess (FantasyPros' numbers underneath), FantasyPros and
+  KeepTradeCut: none is a market from real trades with clean terms. Recommendation in support.md: keep FantasyCalc and
+  meet its terms (a cached Pages Function, attribution checks, an email about the user count and the Trade Analyzer);
+  fall back to user uploads only if they say no. Open: keep FantasyCalc?
+
 **Checks.** `npm run check` in the session: check-precache and the unit tests pass; Playwright 750 passed, 48 skipped;
 the 4 failures are `visual.spec.mjs` refusing this cloud image's fonts (the environment check), as on main. The diff
 against main is only `docs/improvements/`.

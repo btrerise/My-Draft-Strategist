@@ -212,12 +212,15 @@ shouldAsk(state, now, {
 - **At most one ask per app per season**, plus Lineup's end-of-season thank-you if the last ask was 30 or more days
   earlier. Never two in 30 days. Draft and Lineup count separately (different people use them, and a backup restores
   one app at a time).
-- **Maybe later** (or ×): quiet for 30 days in Lineup; until next season in Draft (its season is shorter than 30 days).
+- **Maybe later** (or ×): quiet for 30 days in Lineup; **15 days in Draft** (owner, 2026-11-07: draft season runs about
+  two months, with several drafts).
+- **Draft Strategist: at most two asks per draft season**, each after a completed draft and at least 15 days apart
+  (owner's choice); the "once per app per season" above is Lineup's rule.
 - **I already chipped in**: never again on this device, in that app (honor system). It's also the switch K7 would use
   for supporter perks, if you go that way: one honest answer, no codes.
 - **Support on Ko-fi** tapped: counts as asked; don't ask again this season.
 
-**Seasonality.** Draft: **1 August to 15 September** only (by the date: drafts happen before Sleeper's week 1, and the
+**Seasonality.** Draft: **15 July to 15 September** only (widened from 1 August, owner 2026-11-07) (by the date: drafts happen before Sleeper's week 1, and the
 latest leagues draft the week of the opener). Lineup: **from week 4 to the end of your season** (Sleeper's regular
 season, `state.season_type === 'regular'`, and the playoffs), plus the thank-you. Nothing in the off-season.
 
@@ -356,11 +359,19 @@ Proposal: one **1200×630 PNG per page** (about 30 to 60 KB each), drawn once an
 ![Lineup Strategist preview](support/og-lineup.png)
 ![T-Score preview](support/og-tscore.png)
 
-**B. As the header** (added after the owner's question: muted "My Draft", bold white "Strategist", on one line):
+**B. As the header text** (muted "My Draft", bold white "Strategist", on one line):
 
 ![Draft Strategist preview, header colors](support/og-draft-header.png)
 ![Lineup Strategist preview, header colors](support/og-lineup-header.png)
 ![T-Score preview, header colors](support/og-tscore-header.png)
+
+**C. The hero logo itself** (added 2026-11-07: the owner meant the colored hero image, `images/logo.svg` and
+`images/mls-logo.svg`, with its blue and green words and the play-diagram arrows). The logo is drawn as it is, with a
+one-line description under it; T-Score uses Draft Strategist's logo with its own title:
+
+![Draft Strategist preview, hero logo](support/og-draft-hero.png)
+![Lineup Strategist preview, hero logo](support/og-lineup-hero.png)
+![T-Score preview, hero logo](support/og-tscore-hero.png)
 
 Chat apps cache previews for days, so the PNG names should carry a version (`og-lineup-1.png`) to force a refresh later.
 
@@ -458,6 +469,35 @@ lawyer; the unclear parts are listed for you to ask about):
 - **NFLMeta**: not used (docs/refactor/LOG.md); its free plan bars commercial use.
 
 ---
+
+### Alternatives to FantasyCalc for "the market" (owner's question, 2026-11-07)
+
+What FantasyCalc gives Lineup Strategist: a rank list built from real trades, for redraft and dynasty, 1QB and
+superflex, by league size and scoring, refreshed through the season. Checked 2026-11-07:
+
+| Source | What it is | Terms | Fits? |
+|---|---|---|---|
+| **Fantasy Football Calculator's ADP** (already used by Draft Strategist through `functions/api/ffc/`) | Average draft position from mock drafts | "Free for personal and commercial use", attribution asked (the cleanest terms of any source here) | **No in season.** ADP stops moving once drafts end: its dynasty ADP for 2026 today covers 62 drafts from 5 Sep to 5 Oct and lists **no players**. A preseason market only. |
+| **Sleeper's `search_rank`** (a field in the player file the apps already download; `js/mls/players.js` reads it to break name ties) | Sleeper's own ordering of players | Sleeper's API terms, which the apps already depend on (non-commercial) | **Weak.** Undocumented, one list (no dynasty / superflex / scoring split), and nobody knows what it measures. No new provider, though. |
+| **Sleeper's trending adds and drops** (documented; S6 shows it already) | Who's being picked up this week | Sleeper's | A signal, not a ranking. Already in the app. |
+| **DynastyProcess** (`github.com/dynastyprocess/data`, `values.csv`, GPL-3) | Dynasty values, updated weekly | GPL-3 on the repository, but the numbers are **FantasyPros' expert consensus** (each row has an `fp_id`, scraped weekly), and FantasyPros' own terms are personal, non-commercial use | **No**: dynasty only, experts rather than a market, and the underlying terms are worse, not better. |
+| **FantasyPros** (expert consensus) | Experts, not trades | API by request; personal, non-commercial; no competing products | No. |
+| **KeepTradeCut** | A crowd market (dynasty) | No public API; reading its pages would be scraping | No. |
+
+**Finding: there's no drop-in alternative.** FantasyCalc is the only source here that's a market made from real trades,
+for redraft and dynasty, with a documented API that small sites are invited to use. Its terms are demanding but clear,
+and all of them can be met:
+1. **Cache it once for everyone**: a Pages Function in front of `values/current`, with a three-hour shared cache, as
+   `functions/api/ffc/` does for FFC (about a ~10k card). The browser then never calls FantasyCalc directly.
+2. **Attribution**: already in `/lineup/`'s HTML; the card checks it's near the data on every view that shows it
+   (Market Disconnect, the Trade Analyzer's market side, the ROS source).
+3. **Under 1,000 monthly active users**: Umami shows this; write to them before reaching it.
+4. **The Trade Analyzer**: ask them in the same email whether ranks feeding your own values, beside your own
+   rankings, are fine.
+
+The other way out is to stop shipping a market and let people upload one, as they can already ("Upload Market
+rankings from KTC or FantasyCalc", `#marketFileInput`): the app then reads a file the person chose, and no terms of
+use apply to the site. That loses the one-tap convenience, so I'd only fall back to it if FantasyCalc says no.
 
 ## Decisions for you
 
