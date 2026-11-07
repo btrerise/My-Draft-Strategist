@@ -139,7 +139,7 @@ test.describe('Ko-fi and Share', () => {
             await expect(note).toBeVisible();
             await expect(note.getByRole('heading', { name: 'About this project' })).toBeVisible();
             await expect(note).toContainText('I build My Draft Strategist and Lineup Strategist on my own, for fun, in my spare time.');
-            await expect(note).toContainText('Thanks for using it. I hope it helps you as much as it helps me.');
+            await expect(note).toContainText('Thanks for using it. I hope it helps you as much as it helps me!');
             expect(await note.locator('p br').count()).toBe(3); // one sentence (or pair) per line
             // The first thing in the Guide's steps (after Lineup Strategist's welcome line).
             expect(await page.evaluate(() => document.querySelector('#guideTab .guide-step').compareDocumentPosition(document.querySelector('#guideTab .about-project')) & Node.DOCUMENT_POSITION_PRECEDING)).toBeTruthy();
