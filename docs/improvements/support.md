@@ -19,7 +19,7 @@ own tokens (`--primary-green`, `--card-bg`, `--text-muted`, Outfit), and took sc
 | # | Question | My recommendation | Why |
 |---|---|---|---|
 | 1 | Finding Ko-fi | Our own "Support on Ko-fi" button (inline SVG cup, our green) in place of Ko-fi's PNG, everywhere it shows today; an "About this project" note at the top of both Guides; a small cup icon in the header. **No Ko-fi floating widget.** | Ko-fi's help pages say you may "create your own" button. Our button loads nothing from a third party, works offline, and can't show as a broken image. The header icon is the only placement a weekly user sees every visit. |
-| 2 | When to ask | **Lineup Strategist: when the week turns Final** on the Scoreboard (Monday night or Tuesday), plus **one thank-you after your championship week**. Draft Strategist: **when the whole draft is complete** (your pick was too early: the board is still moving), on the Team tab. Ship the Lineup Final-week ask first. | Final week: results in, nothing due until Thursday night, and it's after the app did a week's work. Waiver and Trade runs happen under deadlines and mid-task, so they count as moments but never show the ask. |
+| 2 | When to ask | **Lineup Strategist: when the week turns Final** on the Scoreboard (Monday night or Tuesday), plus **one thank-you after your championship week**. Draft Strategist: **when the whole draft is complete** (your pick was too early: the board is still moving), on the Team tab. Ship the Lineup Final-week ask first. | Final week: results are in and no lineup locks for days (waiver claims are due, but the card sits under the Week Recap, not in the Waiver Wire), and it's after the app did a week's work. Waiver and Trade runs happen under deadlines and mid-task, so they count as moments but never show the ask. |
 | 3 | The polite rules | One pure function, `shouldAsk(state, now, context)`, unit-tested. First ask after **1 completed draft** (Draft) or **2 Final weeks seen** (Lineup, this season; 3 from next season). **Once per app per season**, plus the end-of-season thank-you if the last ask was 30+ days ago. "Maybe later": quiet 30 days (Lineup) or until next season (Draft). "I already chipped in": never again on this device. One key per app. | Counts what mattered, not page opens. N=2 this season because K4 can't ship before week 12, and the regular season ends in week 17. |
 | 4 | Perks and membership | **Not yet.** Start with tips only. If you want a membership later: one tier, **$5 a month**, with a thank-you in the Guide, a vote on what gets built next, early preview links and, after M6 and M14, two extra accent colors on the honor system. No webhook checking. | Free-plan tips cost no Ko-fi fee (memberships cost 5%), and every perk here costs you upkeep. Prove people tip first. |
 | 5 | Sharing | A **"Share with your league"** button (the phone's share sheet; "Link copied" on computers) in the drawer, the Guide note and the ask card; **"Share image…" as the third item of M9's Share split button**; **1200×630 PNG link previews** for all three pages, and the fixes to `/lineup/`'s tags; a `?ref=share` tag counted by the Umami loader. | Sharing costs nobody money and grows the site, which grows tips. Group chats are where leagues talk, and today a shared link shows an SVG most chat apps won't preview. |
@@ -144,7 +144,7 @@ The ask never shows:
 | Export Team image saved | Draft | Once a draft, for some | Calm, a moment of pride. | Count it; show **Share**, not the ask. |
 | Rankings import, Quick-Start | Draft | Before the draft | Prep, often against the draft clock. | Never. |
 | Mid-draft | Draft | | Crunch. | Never. |
-| **The week turns Final** on the Scoreboard (S21's Provisional → Final; the Week Recap stays up through Tuesday, S21 follow-up) | Lineup | Once a week, about 14 times a season | **The calmest weekly moment**: results are in, nothing is due until Thursday night's kickoff. A winning week is a natural "glad it helped". | **Ask, and ship this first.** Under the Week Recap card, after its Export button, never between the tiles. The tone follows the week: a winning week "Glad it helped", otherwise "On to next week". |
+| **The week turns Final** on the Scoreboard (S21's Provisional → Final; the Week Recap stays up through Tuesday, S21 follow-up) | Lineup | Once a week, about 14 times a season | **The calmest weekly moment**: results are in and no lineup locks until Thursday night. Waiver claims are being made (submitted Tuesday, processed Wednesday in most leagues), so the card stays out of the Waiver Wire and sits under the Week Recap. A winning week is a natural "glad it helped". | **Ask, and ship this first.** Under the Week Recap card, after its Export button, never between the tiles. The tone follows the week: a winning week "Glad it helped", otherwise "On to next week". |
 | **After your championship week** (the last week your leagues play: Sleeper's `playoff_week_start` and the playoff rounds, or Sleeper's league status `'complete'`; week 17 for most leagues) | Lineup | Once a season | **Calm, and the best moment for a thank-you**: the season's over. | **Thank-you card**, once, even after a "Maybe later" (but not after "I already chipped in"), if the last ask was 30+ days ago. |
 | Waiver Wire run (Auto-Find, Top Available) on Tuesday or Wednesday | Lineup | Weekly | **Mid-task**: you're about to claim on Sleeper, and waivers process early Wednesday in most leagues. | **Count it** as a tool used; don't ask. |
 | Trade Analyzer run | Lineup | Irregular, peaks before deadlines (weeks 11 to 13) | **Mid-negotiation**, often against a trade deadline. | **Count it**; don't ask. |
@@ -350,9 +350,17 @@ Proposal: one **1200×630 PNG per page** (about 30 to 60 KB each), drawn once an
 `PRECACHE_ASSETS`: only link crawlers fetch them), plus the tag fixes: `/lineup/`'s title and `og:url`, a description,
 `og:type=website`, `og:site_name`, `og:image:width`/`height`/`alt`, `twitter:image`. Drafts of the three images:
 
+**A. White and green** (first draft, an arbitrary choice; it doesn't match anything on the site):
+
 ![Draft Strategist preview](support/og-draft.png)
 ![Lineup Strategist preview](support/og-lineup.png)
 ![T-Score preview](support/og-tscore.png)
+
+**B. As the header** (added after the owner's question: muted "My Draft", bold white "Strategist", on one line):
+
+![Draft Strategist preview, header colors](support/og-draft-header.png)
+![Lineup Strategist preview, header colors](support/og-lineup-header.png)
+![T-Score preview, header colors](support/og-tscore-header.png)
 
 Chat apps cache previews for days, so the PNG names should carry a version (`og-lineup-1.png`) to force a refresh later.
 
@@ -408,8 +416,12 @@ lawyer; the unclear parts are listed for you to ask about):
      three-hour shared cache).
   2. **1,000 monthly active users:** Umami shows this now. At or above it, FantasyCalc wants written permission
      (fantasycalcff@gmail.com).
-  3. **The Trade Analyzer uses FantasyCalc's values.** It adds your rankings and the lineup effect, so it's arguably
-     not a substitute for their calculator, but it's worth mentioning when you write.
+  3. **What the apps take from FantasyCalc** (corrected after the owner's question): only each player's `overallRank`
+     (`js/shared/api/market.js`); FantasyCalc's own `value` is never read. Lineup Strategist uses that rank list as a
+     ROS rankings source, for Market Disconnect, and as the "market" side of the Trade Analyzer, which turns ranks into
+     its own values. That helps: the apps don't copy FantasyCalc's values or its calculator. But the terms cover "our
+     data or derivatives", and a rank list is their data, so only FantasyCalc can say whether a trade tool built partly
+     on it is a "material substitute". Worth asking in the same email.
   4. Attribution: `/lineup/` has the link in its HTML (`#attributionLink`); check that every place showing their values
      names FantasyCalc nearby, Draft Strategist included.
 - **Fantasy Football Calculator** (ADP, through `functions/api/ffc/`). Its
@@ -425,6 +437,24 @@ lawyer; the unclear parts are listed for you to ask about):
   script. Tips change little; a paid membership makes "commercial" harder to argue. Nobody enforces this against small
   fan sites as far as I know, but it's the provider where the words are clearest. If it matters to you, kickoff times
   could come from another source in a later card.
+
+  **Am I certain tips break these terms? No.** Nobody can be from the text: "commercial or business-related use ...
+  whether or not for profit" is broad, and a tip jar on a free site is a grey area. What is clear is that the script
+  access is already outside the terms, with or without tips, so tips add little to a risk the site already has.
+
+  **Alternatives to ESPN** (checked 2026-11-07). ESPN gives the apps three things: kickoff times (FLEX kickoff order,
+  the Command Center's locks, the quiet window), each game's state (pre / in / post, for Final), and the game clock
+  (the share of a game left, for the Simulator's live win chances).
+  - **Sleeper's schedule** (`api.sleeper.com/schedule/nfl/regular/<season>`, undocumented, the same company and terms
+    as the API the apps already use): each game's week, date, teams and status (`pre_game`, `complete`; presumably an
+    in-game value on Sundays). **No kickoff time and no clock.** Enough for Final, not for kickoff order.
+  - **nflverse's schedule** (`games.csv`, already used by `scripts/update-byes.mjs`): kickoff date and time for every
+    game, as a file. It could be written into the repo each May like the byes, but flexed games (late-season Sunday
+    night changes) would need a re-run, and it has no live state. The `nfldata` repository has no licence file
+    (checked), so its terms are unclear too.
+  - Together, Sleeper's status plus nflverse's times could replace ESPN for everything but the game clock; the
+    Simulator would estimate the share of a game left from the kickoff time instead. About a ~15k card, and a
+    weaker live win chance. **Recommendation:** not for tips alone; reconsider if you start a membership.
 - **NFLMeta**: not used (docs/refactor/LOG.md); its free plan bars commercial use.
 
 ---

@@ -9055,8 +9055,24 @@ built from the site's tokens, and took screenshots. `css/`, `js/`, the pages and
 season thank-you (~15k, by week 12); **K5** "Share image…" in M9's split button (~6k, after M9); **K6** Draft
 Strategist's post-draft ask (~10k, before August); **K7** supporter perks (~8k, only with a membership).
 
-**The owner's decisions.** Pending: the seven questions at the end of support.md. To be recorded here, then the cards
-written into the runbook.
+**The owner's decisions (2026-11-07), round 1.**
+1. **Finding Ko-fi: yes to all four** (our button in place of the PNG, the header cup, "About this project" in the
+   Guides, the Dashboard foot line), and no floating widget. **The header cup on computers only** (phones keep the
+   drawer, the Guide and the Dashboard foot).
+2. **Moments: as recommended.** The owner corrected my wording: something is due early in the week (waivers are
+   submitted Tuesday and run Wednesday), so the Final-week card's calm is "no lineup locks for days", and it stays out
+   of the Waiver Wire. support.md fixed.
+3. **Polite rules: as recommended**, except Draft Strategist's "Maybe later": 30 days is fine, and the owner asked
+   whether 15 days fits better since draft season runs about two months with several drafts. Open (see round 2).
+4. **Perks and membership: tips only for now**; decide on a membership next summer.
+5. **Sharing: open.** The owner asked why the preview drafts colour "Strategist" green when the header shows "My Draft"
+   muted and "Strategist" bold white. No reason: the first draft was an arbitrary choice. A header-coloured version is
+   now in support.md (B). The owner is also considering changing the site's text.
+6. **Stages: as proposed.**
+7. **Terms: open.** The owner recalled that the apps take FantasyCalc's rankings and work out their own values. Checked:
+   `js/shared/api/market.js` reads only `overallRank`, never FantasyCalc's `value`. support.md corrected. Whether to
+   keep FantasyCalc comes first, then the caching card. On ESPN: the risk is the script access, which exists with or
+   without tips (not a certainty either way); the alternatives (Sleeper's schedule, nflverse's times) are in support.md.
 
 **Checks.** `npm run check` in the session: check-precache and the unit tests pass; Playwright 750 passed, 48 skipped;
 the 4 failures are `visual.spec.mjs` refusing this cloud image's fonts (the environment check), as on main. The diff
