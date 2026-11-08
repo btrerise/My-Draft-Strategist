@@ -2815,6 +2815,7 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .rset-chips .mls-poscount-name { font-size: 0.62rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .rset-chips .mls-poscount-num { font-size: 0.92rem; }
 .rset-owner-chips { margin: 0.1rem 0 0.2rem; background: var(--card-bg); }
+.rset-owner-chips[hidden] { display: none; }
 .rset-owner-chips.is-pinned { position: sticky; top: var(--rset-controls-h, 0); z-index: 1; margin-inline: -0.25rem; padding: 0.1rem 0.25rem 0.4rem; }
 .rset-count { margin: 0.35rem 0 0; font-size: 0.75rem; color: var(--text-muted); }
 .rset-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; font-variant-numeric: tabular-nums; }

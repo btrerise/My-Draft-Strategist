@@ -142,15 +142,16 @@ export function listRows(rows, key, multi) {
     if (key === 'FLEX') return rows.filter(r => r.flexRank !== null).sort(by(r => r.flexRank)).map(r => ({ r, n: r.flexRank, tier: r.flexTier }));
     const mine = rows.filter(r => r.pos === key);
     if (key === 'PICK' || !multi) return mine.sort(by(r => r.rank)).map(r => ({ r, n: r.rank, tier: r.posTier ?? r.tier }));
-    return mine.sort(by(r => r.posRank)).map(r => ({ r, n: r.posRank, tier: r.posTier }));
+    // A position's own list: the # is his position rank, so the badge says only the position (round 6).
+    return mine.sort(by(r => r.posRank)).map(r => ({ r, n: r.posRank, tier: r.posTier, posOnly: true }));
 }
 
 const isFree = (r, mapped) => mapped && !r.owner && !!r.pos && r.pos !== 'PICK' && !r.unmatched;
 
-function rowHTML({ r, n, tier }, { mapped }) {
+function rowHTML({ r, n, tier, posOnly }, { mapped }) {
     const team = r.team ? ` <span class="badge">${escapeHtml(r.team)}</span>` : '';
     const posCell = r.pos === 'PICK' ? PICK_BADGE_HTML
-        : r.pos ? `<span class="badge pos-badge ${r.pos} mls-ta-pos">${r.pos}${r.posRank ? r.posRank : ''}</span>`
+        : r.pos ? `<span class="badge pos-badge ${r.pos} mls-ta-pos">${r.pos}${r.posRank && !posOnly ? r.posRank : ''}</span>`
         : '<span class="rset-none" aria-label="Unknown">–</span>';
     // Who has him (owner's choice, round 5): your players' rank sits in a blue chip and nobody else is marked, so every
     // row is one line. Another team's name is in the row but shows only under the Other teams chip, where every row has
@@ -165,7 +166,7 @@ function rowHTML({ r, n, tier }, { mapped }) {
     const owner = r.owner === 'You' ? 'MINE' : r.owner ? 'OTHERS' : isFree(r, mapped) ? 'FREE' : '';
     const search = `${r.name} ${r.clean} ${r.team || ''}`.toLowerCase();
     return `<tr class="rset-row" data-i="${r.i}" data-owner="${owner}" data-tier="${tier ?? ''}" data-search="${escapeHtml(search)}">`
-        + `<td class="rset-rank">${r.owner === 'You' ? `<span class="rset-rank-chip is-mine">${n ?? '–'}</span>` : (n ?? '–')}</td>`
+        + `<td class="rset-rank">${r.owner === 'You' ? `<span class="rset-rank-chip is-mine" title="Yours">${n ?? '–'}</span>` : (n ?? '–')}</td>`
         + `<th scope="row" class="rset-player"><span class="rset-name">${escapeHtml(r.name)}</span>${team}${ownerText}`
         + (marks.length ? `<span class="rset-marks">${marks.join('')}</span>` : '') + `</th>`
         + `<td class="rset-pos">${posCell}</td>`
@@ -195,7 +196,7 @@ function bodyHTML(set, rows, metaState) {
 
     const picker = sets.length > 1
         ? `<label class="rset-picker"><span>Set</span><select class="form-input" data-action="rsetPick" aria-label="Ranking set to view">${sets.map(s =>
-            `<option value="${escapeHtml(s.id)}"${s.id === set.id ? ' selected' : ''}>${escapeHtml(s.name)} (${s.data.length} players)</option>`).join('')}</select></label>`
+            `<option value="${escapeHtml(s.id)}"${s.id === set.id ? ' selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}</select></label>`
         : '';
 
     const unmatched = rows.filter(r => r.unmatched).length;
@@ -217,7 +218,7 @@ function bodyHTML(set, rows, metaState) {
     const ownerCounts = { ALL: rows.length, MINE: mine, FREE: free, OTHERS: others };
     // Free agents and Other teams only where the app knows every roster (a synced league).
     const ownerChips = (mine || mapped)
-        ? OWNER_CHIPS.filter(([k]) => k === 'ALL' || k === 'MINE' || mapped).map(([k, l]) => chipHTML('rsetOwner', k, l, ownerCounts[k], 'badge-all')).join('')
+        ? OWNER_CHIPS.filter(([k]) => k === 'ALL' || k === 'MINE' || mapped).map(([k, l]) => chipHTML('rsetOwner', k, l, ownerCounts[k], k === 'MINE' ? 'status-mine' : 'badge-all')).join('')
         : '';
 
     // The last column. A Weekly set with opponents: this week's opponent and how tough he is for the position, the
@@ -317,7 +318,11 @@ function applyFilter() {
     });
     const ownerRow = root.querySelector('.rset-owner-chips');
     // Pinned under the search and positions only while one of its filters is on (owner's choice, round 2).
-    if (ownerRow) ownerRow.classList.toggle('is-pinned', o !== 'ALL');
+    if (ownerRow) {
+        ownerRow.classList.toggle('is-pinned', o !== 'ALL');
+        // Unmatched names aren't on any roster the app can see, so the row would show only zeros (round 6).
+        ownerRow.hidden = view.unmatchedOnly;
+    }
     root.classList.toggle('rset-show-owners', o === 'OTHERS');
     const unmatchedBtn = root.querySelector('.rset-show-unmatched');
     if (unmatchedBtn) {
@@ -389,8 +394,14 @@ function nameCheck(text, set, i) {
     const t = text.trim();
     if (!t) return { error: 'Type a name.' };
     const clean = normalizeName(t);
-    const dup = set.data.some((p, j) => j !== i && p && (p.cleanName || normalizeName(p.name)) === clean);
-    if (dup) return { error: 'Another player in this set already has that name.' };
+    // Names that differ only by a suffix or punctuation are one player to the app ("Marvin Harrison" and "Marvin
+    // Harrison Jr"), so say which row it clashes with (round 6).
+    const j = set.data.findIndex((p, k) => k !== i && p && (p.cleanName || normalizeName(p.name)) === clean);
+    if (j !== -1) {
+        const other = set.data[j];
+        const at = Number.isFinite(other.rank) && other.rank < UNRANKED ? ` (#${other.rank})` : '';
+        return { error: `${other.name}${at} already has that name in this set.` };
+    }
     const meta = sleeperMetaByNameIfLoaded();
     const m = meta && meta[clean];
     if (m) return { ok: `Matches a Sleeper player: ${[m.pos, m.team].filter(Boolean).join(', ')}.` };

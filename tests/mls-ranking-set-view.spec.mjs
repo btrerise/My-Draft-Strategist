@@ -78,6 +78,9 @@ test('View opens the set read-only: name, when saved, ranks, positions, teams, t
     // Who has him (round 5): yours have their rank in a blue chip, and say "yours" to a screen reader; nobody else is
     // marked, so every row is one line.
     await expect(henry.locator('.rset-rank .rset-rank-chip.is-mine')).toHaveText('15');
+    await expect(henry.locator('.rset-rank-chip')).toHaveAttribute('title', 'Yours');
+    // The Yours chip above the list is the same blue, so the color explains itself (round 6).
+    await expect(sheet.getByRole('group', { name: 'Who has him' }).getByRole('button', { name: /^Yours / })).toHaveClass(/status-mine/);
     await expect(henry.getByRole('rowheader')).toHaveAccessibleName(/Derrick Henry BAL\s*, yours/);
     const bijan = rowFor(sheet, 'Bijan Robinson');
     await expect(bijan.locator('.rset-rank-chip')).toHaveCount(0);
@@ -175,6 +178,7 @@ test('A name that didn\'t match a Sleeper player is flagged, listed from the ban
     await expect(sheet.locator('.rset-unmatched .preview-unmatched-hint')).toBeVisible();
     await expect(visibleRows(sheet).locator('.rset-name')).toHaveText(['Zzyzx Notaplayer']);
     await expect(sheet.getByRole('button', { name: 'Show all players' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(sheet.locator('.rset-owner-chips')).toBeHidden();
 
     // Fix name: the field says as you type whether the spelling matches; a name already in the set is refused.
     const fix = sheet.getByRole('button', { name: 'Fix the name Zzyzx Notaplayer' });
@@ -182,7 +186,7 @@ test('A name that didn\'t match a Sleeper player is flagged, listed from the ban
     const field = sheet.getByRole('textbox', { name: 'Name as Sleeper spells it' });
     await expect(field).toBeFocused();
     await field.fill('Josh Allen');
-    await expect(sheet.locator('.rset-edit-hint')).toHaveText('Another player in this set already has that name.');
+    await expect(sheet.locator('.rset-edit-hint')).toHaveText('Josh Allen (#13) already has that name in this set.');
     await sheet.getByRole('button', { name: 'Save name' }).click();
     await expect(field).toBeVisible();
     // Escape cancels the edit, not the sheet.
@@ -261,6 +265,8 @@ test('A weekly sheet of separate lists shows each list on its own, FLEX first, w
     await lists.getByRole('button', { name: 'QB 3' }).click();
     await expect(visibleRows(sheet).locator('.rset-rank')).toHaveText(['1', '2', '3']);
     await expect(visibleRows(sheet).locator('.rset-name')).toHaveText(['Josh Allen', 'Lamar Jackson', 'Jalen Hurts']);
+    // The # is the QB rank, so the badge says only QB (round 6); FLEX above keeps "RB1" etc.
+    await expect(visibleRows(sheet).locator('.rset-pos')).toHaveText(['QB', 'QB', 'QB']);
     await expect(visibleTierLines(sheet)).toHaveText(['Tier 1', 'Tier 2']);
     await expect(sheet.locator('.rset-count')).toHaveText('3 players');
     await expect(visibleRows(sheet).locator('.rset-sos')).toHaveText(['MIA 5', 'CLE 30', 'DAL']);
@@ -290,12 +296,12 @@ test('Any saved set can be picked inside the view, without changing the league\'
     await expect(visibleRows(sheet)).toHaveCount(2);
 
     const picker = page.getByRole('combobox', { name: 'Ranking set to view' }); // the dialog's name follows the set
-    await picker.selectOption({ label: `ROS Redraft (${TOTAL} players)` });
+    await picker.selectOption({ label: 'ROS Redraft' });
     sheet = page.getByRole('dialog', { name: 'ROS Redraft' });
     await expect(sheet.locator('.rset-meta')).toContainText(`${TOTAL} players`);
     await expect(visibleRows(sheet)).toHaveCount(TOTAL);
 
-    await picker.selectOption({ label: 'Empty Set (0 players)' });
+    await picker.selectOption({ label: 'Empty Set' });
     sheet = page.getByRole('dialog', { name: 'Empty Set' });
     await expect(sheet.locator('.rset-empty p')).toHaveText('This set has no players.');
     await expect(sheet.getByRole('button', { name: 'Clear search and filter' })).toBeHidden();

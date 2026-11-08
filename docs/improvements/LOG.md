@@ -9622,6 +9622,25 @@ filters. Chosen: **4 + 1**.
 Tests: Henry's chip and accessible name, Bijan unmarked with his team read out only, rows one line, the Other teams list
 showing "Rival" under every name, Tucker's chip after Fix name.
 
+### S30, round 6: a second review as a user (owner: do them, except the chips' size)
+
+- **The blue rank chip** has a hover label, "Yours" (`title`). Not tappable: the # column is narrow and rows ~32px,
+  so a 48px target per number would cover its neighbours. Instead the **Yours** ownership chip is drawn in the same blue
+  (`status-mine`), right above the list, so the color explains itself.
+- **The Set picker** lists names only (the "(32 players)" cut the name off, and the line under the title has the count).
+- **Fix name's refusal names the clash:** "Marvin Harrison Jr (#32) already has that name in this set." Names that differ
+  only by a suffix or punctuation are one player to the app (`normalizeName`), which the old wording didn't explain.
+- **The unmatched list hides the ownership row** (it could only show zeros: those names aren't on any roster the app
+  can see).
+- **In a position's own list** (a set of separate lists) the badge says just "QB": the # is already his QB rank. FLEX,
+  All and a ROS set's position chips keep "RB5", where it adds something.
+- **Not done: the chips' size on computers** (owner: the Roster tab's position chips are as large there, so change
+  both or neither). Proposed: leave both now and fold it into M4 (Material 3: one look for chips and segmented
+  controls), so both places change together and the screenshots are re-taken once.
+
+Tests: the chip's title and the blue Yours chip, the picker's labels, the clash message ("Josh Allen (#13) …"), the
+ownership row hidden in the unmatched list, "QB" badges in the weekly QB list.
+
 **For a runbook card (owner's idea, 2026-11-08): player stats and research.** Tapping a player here (and perhaps in
 other lists) could open a card with season stats; how much (this season, past seasons, T-Score data) is the open
 question, so it's its own card, after S32 (whose row sheet it could share) and M11's sheet.
