@@ -2791,9 +2791,11 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
    expanded), and from 840px a panel from the right wide enough for the table (the badge legend's sheet stays 400px).
    The links: "View" beside "Choose leagues…" under each set's drop-down. */
 .mls-set-leagues-row [hidden] { display: none; }
-.mls-set-leagues-row .mls-view-set-btn { margin-left: 0; }
-/* Alone in the row (one league, so no summary or Choose leagues…): at the right, where the link usually sits. */
-.mls-set-leagues-row > [hidden] + [hidden] + .mls-view-set-btn { margin-left: auto; }
+/* "View players" on a line of its own at the right, under "Used in … · Choose leagues…" (round 4: the three side by side
+   wrapped "Choose leagues…" onto two lines on a phone), or alone when there's one league. */
+.mls-set-leagues-row { flex-wrap: wrap; row-gap: 0.15rem; }
+.mls-set-leagues-break { flex-basis: 100%; height: 0; }
+.mls-set-leagues-row .mls-view-set-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
 @media (min-width: 840px) {
     .sheet.rset-view { width: min(640px, calc(100vw - 56px)); }
 }
@@ -2828,6 +2830,13 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 /* Who has him (and No Sleeper match, Fix name) always on their own line under the name and team (owner's choice,
    round 3: beside the name on some rows and under it on others looked uneven). */
 .rset-marks { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem; }
+/* On computers the panel has room, so they sit on the name's line on every row (round 4). */
+@media (min-width: 840px) {
+    .rset-marks { display: inline-flex; margin: 0 0 0 0.3rem; vertical-align: 1px; }
+}
+/* Another team's player: neutral grey here (round 4). The Waiver Wire keeps its red "Rostered by", where it means he
+   isn't available. */
+.rset-table .scout-status.status-owned { background: rgba(148, 163, 184, 0.1); color: var(--text-muted); border-color: var(--border); }
 .rset-table .scout-status { font-size: 0.65rem; padding: 0.1rem 0.45rem; letter-spacing: 0.2px; }
 .rset-table .rset-pos, .rset-table .rset-sos { white-space: nowrap; width: 1%; }
 .rset-table.no-sos .rset-sos { display: none; }
@@ -2843,7 +2852,11 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .rset-edit-hint.is-ok { color: var(--primary-green); }
 .rset-edit-hint.is-error { color: #fca5a5; }
 .rset-edit-actions { display: flex; gap: 0.5rem; }
-.rset-show-unmatched { margin-top: 0.35rem; padding: 0; }
+.rset-unmatched-line { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.rset-unmatched-line .preview-unmatched-title { margin: 0; }
+.rset-show-unmatched { padding: 0; flex: none; }
+.rset-unmatched .preview-unmatched-hint[hidden] { display: none; }
+.preview-unmatched.rset-unmatched { padding: 0.45rem 0.8rem; }
 .rset-none { color: var(--text-muted); }
 .badge.rset-nomatch-badge { background: rgba(252, 165, 165, 0.08); color: #fca5a5; border: 1px solid var(--avoid-border); }
 .rset-empty { padding: 1.25rem 0; text-align: center; color: var(--text-muted); font-size: 0.9rem; }

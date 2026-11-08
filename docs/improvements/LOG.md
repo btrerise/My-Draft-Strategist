@@ -9573,6 +9573,40 @@ legend's tier line): `desktop/mls-league-guide.png` (1280×9573 → 1280×9697),
 
 **Screenshots.** Still only the Guide's two PNGs (the legend's opponent line is a few words longer).
 
+### S30, round 4: after my review as a user (owner: "do 1, 2, 4 and 6", and 7 in grey)
+
+I walked the view at 390 and 1280px with a ROS set and the owner's weekly file and reported what felt clunky. Changes:
+
+1. **Less above the list on a phone** (the first player started ~60% down the screen). The "saved" line reads
+   "ROS rankings · 31 players · Saved 11/08/26" (owner's choice: a two-digit date, no time, so it's one line). The red
+   notice is one line, "1 of 31 names didn't match Sleeper" with **Show** at its right (accessible name "Show the names
+   that didn't match"); its explanation shows with the names, and Show becomes "Show all". About 100px higher.
+2. **Ownership counts follow the list.** Everyone / Yours / Free agents / Other teams count within the list on screen:
+   on the RB list "Yours 2" means two of those RBs (they used to count the whole set). They don't follow the search.
+4. **One line per row on computers.** From 840px (the side panel) the Yours / team pill sits on the name's line on
+   every row; phones keep it on its own line under the name (round 3).
+6. **"View players" with a list icon** (Feather `list`), on its own line at the right under "Used in … · Choose
+   leagues…" (side by side, "Choose leagues…" wrapped onto two lines on a phone with two leagues); alone at the right
+   with one league. Accessible names "View the players in this ranking set" / "… In-Season set"; the Guide says "View
+   players".
+7. **Another team's pill is neutral grey in the view only** (`.rset-table .status-owned`). The owner asked whether
+   changing it changes it everywhere: the class is shared, so a plain change would; I scoped it to the view, because
+   in the Waiver Wire's "Rostered by: Team" red means "not available", which is the point there. The legend line says
+   "(in grey there)".
+
+Not done, by choice: capping the chips' width on computers (item 5) and the tall phone rows (item 3, options offered
+to the owner: see below).
+
+**Tests.** The spec checks the date format, the one-line notice and its hidden explanation, Show's name, the ownership
+counts on the TE list (4 / 3 / 1 / 0), the whole set (31 / 12 / 6 / 12) and the weekly RB list (3 / 1 / 0 / 2), the
+pill beside the name from 840px and under it below, the grey pill, and the new link names.
+
+**Screenshots.** Still only the Guide's two PNGs (the legend's wording).
+
+**For a runbook card (owner's idea, 2026-11-08): player stats and research.** Tapping a player here (and perhaps in
+other lists) could open a card with season stats; how much (this season, past seasons, T-Score data) is the open
+question, so it's its own card, after S32 (whose row sheet it could share) and M11's sheet.
+
 **Left over.**
 - Draft Strategist's own view (owner's answer 4): a runbook card for before next draft season.
 - The preview's "1 of 24 name didn't match" wording, if wanted.

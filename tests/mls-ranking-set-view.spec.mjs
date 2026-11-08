@@ -54,12 +54,12 @@ test('View opens the set read-only: name, when saved, ranks, positions, teams, t
     // One league: no summary or Choose leagues…, only View.
     await expect(page.locator('#rosSetLeaguesSummary')).toBeHidden();
     await expect(page.locator('#rosSetLeaguesRow .mls-choose-leagues-btn')).toBeHidden();
-    await expect(page.locator('#rosSetLeaguesRow .mls-view-set-btn')).toHaveAccessibleName('View this ranking set');
+    await expect(page.locator('#rosSetLeaguesRow .mls-view-set-btn')).toHaveAccessibleName('View the players in this ranking set');
 
     // An SoS grid entry for Baltimore's RBs, so Henry's row has the Roster tab's SoS badge.
     await page.evaluate(async () => { (await import('/js/mls/state.js')).State.sosMap.BAL = { RB: '5' }; });
     const sheet = await openView(page);
-    await expect(sheet.locator('.rset-meta')).toHaveText(new RegExp(`^ROS rankings · ${TOTAL} players · Saved `));
+    await expect(sheet.locator('.rset-meta')).toHaveText(new RegExp(`^ROS rankings · ${TOTAL} players · Saved \\d\\d/\\d\\d/\\d\\d$`));
     // A table with column headers and a row header per player, for screen readers.
     await expect(sheet.locator('.rset-table thead th')).toHaveText(['#', 'Player', 'Pos', 'SoS']);
     await expect(sheet.getByRole('rowheader')).toHaveCount(TOTAL);
@@ -76,9 +76,13 @@ test('View opens the set read-only: name, when saved, ranks, positions, teams, t
     await expect(visibleTierLines(sheet)).toHaveText(['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'Tier 5', 'Tier 6']);
     expect(await henry.evaluate(tr => { let p = tr.previousElementSibling; while (p && !p.classList.contains('rset-tier-row')) p = p.previousElementSibling; return p && p.textContent; })).toBe('Tier 3');
     await expect(henry.locator('.status-mine')).toHaveText('Yours');
-    // Who has him is always on its own line under the name (round 3).
+    // Who has him: on its own line under the name on phones (round 3), on the name's line on computers (round 4).
     const [nameBox, markBox] = await Promise.all([henry.locator('.rset-name').boundingBox(), henry.locator('.rset-marks').boundingBox()]);
-    expect(markBox.y).toBeGreaterThanOrEqual(nameBox.y + nameBox.height - 1);
+    if (page.viewportSize().width < 840) expect(markBox.y).toBeGreaterThanOrEqual(nameBox.y + nameBox.height - 1);
+    else expect(markBox.y).toBeLessThan(nameBox.y + nameBox.height / 2);
+    // Another team's pill is neutral grey here, not the Waiver Wire's red (round 4).
+    const rival = rowFor(sheet, 'Bijan Robinson').locator('.status-owned');
+    expect(await rival.evaluate(el => getComputedStyle(el).color)).not.toBe('rgb(252, 165, 165)');
     // A ROS set's last column is the SoS badge, headed SoS.
     await expect(sheet.locator('.rset-table thead abbr')).toHaveAttribute('title', 'Strength of schedule');
     await expect(henry.locator('.rset-sos .sos-badge')).toHaveAccessibleName(/^Strength of schedule: 5 of 32 for RBs on BAL/);
@@ -117,15 +121,17 @@ test('Search, the position chips and the ownership chips combine; the empty stat
     await expect(visibleTierLines(sheet)).toHaveText(['Tier 4']);
     await search.fill('');
 
-    // The ownership row, its own line under the positions. It scrolls away until one of its filters is on.
+    // The ownership row, its own line under the positions. It scrolls away until one of its filters is on. Its counts
+    // are within the list on screen (round 4): the TEs are 3 of yours and 1 free agent.
     const owners = sheet.getByRole('group', { name: 'Who has him' });
-    await expect(owners.getByRole('button')).toHaveText([/Everyone\s*31/, /Yours\s*12/, /Free agents\s*6/, /Other teams\s*12/]);
+    await expect(owners.getByRole('button')).toHaveText([/Everyone\s*4/, /Yours\s*3/, /Free agents\s*1/, /Other teams\s*0/]);
     await expect(owners).not.toHaveClass(/is-pinned/);
     // TE and Free agents together: the free-agent tight ends.
-    await owners.getByRole('button', { name: 'Free agents 6' }).click();
+    await owners.getByRole('button', { name: 'Free agents 1' }).click();
     await expect(owners).toHaveClass(/is-pinned/);
     await expect(visibleRows(sheet).locator('.rset-name')).toHaveText(['Sam LaPorta']);
     await sheet.getByRole('button', { name: `All ${TOTAL}` }).click();
+    await expect(owners.getByRole('button')).toHaveText([/Everyone\s*31/, /Yours\s*12/, /Free agents\s*6/, /Other teams\s*12/]);
     await expect(visibleRows(sheet).locator('.rset-name')).toHaveText(['Jayden Daniels', 'James Cook', 'Jaxon Smith-Njigba', 'Chase Brown', 'Zay Flowers', 'Sam LaPorta']);
     // Yours: the 12 of your 14 in the file (your K and DEF aren't in it).
     await owners.getByRole('button', { name: 'Yours 12' }).click();
@@ -147,7 +153,9 @@ test('Search, the position chips and the ownership chips combine; the empty stat
 test('A name that didn\'t match a Sleeper player is flagged, listed from the banner, and can be fixed', async ({ page }) => {
     await setUp(page);
     const sheet = await openView(page);
-    await expect(sheet.locator('.rset-unmatched .preview-unmatched-title')).toHaveText(`1 of ${TOTAL} names didn't match a Sleeper player`);
+    await expect(sheet.locator('.rset-unmatched .preview-unmatched-title')).toHaveText(`1 of ${TOTAL} names didn't match Sleeper`);
+    // One line until opened: the explanation shows with the names (round 4).
+    await expect(sheet.locator('.rset-unmatched .preview-unmatched-hint')).toBeHidden();
     const row = rowFor(sheet, 'Zzyzx Notaplayer');
     await expect(row.locator('.rset-nomatch-badge')).toHaveText('No Sleeper match');
     // The file said WR, but nothing the app reads knows him: no position, no team, not a free agent.
@@ -155,7 +163,8 @@ test('A name that didn\'t match a Sleeper player is flagged, listed from the ban
     await expect(row.locator('.rset-player .badge:not(.rset-nomatch-badge)')).toHaveCount(0);
     await expect(sheet.locator('.rset-nomatch-badge')).toHaveCount(1);
     // The banner lists them (round 2), and switches back.
-    await sheet.getByRole('button', { name: 'Show these names' }).click();
+    await sheet.getByRole('button', { name: 'Show the names that didn\'t match' }).click();
+    await expect(sheet.locator('.rset-unmatched .preview-unmatched-hint')).toBeVisible();
     await expect(visibleRows(sheet).locator('.rset-name')).toHaveText(['Zzyzx Notaplayer']);
     await expect(sheet.getByRole('button', { name: 'Show all players' })).toHaveAttribute('aria-pressed', 'true');
 
@@ -251,6 +260,7 @@ test('A weekly sheet of separate lists shows each list on its own, FLEX first, w
     // RB, and the search within it.
     await lists.getByRole('button', { name: 'RB 3' }).click();
     await expect(visibleRows(sheet).locator('.rset-name')).toHaveText(['Bijan Robinson', 'Jahmyr Gibbs', 'Derrick Henry']);
+    await expect(sheet.getByRole('group', { name: 'Who has him' }).getByRole('button')).toHaveText([/Everyone\s*3/, /Yours\s*1/, /Free agents\s*0/, /Other teams\s*2/]);
     await sheet.getByRole('searchbox', { name: 'Search this set' }).fill('henry');
     await expect(visibleRows(sheet).locator('.rset-name')).toHaveText(['Derrick Henry']);
     await expect(visibleTierLines(sheet)).toHaveText(['Tier 2']);
@@ -326,7 +336,7 @@ test('The Weekly card and the In-Season picker have View too', async ({ page }) 
     await callApp(page, 'switchActiveLeague', await page.evaluate(async () => (await import('/js/mls/state.js')).State.activeLeagueId));
     await openRosCard(page);
     const seasonView = page.locator('#seasonSetLeaguesRow .mls-view-set-btn');
-    await expect(seasonView).toHaveAccessibleName('View this In-Season set');
+    await expect(seasonView).toHaveAccessibleName('View the players in this In-Season set');
     await seasonView.click();
     const sheet = page.getByRole('dialog', { name: 'ROS Redraft' });
     await expect(sheet.locator('.rset-meta')).toHaveText(/^In-⁠Season rankings · /);

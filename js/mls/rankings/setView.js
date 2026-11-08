@@ -52,8 +52,8 @@ let view = null;
 const fmtSaved = (ts) => {
     if (!ts) return '';
     const d = new Date(ts);
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-        + ', ' + d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    // "11/08/26" (owner's choice, round 4), so the line under the title fits one line on a phone.
+    return d.toLocaleDateString(undefined, { month: '2-digit', day: '2-digit', year: '2-digit' });
 };
 
 // The set a View link points at: the drop-down's saved set, or the league's In-Season set (data-slot="season").
@@ -201,9 +201,10 @@ function bodyHTML(set, rows, metaState) {
     if (metaState === 'loading') check = '<p class="rset-note">Checking names against Sleeper&hellip;</p>';
     else if (metaState === 'failed') check = '<p class="rset-note">Sleeper\'s player list didn\'t load, so names aren\'t checked and some positions may be missing.</p>';
     else if (unmatched) {
-        check = `<div class="preview-unmatched rset-unmatched"><div class="preview-unmatched-title">${unmatched} of ${rows.length} name${rows.length === 1 ? '' : 's'} didn't match a Sleeper player</div>`
-            + `<p class="preview-unmatched-hint">The app can't tell their position or team, or find them on a roster. Fix a name here, or the spelling in your file.</p>`
-            + `<button type="button" class="mls-btn-sm btn-link-inline rset-show-unmatched" data-action="rsetUnmatched" aria-pressed="false">Show these names</button></div>`;
+        // One line until it's opened (round 4); the explanation shows with the names.
+        check = `<div class="preview-unmatched rset-unmatched"><div class="rset-unmatched-line"><span class="preview-unmatched-title">${unmatched} of ${rows.length} name${rows.length === 1 ? '' : 's'} didn't match Sleeper</span>`
+            + `<button type="button" class="mls-btn-sm btn-link-inline rset-show-unmatched" data-action="rsetUnmatched" aria-pressed="false">Show</button></div>`
+            + `<p class="preview-unmatched-hint" hidden>The app can't tell their position or team, or find them on a roster. Fix a name here, or the spelling in your file.</p></div>`;
     }
 
     const lists = listChoices(rows);
@@ -262,6 +263,14 @@ function renderList() {
     });
     tbody.innerHTML = html;
     view.listSize = items.length;
+    // The ownership chips count within this list (round 4): "Yours 2" on the RB list means two of these RBs.
+    const n = { ALL: items.length, MINE: 0, FREE: 0, OTHERS: 0, NONE: 0 };
+    items.forEach(({ r }) => { n[r.owner === 'You' ? 'MINE' : r.owner ? 'OTHERS' : isFree(r, mapped) ? 'FREE' : 'NONE'] += 1; });
+    view.root.querySelectorAll('[data-action="rsetOwner"]').forEach(b => {
+        const k = b.dataset.key;
+        b.querySelector('.mls-poscount-num').textContent = n[k];
+        b.setAttribute('aria-label', `${b.querySelector('.mls-poscount-name').textContent} ${n[k]}`);
+    });
 }
 
 // Hides what the search and the ownership chip leave out, the tier lines with nothing under them (and all of them
@@ -310,7 +319,10 @@ function applyFilter() {
     const unmatchedBtn = root.querySelector('.rset-show-unmatched');
     if (unmatchedBtn) {
         unmatchedBtn.setAttribute('aria-pressed', String(view.unmatchedOnly));
-        unmatchedBtn.textContent = view.unmatchedOnly ? 'Show all players' : 'Show these names';
+        unmatchedBtn.textContent = view.unmatchedOnly ? 'Show all' : 'Show';
+        unmatchedBtn.setAttribute('aria-label', view.unmatchedOnly ? 'Show all players' : 'Show the names that didn\'t match');
+        const hint = root.querySelector('.rset-unmatched .preview-unmatched-hint');
+        if (hint) hint.hidden = !view.unmatchedOnly;
     }
 
     const count = root.querySelector('.rset-count');

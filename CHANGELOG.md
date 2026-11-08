@@ -153,16 +153,16 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **See a ranking set you uploaded.** A **View** link beside "Choose leagues…" under each set's drop-down (the Roster
-  tab's ROS and In-Season pickers, the Lineup tab's Weekly picker) opens the set, read-only: its name, when it was saved,
+- **See a ranking set you uploaded.** A **View players** link under each set's drop-down (the Roster
+  tab's ROS and In-Season pickers, the Lineup tab's Weekly picker) opens the set: its name, the date it was saved,
   and every player with his rank, NFL team, position and position rank, and his SoS badge (in a Weekly set with
   opponents, an **Opp** column instead: this week's opponent and how tough the matchup is), with who has him in this
-  league on a line under his name (**Yours** or the team's name; free agents carry no mark) and a labelled line where
+  league (**Yours**, or the other team's name in grey; free agents carry no mark; under his name on phones) and a labelled line where
   each tier starts. A weekly sheet
   of separate lists (QB, RB, WR, TE, K, DEF and FLEX columns) shows each list on its own, FLEX first; a single ranked
   list shows All. Search by name or team; one row of chips picks the position or list, a second (Everyone, Yours, Free
-  agents, Other teams) narrows it, so RB plus Free agents is the best available RBs. Names that didn't match a Sleeper
-  player are flagged, listed with **Show these names**, and can be corrected with **Fix name**, which says as you type
+  agents, Other teams, counted within the list on screen) narrows it, so RB plus Free agents is the best available RBs. Names that didn't match a Sleeper
+  player are flagged, listed with **Show** on the one-line notice, and can be corrected with **Fix name**, which says as you type
   whether the new spelling matches and saves it into the set. A drop-down inside switches to any other saved set without
   changing which one a league uses. Full height on phones, a panel from the right on computers; Escape, Back and ✕
   close it.
