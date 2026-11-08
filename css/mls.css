@@ -2785,3 +2785,47 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 /* A player whose every matchup is decided or over (round 6): listed, dimmed, last. */
 .mls-root-row.is-settled .mls-root-player { opacity: 0.55; }
 .mls-root-settled { font-style: italic; }
+
+/* --- A SAVED RANKING SET, READ-ONLY (improvements S30) ---
+   js/mls/rankings/setView.js, in the shared sheet (css/base.css, "THE SHEET"): full height on phones (opened
+   expanded), and from 840px a panel from the right wide enough for the table (the badge legend's sheet stays 400px).
+   The links: "View" beside "Choose leagues…" under each set's drop-down. */
+.mls-set-leagues-row [hidden] { display: none; }
+.mls-set-leagues-row .mls-view-set-btn { margin-left: 0; }
+/* Alone in the row (one league, so no summary or Choose leagues…): at the right, where the link usually sits. */
+.mls-set-leagues-row > [hidden] + [hidden] + .mls-view-set-btn { margin-left: auto; }
+@media (min-width: 840px) {
+    .sheet.rset-view { width: min(640px, calc(100vw - 56px)); }
+}
+.rset-meta { margin: 0 0 0.6rem; font-size: 0.8rem; color: var(--text-muted); }
+.rset-picker { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.6rem; font-size: 0.8rem; color: var(--text-muted); }
+.rset-picker select { flex: 1; min-width: 0; }
+.rset-note { margin: 0 0 0.6rem; font-size: 0.8rem; color: var(--text-muted); }
+.preview-unmatched.rset-unmatched { margin: 0 0 0.75rem; }
+/* The search, the chips and the count stay in sight while the list scrolls under them. */
+.rset-controls { position: sticky; top: 0; z-index: 1; background: var(--card-bg); padding: 0.25rem 0 0.4rem; margin: 0 -0.25rem; padding-inline: 0.25rem; }
+.rset-search { width: 100%; margin-bottom: 0.5rem; }
+/* The Roster tab's position chips (.mls-poscount), on one line each ("QB 5") so the controls stay short on a phone. */
+.rset-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.rset-chips .mls-poscount.pos-filter { flex-direction: row; align-items: baseline; gap: 0.35rem; padding: 0.3rem 0.6rem; }
+.rset-chips .mls-poscount-num { font-size: 0.9rem; }
+.rset-count { margin: 0.45rem 0 0; font-size: 0.75rem; color: var(--text-muted); }
+.rset-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.rset-table thead th { text-align: left; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); padding: 0.35rem 0.3rem; border-bottom: 1px solid var(--border); }
+.rset-table thead abbr { text-decoration: none; }
+.rset-table td, .rset-table tbody th { padding: 0.4rem 0.3rem; border-bottom: 1px solid var(--border); vertical-align: top; text-align: left; font-weight: 400; }
+.rset-table tr[hidden] { display: none; }
+.rset-table .rset-rank { width: 2.4rem; color: var(--text-muted); text-align: right; padding-right: 0.5rem; }
+.rset-table tbody .rset-rank { padding-top: 0.5rem; }
+.rset-table .rset-player { min-width: 0; overflow-wrap: anywhere; }
+.rset-name { font-weight: 600; margin-right: 0.3rem; }
+.rset-table .rset-player .badge { font-size: 0.65rem; padding: 1px 4px; vertical-align: 1px; }
+.rset-marks { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; margin-left: 0.3rem; vertical-align: 1px; }
+.rset-table .scout-status { font-size: 0.65rem; padding: 0.1rem 0.45rem; letter-spacing: 0.2px; }
+.rset-table .rset-pos, .rset-table .rset-tier, .rset-table .rset-sos { white-space: nowrap; width: 1%; }
+.rset-table .rset-tier .mls-tier { color: var(--text-muted); }
+.rset-table.no-tier .rset-tier, .rset-table.no-sos .rset-sos { display: none; }
+.rset-none { color: var(--text-muted); }
+.badge.rset-nomatch-badge { background: rgba(252, 165, 165, 0.08); color: #fca5a5; border: 1px solid var(--avoid-border); }
+.rset-empty { padding: 1.25rem 0; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+.rset-empty p { margin: 0 0 0.4rem; }

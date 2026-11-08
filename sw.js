@@ -34,7 +34,7 @@
 //   * Middle number (v2.8.x -> v2.9.0): when this file's own behavior changes -- the caching
 //     strategy, what works offline, how old caches are cleared -- as v2.8.0 marked the strategy
 //     change above. App features don't move it; they go in CHANGELOG.md and the apps' footer versions.
-const CACHE_NAME = 'draft-strategist-v2.9.8';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.9.9';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -169,6 +169,7 @@ const PRECACHE_ASSETS = [
     '/js/mls/scout/waiverScanner.js',
     '/js/mls/rankings/engine.js',
     '/js/mls/rankings/sets.js',
+    '/js/mls/rankings/setView.js',   // S30: a saved ranking set, read-only, in the shared sheet
     '/js/mls/rankings/season.js',
     '/js/mls/rankings/nowAndLater.js',
     '/js/mls/rankings/changeSummary.js',

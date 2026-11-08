@@ -153,6 +153,13 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **See a ranking set you uploaded.** A **View** link beside "Choose leagues…" under each set's drop-down (the Roster
+  tab's ROS and In-Season pickers, the Lineup tab's Weekly picker) opens the set, read-only: its name, when it was saved,
+  and every player with his rank, NFL team, position and position rank, tier and SoS badge, marked **Yours** or with the
+  team that has him in this league (free agents carry no mark). Search by name or team, filter by position, your
+  players, free agents, or names that didn't match a Sleeper player (flagged **No Sleeper match**). A drop-down inside
+  switches to any other saved set without changing which one a league uses. Full height on phones, a panel from the
+  right on computers; Escape, Back and ✕ close it.
 - **Shared links show a picture and the right title.** A link to Lineup Strategist sent in a group chat, or posted on
   Facebook, Slack, Discord or X, now previews with the Lineup Strategist logo and a line about it, under the title "My
   Lineup Strategist" (it used to show a cropped app icon, and some apps took it for the Draft Strategist page). Opening a

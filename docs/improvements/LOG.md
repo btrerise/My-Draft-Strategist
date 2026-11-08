@@ -9415,3 +9415,89 @@ Sharing Debugger, X's card validator, opengraph.xyz). Apps that cached the old p
 debugger has "Scrape Again". Umami: Events → "Shared link opened", broken down by `page`.
 
 **Left over.** None from this card. The runbook's MERGED list still needs updating (K1's note).
+
+## S30 — See the rankings you uploaded
+
+Branch `claude/ranking-set-view-omb3gl`. Needs F10 (merged, #212).
+
+**User-visible effect.** Under each ranking set's drop-down (the Roster tab's ROS picker and, in dynasty and keeper
+leagues, its In-Season picker; the Lineup tab's Weekly picker) the row now reads "Used in 2 of 5 leagues · Choose
+leagues… · View". With a single league (or a single dynasty league, for In-Season) the row used to be hidden; it now
+holds just **View**, at the right. View opens the set, read-only, in the shared sheet (M11): full height on phones, a
+640px panel from the right on computers (the legend's sheet stays 400px). Inside:
+- The set's name as the title, then "ROS rankings · 312 players · Saved Nov 4, 2026, 9:12 PM" (In-Season or Weekly
+  rankings as fits; the time is the set's last save, `updatedAt`).
+- A drop-down of every saved set of that kind (ROS sets, or Weekly sets) when there's more than one. Picking one shows
+  it; nothing about which set a league uses changes.
+- When names didn't match a Sleeper player, the upload preview's red box: "3 of 312 names didn't match a Sleeper
+  player" and a line on what that means. While Sleeper's player map loads: "Checking names against Sleeper…"; if it
+  fails, a line saying names aren't checked.
+- A search box (name or team; "amonra" finds Amon-Ra St. Brown), chips like the Roster tab's position counts, on one
+  line each: All, each position in the set, Picks (dynasty sets), Yours, Free agents (synced leagues only), No match.
+  One chip at a time, combined with the search. The search, chips and "Showing 4 of 312" stay at the top while the list
+  scrolls.
+- A table: rank, player with his NFL team badge and who has him (the Scout tab's pills: blue **Yours**, red with the
+  team's name; free agents carry no mark), position badge with his position rank ("RB5", the numbers the Lineup and
+  Roster tabs show, worked out from the file's order when it had no Pos Rank column), the tier "(T3)" and the SoS badge
+  from your SoS grid. The Tier and SoS columns only when some row has one. A name Sleeper doesn't know gets a red **No
+  Sleeper match** badge and "–" for position.
+- Nothing matches: the table goes and "No players match "zzz" in free agents." with **Clear search and filter**. A set
+  with no rows: "This set has no players."
+- Escape clears a typed search first, then closes; Back, ✕ and the scrim close it; focus goes back to View.
+
+**Owner's answers (2026-11-08, after a sketch).** (1) A "View" link beside "Choose leagues…", in the shared sheet (full
+height on phones, a wider panel on computers) rather than a centred dialog. (2) Any saved set, picked inside the view.
+(3) Both extras: mark your roster, and players on other teams in this league (free agents unmarked). (4) Lineup
+Strategist now, Draft Strategist later as its own card.
+
+**Where.**
+- New `js/mls/rankings/setView.js` (in `PRECACHE_ASSETS`): `openRankingSetView(opener, type, slot)` and the pure-ish
+  `buildSetRows(data, league, meta)`. Positions from `makeLeagueGetPos` (the league's positions, Sleeper's map, market
+  data), position ranks from `leagueRankDisplayIndex` / `displayRanksFor` (F6), "matched" by the same rule as the
+  preview's `analyzeRankingsFile`. Built once per set as one string; search and chips only set `hidden` on rows. Its
+  own `delegate()` on the sheet for the chips, search, picker, Clear and the SoS badge's tap (the sheet sits outside
+  the containers `main.js` delegates).
+- `js/shared/ui/sheet.js`: `openSheet({ expanded })` opens a bottom sheet at full height (the handle still toggles);
+  `css/base.css`: a side sheet ignores `is-expanded`'s height.
+- `lineup/index.html`: a View button in `#rosSetLeaguesRow`, `#seasonSetLeaguesRow` and `#weeklySetLeaguesRow`
+  (`data-action="viewRankingSet"`, `aria-haspopup="dialog"`, "View this ranking set" / "View this In-Season set"); the
+  Choose leagues buttons get `.mls-choose-leagues-btn`; one sentence in the Guide's Ranking Sets line.
+- `js/mls/rankings/sets.js`: `updateSetLeaguesRow` and `populateSeasonPicker` show the row for any saved set and hide
+  only the summary and Choose leagues… below two leagues.
+- `js/mls/main.js`: the `viewRankingSet` action. `css/mls.css`: "A SAVED RANKING SET, READ-ONLY".
+- Legend (`js/mls/legend.js`): a line for **No Sleeper match** (Ranks and tiers); the who-has-him pills' line says what
+  Yours and a team's name mean in the view.
+- `sw.js`: `CACHE_NAME` v2.9.8 → v2.9.9.
+
+**Speed (4x-slowed CPU, 320 rows, the fixture league).** Building the rows' data 1–4 ms; click to rows on screen
+280–590 ms (including Playwright's round trips and the sheet's insert); a search keystroke 6–146 ms to the next frame; a
+chip 39–72 ms. Not slow, so the list isn't windowed.
+
+**Tests.** New `tests/mls-ranking-set-view.spec.mjs` (both widths): with one league only View shows; the dialog's
+name, the saved line, the table's column and row headers; Henry's rank 15, BAL, RB5, (T3), Yours and an SoS badge from a
+stand-in SoS grid; Rival on Bijan Robinson, nothing on a free agent; search (name, "amonra", within a chip); TE, Yours
+(12: your K and DEF aren't in the file), Free agents; the empty state and Clear; the unmatched name's box, badge, "–" and
+No match chip; picking another set and an empty set inside the view while the league keeps its set; Escape clears then
+closes, focus back on View, Tab trapped, Back closes; View on the In-Season picker and the Weekly card; full height on a
+phone, 640px × full height on a computer, the search still in sight after scrolling.
+
+**Decisions made here (not asked).**
+- Filter chips are one at a time (Yours or a position, not both); search narrows within the chip.
+- The title is "N of M names didn't match" ("names" follows the total). The upload preview's own title pluralises by the
+  unmatched count ("1 of 24 name didn't match"); not changed here.
+- Weekly sets' opponent column (S31) isn't shown; the card asked for SoS only.
+
+**Screenshots.** Main and this branch rendered the same way in the session (`RENDER_ENV=any`), compared with
+`npm run pxdiff`: 42 PNGs, two change, both from the Guide's new text: `desktop/mls-league-guide.png` (1280×9573 →
+1280×9657) and `phone/mls-league-guide.png` (390×22596 → 390×22859): the Ranking Sets line's new sentence about View
+and the legend's No Sleeper match line. Every other PNG is identical: no baseline shows the sheet, and the Roster
+screenshots' rankings card is unchanged. Not re-taken here (this container's fonts can't match CI's): take those two
+from the PR's CI run, as "Accepting an intended visual change" says.
+
+**Checks.** `npm run check` in the session: check-precache OK (158 files), 524 unit tests pass, 834 Playwright tests
+pass (48 skipped); the 4 failures are `visual.spec.mjs` refusing this container's fonts (the environment check), as on
+main.
+
+**Left over.**
+- Draft Strategist's own view (owner's answer 4): a runbook card for before next draft season.
+- The preview's "1 of 24 name didn't match" wording, if wanted.
