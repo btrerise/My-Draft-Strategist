@@ -9498,6 +9498,63 @@ from the PR's CI run, as "Accepting an intended visual change" says.
 pass (48 skipped); the 4 failures are `visual.spec.mjs` refusing this container's fonts (the environment check), as on
 main.
 
+### S30, round 2: lists, tier lines, two chip rows, Fix name (owner's choices, after trying it with a weekly file)
+
+The owner viewed a real weekly sheet (QB / RB / WR / TE / DEF / FLEX / K columns side by side, "Weekly Rankings All
+11-8") and asked four things; I proposed how, and they agreed.
+
+1. **Unmatched names.** The banner gets **Show these names** (lists only those rows, in rank order; "Show all players"
+   goes back), and the No match chip goes. Owner: allow fixing the name in the app. Each unmatched row has **Fix name**:
+   the name becomes a field in the row (not a second dialog over the sheet, whose focus traps would fight), with a line
+   that says as you type "Matches a Sleeper player: K, BAL.", "No Sleeper player by that name yet." or "Another player
+   in this set already has that name." (refused). Enter or Save name saves, Escape or Cancel goes back. Saving writes
+   the name and `cleanName` into the set (stored under the set's existing key), reloads the open league's rankings
+   (`hydrateRankingsForLeague`) and redraws the Roster or Lineup tab; other leagues read the set when they're opened.
+   A toast says whether it matches now.
+2. **Tier lines instead of a Tier column.** A labelled line ("TIER 3", like Draft Strategist's Tracker) before each
+   tier's first row, the first tier too. Lines hide with their rows under a search or filter, and all of them hide when
+   the rows on screen aren't in tier order. The list's own tiers: the overall tier in All, the position tier in a
+   position's list, FLEX tiers in FLEX (the owner's file has none, so no lines there). The Tier column is gone.
+3. **Separate lists.** A set where two or more players share a rank (a weekly sheet of side-by-side lists, or one file
+   per position) has no All: each chip is its own list, ranked by its own number (FLEX 1–100, QB 1–25, …), opening on
+   FLEX when the file has FLEX ranks, else the first position. In FLEX each row's badge shows his position rank. A
+   single ranked list (most ROS files) keeps All, and a position chip narrows it in overall order. Search narrows the
+   list on screen. Owner: the upload preview may get the same treatment later ("we can circle back").
+4. **Chips.** Back to the Roster tab's look (name over count, one equal column each), a little shorter. Two rows: the
+   lists, then who has him (Everyone, Yours, Free agents, Other teams; only Everyone and Yours in a manual league). The
+   rows combine (RB + Free agents). The search and the lists stay at the top; the ownership row scrolls away with the
+   list unless one of its filters is on, when it sticks under them (owner's idea).
+
+Why the old view was "funky" with that file: the parser stores each player's `rank` as his FLEX rank when he's in the
+FLEX list and his position rank otherwise (Burrow, Gibbs, the Seahawks and Aubrey were all rank 1). The data is
+unchanged; the view now reads each list's own number. Note for testing with that file here: the fixture's Sleeper map
+is small, so 206 of its 232 names show as unmatched in the session; with Sleeper's real map most match.
+
+**Where.** `js/mls/rankings/setView.js` (rewritten: `isMultiList`, `listChoices`, `listRows`, the tier lines, the two
+rows, Fix name), `css/mls.css` (the chip rows, the pinned ownership row with `--rset-controls-h`, tier lines, the name
+field), `js/mls/legend.js` (a line for the tier line; Fix name in the No Sleeper match line).
+
+**Tests.** `mls-ranking-set-view.spec.mjs`: tier lines (all six, Henry under Tier 3, only Kittle's after a search),
+the ownership row (its counts, pinned only while filtering, TE + Free agents = LaPorta), Show these names, Fix name
+(focus, the duplicate refused, Escape cancels without closing, the live match line, Enter saves, the row becomes a
+kicker on your roster, stored and in the league's rankings), and a weekly sheet in the owner's layout (FLEX first with
+position ranks, no All, QB's list with its tier lines, RB with a search).
+
+**Screenshots.** Rendered again against main the same way: still only the Guide's two PNGs change (now also the
+legend's tier line): `desktop/mls-league-guide.png` (1280×9573 → 1280×9697), `phone/mls-league-guide.png` (390×22596 →
+390×22961). The other 40 are identical. To take from the PR's CI run.
+
+**Checks (round 2).** check-precache OK, 524 unit tests pass, 836 Playwright tests pass (48 skipped); the 4 failures are
+`visual.spec.mjs`'s environment check, as on main.
+
+**Left over (round 2).**
+- The upload preview could show the same lists (owner: circle back later).
+- A fixed name lives in the set only: re-uploading the same file brings the old spelling back. Remembering fixes for
+  later uploads would need a stored alias list (a new key): ask the owner first.
+- An unmatched player in a sheet of separate lists has no position, so he shows only in FLEX (if listed there) and under
+  Show these names. Keeping the file's own position on each row (the parser knows it from the column) would place him;
+  that's a change to the shared parser.
+
 **Left over.**
 - Draft Strategist's own view (owner's answer 4): a runbook card for before next draft season.
 - The preview's "1 of 24 name didn't match" wording, if wanted.
