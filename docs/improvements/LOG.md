@@ -9635,8 +9635,10 @@ showing "Rival" under every name, Tucker's chip after Fix name.
 - **In a position's own list** (a set of separate lists) the badge says just "QB": the # is already his QB rank. FLEX,
   All and a ROS set's position chips keep "RB5", where it adds something.
 - **Not done: the chips' size on computers** (owner: the Roster tab's position chips are as large there, so change
-  both or neither). Proposed: leave both now and fold it into M4 (Material 3: one look for chips and segmented
-  controls), so both places change together and the screenshots are re-taken once.
+  both or neither). **Owner's choice: fold it into M4** (Material 3: one look for chips and segmented controls), so
+  both places change together and the screenshots are re-taken once. **For M4:** on computers the Roster tab's position
+  counts (`.mls-roster-poscounts`) and this view's two chip rows (`.rset-chips`) stretch to the full width (about
+  150px a chip on the Roster tab at 1280px); give them the shared chip look M4 settles on, at a sensible width.
 
 Tests: the chip's title and the blue Yours chip, the picker's labels, the clash message ("Josh Allen (#13) …"), the
 ownership row hidden in the unmatched list, "QB" badges in the weekly QB list.
