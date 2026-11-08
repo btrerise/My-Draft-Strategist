@@ -157,7 +157,7 @@ What changed for users in each version of the two apps, in plain language. Newes
   tab's ROS and In-Season pickers, the Lineup tab's Weekly picker) opens the set: its name, the date it was saved,
   and every player with his rank, NFL team, position and position rank, and his SoS badge (in a Weekly set with
   opponents, an **Opp** column instead: this week's opponent and how tough the matchup is), with who has him in this
-  league (**Yours**, or the other team's name in grey; free agents carry no mark; under his name on phones) and a labelled line where
+  league (your players' rank in a blue chip; pick **Other teams** to see whose team each of the rest is on) and a labelled line where
   each tier starts. A weekly sheet
   of separate lists (QB, RB, WR, TE, K, DEF and FLEX columns) shows each list on its own, FLEX first; a single ranked
   list shows All. Search by name or team; one row of chips picks the position or list, a second (Everyone, Yours, Free

@@ -30,7 +30,7 @@ import { showToast } from '../../shared/ui/toast.js';
 import { RANKING_TYPE_CONFIG } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
-import { PICK_BADGE_HTML, scoutPillMarkup } from '../badges.js';
+import { PICK_BADGE_HTML } from '../badges.js';
 import { explainSoS, getSoSBadgeHTML } from '../sos.js';
 import { getSleeperMetaByName, sleeperMetaByNameIfLoaded, makeLeagueGetPos } from '../scout/waivers.js';
 import { isDraftPickName } from '../trade/valueCurve.js';
@@ -152,10 +152,12 @@ function rowHTML({ r, n, tier }, { mapped }) {
     const posCell = r.pos === 'PICK' ? PICK_BADGE_HTML
         : r.pos ? `<span class="badge pos-badge ${r.pos} mls-ta-pos">${r.pos}${r.posRank ? r.posRank : ''}</span>`
         : '<span class="rset-none" aria-label="Unknown">–</span>';
+    // Who has him (owner's choice, round 5): your players' rank sits in a blue chip and nobody else is marked, so every
+    // row is one line. Another team's name is in the row but shows only under the Other teams chip, where every row has
+    // one (until then it's read out to screen readers only, as "yours" is).
     const marks = [];
-    if (r.owner === 'You') marks.push(scoutPillMarkup('status-mine', 'Yours'));
-    // Free agents carry no mark (owner's choice): the unmarked rows are who's available. The chip filters to them.
-    else if (r.owner) marks.push(scoutPillMarkup('status-owned', escapeHtml(r.owner)));
+    const ownerText = r.owner === 'You' ? '<span class="sr-only">, yours</span>'
+        : r.owner ? `<span class="rset-owner-name"><span class="sr-only">, on </span>${escapeHtml(r.owner)}</span>` : '';
     if (r.unmatched) {
         marks.push('<span class="badge rset-nomatch-badge">No Sleeper match</span>');
         marks.push(`<button type="button" class="mls-btn-sm btn-link-inline rset-fix-btn" data-action="rsetEditName" data-i="${r.i}" aria-label="Fix the name ${escapeHtml(r.name)}">Fix name</button>`);
@@ -163,8 +165,8 @@ function rowHTML({ r, n, tier }, { mapped }) {
     const owner = r.owner === 'You' ? 'MINE' : r.owner ? 'OTHERS' : isFree(r, mapped) ? 'FREE' : '';
     const search = `${r.name} ${r.clean} ${r.team || ''}`.toLowerCase();
     return `<tr class="rset-row" data-i="${r.i}" data-owner="${owner}" data-tier="${tier ?? ''}" data-search="${escapeHtml(search)}">`
-        + `<td class="rset-rank">${n ?? '–'}</td>`
-        + `<th scope="row" class="rset-player"><span class="rset-name">${escapeHtml(r.name)}</span>${team}`
+        + `<td class="rset-rank">${r.owner === 'You' ? `<span class="rset-rank-chip is-mine">${n ?? '–'}</span>` : (n ?? '–')}</td>`
+        + `<th scope="row" class="rset-player"><span class="rset-name">${escapeHtml(r.name)}</span>${team}${ownerText}`
         + (marks.length ? `<span class="rset-marks">${marks.join('')}</span>` : '') + `</th>`
         + `<td class="rset-pos">${posCell}</td>`
         + `<td class="rset-sos">${r.sos}</td></tr>`;
@@ -316,6 +318,7 @@ function applyFilter() {
     const ownerRow = root.querySelector('.rset-owner-chips');
     // Pinned under the search and positions only while one of its filters is on (owner's choice, round 2).
     if (ownerRow) ownerRow.classList.toggle('is-pinned', o !== 'ALL');
+    root.classList.toggle('rset-show-owners', o === 'OTHERS');
     const unmatchedBtn = root.querySelector('.rset-show-unmatched');
     if (unmatchedBtn) {
         unmatchedBtn.setAttribute('aria-pressed', String(view.unmatchedOnly));

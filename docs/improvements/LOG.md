@@ -9603,6 +9603,25 @@ pill beside the name from 840px and under it below, the grey pill, and the new l
 
 **Screenshots.** Still only the Guide's two PNGs (the legend's wording).
 
+### S30, round 5: who has him without taller rows (owner's choice: "4+1")
+
+Rounds 3 and 4 put a Yours / team pill under each name on phones, so most rows were two lines tall. Options weighed with
+the owner: a narrow Own column (no: the Tier column's problem again), a colored stripe (another thing to learn), the pill
+under the position badge (no), dimming other teams' rows, a tint for yours, and the owner's: colored names or #, Y / R
+badges ("R" is already Rookie), asterisks or crosses (read as a footnote or "out"), and ownership only under its
+filters. Chosen: **4 + 1**.
+- **Everyone (the default):** every row is one line. Your players' rank sits in a blue chip (the app's blue for
+  yours); nobody else is marked. Screen readers hear ", yours" or ", on Rival" after the name.
+- **Yours / Free agents:** no marks needed; the chip says it.
+- **Other teams:** each row shows its team's name in grey on a line under the name (every row has one, so the rows are
+  even).
+- Same at every width. The # column is centered so chips and plain numbers line up. The grey pill (round 4) is gone
+  with the pills; No Sleeper match and Fix name keep their own line (rare with Sleeper's full player map).
+- Legend: a line for the blue rank chip (Ranks and tiers); the who-has-him pills' line no longer mentions the view.
+
+Tests: Henry's chip and accessible name, Bijan unmarked with his team read out only, rows one line, the Other teams list
+showing "Rival" under every name, Tucker's chip after Fix name.
+
 **For a runbook card (owner's idea, 2026-11-08): player stats and research.** Tapping a player here (and perhaps in
 other lists) could open a card with season stats; how much (this season, past seasons, T-Score data) is the open
 question, so it's its own card, after S32 (whose row sheet it could share) and M11's sheet.

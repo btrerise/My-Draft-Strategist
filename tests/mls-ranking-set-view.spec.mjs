@@ -75,21 +75,23 @@ test('View opens the set read-only: name, when saved, ranks, positions, teams, t
     // Tiers are lines over the list (round 2), one where each starts: the file's tiers 1 to 5, and 6 (Zzyzx).
     await expect(visibleTierLines(sheet)).toHaveText(['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'Tier 5', 'Tier 6']);
     expect(await henry.evaluate(tr => { let p = tr.previousElementSibling; while (p && !p.classList.contains('rset-tier-row')) p = p.previousElementSibling; return p && p.textContent; })).toBe('Tier 3');
-    await expect(henry.locator('.status-mine')).toHaveText('Yours');
-    // Who has him: on its own line under the name on phones (round 3), on the name's line on computers (round 4).
-    const [nameBox, markBox] = await Promise.all([henry.locator('.rset-name').boundingBox(), henry.locator('.rset-marks').boundingBox()]);
-    if (page.viewportSize().width < 840) expect(markBox.y).toBeGreaterThanOrEqual(nameBox.y + nameBox.height - 1);
-    else expect(markBox.y).toBeLessThan(nameBox.y + nameBox.height / 2);
-    // Another team's pill is neutral grey here, not the Waiver Wire's red (round 4).
-    const rival = rowFor(sheet, 'Bijan Robinson').locator('.status-owned');
-    expect(await rival.evaluate(el => getComputedStyle(el).color)).not.toBe('rgb(252, 165, 165)');
+    // Who has him (round 5): yours have their rank in a blue chip, and say "yours" to a screen reader; nobody else is
+    // marked, so every row is one line.
+    await expect(henry.locator('.rset-rank .rset-rank-chip.is-mine')).toHaveText('15');
+    await expect(henry.getByRole('rowheader')).toHaveAccessibleName(/Derrick Henry BAL\s*, yours/);
+    const bijan = rowFor(sheet, 'Bijan Robinson');
+    await expect(bijan.locator('.rset-rank-chip')).toHaveCount(0);
+    await expect(bijan.locator('.rset-owner-name')).not.toBeInViewport({ ratio: 0.5 });
+    await expect(bijan.getByRole('rowheader')).toHaveAccessibleName(/Bijan Robinson ATL\s*, on Rival/);
+    const oneLine = async (row) => (await row.locator('.rset-player').boundingBox()).height;
+    expect(await oneLine(bijan)).toBeLessThan(40);
+    expect(await oneLine(henry)).toBeLessThan(40);
     // A ROS set's last column is the SoS badge, headed SoS.
     await expect(sheet.locator('.rset-table thead abbr')).toHaveAttribute('title', 'Strength of schedule');
     await expect(henry.locator('.rset-sos .sos-badge')).toHaveAccessibleName(/^Strength of schedule: 5 of 32 for RBs on BAL/);
     await expect(rowFor(sheet, 'Bijan Robinson').locator('.rset-sos .sos-badge')).toHaveCount(0);
-    // Another team's player names that team; a free agent carries no mark.
-    await expect(rowFor(sheet, 'Bijan Robinson').locator('.status-owned')).toHaveText('Rival');
-    await expect(rowFor(sheet, 'James Cook').locator('.scout-status')).toHaveCount(0);
+    // A free agent carries no mark, and no team name even under Other teams.
+    await expect(rowFor(sheet, 'James Cook').locator('.rset-rank-chip, .rset-owner-name')).toHaveCount(0);
     await expect(rowFor(sheet, 'James Cook').locator('.rset-pos')).toHaveText('RB8');
 });
 
@@ -136,6 +138,12 @@ test('Search, the position chips and the ownership chips combine; the empty stat
     // Yours: the 12 of your 14 in the file (your K and DEF aren't in it).
     await owners.getByRole('button', { name: 'Yours 12' }).click();
     await expect(visibleRows(sheet)).toHaveCount(12);
+    // Other teams: now each row shows who has him, in grey on a line under the name (every row has one).
+    await owners.getByRole('button', { name: 'Other teams 12' }).click();
+    await expect(visibleRows(sheet).locator('.rset-owner-name')).toHaveText(Array(12).fill(/Rival$/));
+    await expect(visibleRows(sheet).first().locator('.rset-owner-name')).toBeVisible();
+    const [nb, ob] = await Promise.all([visibleRows(sheet).first().locator('.rset-name').boundingBox(), visibleRows(sheet).first().locator('.rset-owner-name').boundingBox()]);
+    expect(ob.y).toBeGreaterThanOrEqual(nb.y + nb.height - 1);
     await owners.getByRole('button', { name: 'Free agents 6' }).click();
 
     // Nothing matches: the table goes, a sentence says so, and one button clears both.
@@ -196,7 +204,7 @@ test('A name that didn\'t match a Sleeper player is flagged, listed from the ban
     await expect(visibleRows(sheet)).toHaveCount(TOTAL);
     const tucker = rowFor(sheet, 'Justin Tucker');
     await expect(tucker.locator('.rset-pos .pos-badge.K')).toHaveText('K1');
-    await expect(tucker.locator('.status-mine')).toHaveText('Yours');
+    await expect(tucker.locator('.rset-rank-chip.is-mine')).toHaveText('31');
     const saved = await page.evaluate(async () => ({
         stored: JSON.parse(localStorage.getItem('mls_ranking_sets_ros'))[0].data.find(p => p.rank === 31),
         live: (await import('/js/mls/state.js')).State.rosRankings.find(p => p.rank === 31)
