@@ -9372,7 +9372,10 @@ main at 4b1e62f (K2 merged, #226). `CACHE_NAME` v2.9.8 (main has v2.9.7).
   table.
 - Head tags on `index.html`, `lineup/index.html`, `t-score/index.html`: `og:type=website`, `og:site_name` ("My Draft
   Strategist"), `og:url` (`/` now ends in a slash, matching its canonical), `og:image` with `og:image:type`, `:width`,
-  `:height`, `:alt`, and `twitter:image` + `twitter:image:alt`. `/` and `/t-score/` keep their titles and descriptions.
+  `:height`, `:alt`, and `twitter:image` + `twitter:image:alt`. `/` and `/t-score/` keep their titles; `/`'s description
+  and `og:description` now follow its share text (**the owner's request**, after testing in Discord: "Draft with your own
+  rankings in My Draft Strategist: live Sleeper sync, tiers, a draft board and a recap. Free, no ads."; it was "Fantasy
+  football draft and lineup tools allowing use of custom rankings."). `/t-score/` keeps its description.
 - `js/shared/analytics.js`: `takeShareRef(href)` (pure: whether `ref=share` is there and the address without it; any
   other `ref=` value is left alone), `SHARE_EVENT`. `initAnalytics` reads it first; the event is sent from the Umami
   script tag's `load` listener (`window.umami.track`), so only when the script was added (live site, not opted out) and
@@ -9397,6 +9400,10 @@ main at 4b1e62f (K2 merged, #226). `CACHE_NAME` v2.9.8 (main has v2.9.7).
   Research tab.
 
 **Screenshots.** None should change: no CSS, no visible markup, and `analytics.js` only adds work on `?ref=share`.
+
+**Testing on a branch preview doesn't show the images** (the owner tried, in Discord): the Share button's links always
+go to mydraftstrategist.com, and even the preview's own pages name `https://mydraftstrategist.com/images/og-*-1.png`
+(crawlers need full URLs), which exists only once main deploys.
 
 **After deploying**, check a preview: paste `https://mydraftstrategist.com/lineup/` into a chat app (or Facebook's
 Sharing Debugger, X's card validator, opengraph.xyz). Apps that cached the old preview may keep it for days; Facebook's
