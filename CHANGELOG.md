@@ -155,8 +155,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 - **See a ranking set you uploaded.** A **View** link beside "Choose leagues…" under each set's drop-down (the Roster
   tab's ROS and In-Season pickers, the Lineup tab's Weekly picker) opens the set, read-only: its name, when it was saved,
-  and every player with his rank, NFL team, position and position rank and SoS badge, marked **Yours** or with the team
-  that has him in this league (free agents carry no mark), with a labelled line where each tier starts. A weekly sheet
+  and every player with his rank, NFL team, position and position rank, and his SoS badge (in a Weekly set with
+  opponents, an **Opp** column instead: this week's opponent and how tough the matchup is), with who has him in this
+  league on a line under his name (**Yours** or the team's name; free agents carry no mark) and a labelled line where
+  each tier starts. A weekly sheet
   of separate lists (QB, RB, WR, TE, K, DEF and FLEX columns) shows each list on its own, FLEX first; a single ranked
   list shows All. Search by name or team; one row of chips picks the position or list, a second (Everyone, Yours, Free
   agents, Other teams) narrows it, so RB plus Free agents is the best available RBs. Names that didn't match a Sleeper

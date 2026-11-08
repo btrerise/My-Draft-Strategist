@@ -9555,6 +9555,24 @@ legend's tier line): `desktop/mls-league-guide.png` (1280×9573 → 1280×9697),
   Show these names. Keeping the file's own position on each row (the parser knows it from the column) would place him;
   that's a change to the shared parser.
 
+### S30, round 3: "Opp" for weekly sets, and who has him on its own line (owner's choices)
+
+1. **Weekly sets: Strength of opponent, not of schedule.** A Weekly set whose file has opponents (S31's `opp`,
+   `oppRank`) ends with an **Opp** column (header tooltip and table caption "Strength of opponent"): the Lineup tab's
+   colored badge ("MIA 5", tap for the words) where the file ranks the matchup, the plain opponent where it doesn't.
+   It reads the set's own data (no scoreboard override), flipped when "My matchup files rank 1 = hardest" is on. A ROS
+   set, or a Weekly set without opponents, keeps the SoS column. The legend's opponent line mentions it.
+2. **Who has him on its own line.** On phones the Yours / team pill sat beside the name on short names and under it on
+   long ones. Asked: always on its own line, or only on a tap. My recommendation, built: always on its own line under
+   the name and team (with No Sleeper match and Fix name), at every width. A tap-to-show would hide what the ownership
+   chips filter by, and an uneven row was the problem, not its height. Free agents' rows stay one line (no mark).
+
+**Tests.** The weekly sheet in the spec gets a QB Matchup column: the header is Opp ("Strength of opponent"), QBs show
+"MIA 5", "CLE 30" and a plain "DAL", an RB the plain "NO", and the badge's accessible name; a ROS set's header is
+"Strength of schedule"; Henry's pill sits below his name.
+
+**Screenshots.** Still only the Guide's two PNGs (the legend's opponent line is a few words longer).
+
 **Left over.**
 - Draft Strategist's own view (owner's answer 4): a runbook card for before next draft season.
 - The preview's "1 of 24 name didn't match" wording, if wanted.

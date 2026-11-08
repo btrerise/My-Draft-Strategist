@@ -2825,7 +2825,9 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .rset-table .rset-player { min-width: 0; overflow-wrap: anywhere; }
 .rset-name { font-weight: 600; margin-right: 0.3rem; }
 .rset-table .rset-player .badge { font-size: 0.65rem; padding: 1px 4px; vertical-align: 1px; }
-.rset-marks { display: inline-flex; flex-wrap: wrap; gap: 0.25rem; margin-left: 0.3rem; vertical-align: 1px; }
+/* Who has him (and No Sleeper match, Fix name) always on their own line under the name and team (owner's choice,
+   round 3: beside the name on some rows and under it on others looked uneven). */
+.rset-marks { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.25rem; }
 .rset-table .scout-status { font-size: 0.65rem; padding: 0.1rem 0.45rem; letter-spacing: 0.2px; }
 .rset-table .rset-pos, .rset-table .rset-sos { white-space: nowrap; width: 1%; }
 .rset-table.no-sos .rset-sos { display: none; }

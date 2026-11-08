@@ -39,6 +39,7 @@ import { hydrateRankingsForLeague } from '../leagues/sync.js';
 import { loadRosterTab, optimizeLineup } from '../main.js';
 import { displayRanksFor, leagueRankDisplayIndex } from './displayRanks.js';
 import { IN_SEASON, seasonSetFor } from './season.js';
+import { opponentFor, rankedOpponentBadgeHTML } from '../opponent.js';
 
 const POSITIONS = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
 const UNRANKED = 999;
@@ -96,6 +97,8 @@ export function buildSetRows(data, league, meta) {
             tier: Number.isFinite(p.tier) ? p.tier : null,
             posTier: Number.isFinite(shown.posTier) ? shown.posTier : (Number.isFinite(p.posTier) ? p.posTier : null),
             flexTier: Number.isFinite(p.flexTier) ? p.flexTier : null,
+            // This week's opponent and matchup rank, in a Weekly file that has them (improvements S31).
+            opp: p.opp || null, oppHome: typeof p.oppHome === 'boolean' ? p.oppHome : null, oppRank: Number.isInteger(p.oppRank) ? p.oppRank : null,
             owner: rosterByName[clean] ? 'You' : (owners[clean] || null),
             // Only once Sleeper's player map is in; picks are never players.
             unmatched: !!meta && !pick && !meta[clean] && !posMap[clean]
@@ -214,9 +217,21 @@ function bodyHTML(set, rows, metaState) {
         ? OWNER_CHIPS.filter(([k]) => k === 'ALL' || k === 'MINE' || mapped).map(([k, l]) => chipHTML('rsetOwner', k, l, ownerCounts[k], 'badge-all')).join('')
         : '';
 
-    // The SoS badge from your SoS grid, as on the Roster tab; the column only when some row has one.
-    rows.forEach(r => { r.sos = r.pos && r.pos !== 'PICK' ? getSoSBadgeHTML(r.team, r.pos, { compact: true }) : ''; });
+    // The last column. A Weekly set with opponents: this week's opponent and how tough he is for the position, the
+    // Lineup tab's badge (S31), headed "Opp", Strength of opponent (owner's choice, round 3). Otherwise the SoS badge
+    // from your SoS grid, as on the Roster tab, headed "SoS", Strength of schedule. The column only when a row has one.
+    const opponents = view.type === 'weekly' && rows.some(r => r.opp || r.oppRank !== null);
+    rows.forEach(r => {
+        if (opponents) {
+            const info = opponentFor({ opp: r.opp, oppHome: r.oppHome, oppRank: r.oppRank }, undefined);
+            r.sos = !info ? '' : rankedOpponentBadgeHTML(info, r.pos && r.pos !== 'PICK' ? r.pos : null)
+                || `<span class="mls-opp">${info.home === true ? 'vs ' : info.home === false ? '@ ' : ''}${escapeHtml(info.opp)}</span>`;
+        } else {
+            r.sos = r.pos && r.pos !== 'PICK' ? getSoSBadgeHTML(r.team, r.pos, { compact: true }) : '';
+        }
+    });
     const hasSos = rows.some(r => r.sos);
+    const lastCol = opponents ? ['Opp', 'Strength of opponent'] : ['SoS', 'Strength of schedule'];
     return `<p class="rset-meta">${escapeHtml(meta)}</p>${picker}${check}
 <div class="rset-controls">
     <input type="search" class="form-input rset-search" data-action="rsetSearch" placeholder="Search players or teams" aria-label="Search this set" autocomplete="off" spellcheck="false">
@@ -225,8 +240,8 @@ function bodyHTML(set, rows, metaState) {
 ${ownerChips ? `<div class="rset-chips rset-owner-chips" role="group" aria-label="Who has him">${ownerChips}</div>` : ''}
 <p class="rset-count" aria-live="polite"></p>
 ${rows.length ? `<table class="rset-table${hasSos ? '' : ' no-sos'}">
-    <caption class="sr-only">${escapeHtml(set.name)}: rank, player, position and position rank${hasSos ? ', strength of schedule' : ''}</caption>
-    <thead><tr><th scope="col" class="rset-rank">#</th><th scope="col">Player</th><th scope="col">Pos</th><th scope="col" class="rset-sos"><abbr title="Strength of schedule">SoS</abbr></th></tr></thead>
+    <caption class="sr-only">${escapeHtml(set.name)}: rank, player, position and position rank${hasSos ? `, ${lastCol[1].toLowerCase()}` : ''}</caption>
+    <thead><tr><th scope="col" class="rset-rank">#</th><th scope="col">Player</th><th scope="col">Pos</th><th scope="col" class="rset-sos"><abbr title="${lastCol[1]}">${lastCol[0]}</abbr></th></tr></thead>
     <tbody></tbody>
 </table>` : ''}
 <div class="rset-empty" hidden><p></p><button type="button" class="mls-btn-sm btn-link-inline" data-action="rsetClear">Clear search and filter</button></div>`;

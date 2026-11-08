@@ -76,6 +76,11 @@ test('View opens the set read-only: name, when saved, ranks, positions, teams, t
     await expect(visibleTierLines(sheet)).toHaveText(['Tier 1', 'Tier 2', 'Tier 3', 'Tier 4', 'Tier 5', 'Tier 6']);
     expect(await henry.evaluate(tr => { let p = tr.previousElementSibling; while (p && !p.classList.contains('rset-tier-row')) p = p.previousElementSibling; return p && p.textContent; })).toBe('Tier 3');
     await expect(henry.locator('.status-mine')).toHaveText('Yours');
+    // Who has him is always on its own line under the name (round 3).
+    const [nameBox, markBox] = await Promise.all([henry.locator('.rset-name').boundingBox(), henry.locator('.rset-marks').boundingBox()]);
+    expect(markBox.y).toBeGreaterThanOrEqual(nameBox.y + nameBox.height - 1);
+    // A ROS set's last column is the SoS badge, headed SoS.
+    await expect(sheet.locator('.rset-table thead abbr')).toHaveAttribute('title', 'Strength of schedule');
     await expect(henry.locator('.rset-sos .sos-badge')).toHaveAccessibleName(/^Strength of schedule: 5 of 32 for RBs on BAL/);
     await expect(rowFor(sheet, 'Bijan Robinson').locator('.rset-sos .sos-badge')).toHaveCount(0);
     // Another team's player names that team; a free agent carries no mark.
@@ -194,13 +199,13 @@ test('A name that didn\'t match a Sleeper player is flagged, listed from the ban
 // A weekly sheet in the owner's layout (round 2): one list per position side by side, and a FLEX list. Its ranks
 // repeat (each list starts at 1), so there's no "All": each chip is its own list, ranked by its own number.
 const WEEKLY = [
-    '"QB Rank","QB Player","QB Team","QB Opponent","QB Tier","RB Rank","RB Player","RB Team","RB Opponent","RB Tier","WR Rank","WR Player","WR Team","WR Opponent","WR Tier","FLEX Rank","FLEX Player","FLEX Team","FLEX Opponent","FLEX Pos"',
-    `"1","Josh Allen","BUF","MIA","1","1","Bijan Robinson","ATL","NO","1","1","Ja'Marr Chase","CIN","PIT","1","1","Ja'Marr Chase","CIN","PIT","WR"`,
-    '"2","Lamar Jackson","BAL","CLE","1","2","Jahmyr Gibbs","DET","GB","1","2","Justin Jefferson","MIN","CHI","2","2","Bijan Robinson","ATL","NO","RB"',
-    '"3","Jalen Hurts","PHI","DAL","2","3","Derrick Henry","BAL","CLE","2","3","Puka Nacua","LAR","SEA","2","3","Jahmyr Gibbs","DET","GB","RB"',
-    '"","","","","","","","","","","","","","","","4","Justin Jefferson","MIN","CHI","WR"',
-    '"","","","","","","","","","","","","","","","5","Derrick Henry","BAL","CLE","RB"',
-    '"","","","","","","","","","","","","","","","6","Puka Nacua","LAR","SEA","WR"',
+    '"QB Rank","QB Player","QB Team","QB Opponent","QB Matchup","QB Tier","RB Rank","RB Player","RB Team","RB Opponent","RB Tier","WR Rank","WR Player","WR Team","WR Opponent","WR Tier","FLEX Rank","FLEX Player","FLEX Team","FLEX Opponent","FLEX Pos"',
+    `"1","Josh Allen","BUF","MIA","5","1","1","Bijan Robinson","ATL","NO","1","1","Ja'Marr Chase","CIN","PIT","1","1","Ja'Marr Chase","CIN","PIT","WR"`,
+    '"2","Lamar Jackson","BAL","CLE","30","1","2","Jahmyr Gibbs","DET","GB","1","2","Justin Jefferson","MIN","CHI","2","2","Bijan Robinson","ATL","NO","RB"',
+    '"3","Jalen Hurts","PHI","DAL","","2","3","Derrick Henry","BAL","CLE","2","3","Puka Nacua","LAR","SEA","2","3","Jahmyr Gibbs","DET","GB","RB"',
+    '"","","","","","","","","","","","","","","","","4","Justin Jefferson","MIN","CHI","WR"',
+    '"","","","","","","","","","","","","","","","","5","Derrick Henry","BAL","CLE","RB"',
+    '"","","","","","","","","","","","","","","","","6","Puka Nacua","LAR","SEA","WR"',
 ].join('\n') + '\n';
 
 test('A weekly sheet of separate lists shows each list on its own, FLEX first, with its tiers', async ({ page }) => {
@@ -229,12 +234,20 @@ test('A weekly sheet of separate lists shows each list on its own, FLEX first, w
     await expect(visibleTierLines(sheet)).toHaveCount(0);
     await expect(sheet.locator('.rset-count')).toHaveText('6 players');
 
+    // A weekly file with opponents: the last column is this week's opponent, "Opp" for Strength of opponent (round 3),
+    // the Lineup tab's colored badge where the file ranks the matchup, the plain opponent where it doesn't.
+    await expect(sheet.locator('.rset-table thead th').last()).toHaveText('Opp');
+    await expect(sheet.locator('.rset-table thead abbr')).toHaveAttribute('title', 'Strength of opponent');
+    await expect(rowFor(sheet, 'Bijan Robinson').locator('.rset-sos')).toHaveText('NO');
+
     // QB: its own list, 1 to 3, with its tiers as lines.
     await lists.getByRole('button', { name: 'QB 3' }).click();
     await expect(visibleRows(sheet).locator('.rset-rank')).toHaveText(['1', '2', '3']);
     await expect(visibleRows(sheet).locator('.rset-name')).toHaveText(['Josh Allen', 'Lamar Jackson', 'Jalen Hurts']);
     await expect(visibleTierLines(sheet)).toHaveText(['Tier 1', 'Tier 2']);
     await expect(sheet.locator('.rset-count')).toHaveText('3 players');
+    await expect(visibleRows(sheet).locator('.rset-sos')).toHaveText(['MIA 5', 'CLE 30', 'DAL']);
+    await expect(rowFor(sheet, 'Josh Allen').locator('.opp-rank-badge')).toHaveAccessibleName(/^This week against MIA: one of the easiest matchups for QBs/);
     // RB, and the search within it.
     await lists.getByRole('button', { name: 'RB 3' }).click();
     await expect(visibleRows(sheet).locator('.rset-name')).toHaveText(['Bijan Robinson', 'Jahmyr Gibbs', 'Derrick Henry']);
