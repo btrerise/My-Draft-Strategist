@@ -25,6 +25,7 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
 | `npm run pxdiff` | pixel comparison of PNG folders, or of repeated screenshot runs | no, opt-in |
 | `npm run perf` | Lighthouse load numbers for the three pages, PageSpeed's mobile setup (~15 s a run) | no, opt-in |
 | `npm run perf:tabs` | tab-switch timing with 21 leagues on a 4x-slowed CPU | no, opt-in |
+| `npm run og-images` | redraws the link-preview PNGs (`images/og-*-N.png`, improvements K3; see the tool's header) | no, opt-in |
 
 - **CI:** `.github/workflows/check.yml` runs `npm run check` on every pull request and every push to `main`
   (ubuntu-24.04, Node 22, Playwright's own Chromium). When it fails, the run's `playwright-results` artifact has the

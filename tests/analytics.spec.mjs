@@ -24,9 +24,10 @@ async function serveAs(page, origin, baseURL) {
     return bad;
 }
 
-async function openAs(page, origin, path, baseURL) {
+async function openAs(page, origin, path, baseURL, { fakeUmami = false } = {}) {
     const state = await preparePage(page);
     const bad = await serveAs(page, origin, baseURL);
+    if (fakeUmami) await serveFakeUmami(page);
     const umamiRequests = [];
     page.on('request', (req) => { if (req.url().startsWith('https://cloud.umami.is/')) umamiRequests.push(req.url()); });
     await page.goto(origin + path);
@@ -35,6 +36,16 @@ async function openAs(page, origin, path, baseURL) {
     expect(bad, 'local files missing').toEqual([]);
     return { state, umamiRequests };
 }
+
+// A stand-in for Umami's script (improvements K3): like the real one, it defines window.umami when it runs, and its
+// track() calls are kept in window.__umamiCalls for the test to read. It only runs if the page adds the script tag.
+async function serveFakeUmami(page) {
+    await page.route(UMAMI, (route) => route.fulfill({
+        contentType: 'text/javascript',
+        body: 'window.__umamiCalls = window.__umamiCalls || []; window.umami = { track: (...args) => window.__umamiCalls.push(args) };',
+    }));
+}
+const umamiCalls = (page) => page.evaluate(() => window.__umamiCalls || null);
 
 const umamiTag = (page) => page.locator(`script[src="${UMAMI}"]`);
 const toast = (page) => page.locator('#mds-toast .toast-message');
@@ -104,6 +115,75 @@ test('the opt-out is in neither app\'s backup', async ({ page, baseURL }) => {
         return { mds: isMdsOwnedKey(k), mls: isMlsOwnedKey(k), stored: localStorage.getItem(k) };
     });
     expect(owned).toEqual({ mds: false, mls: false, stored: '1' });
+});
+
+// Shared links (improvements K3): the Share buttons send links ending in ?ref=share. The loader takes it out of the
+// address bar and, when the visit is counted, sends one "Shared link opened" event with the page, after Umami's script
+// has loaded (Umami can't see query strings: data-exclude-search).
+for (const path of PAGES) {
+    test(`${path}?ref=share sends one "Shared link opened" event and leaves the address bar`, async ({ page, baseURL }) => {
+        await openAs(page, 'https://mydraftstrategist.com', `${path}?ref=share`, baseURL, { fakeUmami: true });
+        await expect.poll(() => umamiCalls(page)).toEqual([['Shared link opened', { page: path }]]);
+        expect(new URL(page.url()).search).toBe('');
+        expect(new URL(page.url()).pathname).toBe(path);
+        // A1's setting stays: Umami never records query strings.
+        await expect(umamiTag(page)).toHaveAttribute('data-exclude-search', 'true');
+
+        // A reload (the parameter is gone) doesn't count it again.
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await expect(umamiTag(page)).toHaveCount(1);
+        expect(await umamiCalls(page)).toEqual([]);
+    });
+}
+
+test('?ref=share keeps the other parameters and the hash', async ({ page, baseURL }) => {
+    await openAs(page, 'https://mydraftstrategist.com', '/t-score/?foo=bar&ref=share#top50Tab', baseURL, { fakeUmami: true });
+    await expect.poll(() => umamiCalls(page)).toEqual([['Shared link opened', { page: '/t-score/' }]]);
+    expect(new URL(page.url()).search).toBe('?foo=bar');
+    expect(new URL(page.url()).hash).toBe('#top50Tab');
+});
+
+test('a page opened without ?ref=share (or with another ref) sends no event', async ({ page, baseURL }) => {
+    await openAs(page, 'https://mydraftstrategist.com', '/lineup/?ref=other', baseURL, { fakeUmami: true });
+    await expect(umamiTag(page)).toHaveCount(1);
+    await expect.poll(() => umamiCalls(page)).toEqual([]);
+    expect(new URL(page.url()).search).toBe('?ref=other');
+});
+
+test('?ref=share off the live site, or on an opted-out device: removed from the address bar, nothing sent', async ({ page, baseURL }) => {
+    // A branch preview: no script at all.
+    const preview = await openAs(page, 'https://a1-test.my-draft-strategist.pages.dev', '/?ref=share#guide', baseURL, { fakeUmami: true });
+    expect(preview.umamiRequests).toEqual([]);
+    expect(new URL(page.url()).search).toBe('');
+    expect(new URL(page.url()).hash).toBe('#guide');
+    expect(await umamiCalls(page)).toBeNull();
+
+    // The live site, opted out: no script, no event; and opting back in on that page doesn't send it later.
+    await openAs(page, 'https://mydraftstrategist.com', '/?nocount=1', baseURL, { fakeUmami: true });
+    const optedOut = await openAs(page, 'https://mydraftstrategist.com', '/lineup/?ref=share', baseURL, { fakeUmami: true });
+    expect(optedOut.umamiRequests).toEqual([]);
+    expect(new URL(page.url()).search).toBe('');
+    await page.locator('a[data-nocount-link]').evaluate((a) => a.click());
+    await expect(umamiTag(page)).toHaveCount(1);
+    await expect.poll(() => page.evaluate(() => typeof window.umami)).toBe('object');
+    expect(await umamiCalls(page)).toEqual([]);
+});
+
+test('?nocount=0&ref=share: counted again from this visit, and the shared link counted once', async ({ page, baseURL }) => {
+    await openAs(page, 'https://mydraftstrategist.com', '/?nocount=1', baseURL);
+    await openAs(page, 'https://mydraftstrategist.com', '/?nocount=0&ref=share', baseURL, { fakeUmami: true });
+    await expect(umamiTag(page)).toHaveCount(1);
+    await expect.poll(() => umamiCalls(page)).toEqual([['Shared link opened', { page: '/' }]]);
+    expect(new URL(page.url()).search).toBe('');
+});
+
+test('?ref=share with Umami blocked: no error, and the parameter still goes', async ({ page, baseURL }) => {
+    // openAs lets helpers.mjs abort cloud.umami.is (a blocker); expectClean inside it checks for console errors.
+    const { umamiRequests } = await openAs(page, 'https://mydraftstrategist.com', '/t-score/?ref=share', baseURL);
+    expect(umamiRequests).toEqual([UMAMI]);
+    expect(new URL(page.url()).search).toBe('');
+    expect(await umamiCalls(page)).toBeNull();
 });
 
 // The link at the end of each Visitor Counts line (each Guide, T-Score's The Research): it toggles in place, with no

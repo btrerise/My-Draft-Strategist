@@ -19,6 +19,11 @@
 // bar so a reload or a bookmark doesn't repeat it. A toast says which. The choice is kept under
 // KEYS.shared.analyticsOptOut, which is in neither app's backup and survives both apps' resets.
 //
+// Shared links (improvements K3): the Share buttons (js/shared/ui/share.js) send links ending in ?ref=share. Umami
+// can't see that (data-exclude-search, below, and chat apps send no referrer), so this module reads it itself, takes
+// it out of the address bar (a reload, a bookmark or a re-share shouldn't count again), and, when this visit is
+// counted, sends one Umami event, "Shared link opened", with the page's path, once Umami's script has loaded.
+//
 // Settings live here (not in an inline snippet) so the pages carry no inline script for it. The
 // website ID is public by design: it ends up in every page anyway.
 import { KEYS } from './storage/keys.js';
@@ -31,6 +36,17 @@ export const COUNTED_HOSTS = ['mydraftstrategist.com', 'www.mydraftstrategist.co
 // The one place that decides. Pure, so tests/unit/analytics.test.mjs can check every case.
 export function shouldCount(hostname, optedOut) {
     return COUNTED_HOSTS.includes(hostname) && !optedOut;
+}
+
+export const SHARE_EVENT = 'Shared link opened';
+
+// Pure, for tests/unit/analytics.test.mjs: whether the address carries ref=share, and the address without it (other
+// parameters and the hash kept). Any other ref= value is left alone.
+export function takeShareRef(href) {
+    const url = new URL(href);
+    if (url.searchParams.get('ref') !== 'share') return { shared: false, path: null };
+    url.searchParams.delete('ref');
+    return { shared: true, path: url.pathname + url.search + url.hash };
 }
 
 // Storage can throw (private windows, blocked site data): the opt-out then simply isn't kept,
@@ -88,6 +104,26 @@ function onNoCountLinkClick(e) {
     setOptOut(!readOptOut());
 }
 
+// ?ref=share is taken out of the address bar whether or not this visit is counted.
+function applyShareParam() {
+    const { shared, path } = takeShareRef(location.href);
+    if (!shared) return false;
+    try { history.replaceState(history.state, '', path); } catch { /* still counted below */ }
+    return true;
+}
+
+// Umami's script defines window.umami when it runs; its `load` event comes after that. If the script never loads
+// (offline, a blocker), there's simply no event.
+function trackSharedOpen(script) {
+    script.addEventListener('load', () => {
+        try { window.umami?.track(SHARE_EVENT, { page: location.pathname }); } catch { /* counting is optional */ }
+    }, { once: true });
+}
+
+// Set by initAnalytics for the page load only: a later "Count this device again" doesn't send it. A module variable
+// rather than an argument because ?nocount=0 also loads the script, before initAnalytics' own call.
+let pendingSharedOpen = false;
+
 function loadUmami() {
     if (!shouldCount(location.hostname, readOptOut())) return;
     if (document.querySelector(`script[src="${UMAMI_SCRIPT_URL}"]`)) return;
@@ -102,16 +138,19 @@ function loadUmami() {
     // /t-score/. Query strings (?week=6) are left out of the recorded address for the same reason.
     s.dataset.excludeHash = 'true';
     s.dataset.excludeSearch = 'true';
+    if (pendingSharedOpen) trackSharedOpen(s);
     // Offline, or blocked by an ad blocker: the script just doesn't run. The browser notes the
     // failed request itself; there's nothing for the app to do or log.
     document.head.appendChild(s);
 }
 
 export function initAnalytics() {
+    pendingSharedOpen = applyShareParam();
     applyNoCountParam();
     updateNoCountLinks();
     document.addEventListener('click', onNoCountLinkClick);
     loadUmami();
+    pendingSharedOpen = false;
 }
 
 // Not under node --test, which imports this file for shouldCount.

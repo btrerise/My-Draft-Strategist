@@ -12,7 +12,8 @@
     "compare-css": "playwright test -c tools/playwright.config.mjs css-compare",
     "pxdiff": "node tools/pxdiff.mjs",
     "perf": "node tools/perf.mjs",
-    "perf:tabs": "playwright test -c tools/playwright.config.mjs tab-switch"
+    "perf:tabs": "playwright test -c tools/playwright.config.mjs tab-switch",
+    "og-images": "node tools/og-images.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

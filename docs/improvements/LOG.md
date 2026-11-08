@@ -9342,3 +9342,76 @@ other people's artwork.
 
 **Done.** The five eggs as the owner chose them; unit and spec tests; CHANGELOG line under both apps; `CACHE_NAME`
 bumped; screenshots identical; checks pass.
+
+## K3 — Link previews for all three pages, and counting shared links
+
+K1's stage 1 (`docs/improvements/support.md`, section 5, and its "Build cards"). Branch `ccr-207e15dd-dzgj60`, from
+main at 4b1e62f (K2 merged, #226). `CACHE_NAME` v2.9.8 (main has v2.9.7).
+
+**User-visible effect.**
+- **A shared link shows a picture.** Pasting a link to `/`, `/lineup/` or `/t-score/` into iMessage, WhatsApp, Slack,
+  Discord, Facebook or X now previews with a 1200×630 card: the colored hero logo on the site's navy, one line about
+  the page, and "mydraftstrategist.com · free, no ads" at the foot (option C, the owner's choice). T-Score's card uses
+  Draft Strategist's logo with "The T-Score Model" over its line. Before: `/` and `/t-score/` pointed at an SVG, which
+  those apps don't preview (no picture), and `/lineup/` at a 512px square icon, cropped under `summary_large_image`.
+- **`/lineup/` previews as itself:** its `og:title` is "My Lineup Strategist | My Draft Strategist" (it started with a
+  space) and its `og:url` is `/lineup/` (it was the site root, so some apps showed it as the Draft page). It has a
+  `<meta name="description">` now, and its preview text describes Lineup Strategist (it was a generic "lineup and draft
+  tools" line).
+- **Opening a shared link** (the Share buttons' `?ref=share`) removes `ref=share` from the address bar (other
+  parameters and the hash stay), and on the live site, when the device is counted, sends one Umami event, **Shared
+  link opened**, with the page's path (`/`, `/lineup/`, `/t-score/`). Nothing else on the pages changes.
+
+**What changed, where.**
+- `images/og-draft-1.png` (68 KB), `og-lineup-1.png` (63 KB), `og-tscore-1.png` (58 KB): 1200×630, not in
+  `PRECACHE_ASSETS` (`scripts/check-precache.mjs` only checks scripts and stylesheets, so it agrees as is).
+- `tests/tools/og-images.mjs` (new, opt-in, `npm run og-images`; `--out <dir>` to draw elsewhere): opens a page built
+  from the logos and the site's own Outfit font (as data: URLs, no network), trims the logo files' empty space above and
+  below the words (logo.svg has a lot), and screenshots it. To change a picture: bump `VERSION`, run it, and change the
+  pages' `og:image`/`twitter:image` and `tests/link-previews.spec.mjs` to the new names. Listed in `docs/TESTING.md`'s
+  table.
+- Head tags on `index.html`, `lineup/index.html`, `t-score/index.html`: `og:type=website`, `og:site_name` ("My Draft
+  Strategist"), `og:url` (`/` now ends in a slash, matching its canonical), `og:image` with `og:image:type`, `:width`,
+  `:height`, `:alt`, and `twitter:image` + `twitter:image:alt`. `/` and `/t-score/` keep their titles; `/`'s description
+  and `og:description` now follow its share text (**the owner's request**, after testing in Discord: "Draft with your own
+  rankings in My Draft Strategist: live Sleeper sync, tiers, a draft board and a recap. Free, no ads."; it was "Fantasy
+  football draft and lineup tools allowing use of custom rankings."). `/t-score/` keeps its description.
+- `js/shared/analytics.js`: `takeShareRef(href)` (pure: whether `ref=share` is there and the address without it; any
+  other `ref=` value is left alone), `SHARE_EVENT`. `initAnalytics` reads it first; the event is sent from the Umami
+  script tag's `load` listener (`window.umami.track`), so only when the script was added (live site, not opted out) and
+  has run. A module flag holds it for the page load only: `?nocount=0&ref=share` counts it once, but opting back in later
+  with the Guide's link doesn't send it. A1's `data-exclude-search` stays.
+- `README.md` privacy section: the new event. `CHANGELOG.md`: a line under both apps. `sw.js`: `CACHE_NAME`.
+- Tests: `tests/unit/analytics.test.mjs` (`takeShareRef` cases, the event's name); `tests/analytics.spec.mjs` (a
+  stand-in Umami script that records `track` calls: one event per page with its path, the address bar cleaned, no
+  second event on reload; other parameters and the hash kept; `?ref=other` untouched and no event; a branch preview and
+  an opted-out device: removed, nothing sent, and not sent on opting back in; `?nocount=0&ref=share`; Umami blocked: no
+  error); `tests/link-previews.spec.mjs` (new: every tag on each page from the served HTML, no meta content with a
+  leading or trailing space, each PNG 1200×630, under 100 KB and served as `image/png`, none in `sw.js`). The 7 new
+  `ref=share` specs fail against main's `analytics.js` (checked).
+
+**Decisions made here (not asked; the card set them or they're small).**
+- The background is a top-to-bottom navy gradient with a faint green at the top, not the drafts' round glow: the glow
+  made each PNG ~140 KB (every pixel a different colour); the straight gradient keeps them ~60 KB and looks nearly the
+  same. The lines are the drafts' words.
+- The Guides' and T-Score's Visitor Counts lines were **not** changed for the new event: they're in screenshots, and the
+  card says none change. They already say the site counts "the site that linked to it"; the README has the detail. If
+  the owner wants the Guide lines to name it, that's a re-take of the Guide screenshots (both apps) and T-Score's
+  Research tab.
+
+**Screenshots.** None change. Main and this branch rendered the same way in the session (`RENDER_ENV=any`), compared
+with `npm run pxdiff`: 42 PNGs, all pixel-identical.
+
+**Checks.** `npm run check` in the session: check-precache OK (157 files), 524 unit tests pass, 820 Playwright tests
+pass (48 skipped); the 4 failures are `visual.spec.mjs` refusing this container's fonts (the environment check), as on
+main. `link-previews.spec.mjs` re-run after the owner's description change: 8 pass.
+
+**Testing on a branch preview doesn't show the images** (the owner tried, in Discord): the Share button's links always
+go to mydraftstrategist.com, and even the preview's own pages name `https://mydraftstrategist.com/images/og-*-1.png`
+(crawlers need full URLs), which exists only once main deploys.
+
+**After deploying**, check a preview: paste `https://mydraftstrategist.com/lineup/` into a chat app (or Facebook's
+Sharing Debugger, X's card validator, opengraph.xyz). Apps that cached the old preview may keep it for days; Facebook's
+debugger has "Scrape Again". Umami: Events → "Shared link opened", broken down by `page`.
+
+**Left over.** None from this card. The runbook's MERGED list still needs updating (K1's note).
