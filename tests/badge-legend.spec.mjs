@@ -17,6 +17,9 @@ async function expectLegendOpen(page, tab) {
     await expect(legend(page).locator('.sheet-title')).toHaveText('What the badges mean');
     await expect(legend(page).locator('.sheet-title')).toBeFocused();
     await expect(page.locator(`#${tab}Tab`)).toHaveClass(/\bactive\b/);
+    // The slide-in starts two frames after the title takes focus (js/shared/ui/sheet.js), so wait for it to start
+    // before waiting for it to end: read between the two, the sheet is still off-screen (failed once in CI, K2).
+    await expect(page.locator('.sheet-host')).toHaveClass(/\bis-open\b/);
     await legend(page).evaluate(el => Promise.all(el.getAnimations().map(a => a.finished))); // where it rests
 }
 

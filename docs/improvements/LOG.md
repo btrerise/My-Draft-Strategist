@@ -9178,3 +9178,167 @@ header (DevTools, Network). If Bot Fight Mode challenges `/api/` (A1's note), th
   the image). Not changed here; ask the owner whether the image should carry "Market: FantasyCalc".
 - Anyone who had TE Premium on gets different TE values on their next fetch (the fix). Their saved market values
   change only when they fetch again.
+
+## K2 — Ko-fi easier to find, and a Share button
+
+K1's stage 1 as the owner decided (`docs/improvements/support.md`, sections 1 and 5, and its "Build cards"). Branch
+`claude/determined-heisenberg-esboof`, from main at 6825c64 (M11 merged), updated to main after K1 and K8 merged
+(PR #225; `CACHE_NAME` v2.9.7 above K8's v2.9.6).
+
+**User-visible effect.**
+- Ko-fi's image badge ("Buy Me a Coffee at ko-fi.com", loaded from storage.ko-fi.com) is gone from all three drawers
+  and both Dashboards. In its place is our own green **Support on Ko-fi** button (Feather's cup, 48px tall). In the
+  drawer it sits at the foot with "Made by one person, for fun. No ads." under it.
+- The **Dashboard's foot** (both apps, under Danger Zone / Reset Controls, above the version) is now a line ("Lineup
+  Strategist is free, with no ads. One person builds it.", or Draft Strategist), then Support on Ko-fi and an outlined
+  **Share with your league** button.
+- **On computers (840px and up)** a muted cup sits at the header's right end on all three pages; it turns green on
+  hover with a "Support this site on Ko-fi" tooltip. Hidden below 840px.
+- **"About this project"** opens both Guides (green edge) with the two buttons, in the owner's voice, one sentence per
+  line: "I build My Draft Strategist and Lineup Strategist on my own, for fun, in my spare time. / There are no ads,
+  nothing is locked, and your leagues and rankings stay in this browser. / Tips pay for the domain and the odd late
+  night, and sharing the site with your league helps just as much. / Thanks for using it. I hope it helps you as much
+  as it helps me!" T-Score's The Research ends with one line ("I build the T-Score model and both apps on my own, for
+  fun, with no ads. Tips and sharing keep it going.") and the same two buttons, just above Visitor counts.
+- **Share this site** is a new row at the end of every drawer's links. Share opens the phone's (or browser's) share
+  sheet with the page's title, text and `?ref=share` link (support.md section 5); where there's none (Firefox on
+  computers) it copies the link and says "Link copied". Closing the sheet does nothing; any other refusal copies
+  instead; if copying fails too, an error toast shows the link.
+- The Visitor Counts lines (both Guides, T-Score) and the README's privacy section say taps on the Ko-fi and Share
+  buttons are counted.
+
+**What changed.**
+- `js/shared/ui/share.js` (new, in `PRECACHE_ASSETS`): `SHARE_DATA` (texts and URLs per app) and
+  `shareSite(app)`. Each page's `main.js` has a `shareSite` data-action (`data-share="mds" | "mls" | "tscore"`).
+- `index.html`, `lineup/index.html`, `t-score/index.html`: the drawer row, the drawer foot, the header cup, the
+  Dashboard feet, the Guide notes, T-Score's line. Every Ko-fi link has `target="_blank" rel="noopener noreferrer"`
+  (the two Dashboard links had no `rel`). Umami events by attribute only (A1's script picks them up): `Ko-fi` and
+  `Share`, each with `data-umami-event-where` = `header`, `drawer`, `guide` or `foot` (T-Score's Research line counts
+  as `guide`).
+- `css/base.css`: "Footer & Ko-fi" and `.hero-kofi` rewritten (`.kofi-img` removed); `.kofi-btn`, `.share-btn`,
+  `.kofi-note`, `.support-actions`, `.about-project` (its text runs the card's full width like the rest of the Guide;
+  a 68ch cap was taken out at the owner's request: "Looks off"), `.header-kofi` (its tooltip is a `::before`, since `::after` is
+  M2's touch target; `margin-block: -8px` keeps the header's height). `css/tscore.css`: `.tscore-support`.
+- `sw.js`: `share.js` precached; `CACHE_NAME` v2.9.7 (K8 has v2.9.6).
+- CHANGELOG under both apps; README (privacy and the drawer line).
+- Tests: `tests/unit/share.test.mjs` (share stubbed and called with each app's data; absent: clipboard and "Link
+  copied"; AbortError: silent; other errors: copy; copy failing: error toast with the link).
+  `tests/support.spec.mjs` (all three pages: no request to and no markup from storage.ko-fi.com, every Ko-fi link with
+  rel and its Umami attributes, the cup at 1280 and not at 390 or 839, its colour and tooltip on hover; Share from the
+  drawer stubbed, absent and cancelled; the Guide notes, the Dashboard feet, T-Score's line, the drawer foot's 48px
+  button). `tests/nav-rail.spec.mjs`: the menu's rows now end with "Share this site".
+
+**Decisions** (the owner's are marked; the rest made here without asking).
+- The Dashboard foot uses the card's 48px green button and an outlined Share button, not the mock-up's two text links
+  ("Tip on Ko-fi", "Share with your league"): the card asks for our button in both `.hero-kofi` blocks, and one button
+  everywhere reads the same.
+- The header cup is on T-Score too (after "Back to Draft"), at the same widths: the card says "the header", and T-Score
+  has no rail, so its cup still hides below 840px as on the apps.
+- **The note's wording (owner, after seeing it):** first person throughout, one sentence per line (`<br>`; the last two
+  short sentences share a line) instead of a 68ch cap, and a thank-you line added; T-Score's line in first person too.
+  The short captions stay as they are ("Made by one person, for fun. No ads." in the drawer, "One person builds it." on
+  the Dashboards). **For K4:** its Guide sentence ("Once a season, after a week goes final, a small card may ask too.")
+  should go on its own line in the same voice.
+- T-Score's line has the two buttons rather than two links in a sentence: inline, the links' 48px tap areas overlapped
+  on phones and `touch-targets.spec.mjs` failed.
+
+**Screenshots** (cloud container: main and this branch rendered the same way with `RENDER_ENV=any`, compared with
+`npm run pxdiff`). 27 PNGs change, all from this card; none re-taken here, to be taken from CI's renders once a pull
+request runs ("When your machine can't reproduce the baselines"):
+- The header's right end on every desktop screen (the cup, and the picker moved left to make room; nothing else):
+  `desktop/mds-draft-board`, `mds-draft-team`, `mds-draft-tracker`, `mds-empty-board`, `mds-empty-team`,
+  `mds-empty-tracker`, `mls-league-lineup`, `mls-league-roster`, `mls-league-scoreboard`, `mls-league-scout`,
+  `tscore-avoidsTab`, `tscore-sleepersTab`, `tscore-tab-2024`, `tscore-top50Tab`, `tscore-valuesTab`.
+- The Guides (the note, plus the Visitor Counts line): `desktop/` and `phone/mds-empty-guide`, `mls-league-guide`.
+- The Dashboards (the new foot): `desktop/` and `phone/mds-empty-setup`, `mls-empty-setup`, `mls-league-setup`
+  (desktop also the header cup).
+- T-Score's The Research (the line and buttons, the longer Visitor counts line): `desktop/` and
+  `phone/tscore-researchTab` (desktop also the cup).
+
+**Left over.**
+- K4 (the Final-week ask) can now use `shareSite('mls')` for its "Share with your league" and the `.kofi-btn` /
+  `.share-btn` / `.support-actions` styles; it adds its sentence to the Guide's "About this project".
+- K3 reads `?ref=share` in the analytics loader; until it merges, a shared link opens with `?ref=share` in the address
+  bar (harmless; A1's `data-exclude-search` already keeps it out of Umami's page URLs).
+
+### K2: screenshots re-taken from CI (PR #226, run 42424203741)
+
+**The 27 PNGs listed above were re-taken from CI's `-actual.png`.** Each `-expected.png` was checked byte-for-byte
+against the committed baseline. `npm run pxdiff` of old against new shows:
+- The 15 header-only screens differ only in the header's right end (x ≈ 954–1255, y 12–54; T-Score x 1076–1255).
+- The Guides, Dashboards and T-Score's Research tab grow taller by the note, the foot and the line.
+
+The run's only other failure was `badge-legend.spec.mjs`, desktop, "Lineup Strategist: the Waiver Wire Assistant's
+link opens the legend…" ("Expected: 0, Received: 153" elements past the screen's edge). It isn't K2's code; it's a race
+in M11's test. `openSheet` focuses the title at once but adds `is-open` (which starts the slide-in) two frames later
+(`js/shared/ui/sheet.js`). `expectLegendOpen` waited for the focus, then for `getAnimations()`. Read inside those two
+frames there's no animation yet, so it measured the side sheet still off-screen. The fix (in this PR): wait for
+`.sheet-host.is-open` first.
+
+Checked with `is-open` delayed by 300ms in `sheet.js` on purpose: the old test fails the same way (348 elements), the
+new one passes. Main's CI never hit the gap.
+
+### E1 (proposed card, from the owner during K2): easter eggs
+
+The owner, during K2 (2026-11-07): "I love it when sites have easter eggs (e.g., Android's in their version numbers)."
+From the ideas offered, the owner picked five. Not built here: K2 stays to its card. **For the runbook:** add this as
+card E1 (it isn't on the runbook page yet).
+
+**E1 — Easter eggs: the octopus, the version taps, a hidden code, and two football moments** (~15k tok, Feature,
+needs K2; not alongside K4 or S27, which edit the Scoreboard and the Guide's "About this project").
+
+**Goal.** A few hidden surprises that never get in the way. Visible effect, only for whoever finds them: an octopus
+that waves from the Guide's "About this project", a message after tapping the version 8 times and another at 18
+(Justin Jefferson's number), a football that spirals across the screen after a hidden code, a line when you draft a
+kicker or defense in rounds 1–3, and a line on the Scoreboard when a matchup ends within a point.
+
+**Asks you** (before building each part; sketches at 375 and 1280px):
+1. The octopus: two or three looks to pick from (our own SVG, Feather-like strokes in the site's green, or a filled
+   friendly shape), and the line it says.
+2. The words for the 8-tap and 18-tap messages (drafts below).
+3. The hidden code on phones, which have no keyboard (for example: a long press on the hero logo, or tapping the
+   Dashboard tab's icon in a pattern).
+4. The kicker or defense pick: a toast right after your pick, or a calmer line in the Draft Recap once the draft is
+   done (a toast mid-draft goes against "never during a draft"; the recap is my pick).
+
+**The eggs.**
+- **The octopus** (the mascot; owner's favourite animal). Tapping the "About this project" heading 8 times (eight
+  arms; the heading, not the Ko-fi button, so nothing opens Ko-fi) makes a small original SVG octopus rise from the
+  box's bottom edge, wave one arm and stay until the tab changes. With Reduce Motion it just appears. Both Guides. It
+  can reappear as the "keeper" in the other eggs (in the toasts' icon, or riding the football).
+- **The version, 8 taps** (Android's egg; ties to the note's "nothing is locked"): tapping the version at the foot of
+  either Dashboard 8 times shows "You've unlocked… nothing. Everything was already unlocked."
+- **The version, 18 taps** (Justin Jefferson, WR, Vikings, #18; the owner's favourite player): keep tapping to 18 for
+  a Jefferson nod, for example "18. Best route-runner in football." in purple and gold. Text only: his name and number,
+  no photo beyond Sleeper's headshots, no team logo.
+- **The hidden code.** Typing a code anywhere outside a text field sends a small SVG football spiralling across the
+  screen (once; with Reduce Motion a short fade instead). Codes to choose from: the classic ↑ ↑ ↓ ↓ ← → ← → B A,
+  "hut hut hike", or "jjettas" (Jefferson's nickname: the football in purple and gold, or with "18" on it). Plus the
+  phone trigger from ask 3.
+- **Kicker or defense in rounds 1–3** (Draft Strategist): when *your* pick in rounds 1–3 is a K or DEF: "Bold strategy.
+  We respect it." Where it shows: ask 4. Once per draft.
+- **Within a point** (Lineup Strategist's Scoreboard): when your matchup is Final and the margin is under 1 point, a
+  line under it: "Lost by 0.4. That one stings." or "Won by 0.3. Whew." Final weeks only, never while games are live.
+
+**Scope and rules.**
+- One shared module, `js/shared/ui/easterEggs.js` (in `PRECACHE_ASSETS`): the tap counter, the key-sequence detector
+  (pure functions, unit-tested), the octopus and football SVGs; wired through `data-action` and `delegate()` or a
+  document `keydown` listener that ignores inputs, selects, textareas and contenteditable.
+- Never during a crunch: no egg shows while a dialog or sheet is open, while Live Sync is on, or in the hour before a
+  kickoff with one of your starters (K4's quiet window, if it has merged; else skip the Scoreboard line while live).
+- Inline SVG only, no emoji (`noEmoji.test.mjs`); Reduce Motion respected; nothing is announced loudly (toasts are
+  polite); no storage key unless the owner wants an egg to show only once (then one key in `keys.js`, e.g.
+  `mls_eggs` / `mds_eggs`).
+- The screenshot fixtures must not trigger any egg (check the Final fixture's margins in `mls-this-week.spec.mjs`), so
+  no baseline changes. No Guide legend line (they're hidden), and the CHANGELOG says only "A few hidden surprises."
+- Trademarks: no Star Wars or Batman names, logos, characters or quotes (the owner's other loves; a later card could
+  add a "May the Fourth" line on 4 May, or a generic bat silhouette on Halloween, if wanted).
+- Tests: unit tests for the sequence detector, the tap counter's reset (taps more than ~2 s apart start over) and the
+  margin line's wording; a spec per egg (each trigger shows it once, a near miss doesn't, Reduce Motion, not inside a
+  text field, not during Live Sync).
+
+**Avoid.** Anything that blocks a control or needs closing; sounds; ads or links out (beyond what K2 added);
+other people's artwork.
+
+**Done.** The five eggs as the owner chose them; unit and spec tests; CHANGELOG line under both apps; `CACHE_NAME`
+bumped; screenshots identical; checks pass.

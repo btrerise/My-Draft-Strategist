@@ -327,6 +327,16 @@
 }
 
 /* The Research's last line: what the site's visitor counts record (improvements A1). */
+/* The support line and buttons at the end of The Research (improvements K2), just above Visitor counts. */
+.article-content .tscore-support { margin-top: 2rem; }
+.article-content .tscore-support p {
+    margin: 0 0 0.75rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+.article-content .tscore-support .kofi-btn { color: #0a0e17; }
+.article-content .tscore-support + p.tscore-privacy { margin-top: 1.25rem; }
+
 .article-content p.tscore-privacy {
     margin-top: 2rem;
     font-size: 0.85rem;

@@ -12,6 +12,7 @@ import { showToast } from '../shared/ui/toast.js';
 import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { delegate } from '../shared/ui/delegate.js';
+import { shareSite } from '../shared/ui/share.js';
 import { migrateKeyNames, deleteOldKeyNames } from '../shared/storage/keyMigration.js';
 import { getFreshness } from '../shared/freshness.js';
 
@@ -331,6 +332,8 @@ const clickActions = {
     switchTab() { switchTab(this.dataset.tab, this); },
     switchPosition() { switchPosition(this.dataset.pos, this.dataset.tab); },
     refreshTScoreData() { refreshTScoreData(this); },
+    // "Share this site" (drawer) and the line at the end of The Research: improvements K2
+    shareSite() { shareSite(this.dataset.share); },
 };
 
 // The page's static regions that hold those buttons, one click listener each. None is ever
