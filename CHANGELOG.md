@@ -15,6 +15,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Shared links show a picture.** A link to Draft Strategist or the T-Score page sent in a group chat, or posted on
+  Facebook, Slack, Discord or X, now previews with the site's logo, a line about the page and "free, no ads" (it showed
+  no picture before). Opening a link shared with the Share button counts once as a shared visit, and `?ref=share` is
+  taken out of the address bar.
 - **Support on Ko-fi, and Share this site.** Ko-fi's image badge is gone (it loaded from Ko-fi's server and was named
   after another service); in its place is a green **Support on Ko-fi** button at the foot of the menu and of the
   Dashboard. On a computer, a small cup at the right end of the header does the same. The Guide opens with a short
@@ -149,6 +153,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Shared links show a picture and the right title.** A link to Lineup Strategist sent in a group chat, or posted on
+  Facebook, Slack, Discord or X, now previews with the Lineup Strategist logo and a line about it, under the title "My
+  Lineup Strategist" (it used to show a cropped app icon, and some apps took it for the Draft Strategist page). Opening a
+  link shared with the Share button counts once as a shared visit, and `?ref=share` is taken out of the address bar.
 - **Support on Ko-fi, and Share this site.** Ko-fi's image badge is gone (it loaded from Ko-fi's server and was named
   after another service); in its place is a green **Support on Ko-fi** button at the foot of the menu and of the
   Dashboard. On a computer, a small cup at the right end of the header does the same. The Guide now has a short
