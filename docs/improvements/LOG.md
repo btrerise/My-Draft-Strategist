@@ -9399,7 +9399,12 @@ main at 4b1e62f (K2 merged, #226). `CACHE_NAME` v2.9.8 (main has v2.9.7).
   the owner wants the Guide lines to name it, that's a re-take of the Guide screenshots (both apps) and T-Score's
   Research tab.
 
-**Screenshots.** None should change: no CSS, no visible markup, and `analytics.js` only adds work on `?ref=share`.
+**Screenshots.** None change. Main and this branch rendered the same way in the session (`RENDER_ENV=any`), compared
+with `npm run pxdiff`: 42 PNGs, all pixel-identical.
+
+**Checks.** `npm run check` in the session: check-precache OK (157 files), 524 unit tests pass, 820 Playwright tests
+pass (48 skipped); the 4 failures are `visual.spec.mjs` refusing this container's fonts (the environment check), as on
+main. `link-previews.spec.mjs` re-run after the owner's description change: 8 pass.
 
 **Testing on a branch preview doesn't show the images** (the owner tried, in Discord): the Share button's links always
 go to mydraftstrategist.com, and even the preview's own pages name `https://mydraftstrategist.com/images/og-*-1.png`
