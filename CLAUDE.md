@@ -27,6 +27,15 @@ All three share one origin, so one localStorage and one service worker (`sw.js`,
 
 ## Before pushing
 
+While iterating, run only what you touched (a minute or two), and push:
+
+```sh
+cd tests && node ../scripts/check-precache.mjs && node --test && npx playwright test <spec> …
+```
+
+Run the full suite (about 20 minutes in a cloud session) once, before your card's last push; CI runs it again on the
+pull request. See "While iterating" in `docs/TESTING.md`.
+
 ```sh
 cd tests && npm ci && npm run check   # check-precache + node --test + Playwright (smoke, features, screenshots)
 ```
