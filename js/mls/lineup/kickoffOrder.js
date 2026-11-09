@@ -42,19 +42,23 @@ function canFill(slotTypes, players) {
 // there while the remaining players can still fill the remaining slots, so e.g. in a 2-QB
 // superflex lineup SFLEX must keep a QB, and gets the later-kicking one.
 //
-// - Locked players (manual locks, or auto-locked because their game started; see optimizeLineup)
-//   stay where they are, and their slots stay out of the pool. Empty slots stay empty.
+// - Players whose game has started stay where they are, and their slots stay out of the pool:
+//   Sleeper won't move them. That's `autoLocked` (see optimizeLineup), or `gameStarted(player)`,
+//   which covers a player you locked yourself whose game has since kicked off. A manual lock on a
+//   player still to play means "start him", not "keep this slot", so he's placed by kickoff like
+//   anyone else (improvements F13; before, every `isLocked` starter was held). Empty slots stay
+//   empty.
 // - kickoffMs(player) returns a time in ms, or NaN/null when unknown. Unknown sorts as latest,
 //   so we never assume a game is early without evidence.
 // - Ties keep the rank-based fill: of two players kicking off together, the one the fill
 //   placed lower in the lineup is treated as later.
 // - Where a type has several slots (FLEX1, FLEX2), they read earliest to latest top to bottom.
 //   Which of them a player lands in doesn't change late-swap room; it's display order.
-export function optimizeFlexKickoffOrder(starters, kickoffMs) {
+export function optimizeFlexKickoffOrder(starters, kickoffMs, gameStarted = () => false) {
     const movable = [];
     starters.forEach((s, idx) => {
         const slotType = slotTypeOf(s);
-        if (!RELABEL_ORDER.includes(slotType) || !s.player || s.player.isLocked) return;
+        if (!RELABEL_ORDER.includes(slotType) || !s.player || s.player.autoLocked || gameStarted(s.player)) return;
         if (!accepts(slotType, s.player.pos)) return; // malformed data: leave it alone
         const ms = kickoffMs(s.player);
         movable.push({ idx, slotType, player: s.player, pos: s.player.pos, ms: Number.isFinite(ms) ? ms : Infinity });

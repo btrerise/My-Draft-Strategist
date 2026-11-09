@@ -447,11 +447,14 @@ import { refreshThisWeek } from '../main.js';
         // changes the set of starters, only slot labels). Gated by the user-facing toggle
         // (State.lineupSettings.flexKickoffOptimization, default on) -- when off, slots are left
         // exactly as fillSlot()/the SFLEX loop above assigned them.
+        // Players you locked join the relabel while their game is still to come (improvements F13): a lock
+        // means "start him", not "keep this slot". Whose game has started stays put: kickoffFreeze's rule, so an
+        // auto-lock you overrode moves again, and Best Ball (no freeze) holds nobody.
         if (State.lineupSettings.flexKickoffOptimization) {
             optimizeFlexKickoffOrder(starters, p => {
                 const iso = p.team ? State.gameTimesByTeam[p.team] : null;
                 return iso ? new Date(iso).getTime() : NaN;
-            });
+            }, p => kickoffFreeze(league, p) !== null);
         }
 
         State.manualStartersMap[State.activeLeagueId] = starters;

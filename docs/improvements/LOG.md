@@ -9797,3 +9797,45 @@ CI's first run: 852 passed, 2 failed, exactly `{desktop,phone}/mls-league-setup.
 byte-identical to the committed baseline, and the `-actual.png` differs only in the strip's title ("1 lineup needs you
 before kickoff" → "1 lineup needs you · 1 to fix") and the card's count ("1 to do" → "1 to fix"): desktop 800 px in
 x 306–1218, y 684–908; phone 2,173 px in x 55–358, y 684–991. The `-actual.png` files are the new baselines.
+
+## F13 — Locked players still follow kickoff order
+
+**Status: built, waiting on the owner's answers** (asked 2026-11-09, with a 375px today/after picture). Committed so far:
+the fix, unit tests, a spec, CHANGELOG, `CACHE_NAME`. Still to do after the answers: record them here, adjust if needed,
+run the full check.
+
+**The bug, reproduced on main** (`tests/mls-locked-kickoff.spec.mjs`, both widths). Fixture league (QB, 2 RB, 2 WR, TE,
+FLEX), Gibbs moved to mds_test so both RB slots fill. CeeDee Lamb (DAL) plays Monday night, everyone else Sunday at 1 pm.
+Unlocked, Lamb goes to FLEX. Locked, `fillSlot` puts him in the first slot his position fits (WR1) and
+`optimizeFlexKickoffOrder` skipped every `isLocked` starter, so main showed WR Lamb, WR Chase, FLEX Jefferson (1 pm). So a
+lock never kept a player's slot; it kept him out of FLEX.
+
+**What changed and where.**
+- `js/mls/lineup/kickoffOrder.js`: `optimizeFlexKickoffOrder(starters, kickoffMs, gameStarted = () => false)`. A starter
+  is held (his slot out of the pool) only when `player.autoLocked` or `gameStarted(player)`; a manual lock (`isLocked`
+  without either) is movable. Who starts never changes (the function only relabels).
+- `js/mls/render/lineup.js` (`optimizeLineup`): passes `p => kickoffFreeze(league, p) !== null`, the auto-lock's own rule.
+  `optimizeLineup` sets `autoLocked` false for a manual lock (the manual flag wins), so a lock whose game has since
+  started needs this second check to stay put. Through `kickoffFreeze`, an auto-lock you overrode (`isAutoLockOverridden`)
+  is movable again, and Best Ball holds nobody.
+- **Waiver scanner** (`js/mls/scout/waiverScanner.js`): unchanged. Its `fillLineup`/`bestLineup` decide who starts from
+  the multiset of slot types; locks there mean "must start", which is still right. It never runs the relabel.
+- **Dashboard re-optimize** (`reoptimizeKickedOffLeagues`, `js/mls/render/dashboard.js`): unchanged; it calls
+  `optimizeLineup`, so it gets the new rule.
+- `sw.js`: `CACHE_NAME` v2.9.10 → v2.9.11. CHANGELOG line under Lineup Strategist.
+
+**User-visible effect.** With FLEX Kickoff Optimization on, a player you locked is placed by kickoff like anyone else
+(Lamb above now shows in FLEX, Chase and Jefferson in WR), still starting and still showing LOCKED. A player whose game has
+started stays where Sleeper has him. With the toggle off, nothing changes. A manual swap (which locks both players) stays
+as you set it until the next re-optimize, which may now relabel two swapped starters by kickoff; on main the fill
+already moved locked players to their first fitting slot, so a starter-to-starter swap was never kept slot for slot.
+
+**Tests.**
+- `tests/unit/kickoffOrder.test.mjs`: the row helper's lock field now says which lock (`true`/`'auto'` = game started,
+  `'manual'` = your lock); the existing lock cases are game-started locks, as they were meant. New "manual locks join
+  the relabel (F13)": a manual lock in WR1 who plays latest moves to FLEX; a manual lock in FLEX gives FLEX to a later
+  strict-slot starter; auto-locked players stay; a manual lock whose game started (`gameStarted`) stays; a manual lock
+  in SFLEX in a superflex league (the later QB takes SFLEX); no locks matches main's function. The three "moves" cases
+  fail on main.
+- `tests/mls-locked-kickoff.spec.mjs` (new): the lock moves to FLEX (fails on main), and the toggle off keeps the fill.
+- `mls-sflex-kickoff`, `mls-weekly-locks`, `mls-lineup-needs` pass.
