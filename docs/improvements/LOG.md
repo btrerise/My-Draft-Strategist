@@ -9790,3 +9790,10 @@ on main; the screenshot comparison above was made here the same way for main and
 - The Guide's step 7 and the Command Center's (i) still describe the strip as counting "the lineups that need you",
   which stays true; they don't mention sets by name. Left as is, so the Guide's screenshots don't move for it.
 - The two screenshots above, from CI.
+
+### F12: screenshots re-taken from CI (PR #230, run 42664567273)
+
+CI's first run: 852 passed, 2 failed, exactly `{desktop,phone}/mls-league-setup.png`. Each `-expected.png` was
+byte-identical to the committed baseline, and the `-actual.png` differs only in the strip's title ("1 lineup needs you
+before kickoff" → "1 lineup needs you · 1 to fix") and the card's count ("1 to do" → "1 to fix"): desktop 800 px in
+x 306–1218, y 684–908; phone 2,173 px in x 55–358, y 684–991. The `-actual.png` files are the new baselines.
