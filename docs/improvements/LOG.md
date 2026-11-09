@@ -9686,6 +9686,10 @@ docs/TESTING.md. Chromium is preinstalled at /opt/pw-browsers; don't run playwri
   1280×9758) and `phone/mls-league-guide.png` (390×22596 → 390×23073) change, from the Guide's new text and legend
   lines. Not re-taken here (this container's fonts can't match CI's): take them from the PR's CI run, as "Accepting an
   intended visual change" in docs/TESTING.md says.
+- **PR #229, CI run 42553419904:** 850 passed, 2 failed: exactly those two screenshots. Each `-expected.png` was
+  byte-identical to the committed baseline; the `-actual.png` (desktop 1280×9287 → 9471, phone 390×21391 → 21839, the
+  same growth as rendered here within the fonts' difference) first differs at the Ranking Sets line's new sentence,
+  then the same page shifted down plus the legend lines. The `-actual.png` files are the new baselines.
 
 **For a runbook card (found in round 8's review): keep each player's position from the file.** A rankings file of
 separate lists (a weekly sheet with "QB Rank" / "RB Rank" / … / "FLEX Pos" columns, or one file per position) says
