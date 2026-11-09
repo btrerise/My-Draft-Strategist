@@ -9674,6 +9674,19 @@ playwright test <spec>`, a minute or two), and push. Run the full `cd tests && n
 minutes) once, before your card's last push; CI runs it again on the pull request. See "While iterating" in
 docs/TESTING.md. Chromium is preinstalled at /opt/pw-browsers; don't run playwright install."
 
+### S30: the final push (2026-11-09)
+
+- **Updated from main** (#228, the testing rule in CLAUDE.md and TESTING.md). `docs/TESTING.md` conflicted on the line
+  above the "While iterating" bullet, which both branches added: kept one bullet and "Run before a card's last push".
+  `CACHE_NAME` v2.9.9, above main's v2.9.8.
+- **Checks, under the new rule** (owner's choice: no second full run; the last full run was after round 6, and rounds
+  7 and 8 changed only `setView.js` and `.rset-*` rules): check-precache OK, 524 unit tests, and the ranking-set view,
+  sheet, legend, In-Season, Replace Set and Rename specs (101 pass, 1 skipped). CI runs the full suite on the PR.
+- **Screenshots against main, rendered the same way here:** 42 PNGs; only `desktop/mls-league-guide.png` (1280×9573 →
+  1280×9758) and `phone/mls-league-guide.png` (390×22596 → 390×23073) change, from the Guide's new text and legend
+  lines. Not re-taken here (this container's fonts can't match CI's): take them from the PR's CI run, as "Accepting an
+  intended visual change" in docs/TESTING.md says.
+
 **For a runbook card (found in round 8's review): keep each player's position from the file.** A rankings file of
 separate lists (a weekly sheet with "QB Rank" / "RB Rank" / … / "FLEX Pos" columns, or one file per position) says
 which list each player is in, but `js/shared/rankings/parse.js` keeps only his ranks, and the app takes positions from
