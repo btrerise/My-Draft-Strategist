@@ -5,7 +5,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { lineupIssues, lineupIssueItems, joinAnd, needsLineupButton, needsYou, findChips, sleeperLineupChanges, swapFor, findChipFor, irEligible } from '../../js/mls/lineup/issues.js';
+import { lineupIssues, lineupIssueItems, joinAnd, needsLineupButton, needsYou, findChips, sleeperLineupChanges, swapFor, findChipFor, irEligible, leagueNeeds, leagueNeedKeys, needKindsText } from '../../js/mls/lineup/issues.js';
 
 const OUT = ['D', 'OUT', 'IR', 'PUP', 'SUS', 'NFI', 'DNR']; // SIM_EXCLUDE_STATUSES
 const ctx = (over = {}) => ({ bestBall: false, outStatuses: OUT, kickedOff: (p) => !!p.started, onBye: (p) => !!p.bye,
@@ -279,5 +279,55 @@ describe('sleeperLineupChanges', () => {
         assert.deepEqual(sleeperLineupChanges(['1', '6'], ['1', '7'], frozen), { start: ['6'], bench: ['7'] });
         // Without the check (before kickoff), as before.
         assert.deepEqual(sleeperLineupChanges(['1', '2', '5'], ['3', '2', '4']), { start: ['1', '5'], bench: ['3', '4'] });
+    });
+});
+
+// Whether a league needs you, and why (improvements F12): the rule the Dashboard's strip, each league card, the Lineup
+// tab's box and the Sync All / Optimize All summaries share. A change to set on Sleeper needs you as a fix does.
+describe('leagueNeeds', () => {
+    const injured = () => items(lineupIssues([s('QB1', allen)], ctx()));
+    const kept = () => items(lineupIssues([s('QB1', { ...allen, locked: true })], ctx()));
+    const rankingsChange = (frozen) => ({ ...sleeperLineupChanges(['1', '2'], ['1', '3'], frozen), urgent: false });
+
+    test('nothing at all', () => {
+        assert.deepEqual(leagueNeeds({ items: [], sleeper: null }), { needs: false, fix: 0, set: false });
+        assert.deepEqual(leagueNeeds(), { needs: false, fix: 0, set: false });
+    });
+    test('only a rankings change: needs you, to set on Sleeper', () => {
+        assert.deepEqual(leagueNeeds({ items: [], sleeper: rankingsChange() }), { needs: true, fix: 0, set: true });
+    });
+    test('only a to-do: needs you, to fix', () => {
+        assert.deepEqual(leagueNeeds({ items: injured(), sleeper: null }), { needs: true, fix: 1, set: false });
+    });
+    test('both: a fix and a set', () => {
+        assert.deepEqual(leagueNeeds({ items: injured(), sleeper: rankingsChange() }), { needs: true, fix: 1, set: true });
+    });
+    test('a change with a kicked-off player is never counted (F7)', () => {
+        const frozen = (id) => id === '2' || id === '3';
+        assert.deepEqual(leagueNeeds({ items: [], sleeper: rankingsChange(frozen) }), { needs: false, fix: 0, set: false });
+    });
+    test('an injured or bye player still starting on Sleeper is a fix, not a set', () => {
+        const sleeper = { start: ['Puka Nacua'], bench: ['George Kittle'], urgent: true };
+        assert.deepEqual(leagueNeeds({ items: [], sleeper }), { needs: true, fix: 1, set: false });
+    });
+    test('a starter you kept, or a note, never counts; a change beside it still does', () => {
+        assert.deepEqual(leagueNeeds({ items: kept(), sleeper: null }), { needs: false, fix: 0, set: false });
+        assert.deepEqual(leagueNeeds({ items: kept(), sleeper: rankingsChange() }), { needs: true, fix: 0, set: true });
+    });
+    test('Best Ball never needs you', () => {
+        assert.deepEqual(leagueNeeds({ items: injured(), sleeper: rankingsChange(), bestBall: true }), { needs: false, fix: 0, set: false });
+    });
+    test("the ✕ keys change when a league gains a change to set", () => {
+        const before = leagueNeedKeys('L1', leagueNeeds({ items: injured() }));
+        const after = leagueNeedKeys('L1', leagueNeeds({ items: injured(), sleeper: rankingsChange() }));
+        assert.deepEqual(before, ['fix:L1']);
+        assert.deepEqual(after, ['fix:L1', 'set:L1']);
+        assert.deepEqual(leagueNeedKeys('L1', leagueNeeds({})), []);
+    });
+    test('the kinds after the count', () => {
+        assert.equal(needKindsText(1, 2), '1 to fix · 2 to set on Sleeper');
+        assert.equal(needKindsText(0, 2), '2 to set on Sleeper');
+        assert.equal(needKindsText(3, 0), '3 to fix');
+        assert.equal(needKindsText(0, 0), '');
     });
 });

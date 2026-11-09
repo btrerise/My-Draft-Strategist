@@ -153,6 +153,14 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A lineup you still have to set on Sleeper needs you.** When your rankings now prefer another starter, that league
+  counts as needing you, and the words say what kind of attention each needs: "3 lineups need you · 1 to fix · 2 to set
+  on Sleeper" on the Dashboard (it read "2 lineups to set on Sleeper" as a separate, quieter count, or "Nothing needs you
+  before kickoff" when a league also had notes). Each league card says "Needs you", with "1 to fix" or "1 to set" in
+  amber and its changes as "Set on Sleeper: Start … · Bench …", and the Lineup tab's box reads "This lineup needs you:
+  set it on Sleeper" instead of "Nothing needs you before kickoff". Optimize All and Sync All say the same ("Optimized 5
+  lineups · 3 need you · 1 to fix · 2 to set on Sleeper"). A change involving a player whose game has started still
+  never counts, and Best Ball leagues never need you.
 - **See a ranking set you uploaded.** A **View players** link under each set's drop-down (the Roster
   tab's ROS and In-Season pickers, the Lineup tab's Weekly picker) opens the set: its name, the date it was saved,
   and every player with his rank, NFL team, position and position rank, and his SoS badge (in a Weekly set with

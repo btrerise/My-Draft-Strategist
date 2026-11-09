@@ -12,7 +12,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { setToastsSuppressed, showToast } from '../../shared/ui/toast.js';
 import { optimizeLineup } from './lineup.js';
 import { ensureLineupProjections, formatKickoffLabel, getLineupIssues, getSleeperLineupChanges, lineupBuiltBeforeKickoff, sleeperChangesHTML } from '../lineup/gameInfo.js';
-import { findChips, lineupIssueItems, needsLineupButton, needsYou } from '../lineup/issues.js';
+import { findChips, leagueNeedKeys, leagueNeeds, lineupIssueItems, needKindsText, needsLineupButton, needsYou } from '../lineup/issues.js';
 import { updateWaiverScanSetting } from '../scout/waivers.js';
 import { isManualLeague, refreshManualInjuries } from '../leagues/manualInjuries.js';
 import { INFO_ICON, WARNING_ICON } from '../badges.js';
@@ -101,9 +101,9 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
     // Feather arrow-down, after the strip's "Show".
     const JUMP_ICON = `<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>`;
 
-    // { lines, sleeper, needCount, byLeague }: lines and sleeper in league order; byLeague maps a league id to its
-    // { line, sleeper } (either may be missing). The league cards and the strip both read this; nothing else
-    // works the to-dos out.
+    // { lines, sleeper, needCount, fixLeagues, setLeagues, byLeague }: lines and sleeper in league order; byLeague maps
+    // a league id to its { line, sleeper, need } (line and sleeper may be missing; need is leagueNeeds' answer,
+    // lineup/issues.js). The league cards, the strip and the toasts all read this; nothing else works the to-dos out.
     export function collectLineupNeeds() {
         const leagues = (State.leagues || []).filter(l => !isBestBallLeague(l));
         const byLeague = new Map();
@@ -122,14 +122,19 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
                 entry.sleeper = { league: l, changes };
                 sleeper.push(entry.sleeper);
             }
+            entry.need = leagueNeeds({ items, sleeper: changes });
             byLeague.set(l.leagueId, entry);
         });
-        // Leagues that need you: a to-do that counts, or a player in your Sleeper lineup who's injured or on bye.
-        const needCount = [...byLeague.values()].filter(e => (e.line && e.line.needs) || (e.sleeper && e.sleeper.changes.urgent)).length;
-        return { lines, sleeper, needCount, byLeague };
+        // Leagues that need you (improvements F12): something to fix, or a change to set on Sleeper. Each kind counted
+        // apart for the words after the count; a league with both is in both.
+        const needs = [...byLeague.values()].map(e => e.need);
+        const needCount = needs.filter(n => n.needs).length;
+        const fixLeagues = needs.filter(n => n.fix > 0).length;
+        const setLeagues = needs.filter(n => n.set).length;
+        return { lines, sleeper, needCount, fixLeagues, setLeagues, byLeague };
     }
 
-    const needKeys = (needs) => [...needs.lines.filter(n => n.needs).map(n => `p:${n.league.leagueId}`), ...needs.sleeper.map(n => `s:${n.league.leagueId}`)];
+    const needKeys = (needs) => [...needs.byLeague].flatMap(([id, e]) => leagueNeedKeys(id, e.need));
 
     // Whether ✕ has hidden the to-dos: every league that needs you now was already listed when it was pressed.
     export function lineupNeedsHidden(needs) {
@@ -149,17 +154,17 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
         const id = escapeHtml(league.leagueId);
         const name = escapeHtml(league.name || 'Unnamed league');
         const urgentSleeper = !!(sl && sl.changes.urgent);
-        const needs = !!(n && n.needs) || urgentSleeper;
+        // Any change to set on Sleeper needs you too (improvements F12).
+        const needs = !!(n && n.needs) || !!sl;
         const ms = n && n.needs ? n.issues.firstKickoffMs : NaN;
         const when = Number.isFinite(ms) ? formatKickoffLabel(new Date(ms).toISOString()) : '';
         const soon = Number.isFinite(ms) && ms - Date.now() < DAY_MS;
-        const label = needs ? 'Needs you' : sl ? 'Set on Sleeper' : 'Notes';
+        const label = needs ? 'Needs you' : 'Notes';
         // One item per line, as on the Lineup tab: a league with several reads as a list, not a run-on sentence.
         const items = (n ? n.items : []).map(i => `<span class="mls-needs-item is-${i.kind}">${escapeHtml(i.text)}</span>`);
-        // "On Sleeper:" only beside other items; alone, the label already says "Set on Sleeper".
-        // "On Sleeper:" unless the label already says "Set on Sleeper". An injured or bye player starting there is
-        // urgent (S12 round 6): the item takes the injury color.
-        if (sl) items.push(`<span class="mls-needs-item is-sleeper${urgentSleeper ? ' is-urgent' : ''}" title="As of your last sync: set it on Sleeper, then Sync All to clear this.">${label !== 'Set on Sleeper' ? 'On Sleeper: ' : ''}${sleeperChangesHTML(sl.changes)}</span>`);
+        // "Set on Sleeper:" says what kind of job it is, under the one "Needs you" label (improvements F12). An injured or
+        // bye player starting there is urgent (S12 round 6): the item takes the injury color.
+        if (sl) items.push(`<span class="mls-needs-item is-sleeper${urgentSleeper ? ' is-urgent' : ''}" title="As of your last sync: set it on Sleeper, then Sync All to clear this.">Set on Sleeper: ${sleeperChangesHTML(sl.changes)}</span>`);
         const buttons = [];
         if ((n && needsLineupButton(n.issues)) || sl) buttons.push(`<button type="button" class="btn btn-secondary mls-btn-sm mls-needs-open" data-action="openLeagueLineup" data-league-id="${id}" aria-label="Open ${name}'s lineup">Open lineup</button>`);
         (n ? findChips(n.items) : []).forEach(chip => {
@@ -167,7 +172,7 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
             buttons.push(`<button type="button" class="btn btn-secondary mls-btn-sm mls-needs-find" data-action="findLeaguePlayers" data-league-id="${id}" data-pos="${escapeHtml(chip)}" aria-label="${label} in ${name}">${label}</button>`);
         });
         return `
-            <div class="mls-needs-line${needs || sl ? '' : ' is-kept-only'}">
+            <div class="mls-needs-line${needs ? '' : ' is-kept-only'}">
                 <div class="mls-needs-main">
                     <span class="mls-needs-head-line"><span class="mls-needs-label">${label}</span>${when ? ` <span class="mls-needs-when${soon ? ' is-soon' : ''}">${nb(when)}</span>` : ''}</span>
                     <span class="mls-needs-items is-stacked">${items.join('')}</span>
@@ -187,13 +192,15 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
             box.innerHTML = '';
             return;
         }
+        // One count, the kinds after it (owner's choice (a), improvements F12): "3 lineups need you · 1 to fix · 2 to set
+        // on Sleeper". A change to set counts; before, it was a separate, quieter count, and a league with only notes
+        // read "Nothing needs you before kickoff" above it.
         const p = needs.needCount, sl = needs.sleeper.length;
-        const keptOnly = needs.lines.filter(n => !n.needs).length;
-        const title = p > 0 ? `${p} lineup${p === 1 ? ' needs' : 's need'} you before kickoff`
-            : keptOnly > 0 ? `Nothing needs you before kickoff · ${keptOnly} league${keptOnly === 1 ? '' : 's'} with notes`
-            : `${sl} lineup${sl === 1 ? '' : 's'} to set on Sleeper`;
-        // With to-dos as well, the Sleeper count is a second part of the title.
-        const sleeperPart = p + keptOnly > 0 && sl > 0 ? `<span class="mls-needs-title-more"> · ${sl} to set on Sleeper</span>` : '';
+        const notesOnly = [...needs.byLeague.values()].filter(e => e.line && !e.need.needs).length;
+        const title = p > 0 ? `${p} lineup${p === 1 ? ' needs' : 's need'} you`
+            : `Nothing needs you before kickoff · ${notesOnly} league${notesOnly === 1 ? '' : 's'} with notes`;
+        const kinds = p > 0 ? needKindsText(needs.fixLeagues, needs.setLeagues) : '';
+        const sleeperPart = kinds ? `<span class="mls-needs-title-more"> · ${kinds}</span>` : '';
         // "Show" scrolls to the league's card (owner's request, S12); with several, "Show next" steps through them.
         const leagues = new Set([...needs.lines, ...needs.sleeper].map(n => n.league.leagueId)).size;
         const jump = `<button type="button" class="btn-bare mls-needs-jump" data-action="jumpToLeagueNeeds" aria-label="${leagues === 1 ? 'Show the league that needs you' : 'Show the next league that needs you'}">${leagues === 1 ? 'Show' : 'Show next'}${JUMP_ICON}</button>`;
@@ -225,7 +232,6 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
     function showLineupNeedsAfterRun() {
         State.lineupNeedsDismissed = null;
         renderLeagueManager();
-        return collectLineupNeeds().needCount;
     }
 
     const needYouText = (n) => `${n} need${n === 1 ? 's' : ''} you`;
@@ -348,11 +354,11 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
                 showToast(msg, { isError: true });
             } else {
                 let managedLeaguesCount = State.leagues.filter(l => !isBestBallLeague(l)).length;
-                const needYou = showLineupNeedsAfterRun();
-                // And how many to set on Sleeper (S12 round 6): "Successfully optimized 14 lineups!" read oddly over
-                // 14 lineups still to set there.
-                const toSet = collectLineupNeeds().sleeper.length;
-                const extras = [needYou > 0 ? needYouText(needYou) : '', toSet > 0 ? `${toSet} to set on Sleeper` : ''].filter(Boolean);
+                showLineupNeedsAfterRun();
+                // How many need you, and of what kind, as the strip says it (improvements F12; S12 round 6 added the
+                // Sleeper count: "Successfully optimized 14 lineups!" read oddly over 14 lineups still to set there).
+                const after = collectLineupNeeds();
+                const extras = after.needCount > 0 ? [needYouText(after.needCount), needKindsText(after.fixLeagues, after.setLeagues)] : [];
                 showToast(extras.length
                     ? `Optimized ${managedLeaguesCount} lineups · ${extras.join(' · ')}`
                     : `Successfully optimized ${managedLeaguesCount} lineups!`);
@@ -542,8 +548,7 @@ export const syncAllLeagues = async function(btn) {
                 const needYou = after.needCount;
                 const extras = [];
                 if (newLogs.length > 0) extras.push(`${newLogs.length} with roster changes`);
-                if (needYou > 0) extras.push(`${plural(needYou, 'lineup')} need${needYou === 1 ? 's' : ''} you`);
-                if (after.sleeper.length > 0) extras.push(`${after.sleeper.length} to set on Sleeper`);
+                if (needYou > 0) extras.push(`${plural(needYou, 'lineup')} need${needYou === 1 ? 's' : ''} you`, needKindsText(after.fixLeagues, after.setLeagues));
                 const manualPart = manualChecked.length > 0 ? ` + ${manualChecked.length} manual` : '';
                 let summaryMsg;
                 if (sleeperLeagues.length === 0) {

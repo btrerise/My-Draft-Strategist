@@ -2,7 +2,7 @@
 // your league order, at every width (owner's choice: one Command Center, in place of the table, the "lineups need
 // you" box and the Best Available card). Each card has its header (fold chevron, the name that switches to the
 // league, format and sync age, ▲ ▼ ✕), its status chips (Weekly rankings, the lineup against Sleeper; the tooltip
-// opens on a tap), "N to do" and "N upgrades", its to-dos with their buttons, its Sleeper changes (folded) and its
+// opens on a tap), "N to fix", "1 to set" and "N upgrades", its to-dos with their buttons, its Sleeper changes (folded) and its
 // best available. Every card folds to its header, remembered per league (mls_league_cards_collapsed), and one with
 // nothing to do starts folded (round 4); ▲ ▼ ✕ show in Reorder mode (round 4). Fold all /
 // Unfold all does every card.
@@ -104,26 +104,26 @@ test.describe('League Command Center: one card per league', () => {
             }
 
             // The strip under the buttons counts them; the to-dos are in the cards.
-            await expect(page.locator('#lineupNeedsBox .mls-needs-title')).toHaveText('2 lineups need you before kickoff · 1 to set on Sleeper');
+            await expect(page.locator('#lineupNeedsBox .mls-needs-title')).toHaveText('2 lineups need you · 2 to fix · 1 to set on Sleeper');
 
             // Status: rankings fresh in both; the Fixture League's lineup differs from Sleeper (red), the second
             // league has no Sleeper lineup to compare yet (amber).
             expect(await chipTones(page, 'Fixture League')).toEqual(['Rankings:good', 'Lineup:danger']);
             expect(await chipTones(page, SECOND)).toEqual(['Rankings:good', 'Lineup:warn']);
             await expect(card(page, 'Fixture League').locator('.mls-lc-meta')).toHaveText('Redraft 1QB PPR');
-            // The Fixture League: its activation ("1 to do", amber) and its Sleeper changes ("1 to set", neutral; round 5).
-            await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('1 to do');
+            // The Fixture League: its activation ("1 to fix") and its Sleeper changes ("1 to set"), both amber (F12).
+            await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('1 to fix');
             await expect(card(page, 'Fixture League').locator('.mls-lc-count-sleeper')).toHaveText('1 to set');
             await expect(card(page, SECOND).locator('.mls-lc-count-sleeper')).toHaveCount(0);
             // The strip's next step: set the lineup on Sleeper, then sync.
             await expect(page.locator('#lineupNeedsBox .mls-needs-check')).toHaveText('Set the lineup on Sleeper, then Sync All again to clear it.');
-            await expect(card(page, SECOND).locator('.mls-lc-count-todo')).toHaveText('1 to do');
+            await expect(card(page, SECOND).locator('.mls-lc-count-todo')).toHaveText('1 to fix');
             // The active league (the second, synced last) has the green edge.
             await expect(card(page, SECOND)).toHaveClass(/\bis-active\b/);
             await expect(card(page, SECOND).locator('.mls-lc-name-btn')).toHaveAttribute('aria-current', 'true');
 
             // To-dos and their buttons; the Sleeper changes are one more item (round 4: not a fold), under one Open lineup.
-            await expect(todoItems(page, 'Fixture League')).toHaveText(["Activate Ja'Marr Chase from IR on Sleeper", /^On Sleeper: Start .+ · Bench .+$/]);
+            await expect(todoItems(page, 'Fixture League')).toHaveText(["Activate Ja'Marr Chase from IR on Sleeper", /^Set on Sleeper: Start .+ · Bench .+$/]);
             await expect(card(page, 'Fixture League').locator('.mls-needs-open')).toHaveCount(1);
             await expect(todoItems(page, SECOND)).toHaveText(['Lamar Jackson is Doubtful: start Jalen Hurts instead?']);
             await expect(card(page, SECOND).locator('.mls-needs-item.is-sleeper')).toHaveCount(0);
@@ -257,7 +257,7 @@ test.describe('League Command Center: one card per league', () => {
         await expect(page.getByRole('dialog')).toContainText(`This removes "${SECOND}"`);
         await page.getByRole('button', { name: 'Remove League' }).click();
         await expect(cardNames(page)).toHaveText(['Fixture League', 'Bench League']);
-        await expect(page.locator('#lineupNeedsBox .mls-needs-title')).toHaveText('1 lineup needs you before kickoff · 1 to set on Sleeper');
+        await expect(page.locator('#lineupNeedsBox .mls-needs-title')).toHaveText('1 lineup needs you · 1 to fix · 1 to set on Sleeper');
         await expectClean(page, state);
     });
 
