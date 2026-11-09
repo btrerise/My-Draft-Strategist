@@ -9710,3 +9710,90 @@ question, so it's its own card, after S32 (whose row sheet it could share) and M
 **Left over.**
 - Draft Strategist's own view (owner's answer 4): a runbook card for before next draft season.
 - The preview's "1 of 24 name didn't match" wording, if wanted.
+
+## F12 — "N lineups need you" counts a lineup that has a change to set
+
+**The bug** (owner, 2026-11-08: "Saying a lineup doesn't need you when a rankings change is available feels off"). The
+Dashboard's strip counted a league as needing you only for a to-do that counts (S11) or an urgent Sleeper change (S12
+round 6): `needCount` in `collectLineupNeeds`. A league whose only difference from Sleeper was that your rankings now
+prefer another starter ("Set on Sleeper · Start X · Bench Y") was left out: the strip read "2 lineups to set on Sleeper"
+as a separate, quieter count, the card's "1 to set" was muted with no amber edge, and with a note beside it (a starter
+you locked in, an IR move, an ended lock) both the strip and the Lineup tab's box said "Nothing needs you before
+kickoff" above a lineup you still had to set.
+
+**Reproduced on main first** (`tests/mls-lineup-needs.spec.mjs`, "a lineup with a change to set on Sleeper needs you,
+worded by kind (F12)": the Fixture League's Sleeper lineup differs, Josh Allen is Doubtful, then locked in). On main the
+strip read "1 lineup needs you before kickoff · 1 to set on Sleeper", and after the lock "Nothing needs you before kickoff
+· 1 league with notes · 1 to set on Sleeper", with the Lineup tab's box saying "Nothing needs you before kickoff".
+
+**Owner's decisions (asked after reproducing, with the strip, a card and the Lineup tab's box at 375px in four cases:
+only a rankings change, only an injured starter, both, and a change plus a kept starter; today against each option).**
+- **(a) one count, the kinds after it**: "3 lineups need you · 1 to fix · 2 to set on Sleeper" (not (b), the same with
+  fixes in red and sets in amber; not (c), two counts with fixed words).
+- **Every change counts**, whatever it gains (no minimum in projected points or tiers): lock a player to keep him.
+
+**User-visible effect.**
+- **Strip:** "1 lineup needs you · 1 to set on Sleeper", "2 lineups need you · 2 to fix", "1 lineup needs you · 1 to fix
+  · 1 to set on Sleeper" (a league with both is in both kinds). "before kickoff" is gone from the title (a set isn't
+  tied to the first kickoff). With nothing that counts but notes: "Nothing needs you before kickoff · 1 league with notes",
+  as before. The amber icon whenever a lineup needs you. Show / Show next and the "Set the lineup on Sleeper, then Sync All
+  again" line are unchanged.
+- **League card:** amber edge and the "Needs you" label for a set-only league too (it was "Set on Sleeper", neutral).
+  Counts "1 to fix" (was "1 to do") and "1 to set", both amber (the set was muted since S12 round 5). The Sleeper item
+  reads "Set on Sleeper: Start … · Bench …" in every case (was "On Sleeper: …" beside other items, bare when alone).
+- **Lineup tab's box:** "This lineup needs you: set it on Sleeper" (amber icon) when the change to set is the only thing
+  that counts, with or without notes; it said "Set this lineup on Sleeper" (no amber) or "Nothing needs you before
+  kickoff". With a fix it stays "This lineup needs you"; folded, the count adds one for the set.
+- **Toasts:** Optimize All "Optimized 2 lineups · 1 needs you · 1 to set on Sleeper" (was "· 1 to set on Sleeper"
+  alone); Sync All "Synced 2 leagues · 2 lineups need you · 1 to fix · 1 to set on Sleeper". An injured or bye player
+  still starting on Sleeper is a fix ("1 to fix"), not a set, as S12 round 6 made it urgent.
+- **Unchanged:** who starts, what counts as a to-do or urgent (S11, S12), what Sync All and Optimize All do, F7 (a change
+  involving a player whose game has started is never a change, so never counted), Best Ball (never needs you).
+
+**What changed and where.**
+- `js/mls/lineup/issues.js` (pure): **`leagueNeeds({ items, sleeper, bestBall })` → `{ needs, fix, set }`**, the one rule.
+  `fix` = counted items + 1 for an urgent Sleeper change; `set` = any other Sleeper change; `needs` = either. Also
+  `leagueNeedKeys(leagueId, need)` (the ✕ keys: `fix:<id>`, `set:<id>`) and `needKindsText(fixLeagues, setLeagues)`.
+- `js/mls/render/dashboard.js`: `collectLineupNeeds` adds `need` to each `byLeague` entry and returns `needCount`
+  (leagues that need you), `fixLeagues`, `setLeagues`. `needKeys` is built from `leagueNeedKeys`, so a league that gains a
+  change to set (or a fix) while the strip is hidden brings it back (before, a league's Sleeper key was already there, but
+  a set-only league didn't count). `renderLineupNeeds`, `leagueTodoHTML`, Optimize All's and Sync All's summaries read it.
+- `js/mls/render/leagueCards.js`: the card's edge and counts from `entry.need`. `js/mls/lineup/gameInfo.js`:
+  `getLineupNeedsHTML`'s title, amber and folded count from `leagueNeeds`. `css/mls.css`: `.mls-lc-count-sleeper` amber.
+- **For M10 (badges on the navigation):** count from `collectLineupNeeds().needCount` (or `leagueNeeds` per league), the
+  same rule as the strip, so the badge and the strip can't disagree.
+- No new storage key, file or badge (the counts are text, `badgeLegend.test.mjs` passes). CHANGELOG line under Lineup
+  Strategist. `CACHE_NAME` v2.9.9 → v2.9.10.
+
+**Tests.**
+- `tests/unit/lineupIssues.test.mjs`, `leagueNeeds`: nothing, a rankings change only, a to-do only, both, a kicked-off
+  change ignored (F7, through `sleeperLineupChanges`' frozen check), an urgent Sleeper change as a fix, kept starters and
+  notes not counted (a change beside them still is), Best Ball never, the ✕ keys gaining `set:` with a new change, and
+  the kinds' wording.
+- `tests/mls-lineup-needs.spec.mjs`: the new F12 test (strip, card counts, the Lineup tab's box after a lock, Optimize
+  All's toast), and the older tests' wording: the Sleeper-only case now needs you (title, label, amber, toast, the Lineup
+  tab's title); F7's tests read "Set on Sleeper: …"; the ended-lock test's box now says "This lineup needs you: set it on
+  Sleeper"; after Kittle's kickoff the card keeps "1 to set" for the change still allowed.
+- `tests/mls-league-cards.spec.mjs`: the strip's titles, "1 to fix", "Set on Sleeper: …".
+
+**Screenshots: two change, to be re-taken from the PR's CI run.** Rendered here, main and this branch differ in exactly
+`{desktop,phone}/mls-league-setup.png` (the other 40 are pixel-identical): the screenshot league has an empty RB slot,
+so its strip reads "1 lineup needs you · 1 to fix" (was "1 lineup needs you before kickoff") and its card "1 to fix" (was
+"1 to do"). The screenshot league has no Sleeper lineup, so no set shows. This container can't render CI's baselines:
+take them from the PR's CI run ("Accepting an intended visual change" in docs/TESTING.md).
+
+**Checks** (full `npm run check`, once, before the push): check-precache OK, 534 unit tests pass, 844 Playwright tests
+pass, 48 skipped. The 4 failures are `visual.spec.mjs`'s environment check (this container's fonts differ from CI's), as
+on main; the screenshot comparison above was made here the same way for main and this branch.
+
+**Left over.**
+- The Guide's step 7 and the Command Center's (i) still describe the strip as counting "the lineups that need you",
+  which stays true; they don't mention sets by name. Left as is, so the Guide's screenshots don't move for it.
+- The two screenshots above, from CI.
+
+### F12: screenshots re-taken from CI (PR #230, run 42664567273)
+
+CI's first run: 852 passed, 2 failed, exactly `{desktop,phone}/mls-league-setup.png`. Each `-expected.png` was
+byte-identical to the committed baseline, and the `-actual.png` differs only in the strip's title ("1 lineup needs you
+before kickoff" → "1 lineup needs you · 1 to fix") and the card's count ("1 to do" → "1 to fix"): desktop 800 px in
+x 306–1218, y 684–908; phone 2,173 px in x 55–358, y 684–991. The `-actual.png` files are the new baselines.

@@ -1900,7 +1900,8 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .mls-lc-chip .status-icon svg { width: 12px; height: 12px; }
 .mls-lc-counts { display: inline-flex; align-items: center; gap: 0.6rem; margin-left: auto; font-size: 0.75rem; font-weight: 600; }
 .mls-lc-count-todo { color: #f59e0b; }
-.mls-lc-count-sleeper { color: var(--text-muted); font-weight: 500; }
+/* A change to set needs you as much as a fix (improvements F12, owner's choice (a)): amber too. */
+.mls-lc-count-sleeper { color: #f59e0b; }
 .mls-lc-count-upgrades { color: var(--primary-green); }
 .mls-lc-count-upgrades:empty { display: none; }
 /* This visit's Sync All roster changes (round 8), in the Sync Logs' colors, except a newly out player: muted, not the

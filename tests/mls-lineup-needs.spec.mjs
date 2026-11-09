@@ -120,7 +120,7 @@ test.describe('Lineups that need you', () => {
 
         // Always on: the syncs already re-optimized both leagues.
         await expect(box(page)).toBeVisible();
-        await expect(box(page).locator('.mls-needs-title')).toHaveText('2 lineups need you before kickoff');
+        await expect(box(page).locator('.mls-needs-title')).toHaveText('2 lineups need you · 2 to fix');
         expect(await lineSummaries(page)).toEqual([CHASE_LINE, LAMAR_LINE]);
         // Names don't break across lines on a phone. Each item in its Lineup tab color.
         await expect(line(page, 'Fixture League').locator('.mls-needs-item.is-ir')).toHaveText(CHASE_ITEM.replace("Ja'Marr Chase", "Ja'Marr Chase"));
@@ -128,7 +128,7 @@ test.describe('Lineups that need you', () => {
         // Both are Lineup tab jobs (an activation, a swap): Open lineup, no Find.
         await expect(page.locator('#leagueCards .mls-needs-find')).toHaveCount(0);
         // Each card counts its to-dos and has the amber edge.
-        await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('1 to do');
+        await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('1 to fix');
         await expect(card(page, 'Fixture League')).toHaveClass(/\bneeds-you\b/);
 
         await optimizeAll(page, 'Optimized 2 lineups · 2 need you');
@@ -147,7 +147,7 @@ test.describe('Lineups that need you', () => {
         // Back on the Dashboard the fixed league is gone; the Fixture League's line opens its box.
         await showTab(page, 'setup');
         expect(await lineSummaries(page)).toEqual([CHASE_LINE]);
-        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup needs you before kickoff');
+        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup needs you · 1 to fix');
         await openLineup(page, 'Fixture League').click();
         await expect(page.locator('#headerLeagueSelect')).toHaveValue(FIXTURE_LEAGUE_ID);
         await transitionsDone(page);
@@ -245,30 +245,65 @@ test.describe('Lineups that need you', () => {
         await expectClean(page, state);
     });
 
-    test('what to set on Sleeper: an item of the card\'s to-dos, routine unless an injured player is starting there', async ({ page }) => {
+    test('what to set on Sleeper: an item of the card\'s to-dos, and it needs you (F12)', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         // On Sleeper the Fixture League starts Garrett Wilson and George Kittle where this lineup starts Ja'Marr Chase
         // and Brock Bowers. Everyone's healthy.
         await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false,
             sleeperStarters: [ALLEN, HENRY, BIJAN, '6794', '6786', KITTLE, '7523', '17', 'BAL'] });
         await seedTwoLeagues(page);
-        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup to set on Sleeper');
+        // One count, the kinds after it (F12; S12 round 5 had made it a quieter, separate "1 lineup to set on Sleeper").
+        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup needs you · 1 to set on Sleeper');
         // In the Fixture League's card, listed with its to-dos (S12 round 4; a fold before); the other league has none.
-        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle, Garrett Wilson"]);
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Set on Sleeper: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle, Garrett Wilson"]);
         const fixtureLine = line(page, 'Fixture League');
-        await expect(fixtureLine.locator('.mls-needs-label')).toHaveText('Set on Sleeper');
-        // Routine, so neutral: "1 to set", no amber border (S12 round 5).
+        await expect(fixtureLine.locator('.mls-needs-label')).toHaveText('Needs you');
+        // Amber like a fix, counted as "1 to set", not "to fix".
         await expect(card(page, 'Fixture League').locator('.mls-lc-count-sleeper')).toHaveText('1 to set');
         await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveCount(0);
-        await expect(card(page, 'Fixture League')).not.toHaveClass(/\bneeds-you\b/);
+        await expect(card(page, 'Fixture League')).toHaveClass(/\bneeds-you\b/);
         await expect(box(page).locator('.mls-needs-check')).toHaveText('Set the lineup on Sleeper, then Sync All again to clear it.');
         await expect(card(page, 'Fixture League').locator('.mls-lc-chip.is-danger .mls-lc-chip-label')).toHaveText('Lineup');
         // Optimize All's message says so (S12 round 6; it said "Successfully optimized 2 lineups!").
-        await optimizeAll(page, 'Optimized 2 lineups · 1 to set on Sleeper');
+        await optimizeAll(page, 'Optimized 2 lineups · 1 needs you · 1 to set on Sleeper');
         // Open lineup opens the league, whose box has the changes in a drop-down.
         await fixtureLine.getByRole('button', { name: "Open Fixture League's lineup" }).click();
         await expect(page.locator('#lineupTab')).toHaveClass(/\bactive\b/);
+        await expect(lineupBox(page).locator('.lineup-needs-title')).toHaveText('This lineup needs you: set it on Sleeper');
         await expect(lineupBox(page).locator('.lineup-needs-sleeper summary')).toHaveText('Differs from your Sleeper lineup: 4 changes');
+        await expectClean(page, state);
+    });
+
+    // F12 (owner, 2026-11-08: "Saying a lineup doesn't need you when a rankings change is available feels off"). A
+    // lineup the app would set differently from Sleeper needs you; the words say what kind (owner's choice (a): one
+    // count, the kinds after it). Before, the strip read "1 lineup to set on Sleeper" as a separate, quieter count, and
+    // with a starter you kept (a note) both the strip and the Lineup tab said "Nothing needs you before kickoff".
+    test('a lineup with a change to set on Sleeper needs you, worded by kind (F12)', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, injuries: { [ALLEN]: 'Doubtful' },
+            sleeperStarters: [ALLEN, HENRY, BIJAN, '6794', '6786', KITTLE, '7523', '17', 'BAL'] });
+        await seedTwoLeagues(page);
+        // Josh Allen (Doubtful, no other QB) is a fix; the four changes are a set.
+        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup needs you · 1 to fix · 1 to set on Sleeper');
+        await expect(box(page)).toHaveClass(/\bhas-problems\b/);
+        const fixture = card(page, 'Fixture League');
+        await expect(fixture.locator('.mls-lc-count-todo')).toHaveText('1 to fix');
+        await expect(fixture.locator('.mls-lc-count-sleeper')).toHaveText('1 to set');
+
+        // Keep Allen on purpose: the lineup still needs you, to set it on Sleeper.
+        await page.selectOption('#headerLeagueSelect', FIXTURE_LEAGUE_ID);
+        await showTab(page, 'lineup');
+        await page.locator('#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock Josh Allen"]').click();
+        await expect(lineupBox(page).locator('.lineup-needs-title')).toHaveText('This lineup needs you: set it on Sleeper');
+        await expect(lineupBox(page)).toHaveClass(/\bhas-problems\b/);
+        await expect(lineupBox(page).locator('.lineup-needs-item.is-kept')).toHaveText('Josh Allen is Doubtful (you locked him in)');
+        await showTab(page, 'setup');
+        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup needs you · 1 to set on Sleeper');
+        await expect(fixture).toHaveClass(/\bneeds-you\b/);
+        await expect(line(page, 'Fixture League').locator('.mls-needs-label')).toHaveText('Needs you');
+        await expect(fixture.locator('.mls-lc-count-todo')).toHaveCount(0);
+        await expect(fixture.locator('.mls-lc-count-sleeper')).toHaveText('1 to set');
+        await optimizeAll(page, 'Optimized 2 lineups · 1 needs you · 1 to set on Sleeper');
         await expectClean(page, state);
     });
 
@@ -280,15 +315,16 @@ test.describe('Lineups that need you', () => {
         await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, injuries: { [KITTLE]: 'Out' },
             sleeperStarters: [ALLEN, HENRY, BIJAN, '6794', '6786', KITTLE, '7523', '17', 'BAL'] });
         await seedTwoLeagues(page);
-        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup needs you before kickoff · 1 to set on Sleeper');
-        expect(await lineSummaries(page)).toEqual(["Fixture League: On Sleeper: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle (Out), Garrett Wilson"]);
+        // A fix, not a set: Kittle would score nothing (F12's kinds).
+        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup needs you · 1 to fix');
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Set on Sleeper: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle (Out), Garrett Wilson"]);
         const fixtureLine = line(page, 'Fixture League');
         await expect(fixtureLine.locator('.mls-needs-label')).toHaveText('Needs you');
         await expect(fixtureLine.locator('.mls-needs-hurt')).toHaveText('(Out)');
-        await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('1 to do');
+        await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('1 to fix');
         await expect(card(page, 'Fixture League').locator('.mls-lc-count-sleeper')).toHaveCount(0);
         await expect(card(page, 'Fixture League')).toHaveClass(/\bneeds-you\b/);
-        await optimizeAll(page, 'Optimized 2 lineups · 1 needs you · 1 to set on Sleeper');
+        await optimizeAll(page, 'Optimized 2 lineups · 1 needs you · 1 to fix');
         // The Lineup tab's drop-down marks him too.
         await fixtureLine.getByRole('button', { name: "Open Fixture League's lineup" }).click();
         await expect(lineupBox(page).locator('.lineup-needs-sleeper-text')).toContainText('George Kittle (Out)');
@@ -311,12 +347,12 @@ test.describe('Lineups that need you', () => {
             getLeagueRankings(league, 'weekly').data.splice(0, Infinity, ...getLeagueRankings(league, 'weekly').data.filter(r => r.cleanName !== 'garrettwilson'));
             renderLeagueCards();
         }, FIXTURE_LEAGUE_ID);
-        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle (Q), Garrett Wilson (not in your Weekly rankings)"]);
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Set on Sleeper: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle (Q), Garrett Wilson (not in your Weekly rankings)"]);
         const fixtureLine = line(page, 'Fixture League');
         await expect(fixtureLine.locator('.mls-needs-why')).toHaveText(['(Q)', '(not in your Weekly rankings)']);
-        // Still routine: neutral "1 to set", no amber.
+        // Still a set, not a fix: "1 to set" (F12: it needs you either way).
         await expect(card(page, 'Fixture League').locator('.mls-lc-count-sleeper')).toHaveText('1 to set');
-        await expect(card(page, 'Fixture League')).not.toHaveClass(/\bneeds-you\b/);
+        await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveCount(0);
         // A set with a short name you gave it is named ("Wk5", as best available names it).
         await page.evaluate(async () => {
             const { State } = await import('/js/mls/state.js');
@@ -579,8 +615,8 @@ test.describe('Sleeper changes after kickoff (F7)', () => {
         const state = await openApp(page, '/lineup/');
         await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, sleeperStarters: SLEEPER });
         await seedTwoLeagues(page);
-        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle, Garrett Wilson"]);
-        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup to set on Sleeper');
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Set on Sleeper: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle, Garrett Wilson"]);
+        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup needs you · 1 to set on Sleeper');
         // All four games have started: nobody in the change can move.
         await kickoffs(page, { CIN: PAST, LV: PAST, NYJ: PAST, SF: PAST });
         expect(await lineSummaries(page)).toEqual([]);
@@ -600,7 +636,7 @@ test.describe('Sleeper changes after kickoff (F7)', () => {
         await seedTwoLeagues(page);
         // Other teams' games (Buffalo's, Baltimore's) have started; these four are tonight.
         await kickoffs(page, { BUF: PAST, BAL: PAST, CIN: LATER, LV: LATER, NYJ: LATER, SF: LATER });
-        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle, Garrett Wilson"]);
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Set on Sleeper: Start Ja'Marr Chase, Brock Bowers · Bench George Kittle, Garrett Wilson"]);
         await expect(card(page, 'Fixture League').locator('.mls-lc-chip.is-danger .mls-lc-chip-label')).toHaveText('Lineup');
         await expectClean(page, state);
     });
@@ -613,7 +649,7 @@ test.describe('Sleeper changes after kickoff (F7)', () => {
         await seedTwoLeagues(page);
         const active = await page.locator('#headerLeagueSelect').inputValue();
         await kickoffs(page, { CIN: PAST, LV: LATER, NYJ: LATER, SF: LATER, LAR: LATER });
-        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Puka Nacua, Brock Bowers · Bench George Kittle, Garrett Wilson"]);
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Set on Sleeper: Start Puka Nacua, Brock Bowers · Bench George Kittle, Garrett Wilson"]);
         await expect(card(page, 'Fixture League').locator('.mls-lc-count-sleeper')).toHaveText('1 to set');
         await expect(page.locator('#headerLeagueSelect')).toHaveValue(active);
         // The saved lineup was redone (and saved), so the Lineup tab agrees.
@@ -663,11 +699,13 @@ test.describe('Sleeper changes after kickoff (F7)', () => {
         await expect(fixture.locator('.early-badge')).toHaveCount(1);
         // Buffalo's (Josh Allen's) and San Francisco's (Kittle's) games have started.
         await kickoffs(page, { BUF: PAST, SF: PAST });
-        await expect(fixture).not.toHaveClass(/\bneeds-you\b/);
+        // No longer a fix; the change still allowed is a set (F12).
+        await expect(fixture.locator('.mls-lc-count-todo')).toHaveCount(0);
+        await expect(fixture.locator('.mls-lc-count-sleeper')).toHaveText('1 to set');
         await expect(fixture.locator('.mls-needs-hurt')).toHaveCount(0);
         await expect(fixture.locator('.early-badge')).toHaveCount(0);
         // Kittle is locked into the TE slot now, so Bowers no longer has one: only the WR change is left.
-        expect(await lineSummaries(page)).toEqual(["Fixture League: Start Ja'Marr Chase · Bench Garrett Wilson"]);
+        expect(await lineSummaries(page)).toEqual(["Fixture League: Set on Sleeper: Start Ja'Marr Chase · Bench Garrett Wilson"]);
         await expectClean(page, state);
     });
     // Owner's choice (F7, after the first round): a kickoff that left a player you locked on your Sleeper bench outranks
@@ -686,9 +724,10 @@ test.describe('Sleeper changes after kickoff (F7)', () => {
         await kickoffs(page, { LV: PAST, CIN: LATER, NYJ: LATER, SF: LATER });
         const fixture = card(page, 'Fixture League');
         // Trey McBride (ARI, still to play) is the rankings' next TE, ahead of Kittle.
-        expect(await lineSummaries(page)).toEqual([`Fixture League: ${NOTE} · Start Ja'Marr Chase, Trey McBride · Bench George Kittle, Garrett Wilson`]);
+        expect(await lineSummaries(page)).toEqual([`Fixture League: ${NOTE} · Set on Sleeper: Start Ja'Marr Chase, Trey McBride · Bench George Kittle, Garrett Wilson`]);
+        // The note doesn't count; the change to set does (F12).
         await expect(fixture.locator('.mls-lc-count-todo')).toHaveCount(0);
-        await expect(fixture).not.toHaveClass(/\bneeds-you\b/);
+        await expect(fixture).toHaveClass(/\bneeds-you\b/);
         expect(await page.evaluate(async (id) => (await import('/js/mls/state.js')).State.lockedPlayersMap[id], FIXTURE_LEAGUE_ID)).toEqual(['11604']);
         // The Lineup tab: Bowers on the bench, McBride at TE, the same note and changes.
         await page.locator('#headerLeagueSelect').selectOption(FIXTURE_LEAGUE_ID);
@@ -697,7 +736,8 @@ test.describe('Sleeper changes after kickoff (F7)', () => {
         await expect(page.locator('#optimalLineupContainer .lineup-slot').filter({ hasText: 'Trey McBride' })).toHaveCount(1);
         await expect(page.locator('#benchContainer .lineup-slot').filter({ hasText: 'Brock Bowers' })).toHaveCount(1);
         expect(await lineupItems(page)).toEqual([NOTE]);
-        await expect(lineupBox(page).locator('.lineup-needs-title')).toHaveText('Nothing needs you before kickoff');
+        // Not "Nothing needs you before kickoff" above a lineup still to set (F12).
+        await expect(lineupBox(page).locator('.lineup-needs-title')).toHaveText('This lineup needs you: set it on Sleeper');
         await lineupBox(page).locator('.lineup-needs-sleeper summary').click();
         await expect(lineupBox(page).locator('.lineup-needs-sleeper-text')).toHaveText("Start Ja'Marr Chase, Trey McBride · Bench George Kittle, Garrett Wilson");
         await expectClean(page, state);

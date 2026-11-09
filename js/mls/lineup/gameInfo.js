@@ -16,7 +16,7 @@ import { getLeagueRankings, getLeagueSeasonRankings, isAutoLockOverridden, rende
 import { normalizeName } from '../../shared/names.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
 import { rankedOpponentBadgeHTML, weeklyOpponentInfo } from '../opponent.js';
-import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } from './issues.js';
+import { leagueNeeds, lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } from './issues.js';
 
     // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
     // currently-known NFL week) -- not just whenever they have a bye scheduled at some point
@@ -476,9 +476,12 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
             return `<li class="lineup-needs-item is-${i.kind}">${escapeHtml(i.text)}${button}</li>`;
         }).join('');
 
-        const counted = items.filter(i => !i.muted && !i.note).length;
-        const title = counted > 0 ? 'This lineup needs you'
-            : items.length > 0 ? 'Nothing needs you before kickoff' : 'Set this lineup on Sleeper';
+        // The strip's and the cards' rule (leagueNeeds, lineup/issues.js; improvements F12): a change to set on Sleeper
+        // needs you too, so this never says "Nothing needs you" above a lineup you still have to set.
+        const need = leagueNeeds({ items, sleeper, bestBall: isBestBallLeague(league) });
+        const counted = need.fix + (need.set ? 1 : 0);
+        const title = need.fix > 0 ? 'This lineup needs you'
+            : need.set ? 'This lineup needs you: set it on Sleeper' : 'Nothing needs you before kickoff';
         // Re-renders are frequent (every swap and lock); keep the fold as the person left it.
         const wasOpen = !!document.querySelector('#optimalLineupContainer .lineup-needs-sleeper[open]');
         const n = sleeper ? sleeper.start.length + sleeper.bench.length : 0;
@@ -492,8 +495,8 @@ import { lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } fr
         // to its title line, which still counts what's open ("This lineup needs you · 3"), so a new problem shows.
         const collapsed = !!State.lineupNeedsCollapsed;
         const countText = counted > 0 ? ` · ${counted}` : '';
-        return `<div class="lineup-needs-box${counted > 0 ? ' has-problems' : ''}${collapsed ? ' is-collapsed' : ''}">
-            <button type="button" class="btn-bare lineup-needs-title" data-action="toggleLineupNeeds" aria-expanded="${collapsed ? 'false' : 'true'}">${counted > 0 ? WARNING_ICON : INFO_ICON}<span>${title}${collapsed ? countText : ''}</span>${FOLD_CHEVRON}</button>
+        return `<div class="lineup-needs-box${need.needs ? ' has-problems' : ''}${collapsed ? ' is-collapsed' : ''}">
+            <button type="button" class="btn-bare lineup-needs-title" data-action="toggleLineupNeeds" aria-expanded="${collapsed ? 'false' : 'true'}">${need.needs ? WARNING_ICON : INFO_ICON}<span>${title}${collapsed ? countText : ''}</span>${FOLD_CHEVRON}</button>
             ${collapsed ? '' : `${items.length ? `<ul class="lineup-needs-list">${itemHTML}</ul>` : ''}${fold}`}
         </div>`;
     }

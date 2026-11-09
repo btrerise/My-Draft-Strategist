@@ -189,6 +189,36 @@ export function lineupIssueItems(issues) {
 export const needsYouCount = (items) => items.filter(i => !i.muted && !i.note).length;
 export const needsYou = (items) => needsYouCount(items) > 0;
 
+// Whether a league's lineup needs you, and why (improvements F12): the one rule the Dashboard's strip, each league card,
+// the Lineup tab's box and the Sync All / Optimize All summaries count from. M10's navigation badge is to count from it too.
+//   items     the league's lineupIssueItems (or [] / null).
+//   sleeper   its Sleeper changes ({ start, bench, urgent }, getSleeperLineupChanges in gameInfo.js), or null. A player
+//             whose game has started is never in them (improvements F7), so a change Sleeper won't allow never counts.
+//   bestBall  true for a Best Ball league: nobody sets a lineup there, so it never needs you.
+// Returns { needs, fix, set }:
+//   fix   how many things to fix before kickoff: the counted items (an injured, bye or IR-slot starter, an empty slot,
+//         an IR-slot player who must come out), plus one for an injured or bye player still starting on Sleeper.
+//   set   true when the lineup differs from Sleeper otherwise: your rankings now prefer another starter. Counted
+//         always, whatever it gains (owner's choice, F12): lock a player to keep him.
+//   needs fix > 0 or set. Starters you kept and notes (IR moves, an ended lock, unmatched names) never count.
+export function leagueNeeds({ items = [], sleeper = null, bestBall = false } = {}) {
+    if (bestBall) return { needs: false, fix: 0, set: false };
+    const changed = !!(sleeper && ((sleeper.start || []).length + (sleeper.bench || []).length) > 0);
+    const urgent = changed && !!sleeper.urgent;
+    const fix = needsYouCount(items || []) + (urgent ? 1 : 0);
+    const set = changed && !urgent;
+    return { needs: fix > 0 || set, fix, set };
+}
+
+// The keys the strip's ✕ remembers for a league (improvements F12): one per kind of need, so a league that gains a
+// change to set (or a fix) while hidden brings the strip back.
+export const leagueNeedKeys = (leagueId, need) => [need.fix > 0 ? `fix:${leagueId}` : '', need.set ? `set:${leagueId}` : ''].filter(Boolean);
+
+// The kinds after the count, for the strip and the toasts: "1 to fix · 2 to set on Sleeper" (owner's choice (a), F12).
+export function needKindsText(fixLeagues, setLeagues) {
+    return [fixLeagues > 0 ? `${fixLeagues} to fix` : '', setLeagues > 0 ? `${setLeagues} to set on Sleeper` : ''].filter(Boolean).join(' · ');
+}
+
 // Which buttons a league's Dashboard line gets (owner's choice): Open lineup when its Lineup tab can act on it
 // (a suggested swap, or a starter to activate), and a Find button per position nobody on the bench can fill.
 export const needsLineupButton = (issues) => issues.irSlot.length > 0 || issues.swaps.length > 0;

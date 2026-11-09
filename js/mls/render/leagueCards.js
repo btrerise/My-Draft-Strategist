@@ -10,7 +10,7 @@
 //   sync, and ▲ ▼ ✕ (reorder, delete);
 // - its status: a chip each for Weekly rankings (fresh in the last 6 days) and the lineup against Sleeper, with
 //   the table's tooltips (they open on a tap, js/shared/ui/tooltips.js), EARLY or BB, and counts that stay
-//   readable with the card folded ("2 to do", "1 upgrade");
+//   readable with the card folded ("2 to fix", "1 to set", "1 upgrade");
 // - its to-dos and their buttons (render/dashboard.js, leagueTodoHTML: S11's items, and its Sleeper changes);
 // - its Best Available line (scout/bestAvailable.js fills .mls-lc-ba after its async render).
 // Every card folds to its header, even with to-dos (owner's choice, so you can move through many leagues
@@ -21,8 +21,8 @@
 // - A card with nothing to do (no to-dos, no Sleeper changes, no upgrade) starts folded; your own fold or unfold of
 //   a card wins and is remembered (KEYS.mls.leagueCardsCollapsed now holds { folded: [ids], open: [ids] }; the
 //   round-1 array is read as folded).
-// - The Sleeper changes are an item of the to-dos, not a fold. Round 5: they count as "1 to set", in neutral text,
-//   not toward "N to do" or the amber border, which are for what needs you before kickoff.
+// - The Sleeper changes are an item of the to-dos, not a fold. They count as "1 to set", and since improvements F12
+//   (owner's choice) they need you like a fix: amber, as the strip and the Lineup tab say (round 5 had made them neutral).
 // - ▲ ▼ ✕ show only in Reorder mode (the toolbar's Reorder / Done, in memory), so names get the width and there's
 //   no red ✕ on every card.
 // - The sync age shows only when it's old or failed.
@@ -36,7 +36,6 @@ import { State } from '../state.js';
 import { isBestBallLeague } from '../helpers.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { getValidSleeperStarterIds, hasKickedOff } from '../lineup/gameInfo.js';
-import { needsYouCount } from '../lineup/issues.js';
 import { bestBallBadgeMarkup, leagueStatusChipMarkup, paidBadgeMarkup } from '../badges.js';
 import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, reoptimizeKickedOffLeagues, renderLineupNeeds, syncChangesFor, syncChangesHTML } from './dashboard.js';
 import { renderBestAvailable } from '../scout/bestAvailable.js';
@@ -135,13 +134,13 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         const showNeeds = !ctx.hidden;
         const line = showNeeds ? entry.line || null : null;
         const sleeper = showNeeds ? entry.sleeper || null : null;
-        // Amber (the border, "N to do") only for what needs you before kickoff. Sleeper changes alone are routine (most
-        // leagues have some after an Optimize All), so they read "1 to set", in neutral text (owner's choice, round 5:
-        // amber on 13 of 14 cards drowned out the injuries).
-        // Except a player still starting on Sleeper who's injured or on bye (round 6): that needs you.
-        const urgentSleeper = !!(sleeper && sleeper.changes.urgent);
-        const needsYou = !!(line && line.needs) || urgentSleeper;
-        const count = (line ? needsYouCount(line.items) : 0) + (urgentSleeper ? 1 : 0);
+        // Amber (the border, the counts) when the lineup needs you: something to fix ("2 to fix": an injured or bye
+        // starter, an empty slot, an injured player still starting on Sleeper...) or a change to set on Sleeper ("1 to
+        // set"). leagueNeeds (lineup/issues.js) decides, as for the strip and the Lineup tab (improvements F12; S12
+        // round 5 had made a change to set a quiet, neutral "1 to set").
+        const need = showNeeds && entry.need ? entry.need : { needs: false, fix: 0, set: false };
+        const needsYou = need.needs;
+        const count = need.fix;
         // The sync age only when it's worth a look (old, unknown or failed), not "Synced today" on every card.
         const syncNote = st.sync && st.sync.cls !== 'freshness-ok' ? `<span class="${st.sync.cls}"${st.sync.title ? ` title="${st.sync.title}"` : ''}>${st.sync.text}</span>` : '';
         const meta = [st.format ? `<span class="mls-lc-format">${escapeHtml(st.format)}</span>` : '', syncNote]
@@ -168,7 +167,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
                 </div>
                 <div class="mls-lc-status">
                     ${statusChipsHTML(st)}
-                    <span class="mls-lc-counts">${count > 0 ? `<span class="mls-lc-count-todo">${count} to do</span>` : ''}${sleeper && !urgentSleeper ? '<span class="mls-lc-count-sleeper">1 to set</span>' : ''}<span class="mls-lc-count-upgrades" data-league-id="${id}">${ctx.upgrades.get(l.leagueId) || ''}</span></span>
+                    <span class="mls-lc-counts">${count > 0 ? `<span class="mls-lc-count-todo">${count} to fix</span>` : ''}${need.set ? '<span class="mls-lc-count-sleeper">1 to set</span>' : ''}<span class="mls-lc-count-upgrades" data-league-id="${id}">${ctx.upgrades.get(l.leagueId) || ''}</span></span>
                 </div>
                 ${synced ? `<p class="mls-lc-synced"><span class="mls-lc-synced-label">Synced:</span> ${syncChangesHTML(synced)}</p>` : ''}
                 <div class="mls-lc-body"${collapsed ? ' hidden' : ''}>
