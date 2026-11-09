@@ -153,6 +153,9 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Players you lock still follow kickoff order.** With FLEX Kickoff Optimization on, a player you locked is placed by
+  his game time like everyone else: a locked Monday-night WR now takes FLEX instead of staying in a WR slot while FLEX
+  holds a 1 pm game. He still starts. A player whose game has started stays where Sleeper has him, locked or not.
 - **A lineup you still have to set on Sleeper needs you.** When your rankings now prefer another starter, that league
   counts as needing you, and the words say what kind of attention each needs: "3 lineups need you · 1 to fix · 2 to set
   on Sleeper" on the Dashboard (it read "2 lineups to set on Sleeper" as a separate, quieter count, or "Nothing needs you

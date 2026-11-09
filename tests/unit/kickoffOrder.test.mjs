@@ -12,20 +12,22 @@ const FOUR_25 = Date.parse('2026-09-20T20:25:00Z');
 const SNF = Date.parse('2026-09-21T00:20:00Z');
 const MNF = Date.parse('2026-09-22T00:15:00Z');
 
-// A lineup from [slot, name, pos, kickoff ms or undefined, locked?] rows. Each player gets their own
-// team code, so kickoffs map one to one.
+// A lineup from [slot, name, pos, kickoff ms or undefined, lock] rows. lock: true (or 'auto') for a player
+// whose game has started (optimizeLineup's autoLocked, which also sets isLocked); 'manual' for a lock you set
+// on a player still to play (isLocked only; improvements F13). Each player gets their own team code, so
+// kickoffs map one to one.
 function lineup(rows) {
     const times = {};
     const starters = rows.map(([slot, name, pos, ms, isLocked], i) => {
         if (!name) return { slot, player: null };
         const team = `T${i}`;
         if (ms !== undefined) times[team] = new Date(ms).toISOString();
-        return { slot, player: { id: name, name, pos, team, isLocked: !!isLocked } };
+        return { slot, player: { id: name, name, pos, team, isLocked: !!isLocked, autoLocked: !!isLocked && isLocked !== 'manual' } };
     });
     return { starters, times };
 }
 const kickoffFrom = (times) => (p) => (times[p.team] ? new Date(times[p.team]).getTime() : NaN);
-const relabel = ({ starters, times }) => { optimizeFlexKickoffOrder(starters, kickoffFrom(times)); return starters; };
+const relabel = ({ starters, times }, gameStarted) => { optimizeFlexKickoffOrder(starters, kickoffFrom(times), gameStarted); return starters; };
 const slots = (starters) => starters.map(s => `${s.slot} ${s.player ? s.player.name : '-'}`);
 
 // The function as it was on main before F1 (render/lineup.js), with State.gameTimesByTeam passed in.
@@ -104,7 +106,7 @@ function randomLineup(r, { sflex = 0, wrte = 0, wrrb = 0, lockRate = 0.1, small 
 
 // Every valid way to seat the unlocked players of `starters` (brute force, for small lineups).
 function allSeatings(starters) {
-    const open = starters.map((s, i) => i).filter(i => starters[i].player && !starters[i].player.isLocked && SLOT_POSITIONS[starters[i].slot.replace(/[0-9]/g, '')]);
+    const open = starters.map((s, i) => i).filter(i => starters[i].player && !starters[i].player.autoLocked && SLOT_POSITIONS[starters[i].slot.replace(/[0-9]/g, '')]);
     const players = open.map(i => starters[i].player);
     const out = [];
     const walk = (k, used, seat) => {
@@ -170,7 +172,7 @@ describe('superflex', () => {
         assert.deepEqual(slots(out), ['QB1 Hurts', 'RB1 Gibbs', 'FLEX1 Lamb', 'SFLEX1 Burrow', 'SFLEX2 Allen']);
     });
 
-    test('a locked player in SFLEX stays there; everyone else still relabels', () => {
+    test('a player whose game started stays in SFLEX; everyone else still relabels', () => {
         const out = relabel(lineup([
             ['QB1', 'Allen', 'QB', SNF], ['RB1', 'Gibbs', 'RB', ONE_PM], ['WR1', 'Chase', 'WR', MNF],
             ['FLEX1', 'Lamb', 'WR', ONE_PM], ['SFLEX1', 'Hurts', 'QB', ONE_PM, true],
@@ -180,7 +182,7 @@ describe('superflex', () => {
         assert.deepEqual(slots(out), ['QB1 Allen', 'RB1 Gibbs', 'WR1 Lamb', 'FLEX1 Chase', 'SFLEX1 Hurts']);
     });
 
-    test('a locked QB in the QB slot keeps SFLEX out of reach for the other QB', () => {
+    test('a QB whose game started keeps the QB slot, so SFLEX is out of reach for the other QB', () => {
         const out = relabel(lineup([
             ['QB1', 'Allen', 'QB', ONE_PM, true], ['RB1', 'Gibbs', 'RB', MNF], ['FLEX1', 'Lamb', 'WR', ONE_PM], ['SFLEX1', 'Hurts', 'QB', SNF],
         ]));
@@ -223,10 +225,10 @@ describe('superflex', () => {
             assert.deepEqual(out.map(s => s.player.id).sort(), before.map(s => s.player.id).sort(), where);
             out.forEach((s, i) => {
                 assert.ok(SLOT_POSITIONS[s.slot.replace(/[0-9]/g, '')].includes(s.player.pos), where);
-                if (before[i].player.isLocked) assert.equal(s.player, before[i].player, where);
+                if (before[i].player.autoLocked) assert.equal(s.player, before[i].player, where);
             });
             const sflexIdx = out.findIndex(s => s.slot === 'SFLEX1');
-            if (out[sflexIdx].player.isLocked) continue;
+            if (out[sflexIdx].player.autoLocked) continue;
             const k = open.indexOf(sflexIdx);
             const ms = (p) => { const t = data.times[p.team]; return t ? Date.parse(t) : Infinity; };
             const best = Math.max(...seatings.map(seat => ms(seat[k])));
@@ -291,8 +293,69 @@ describe('W/T and W/R', () => {
             assert.deepEqual(out.map(s => s.player.id).sort(), before.map(p => p.id).sort(), `case ${c}`);
             out.forEach((s, i) => {
                 assert.ok(SLOT_POSITIONS[s.slot.replace(/[0-9]/g, '')].includes(s.player.pos), `case ${c}: ${s.slot} ${s.player.pos}`);
-                if (before[i].isLocked) assert.equal(s.player, before[i], `case ${c}`);
+                if (before[i].autoLocked) assert.equal(s.player, before[i], `case ${c}`);
             });
         }
+    });
+});
+
+// Improvements F13: a lock you set means "start him", not "keep this slot". Before, every isLocked starter was
+// held where the fill put him (a locked WR in WR1 even when he played latest); now only players whose game has
+// started stay put: autoLocked, or gameStarted(player) for a manual lock whose game has since kicked off.
+describe('manual locks join the relabel (F13)', () => {
+    const FIXTURE = [
+        ['QB1', 'Allen', 'QB', ONE_PM], ['RB1', 'Henry', 'RB', ONE_PM], ['RB2', 'Gibbs', 'RB', ONE_PM],
+        ['WR1', 'Lamb', 'WR', MNF], ['WR2', 'Chase', 'WR', ONE_PM], ['TE1', 'Bowers', 'TE', ONE_PM],
+        ['FLEX1', 'Jefferson', 'WR', ONE_PM], ['K1', 'Tucker', 'K', ONE_PM], ['DEF1', 'BAL', 'DEF', ONE_PM],
+    ];
+    const withLock = (name, lock) => FIXTURE.map(r => (r[1] === name ? [...r.slice(0, 4), lock] : r));
+
+    test('a manual lock in a strict slot who plays later than FLEX moves to FLEX', () => {
+        // The fill puts a locked player in the first slot he fits (WR1); main left him there, FLEX holding a 1 pm game.
+        assert.deepEqual(slots(relabel(lineup(withLock('Lamb', 'manual')))), [
+            'QB1 Allen', 'RB1 Henry', 'RB2 Gibbs', 'WR1 Chase', 'WR2 Jefferson', 'TE1 Bowers', 'FLEX1 Lamb', 'K1 Tucker', 'DEF1 BAL',
+        ]);
+    });
+
+    test('a manual lock in FLEX gives FLEX to a later strict-slot starter', () => {
+        const out = relabel(lineup([
+            ['QB1', 'Allen', 'QB', ONE_PM], ['RB1', 'Henry', 'RB', ONE_PM], ['WR1', 'Chase', 'WR', SNF],
+            ['TE1', 'Bowers', 'TE', ONE_PM], ['FLEX1', 'Lamb', 'WR', ONE_PM, 'manual'],
+        ]));
+        assert.deepEqual(slots(out), ['QB1 Allen', 'RB1 Henry', 'WR1 Lamb', 'TE1 Bowers', 'FLEX1 Chase']);
+    });
+
+    test('an auto-locked player (his game started) stays where he is', () => {
+        assert.deepEqual(slots(relabel(lineup(withLock('Lamb', 'auto')))), [
+            'QB1 Allen', 'RB1 Henry', 'RB2 Gibbs', 'WR1 Lamb', 'WR2 Chase', 'TE1 Bowers', 'FLEX1 Jefferson', 'K1 Tucker', 'DEF1 BAL',
+        ]);
+        const out = relabel(lineup([
+            ['QB1', 'Allen', 'QB', ONE_PM], ['WR1', 'Chase', 'WR', ONE_PM, 'auto'], ['WR2', 'Lamb', 'WR', MNF],
+            ['FLEX1', 'Jefferson', 'WR', ONE_PM, 'auto'],
+        ]));
+        // Chase and Jefferson are locked by kickoff: Lamb has nowhere to go.
+        assert.deepEqual(slots(out), ['QB1 Allen', 'WR1 Chase', 'WR2 Lamb', 'FLEX1 Jefferson']);
+    });
+
+    test('a manual lock whose game has since started stays put (gameStarted)', () => {
+        const data = lineup(withLock('Lamb', 'manual'));
+        const before = slots(data.starters);
+        assert.deepEqual(slots(relabel(data, p => p.name === 'Lamb')), before);
+    });
+
+    test('a manual lock in SFLEX in a superflex league moves when a later starter can take SFLEX', () => {
+        const out = relabel(lineup([
+            ['QB1', 'Allen', 'QB', SNF], ['RB1', 'Gibbs', 'RB', ONE_PM], ['WR1', 'Chase', 'WR', MNF],
+            ['FLEX1', 'Lamb', 'WR', ONE_PM], ['SFLEX1', 'Hurts', 'QB', ONE_PM, 'manual'],
+        ]));
+        // Main kept Hurts (1 pm) in SFLEX and Allen (Sunday night) in QB. Two QBs and one QB slot, so SFLEX keeps a QB:
+        // the later one, Allen. Hurts still starts, in the QB slot; FLEX gets Chase (Monday).
+        assert.deepEqual(slots(out), ['QB1 Hurts', 'RB1 Gibbs', 'WR1 Lamb', 'FLEX1 Chase', 'SFLEX1 Allen']);
+    });
+
+    test('no locks: the same as before F13', () => {
+        const ours = lineup(FIXTURE), theirs = lineup(FIXTURE);
+        mainOptimizeFlexKickoffOrder(theirs.starters, theirs.times);
+        assert.deepEqual(slots(relabel(ours)), slots(theirs.starters));
     });
 });
