@@ -51,6 +51,10 @@ const GROUPS = [
             'On the Scout tab: his rank at his position in your rankings, then his tier when your file has a Tier column.'],
         [`<span class="badge pos-badge WR mls-ta-pos">WR <span class="mls-ta-tier">UR</span></span>`,
             'Unranked: he isn\'t in your rankings (Top Available\'s Trending list).'],
+        ['<span class="badge rset-nomatch-badge">No Sleeper match</span>',
+            'When you view a ranking set\'s players: the name in your file didn\'t match a Sleeper player, so the app can\'t tell his position or team, or find him on a roster. Tap Fix name beside it to change the spelling in the set, or fix it in your file.'],
+        ['<div class="tier-divider">Tier 3</div>',
+            'When you view a ranking set\'s players: where the next tier of that list starts.'],
         [`<span class="badge mls-rank-badge">${rankBadgeParts(`Pos: #5${tierTag(3)}`, `Flex: #13${tierTag(3)}`)}</span>`,
             'On the Lineup and Roster tabs: his rank at his position, then his FLEX rank (Overall on the Roster tab), each with its tier in parentheses.'],
         [`<span class="badge mls-rank-badge mls-rank-dual">${rankBadgeParts(`<span class="mls-nowrap">In-Season</span> WR16${tierTag(8)}`, `Dyn WR20${tierTag(6)}`)}</span>`,
@@ -108,6 +112,8 @@ const GROUPS = [
             'He can\'t help this week: he\'s injured, on bye, his game already started, or he isn\'t on an NFL roster.'],
         [pill('status-avail', 'Free Agent') + pill('status-mine', 'On Your Roster') + pill('status-owned', 'Rostered by: Team') + pill('mls-status-unknown', 'Not Yours'),
             'Who has him in this league, as of your last sync. Not Yours: in a manual league the app only knows your own roster.'],
+        ['<span class="rset-rank-chip is-mine">4</span>',
+            'When you view a ranking set\'s players: one of yours (his rank in blue). Pick Other teams there to see who has the rest.'],
         [`<span class="freshness-stale">Synced 3 days ago</span> <span class="sync-failed">Last sync failed</span>`,
             'Amber: this information is a few days old, so refresh it (Sync All Leagues for rosters). Red: the last sync failed.'],
         [leagueStatusChipMarkup('good', 'Rankings', '', SAMPLE) + leagueStatusChipMarkup('warn', 'Rankings', '', SAMPLE) + leagueStatusChipMarkup('danger', 'Lineup', '', SAMPLE) + leagueStatusChipMarkup('pending', 'Lineup', '', SAMPLE) + bestBallBadgeMarkup(),
@@ -127,7 +133,7 @@ const GROUPS = [
         [sosBadgeMarkup(1, '', { compact: true, sample: true }) + sosBadgeMarkup(16, '', { compact: true, sample: true }) + sosBadgeMarkup(32, '', { compact: true, sample: true }),
             'Strength of schedule at his position, from your SoS upload: 1 = easiest, 32 = hardest, green to red. On a phone it shows a calendar and the number. Tap for more. If your file ranks 1 = hardest, turn on that switch on the Roster tab\'s SoS card.'],
         [opponentBadgeMarkup({ opp: 'KC', home: true, rank: 3 }, '', SAMPLE) + opponentBadgeMarkup({ opp: 'KC', home: false, rank: 28 }, '', SAMPLE) + opponentBadgeMarkup({ opp: 'KC', home: null, rank: 16 }, '', SAMPLE),
-            'This week\'s opponent (vs home, @ away), colored by how tough the matchup is for his position, from your Weekly file\'s matchup rank: 1 = easiest, 32 = hardest. After the kickoff time, and on Auto-Find\'s cards. Tap for more.'],
+            'This week\'s opponent (vs home, @ away), colored by how tough the matchup is for his position, from your Weekly file\'s matchup rank: 1 = easiest, 32 = hardest. After the kickoff time, on Auto-Find\'s cards, and in the Opp (strength of opponent) column when you view a Weekly set\'s players. Tap for more.'],
     ]],
 ];
 

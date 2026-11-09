@@ -9415,3 +9415,298 @@ Sharing Debugger, X's card validator, opengraph.xyz). Apps that cached the old p
 debugger has "Scrape Again". Umami: Events → "Shared link opened", broken down by `page`.
 
 **Left over.** None from this card. The runbook's MERGED list still needs updating (K1's note).
+
+## S30 — See the rankings you uploaded
+
+Branch `claude/ranking-set-view-omb3gl`. Needs F10 (merged, #212).
+
+**User-visible effect.** Under each ranking set's drop-down (the Roster tab's ROS picker and, in dynasty and keeper
+leagues, its In-Season picker; the Lineup tab's Weekly picker) the row now reads "Used in 2 of 5 leagues · Choose
+leagues… · View". With a single league (or a single dynasty league, for In-Season) the row used to be hidden; it now
+holds just **View**, at the right. View opens the set, read-only, in the shared sheet (M11): full height on phones, a
+640px panel from the right on computers (the legend's sheet stays 400px). Inside:
+- The set's name as the title, then "ROS rankings · 312 players · Saved Nov 4, 2026, 9:12 PM" (In-Season or Weekly
+  rankings as fits; the time is the set's last save, `updatedAt`).
+- A drop-down of every saved set of that kind (ROS sets, or Weekly sets) when there's more than one. Picking one shows
+  it; nothing about which set a league uses changes.
+- When names didn't match a Sleeper player, the upload preview's red box: "3 of 312 names didn't match a Sleeper
+  player" and a line on what that means. While Sleeper's player map loads: "Checking names against Sleeper…"; if it
+  fails, a line saying names aren't checked.
+- A search box (name or team; "amonra" finds Amon-Ra St. Brown), chips like the Roster tab's position counts, on one
+  line each: All, each position in the set, Picks (dynasty sets), Yours, Free agents (synced leagues only), No match.
+  One chip at a time, combined with the search. The search, chips and "Showing 4 of 312" stay at the top while the list
+  scrolls.
+- A table: rank, player with his NFL team badge and who has him (the Scout tab's pills: blue **Yours**, red with the
+  team's name; free agents carry no mark), position badge with his position rank ("RB5", the numbers the Lineup and
+  Roster tabs show, worked out from the file's order when it had no Pos Rank column), the tier "(T3)" and the SoS badge
+  from your SoS grid. The Tier and SoS columns only when some row has one. A name Sleeper doesn't know gets a red **No
+  Sleeper match** badge and "–" for position.
+- Nothing matches: the table goes and "No players match "zzz" in free agents." with **Clear search and filter**. A set
+  with no rows: "This set has no players."
+- Escape clears a typed search first, then closes; Back, ✕ and the scrim close it; focus goes back to View.
+
+**Owner's answers (2026-11-08, after a sketch).** (1) A "View" link beside "Choose leagues…", in the shared sheet (full
+height on phones, a wider panel on computers) rather than a centred dialog. (2) Any saved set, picked inside the view.
+(3) Both extras: mark your roster, and players on other teams in this league (free agents unmarked). (4) Lineup
+Strategist now, Draft Strategist later as its own card.
+
+**Where.**
+- New `js/mls/rankings/setView.js` (in `PRECACHE_ASSETS`): `openRankingSetView(opener, type, slot)` and the pure-ish
+  `buildSetRows(data, league, meta)`. Positions from `makeLeagueGetPos` (the league's positions, Sleeper's map, market
+  data), position ranks from `leagueRankDisplayIndex` / `displayRanksFor` (F6), "matched" by the same rule as the
+  preview's `analyzeRankingsFile`. Built once per set as one string; search and chips only set `hidden` on rows. Its
+  own `delegate()` on the sheet for the chips, search, picker, Clear and the SoS badge's tap (the sheet sits outside
+  the containers `main.js` delegates).
+- `js/shared/ui/sheet.js`: `openSheet({ expanded })` opens a bottom sheet at full height (the handle still toggles);
+  `css/base.css`: a side sheet ignores `is-expanded`'s height.
+- `lineup/index.html`: a View button in `#rosSetLeaguesRow`, `#seasonSetLeaguesRow` and `#weeklySetLeaguesRow`
+  (`data-action="viewRankingSet"`, `aria-haspopup="dialog"`, "View this ranking set" / "View this In-Season set"); the
+  Choose leagues buttons get `.mls-choose-leagues-btn`; one sentence in the Guide's Ranking Sets line.
+- `js/mls/rankings/sets.js`: `updateSetLeaguesRow` and `populateSeasonPicker` show the row for any saved set and hide
+  only the summary and Choose leagues… below two leagues.
+- `js/mls/main.js`: the `viewRankingSet` action. `css/mls.css`: "A SAVED RANKING SET, READ-ONLY".
+- Legend (`js/mls/legend.js`): a line for **No Sleeper match** (Ranks and tiers); the who-has-him pills' line says what
+  Yours and a team's name mean in the view.
+- `sw.js`: `CACHE_NAME` v2.9.8 → v2.9.9.
+
+**Speed (4x-slowed CPU, 320 rows, the fixture league).** Building the rows' data 1–4 ms; click to rows on screen
+280–590 ms (including Playwright's round trips and the sheet's insert); a search keystroke 6–146 ms to the next frame; a
+chip 39–72 ms. Not slow, so the list isn't windowed.
+
+**Tests.** New `tests/mls-ranking-set-view.spec.mjs` (both widths): with one league only View shows; the dialog's
+name, the saved line, the table's column and row headers; Henry's rank 15, BAL, RB5, (T3), Yours and an SoS badge from a
+stand-in SoS grid; Rival on Bijan Robinson, nothing on a free agent; search (name, "amonra", within a chip); TE, Yours
+(12: your K and DEF aren't in the file), Free agents; the empty state and Clear; the unmatched name's box, badge, "–" and
+No match chip; picking another set and an empty set inside the view while the league keeps its set; Escape clears then
+closes, focus back on View, Tab trapped, Back closes; View on the In-Season picker and the Weekly card; full height on a
+phone, 640px × full height on a computer, the search still in sight after scrolling.
+
+**Decisions made here (not asked).**
+- Filter chips are one at a time (Yours or a position, not both); search narrows within the chip.
+- The title is "N of M names didn't match" ("names" follows the total). The upload preview's own title pluralises by the
+  unmatched count ("1 of 24 name didn't match"); not changed here.
+- Weekly sets' opponent column (S31) isn't shown; the card asked for SoS only.
+
+**Screenshots.** Main and this branch rendered the same way in the session (`RENDER_ENV=any`), compared with
+`npm run pxdiff`: 42 PNGs, two change, both from the Guide's new text: `desktop/mls-league-guide.png` (1280×9573 →
+1280×9657) and `phone/mls-league-guide.png` (390×22596 → 390×22859): the Ranking Sets line's new sentence about View
+and the legend's No Sleeper match line. Every other PNG is identical: no baseline shows the sheet, and the Roster
+screenshots' rankings card is unchanged. Not re-taken here (this container's fonts can't match CI's): take those two
+from the PR's CI run, as "Accepting an intended visual change" says.
+
+**Checks.** `npm run check` in the session: check-precache OK (158 files), 524 unit tests pass, 834 Playwright tests
+pass (48 skipped); the 4 failures are `visual.spec.mjs` refusing this container's fonts (the environment check), as on
+main.
+
+### S30, round 2: lists, tier lines, two chip rows, Fix name (owner's choices, after trying it with a weekly file)
+
+The owner viewed a real weekly sheet (QB / RB / WR / TE / DEF / FLEX / K columns side by side, "Weekly Rankings All
+11-8") and asked four things; I proposed how, and they agreed.
+
+1. **Unmatched names.** The banner gets **Show these names** (lists only those rows, in rank order; "Show all players"
+   goes back), and the No match chip goes. Owner: allow fixing the name in the app. Each unmatched row has **Fix name**:
+   the name becomes a field in the row (not a second dialog over the sheet, whose focus traps would fight), with a line
+   that says as you type "Matches a Sleeper player: K, BAL.", "No Sleeper player by that name yet." or "Another player
+   in this set already has that name." (refused). Enter or Save name saves, Escape or Cancel goes back. Saving writes
+   the name and `cleanName` into the set (stored under the set's existing key), reloads the open league's rankings
+   (`hydrateRankingsForLeague`) and redraws the Roster or Lineup tab; other leagues read the set when they're opened.
+   A toast says whether it matches now.
+2. **Tier lines instead of a Tier column.** A labelled line ("TIER 3", like Draft Strategist's Tracker) before each
+   tier's first row, the first tier too. Lines hide with their rows under a search or filter, and all of them hide when
+   the rows on screen aren't in tier order. The list's own tiers: the overall tier in All, the position tier in a
+   position's list, FLEX tiers in FLEX (the owner's file has none, so no lines there). The Tier column is gone.
+3. **Separate lists.** A set where two or more players share a rank (a weekly sheet of side-by-side lists, or one file
+   per position) has no All: each chip is its own list, ranked by its own number (FLEX 1–100, QB 1–25, …), opening on
+   FLEX when the file has FLEX ranks, else the first position. In FLEX each row's badge shows his position rank. A
+   single ranked list (most ROS files) keeps All, and a position chip narrows it in overall order. Search narrows the
+   list on screen. Owner: the upload preview may get the same treatment later ("we can circle back").
+4. **Chips.** Back to the Roster tab's look (name over count, one equal column each), a little shorter. Two rows: the
+   lists, then who has him (Everyone, Yours, Free agents, Other teams; only Everyone and Yours in a manual league). The
+   rows combine (RB + Free agents). The search and the lists stay at the top; the ownership row scrolls away with the
+   list unless one of its filters is on, when it sticks under them (owner's idea).
+
+Why the old view was "funky" with that file: the parser stores each player's `rank` as his FLEX rank when he's in the
+FLEX list and his position rank otherwise (Burrow, Gibbs, the Seahawks and Aubrey were all rank 1). The data is
+unchanged; the view now reads each list's own number. Note for testing with that file here: the fixture's Sleeper map
+is small, so 206 of its 232 names show as unmatched in the session; with Sleeper's real map most match.
+
+**Where.** `js/mls/rankings/setView.js` (rewritten: `isMultiList`, `listChoices`, `listRows`, the tier lines, the two
+rows, Fix name), `css/mls.css` (the chip rows, the pinned ownership row with `--rset-controls-h`, tier lines, the name
+field), `js/mls/legend.js` (a line for the tier line; Fix name in the No Sleeper match line).
+
+**Tests.** `mls-ranking-set-view.spec.mjs`: tier lines (all six, Henry under Tier 3, only Kittle's after a search),
+the ownership row (its counts, pinned only while filtering, TE + Free agents = LaPorta), Show these names, Fix name
+(focus, the duplicate refused, Escape cancels without closing, the live match line, Enter saves, the row becomes a
+kicker on your roster, stored and in the league's rankings), and a weekly sheet in the owner's layout (FLEX first with
+position ranks, no All, QB's list with its tier lines, RB with a search).
+
+**Screenshots.** Rendered again against main the same way: still only the Guide's two PNGs change (now also the
+legend's tier line): `desktop/mls-league-guide.png` (1280×9573 → 1280×9697), `phone/mls-league-guide.png` (390×22596 →
+390×22961). The other 40 are identical. To take from the PR's CI run.
+
+**Checks (round 2).** check-precache OK, 524 unit tests pass, 836 Playwright tests pass (48 skipped); the 4 failures are
+`visual.spec.mjs`'s environment check, as on main.
+
+**Left over (round 2).**
+- The upload preview could show the same lists (owner: circle back later).
+- A fixed name lives in the set only: re-uploading the same file brings the old spelling back. Remembering fixes for
+  later uploads would need a stored alias list (a new key): ask the owner first.
+- An unmatched player in a sheet of separate lists has no position, so he shows only in FLEX (if listed there) and under
+  Show these names. Keeping the file's own position on each row (the parser knows it from the column) would place him;
+  that's a change to the shared parser.
+
+### S30, round 3: "Opp" for weekly sets, and who has him on its own line (owner's choices)
+
+1. **Weekly sets: Strength of opponent, not of schedule.** A Weekly set whose file has opponents (S31's `opp`,
+   `oppRank`) ends with an **Opp** column (header tooltip and table caption "Strength of opponent"): the Lineup tab's
+   colored badge ("MIA 5", tap for the words) where the file ranks the matchup, the plain opponent where it doesn't.
+   It reads the set's own data (no scoreboard override), flipped when "My matchup files rank 1 = hardest" is on. A ROS
+   set, or a Weekly set without opponents, keeps the SoS column. The legend's opponent line mentions it.
+2. **Who has him on its own line.** On phones the Yours / team pill sat beside the name on short names and under it on
+   long ones. Asked: always on its own line, or only on a tap. My recommendation, built: always on its own line under
+   the name and team (with No Sleeper match and Fix name), at every width. A tap-to-show would hide what the ownership
+   chips filter by, and an uneven row was the problem, not its height. Free agents' rows stay one line (no mark).
+
+**Tests.** The weekly sheet in the spec gets a QB Matchup column: the header is Opp ("Strength of opponent"), QBs show
+"MIA 5", "CLE 30" and a plain "DAL", an RB the plain "NO", and the badge's accessible name; a ROS set's header is
+"Strength of schedule"; Henry's pill sits below his name.
+
+**Screenshots.** Still only the Guide's two PNGs (the legend's opponent line is a few words longer).
+
+### S30, round 4: after my review as a user (owner: "do 1, 2, 4 and 6", and 7 in grey)
+
+I walked the view at 390 and 1280px with a ROS set and the owner's weekly file and reported what felt clunky. Changes:
+
+1. **Less above the list on a phone** (the first player started ~60% down the screen). The "saved" line reads
+   "ROS rankings · 31 players · Saved 11/08/26" (owner's choice: a two-digit date, no time, so it's one line). The red
+   notice is one line, "1 of 31 names didn't match Sleeper" with **Show** at its right (accessible name "Show the names
+   that didn't match"); its explanation shows with the names, and Show becomes "Show all". About 100px higher.
+2. **Ownership counts follow the list.** Everyone / Yours / Free agents / Other teams count within the list on screen:
+   on the RB list "Yours 2" means two of those RBs (they used to count the whole set). They don't follow the search.
+4. **One line per row on computers.** From 840px (the side panel) the Yours / team pill sits on the name's line on
+   every row; phones keep it on its own line under the name (round 3).
+6. **"View players" with a list icon** (Feather `list`), on its own line at the right under "Used in … · Choose
+   leagues…" (side by side, "Choose leagues…" wrapped onto two lines on a phone with two leagues); alone at the right
+   with one league. Accessible names "View the players in this ranking set" / "… In-Season set"; the Guide says "View
+   players".
+7. **Another team's pill is neutral grey in the view only** (`.rset-table .status-owned`). The owner asked whether
+   changing it changes it everywhere: the class is shared, so a plain change would; I scoped it to the view, because
+   in the Waiver Wire's "Rostered by: Team" red means "not available", which is the point there. The legend line says
+   "(in grey there)".
+
+Not done, by choice: capping the chips' width on computers (item 5) and the tall phone rows (item 3, options offered
+to the owner: see below).
+
+**Tests.** The spec checks the date format, the one-line notice and its hidden explanation, Show's name, the ownership
+counts on the TE list (4 / 3 / 1 / 0), the whole set (31 / 12 / 6 / 12) and the weekly RB list (3 / 1 / 0 / 2), the
+pill beside the name from 840px and under it below, the grey pill, and the new link names.
+
+**Screenshots.** Still only the Guide's two PNGs (the legend's wording).
+
+### S30, round 5: who has him without taller rows (owner's choice: "4+1")
+
+Rounds 3 and 4 put a Yours / team pill under each name on phones, so most rows were two lines tall. Options weighed with
+the owner: a narrow Own column (no: the Tier column's problem again), a colored stripe (another thing to learn), the pill
+under the position badge (no), dimming other teams' rows, a tint for yours, and the owner's: colored names or #, Y / R
+badges ("R" is already Rookie), asterisks or crosses (read as a footnote or "out"), and ownership only under its
+filters. Chosen: **4 + 1**.
+- **Everyone (the default):** every row is one line. Your players' rank sits in a blue chip (the app's blue for
+  yours); nobody else is marked. Screen readers hear ", yours" or ", on Rival" after the name.
+- **Yours / Free agents:** no marks needed; the chip says it.
+- **Other teams:** each row shows its team's name in grey on a line under the name (every row has one, so the rows are
+  even).
+- Same at every width. The # column is centered so chips and plain numbers line up. The grey pill (round 4) is gone
+  with the pills; No Sleeper match and Fix name keep their own line (rare with Sleeper's full player map).
+- Legend: a line for the blue rank chip (Ranks and tiers); the who-has-him pills' line no longer mentions the view.
+
+Tests: Henry's chip and accessible name, Bijan unmarked with his team read out only, rows one line, the Other teams list
+showing "Rival" under every name, Tucker's chip after Fix name.
+
+### S30, round 6: a second review as a user (owner: do them, except the chips' size)
+
+- **The blue rank chip** has a hover label, "Yours" (`title`). Not tappable: the # column is narrow and rows ~32px,
+  so a 48px target per number would cover its neighbours. Instead the **Yours** ownership chip is drawn in the same blue
+  (`status-mine`), right above the list, so the color explains itself.
+- **The Set picker** lists names only (the "(32 players)" cut the name off, and the line under the title has the count).
+- **Fix name's refusal names the clash:** "Marvin Harrison Jr (#32) already has that name in this set." Names that differ
+  only by a suffix or punctuation are one player to the app (`normalizeName`), which the old wording didn't explain.
+- **The unmatched list hides the ownership row** (it could only show zeros: those names aren't on any roster the app
+  can see).
+- **In a position's own list** (a set of separate lists) the badge says just "QB": the # is already his QB rank. FLEX,
+  All and a ROS set's position chips keep "RB5", where it adds something.
+- **Not done: the chips' size on computers** (owner: the Roster tab's position chips are as large there, so change
+  both or neither). **Owner's choice: fold it into M4** (Material 3: one look for chips and segmented controls), so
+  both places change together and the screenshots are re-taken once. **For M4:** on computers the Roster tab's position
+  counts (`.mls-roster-poscounts`) and this view's two chip rows (`.rset-chips`) stretch to the full width (about
+  150px a chip on the Roster tab at 1280px); give them the shared chip look M4 settles on, at a sensible width.
+
+Tests: the chip's title and the blue Yours chip, the picker's labels, the clash message ("Josh Allen (#13) …"), the
+ownership row hidden in the unmatched list, "QB" badges in the weekly QB list.
+
+### S30, round 7: a third review as a user (owner: do 1-4)
+
+1. **Your draft picks count as yours.** In a league with synced picks (`league.picks`, dynasty and keeper leagues,
+   S19), a pick in the set ("2027 1st") is yours when you hold one like it: the blue rank chip ("Yours (you hold 2)"
+   on hover when you hold more than one), counted under Yours; one you don't hold names who does under Other teams.
+   Without synced picks, as before (no owner).
+2. **The Picks chip looks lit:** green like All (it was the grey Pick color, which read as switched off).
+3. **PageDown from the title.** Focus starts on the title (for screen readers), outside the scrolling list, so the
+   first PageDown did nothing; PageDown / PageUp, the arrows, Space, Home and End now scroll the list from there.
+4. **Tests for Sleeper's player list loading and failing:** a fresh browser with the list held shows "Checking names
+   against Sleeper…" and every row, then on a failure "Sleeper's player list didn't load…", no name flagged, and the
+   league's own positions (Henry RB5).
+
+**Checks (round 7, the owner asked about test time).** The full suite takes ~20 minutes here and ran after every round.
+This round: check-precache, the unit tests, this view's spec (22 tests), and the sheet, legend and In-Season specs; the
+full suite runs once before the last push (and CI runs it on the PR).
+
+### S30, round 8: no Pos column in a position's own list (owner's choice)
+
+In a set of separate lists (a weekly sheet), a position's list showed "WR" on every row once round 6 dropped the rank
+from the badge. The Pos column is hidden there (`.rset-table.no-pos`); FLEX, All and a ROS set's position chips keep it.
+
+**Rule 7 and testing time (owner, 2026-11-09).** `docs/TESTING.md` now says to run what you touched while iterating
+and the full suite once before a card's last push. The owner also asked for rule 7 in the runbook to say so; this
+session couldn't republish the runbook (the page is ~460 KB and has to be read in full before a republish), so the
+owner was given the new wording to paste:
+"While iterating, run check-precache, node --test and the Playwright specs for what you changed (`cd tests && npx
+playwright test <spec>`, a minute or two), and push. Run the full `cd tests && npm ci && npm run check` (about 20
+minutes) once, before your card's last push; CI runs it again on the pull request. See "While iterating" in
+docs/TESTING.md. Chromium is preinstalled at /opt/pw-browsers; don't run playwright install."
+
+### S30: the final push (2026-11-09)
+
+- **Updated from main** (#228, the testing rule in CLAUDE.md and TESTING.md). `docs/TESTING.md` conflicted on the line
+  above the "While iterating" bullet, which both branches added: kept one bullet and "Run before a card's last push".
+  `CACHE_NAME` v2.9.9, above main's v2.9.8.
+- **Checks, under the new rule** (owner's choice: no second full run; the last full run was after round 6, and rounds
+  7 and 8 changed only `setView.js` and `.rset-*` rules): check-precache OK, 524 unit tests, and the ranking-set view,
+  sheet, legend, In-Season, Replace Set and Rename specs (101 pass, 1 skipped). CI runs the full suite on the PR.
+- **Screenshots against main, rendered the same way here:** 42 PNGs; only `desktop/mls-league-guide.png` (1280×9573 →
+  1280×9758) and `phone/mls-league-guide.png` (390×22596 → 390×23073) change, from the Guide's new text and legend
+  lines. Not re-taken here (this container's fonts can't match CI's): take them from the PR's CI run, as "Accepting an
+  intended visual change" in docs/TESTING.md says.
+- **PR #229, CI run 42553419904:** 850 passed, 2 failed: exactly those two screenshots. Each `-expected.png` was
+  byte-identical to the committed baseline; the `-actual.png` (desktop 1280×9287 → 9471, phone 390×21391 → 21839, the
+  same growth as rendered here within the fonts' difference) first differs at the Ranking Sets line's new sentence,
+  then the same page shifted down plus the legend lines. The `-actual.png` files are the new baselines.
+
+**For a runbook card (found in round 8's review): keep each player's position from the file.** A rankings file of
+separate lists (a weekly sheet with "QB Rank" / "RB Rank" / … / "FLEX Pos" columns, or one file per position) says
+which list each player is in, but `js/shared/rankings/parse.js` keeps only his ranks, and the app takes positions from
+Sleeper's player map or the league. A name that doesn't match Sleeper therefore drops out of its position's list in
+this view (the owner's WR list read 1–6, 10, 11, 13, 38, with "Tier 8" right after "Tier 3"), and gets no position
+anywhere else either; defenses are the likeliest ("Seattle Seahawks" vs Sleeper's name). The card: store the file's
+position on each parsed row (`pos`, only when the file says it: a position column, a per-position file, a list's
+column prefix, FLEX Pos), use it as the last fallback for position (after the league and Sleeper, so a wrong file can't
+override them), and check Draft Strategist's import, which shares the parser. Tests: the owner's sample layout
+(`Weekly-Rankings-All-11-8.csv`, attached in this session) with an unmatched name in each list. Small; before the
+playoffs is fine.
+
+**For a runbook card (owner's idea, 2026-11-08): player stats and research.** Tapping a player here (and perhaps in
+other lists) could open a card with season stats; how much (this season, past seasons, T-Score data) is the open
+question, so it's its own card, after S32 (whose row sheet it could share) and M11's sheet.
+
+**Left over.**
+- Draft Strategist's own view (owner's answer 4): a runbook card for before next draft season.
+- The preview's "1 of 24 name didn't match" wording, if wanted.

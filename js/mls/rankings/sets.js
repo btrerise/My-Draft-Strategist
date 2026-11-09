@@ -221,8 +221,8 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, rosSetU
         el.title = text; // full name on hover when it's truncated
     }
 
-    // "Used in 2 of 5 leagues · Choose leagues..." under the dropdown. Hidden when there's only
-    // one league (nothing to choose) or no saved set is selected (nothing to apply yet).
+    // "Used in 2 of 5 leagues · Choose leagues... · View" under the dropdown. Hidden when no saved set is selected
+    // (nothing to apply or view yet); with only one league (nothing to choose) it holds just "View" (S30).
     function updateSetLeaguesRow(type) {
         const cfg = RANKING_TYPE_CONFIG[type];
         const row = document.getElementById(cfg.leaguesRowId);
@@ -230,8 +230,14 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, rosSetU
         const selectEl = document.getElementById(cfg.selectId);
         const val = selectEl ? selectEl.value : '__new__';
         const isRealSet = val && val !== '__new__' && val !== '__legacy__';
-        if (!isRealSet || State.leagues.length < 2) { row.style.display = 'none'; return; }
+        if (!isRealSet) { row.style.display = 'none'; return; }
+        row.style.display = '';
         const summary = document.getElementById(cfg.leaguesSummaryId);
+        const several = State.leagues.length >= 2;
+        if (summary) summary.hidden = !several;
+        const choose = row.querySelector('.mls-choose-leagues-btn');
+        if (choose) choose.hidden = !several;
+        if (!several) return;
         if (type === 'ros') {
             // A ROS set can also be a dynasty league's In-Season set (improvements S23); both count.
             const { used, asSeason } = setUsage(val, State.leagues);
@@ -244,7 +250,6 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, rosSetU
             const used = State.leagues.filter(l => l[cfg.leagueSetIdKey] === val).length;
             if (summary) summary.textContent = `Used in ${used} of ${State.leagues.length} leagues`;
         }
-        row.style.display = '';
     }
 
     // User manually picked a different set (or legacy data, or "create new") from the dropdown.
@@ -625,9 +630,13 @@ import { IN_SEASON, SEASON_SET_KEY, hasSeasonSlot, leaguesWithoutSeason, rosSetU
         const leaguesRow = document.getElementById('seasonSetLeaguesRow');
         const dynastyCount = State.leagues.filter(hasSeasonSlot).length;
         if (leaguesRow) {
-            leaguesRow.hidden = !current || dynastyCount < 2;
+            // With one dynasty or keeper league, just "View" (S30).
+            leaguesRow.hidden = !current;
             const summary = document.getElementById('seasonSetLeaguesSummary');
-            if (current && summary) {
+            const choose = leaguesRow.querySelector('.mls-choose-leagues-btn');
+            if (summary) summary.hidden = dynastyCount < 2;
+            if (choose) choose.hidden = dynastyCount < 2;
+            if (current && summary && dynastyCount >= 2) {
                 const n = State.leagues.filter(l => seasonSetFor(l, sets) === current).length;
                 // Short, so it and "Choose leagues…" fit one line on a phone with double-digit counts (round 9; keeper
                 // leagues count, as the (i) and the Guide say).

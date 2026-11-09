@@ -153,6 +153,19 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **See a ranking set you uploaded.** A **View players** link under each set's drop-down (the Roster
+  tab's ROS and In-Season pickers, the Lineup tab's Weekly picker) opens the set: its name, the date it was saved,
+  and every player with his rank, NFL team, position and position rank, and his SoS badge (in a Weekly set with
+  opponents, an **Opp** column instead: this week's opponent and how tough the matchup is), with who has him in this
+  league (your players' rank in a blue chip; pick **Other teams** to see whose team each of the rest is on) and a labelled line where
+  each tier starts. A weekly sheet
+  of separate lists (QB, RB, WR, TE, K, DEF and FLEX columns) shows each list on its own, FLEX first; a single ranked
+  list shows All. Search by name or team; one row of chips picks the position or list, a second (Everyone, Yours, Free
+  agents, Other teams, counted within the list on screen) narrows it, so RB plus Free agents is the best available RBs. Names that didn't match a Sleeper
+  player are flagged, listed with **Show** on the one-line notice, and can be corrected with **Fix name**, which says as you type
+  whether the new spelling matches and saves it into the set. A drop-down inside switches to any other saved set without
+  changing which one a league uses. Full height on phones, a panel from the right on computers; Escape, Back and ✕
+  close it.
 - **Shared links show a picture and the right title.** A link to Lineup Strategist sent in a group chat, or posted on
   Facebook, Slack, Discord or X, now previews with the Lineup Strategist logo and a line about it, under the title "My
   Lineup Strategist" (it used to show a cropped app icon, and some apps took it for the Draft Strategist page). Opening a

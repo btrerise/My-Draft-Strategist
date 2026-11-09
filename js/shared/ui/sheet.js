@@ -3,7 +3,8 @@
 // information on wide screens and a bottom sheet below that; the switch is at 840px, the same window size as the
 // navigation rail (S26). The badge legend opens in it ("What do these mean?"); S32 reuses it for the Lineup row's details.
 //
-//   openSheet({ title, body, opener, scrollTo, footer })  -> Promise that resolves once it has closed
+//   openSheet({ title, body, opener, scrollTo, footer, className, expanded })  -> Promise that resolves once it has closed
+//   (expanded: a bottom sheet opens at nearly full height instead of half, as a ranking set's view does, S30)
 //   closeSheet()                                          -> Promise that resolves once it has closed
 //
 // MODAL. A scrim covers the page, focus moves in (to the title, so a screen reader reads it) and is trapped
@@ -45,15 +46,15 @@ export function isSheetOpen() {
  * `{ label, icon?, onClick }`: a link-style button at the foot; the sheet closes first, then onClick runs.
  * `opener` gets focus back when it closes. Resolves when the sheet has closed.
  */
-export function openSheet({ title, body, opener = null, scrollTo = null, footer = null, className = '' }) {
+export function openSheet({ title, body, opener = null, scrollTo = null, footer = null, className = '', expanded = false }) {
     if (current) closeSheet({ restoreFocus: false, viaHistory: false });
 
     const titleId = `sheetTitle${++titleSeq}`;
     const host = document.createElement('div');
     host.className = 'sheet-host';
     host.innerHTML = `<div class="sheet-scrim"></div>
-<section class="sheet${className ? ' ' + className : ''}" role="dialog" aria-modal="true" aria-labelledby="${titleId}">
-    <div class="sheet-grip"><button type="button" class="sheet-handle" aria-label="Resize the sheet" aria-expanded="false"><span aria-hidden="true"></span></button></div>
+<section class="sheet${className ? ' ' + className : ''}${expanded ? ' is-expanded' : ''}" role="dialog" aria-modal="true" aria-labelledby="${titleId}">
+    <div class="sheet-grip"><button type="button" class="sheet-handle" aria-label="Resize the sheet" aria-expanded="${expanded}"><span aria-hidden="true"></span></button></div>
     <header class="sheet-header">
         <h2 class="sheet-title" id="${titleId}" tabindex="-1"></h2>
         <button type="button" class="sheet-close" aria-label="Close">${CLOSE_ICON}</button>

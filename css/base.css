@@ -2431,6 +2431,8 @@ button.pos-filter {
         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) 0;
         transform: translateX(100%);
     }
+    /* A sheet opened expanded (S30) is full height here too, like every side sheet. */
+    .sheet.is-expanded { height: auto; }
     .sheet-grip { display: none; }
     .sheet-header { padding: 1rem 0.75rem 0.75rem 1.5rem; touch-action: auto; }
     .sheet-body { padding: 0 1.5rem 1rem; }

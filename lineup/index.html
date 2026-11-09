@@ -582,7 +582,9 @@
             </div>
             <div id="rosSetLeaguesRow" class="mls-set-leagues-row mb-3">
                 <span id="rosSetLeaguesSummary" class="mls-set-leagues-summary"></span>
-                <button class="mls-btn-sm btn-link-inline" data-action="openRankingSetLeagues" data-type="ros">Choose leagues&hellip;</button>
+                <button class="mls-btn-sm btn-link-inline mls-choose-leagues-btn" data-action="openRankingSetLeagues" data-type="ros">Choose leagues&hellip;</button>
+                <span class="mls-set-leagues-break" aria-hidden="true"></span>
+                <button class="mls-btn-sm btn-link-inline mls-view-set-btn" data-action="viewRankingSet" data-type="ros" aria-haspopup="dialog" aria-label="View the players in this ranking set"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>View players</button>
             </div>
             <div id="rosNewSetNameWrap" class="input-group mb-3">
                 <label for="rosNewSetName">New Set Name (optional)</label>
@@ -614,7 +616,9 @@
                 <div id="seasonOffer" class="mls-season-offer" hidden></div>
                 <div id="seasonSetLeaguesRow" class="mls-set-leagues-row" hidden>
                     <span id="seasonSetLeaguesSummary" class="mls-set-leagues-summary"></span>
-                    <button class="mls-btn-sm btn-link-inline" data-action="openSeasonSetLeagues">Choose leagues&hellip;</button>
+                    <button class="mls-btn-sm btn-link-inline mls-choose-leagues-btn" data-action="openSeasonSetLeagues">Choose leagues&hellip;</button>
+                    <span class="mls-set-leagues-break" aria-hidden="true"></span>
+                    <button class="mls-btn-sm btn-link-inline mls-view-set-btn" data-action="viewRankingSet" data-type="ros" data-slot="season" aria-haspopup="dialog" aria-label="View the players in this In-Season set"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>View players</button>
                 </div>
             </div>
             <div id="rosUploadTarget" class="mls-upload-target" hidden></div>
@@ -898,7 +902,9 @@
             </div>
             <div id="weeklySetLeaguesRow" class="mls-set-leagues-row mb-3">
                 <span id="weeklySetLeaguesSummary" class="mls-set-leagues-summary"></span>
-                <button class="mls-btn-sm btn-link-inline" data-action="openRankingSetLeagues" data-type="weekly">Choose leagues&hellip;</button>
+                <button class="mls-btn-sm btn-link-inline mls-choose-leagues-btn" data-action="openRankingSetLeagues" data-type="weekly">Choose leagues&hellip;</button>
+                <span class="mls-set-leagues-break" aria-hidden="true"></span>
+                <button class="mls-btn-sm btn-link-inline mls-view-set-btn" data-action="viewRankingSet" data-type="weekly" aria-haspopup="dialog" aria-label="View the players in this ranking set"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>View players</button>
             </div>
             <div id="weeklyNewSetNameWrap" class="input-group mb-3">
                 <label for="weeklyNewSetName">New Set Name (optional)</label>
@@ -1583,7 +1589,7 @@
                 <p class="step-desc mt-2">Upload Rest-of-Season (ROS) rankings on the <strong class="text-main">Roster</strong> tab, and Weekly Matchup rankings on the <strong class="text-main">Lineup</strong> tab. You can also upload or manually input a Strength of Schedule (SoS) matrix in the Roster tab to instantly generate color-coded matchup gradients on player cards: 1 = easiest, 32 = hardest. If your source ranks 1 = hardest, upload it and turn on "My SoS files rank 1 = hardest" on the SoS card. <em class="text-muted">Note: If you upload a generic rankings CSV that contains a 'Matchup' or 'SoS' column, the app will automatically extract it for you.</em> If your file also has a <strong class="text-main">Tier</strong> column, each player's tier is shown next to their rank on player cards, like <span class="mls-tier">(T2)</span>.</p>
                 <ul class="guide-list">
                     <li><strong class="text-main">Preview Before Saving:</strong> Every upload opens a preview first. It flags any names that didn't match a Sleeper player (those players stay unranked everywhere in the app, so rename them to match Sleeper if needed) and lets you pick which leagues should use the file.</li>
-                    <li><strong class="text-main">Ranking Sets:</strong> Each upload is saved as a named set you can share across leagues. Pick a league's set with <strong class="text-main">Ranking Set for this League</strong>, or tap "Choose leagues&hellip;" to point several leagues at the same set.</li>
+                    <li><strong class="text-main">Ranking Sets:</strong> Each upload is saved as a named set you can share across leagues. Pick a league's set with <strong class="text-main">Ranking Set for this League</strong>, or tap "Choose leagues&hellip;" to point several leagues at the same set. <strong class="text-main">View players</strong> beside it shows the whole set: search it, filter by position, and see who has each player in this league and which names didn't match a Sleeper player.</li>
                     <li><strong class="text-main">Dynasty and keeper leagues:</strong> the ROS card holds two sets.
                         <ul>
                             <li><strong class="text-main">Two sets:</strong> <strong class="text-main">Dynasty rankings for this league</strong> is your long-term set; <strong class="text-main">In-Season rankings</strong> can point at any saved ROS set (usually the one your redraft leagues use, offered with a <strong class="text-main">Use it here</strong> button) for this season's questions: Power Rankings' Start and labels, the lineup when no Weekly set is loaded, and the Waiver Wire's <strong class="text-main">In-Season Rank</strong>. "Choose leagues&hellip;" sets it for many leagues at once; with None, everything uses your dynasty rankings.</li>

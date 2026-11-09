@@ -37,6 +37,7 @@ import './power/allLeagues.js';
 import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
 import { togglePosInput, toggleRankingsCard, toggleUploadMode } from './rankings/engine.js';
 import { deleteRankingSet, onRankingSetSelectChange, onSeasonSetChange, openRankingSetLeagues, openSeasonSetLeagues, renameRankingSet, setRosUploadSlot, useSeasonOffer } from './rankings/sets.js';
+import { openRankingSetView } from './rankings/setView.js';
 import { cancelRankingsPreview, confirmRankingsPreview, processMultiRankings } from './rankings/uploadPreview.js';
 import { dismissRankingsChange } from './rankings/changeSummary.js';
 import { explainRankMove } from './rankings/moveChips.js';
@@ -180,6 +181,8 @@ const clickActions = {
     // An SoS badge in the Waiver Wire Assistant (js/mls/sos.js): what the number means, for phones.
     explainSoS() { explainSoS(this); },
     openRankingSetLeagues() { openRankingSetLeagues(this.dataset.type); },
+    // "View" beside "Choose leagues…": the set, read-only, in the shared sheet (rankings/setView.js, improvements S30).
+    viewRankingSet() { openRankingSetView(this, this.dataset.type, this.dataset.slot || null); },
     processMultiRankings() { processMultiRankings(this.dataset.type, this.dataset.successMsgId); },
     autoFetchRosRankings() { autoFetchRosRankings(this); },
     // Roster tab (and render/roster.js), SoS
