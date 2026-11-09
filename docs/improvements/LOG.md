@@ -9643,6 +9643,23 @@ showing "Rival" under every name, Tucker's chip after Fix name.
 Tests: the chip's title and the blue Yours chip, the picker's labels, the clash message ("Josh Allen (#13) …"), the
 ownership row hidden in the unmatched list, "QB" badges in the weekly QB list.
 
+### S30, round 7: a third review as a user (owner: do 1-4)
+
+1. **Your draft picks count as yours.** In a league with synced picks (`league.picks`, dynasty and keeper leagues,
+   S19), a pick in the set ("2027 1st") is yours when you hold one like it: the blue rank chip ("Yours (you hold 2)"
+   on hover when you hold more than one), counted under Yours; one you don't hold names who does under Other teams.
+   Without synced picks, as before (no owner).
+2. **The Picks chip looks lit:** green like All (it was the grey Pick color, which read as switched off).
+3. **PageDown from the title.** Focus starts on the title (for screen readers), outside the scrolling list, so the
+   first PageDown did nothing; PageDown / PageUp, the arrows, Space, Home and End now scroll the list from there.
+4. **Tests for Sleeper's player list loading and failing:** a fresh browser with the list held shows "Checking names
+   against Sleeper…" and every row, then on a failure "Sleeper's player list didn't load…", no name flagged, and the
+   league's own positions (Henry RB5).
+
+**Checks (round 7, the owner asked about test time).** The full suite takes ~20 minutes here and ran after every round.
+This round: check-precache, the unit tests, this view's spec (22 tests), and the sheet, legend and In-Season specs; the
+full suite runs once before the last push (and CI runs it on the PR).
+
 **For a runbook card (owner's idea, 2026-11-08): player stats and research.** Tapping a player here (and perhaps in
 other lists) could open a card with season stats; how much (this season, past seasons, T-Score data) is the open
 question, so it's its own card, after S32 (whose row sheet it could share) and M11's sheet.

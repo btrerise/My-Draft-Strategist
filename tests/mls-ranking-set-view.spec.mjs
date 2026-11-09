@@ -5,7 +5,7 @@
 // Setup: the synced Fixture League (one league, so the row under the drop-down holds just "View") and a ROS set from
 // rankings-waivers.csv (24 rostered players, 6 free agents) plus one name Sleeper doesn't know.
 import { test, expect } from '@playwright/test';
-import { openApp, seedMls, showTab, callApp, FIXED_NOW, WAIVER_RANKINGS_CSV } from './helpers.mjs';
+import { openApp, preparePage, seedMls, showTab, callApp, FIXED_NOW, WAIVER_RANKINGS_CSV } from './helpers.mjs';
 
 const CSV = WAIVER_RANKINGS_CSV.trimEnd() + '\n31,Zzyzx Notaplayer,WR,KC,6,10\n';
 const TOTAL = 31;
@@ -387,4 +387,66 @@ test('Phones get it at full height; computers a wider panel than the legend\'s',
     // The search box and the chips stay in sight once the list has scrolled.
     await sheet.locator('.sheet-body').evaluate(el => { el.scrollTop = el.scrollHeight; });
     await expect(sheet.locator('.rset-search')).toBeInViewport();
+});
+
+test('Draft picks you hold count as yours; the Picks chip looks lit', async ({ page }) => {
+    await setUp(page);
+    await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + 1000));
+    await uploadRos(page, 'Dynasty SF', 'Rank,Player,Pos,Team\n1,Ja\'Marr Chase,WR,CIN\n2,2027 1st,PICK,\n3,Bijan Robinson,RB,ATL\n4,2027 2nd,PICK,\n');
+    // The league's synced picks (a dynasty league, improvements S19): two 2027 1sts are yours, the Rival has the 2nds.
+    await page.evaluate(async () => {
+        const { State } = await import('/js/mls/state.js');
+        State.leagues[0].picks = { You: [{ name: '2027 1st' }, { name: '2027 1st' }], Rival: [{ name: '2027 2nd' }, { name: '2027 2nd' }] };
+    });
+    await page.locator('#rosSetLeaguesRow .mls-view-set-btn').click();
+    const sheet = page.getByRole('dialog', { name: 'Dynasty SF' });
+    const first = rowFor(sheet, '2027 1st');
+    await expect(first.locator('.rset-rank-chip.is-mine')).toHaveAttribute('title', 'Yours (you hold 2)');
+    await expect(rowFor(sheet, '2027 2nd').locator('.rset-rank-chip')).toHaveCount(0);
+    const picks = sheet.getByRole('button', { name: 'Picks 2' });
+    await expect(picks).toHaveClass(/badge-all/);
+    await expect(picks).toHaveClass(/active-filter/);
+    const owners = sheet.getByRole('group', { name: 'Who has him' });
+    await expect(owners.getByRole('button')).toHaveText([/Everyone\s*4/, /Yours\s*2/, /Free agents\s*0/, /Other teams\s*2/]);
+    await owners.getByRole('button', { name: 'Other teams 2' }).click();
+    await expect(visibleRows(sheet).locator('.rset-name')).toHaveText(['Bijan Robinson', '2027 2nd']);
+    await expect(rowFor(sheet, '2027 2nd').locator('.rset-owner-name')).toHaveText(/Rival$/);
+});
+
+test('PageDown scrolls the list straight after opening, with focus still on the title', async ({ page }) => {
+    await setUp(page);
+    const sheet = await openView(page);
+    await expect(sheet.locator('.sheet-title')).toBeFocused();
+    const body = sheet.locator('.sheet-body');
+    await page.keyboard.press('PageDown');
+    await expect.poll(() => body.evaluate(e => e.scrollTop)).toBeGreaterThan(100);
+    await page.keyboard.press('Home');
+    await expect.poll(() => body.evaluate(e => e.scrollTop)).toBe(0);
+});
+
+test('While Sleeper\'s player list loads, and if it fails, the list still shows', async ({ page, browser }) => {
+    await setUp(page);
+    const saved = await page.evaluate(() => JSON.stringify({ ...localStorage }));
+    // A fresh browser (no cached player list), with Sleeper's player list held, then failing.
+    const context = await browser.newContext({ viewport: page.viewportSize(), serviceWorkers: 'block' });
+    const fresh = await context.newPage();
+    await preparePage(fresh);
+    let release;
+    const held = new Promise(r => { release = r; });
+    await fresh.route(/sleeper\.(app|com)\/v1\/players\/nfl$/, async (route) => { await held; await route.fulfill({ status: 500, body: 'null' }); });
+    await fresh.addInitScript((data) => { if (!localStorage.length) Object.entries(JSON.parse(data)).forEach(([k, v]) => localStorage.setItem(k, v)); }, saved);
+    await fresh.goto('/lineup/');
+    await showTab(fresh, 'roster');
+    const toggle = fresh.locator('#rosRankingsCard .rankings-card-toggle');
+    if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+    await fresh.locator('#rosSetLeaguesRow .mls-view-set-btn').click();
+    const sheet = fresh.getByRole('dialog', { name: 'ROS Redraft' });
+    await expect(sheet.locator('.rset-note')).toHaveText('Checking names against Sleeper…');
+    await expect(sheet.locator('.rset-table tbody tr.rset-row')).toHaveCount(TOTAL);
+    release();
+    await expect(sheet.locator('.rset-note')).toHaveText("Sleeper's player list didn't load, so names aren't checked and some positions may be missing.");
+    // No name is flagged when nothing could be checked; the league's own positions still show.
+    await expect(sheet.locator('.rset-nomatch-badge')).toHaveCount(0);
+    await expect(rowFor(sheet, 'Derrick Henry').locator('.rset-pos')).toHaveText('RB5');
+    await context.close();
 });

@@ -38,6 +38,7 @@ import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { hydrateRankingsForLeague } from '../leagues/sync.js';
 import { loadRosterTab, optimizeLineup } from '../main.js';
 import { displayRanksFor, leagueRankDisplayIndex } from './displayRanks.js';
+import { pickHolders } from '../leagues/picks.js';
 import { IN_SEASON, seasonSetFor } from './season.js';
 import { opponentFor, rankedOpponentBadgeHTML } from '../opponent.js';
 
@@ -85,6 +86,15 @@ export function buildSetRows(data, league, meta) {
         let pos = pick ? 'PICK' : getPos(clean);
         if (pos === 'UNK' && rosterByName[clean] && rosterByName[clean].pos) pos = rosterByName[clean].pos;
         const shown = displayRanksFor(index, clean, p);
+        // A draft pick ("2027 1st") is yours when you hold one like it in this league (league.picks, synced in
+        // dynasty and keeper leagues; round 7); else whoever holds them. Unknown (null) without synced picks.
+        let owner = rosterByName[clean] ? 'You' : (owners[clean] || null);
+        let pickCount = 0;
+        if (pick) {
+            const holders = pickHolders(league.picks, p.name);
+            pickCount = holders && holders.includes('You') ? league.picks.You.filter(x => pickHolders({ You: [x] }, p.name).length).length : 0;
+            owner = !holders || holders.length === 0 ? null : pickCount ? 'You' : holders.join(', ');
+        }
         rows.push({
             i,
             rank: ranked(p.rank),
@@ -99,7 +109,8 @@ export function buildSetRows(data, league, meta) {
             flexTier: Number.isFinite(p.flexTier) ? p.flexTier : null,
             // This week's opponent and matchup rank, in a Weekly file that has them (improvements S31).
             opp: p.opp || null, oppHome: typeof p.oppHome === 'boolean' ? p.oppHome : null, oppRank: Number.isInteger(p.oppRank) ? p.oppRank : null,
-            owner: rosterByName[clean] ? 'You' : (owners[clean] || null),
+            owner,
+            pickCount,
             // Only once Sleeper's player map is in; picks are never players.
             unmatched: !!meta && !pick && !meta[clean] && !posMap[clean]
         });
@@ -157,7 +168,7 @@ function rowHTML({ r, n, tier, posOnly }, { mapped }) {
     // row is one line. Another team's name is in the row but shows only under the Other teams chip, where every row has
     // one (until then it's read out to screen readers only, as "yours" is).
     const marks = [];
-    const ownerText = r.owner === 'You' ? '<span class="sr-only">, yours</span>'
+    const ownerText = r.owner === 'You' ? `<span class="sr-only">, yours${r.pickCount > 1 ? ` (you hold ${r.pickCount})` : ''}</span>`
         : r.owner ? `<span class="rset-owner-name"><span class="sr-only">, on </span>${escapeHtml(r.owner)}</span>` : '';
     if (r.unmatched) {
         marks.push('<span class="badge rset-nomatch-badge">No Sleeper match</span>');
@@ -166,7 +177,7 @@ function rowHTML({ r, n, tier, posOnly }, { mapped }) {
     const owner = r.owner === 'You' ? 'MINE' : r.owner ? 'OTHERS' : isFree(r, mapped) ? 'FREE' : '';
     const search = `${r.name} ${r.clean} ${r.team || ''}`.toLowerCase();
     return `<tr class="rset-row" data-i="${r.i}" data-owner="${owner}" data-tier="${tier ?? ''}" data-search="${escapeHtml(search)}">`
-        + `<td class="rset-rank">${r.owner === 'You' ? `<span class="rset-rank-chip is-mine" title="Yours">${n ?? '–'}</span>` : (n ?? '–')}</td>`
+        + `<td class="rset-rank">${r.owner === 'You' ? `<span class="rset-rank-chip is-mine" title="${r.pickCount > 1 ? `Yours (you hold ${r.pickCount})` : 'Yours'}">${n ?? '–'}</span>` : (n ?? '–')}</td>`
         + `<th scope="row" class="rset-player"><span class="rset-name">${escapeHtml(r.name)}</span>${team}${ownerText}`
         + (marks.length ? `<span class="rset-marks">${marks.join('')}</span>` : '') + `</th>`
         + `<td class="rset-pos">${posCell}</td>`
@@ -182,7 +193,7 @@ function chipHTML(action, key, label, count, colorClass) {
         + `<span class="mls-poscount-name">${escapeHtml(label)}</span><span class="mls-poscount-num">${count}</span></button>`;
 }
 
-const colorFor = (key) => POSITIONS.includes(key) ? `pos-badge ${key}` : key === 'FLEX' ? 'flex-blend' : key === 'PICK' ? 'pos-badge FLEX' : 'badge-all';
+const colorFor = (key) => POSITIONS.includes(key) ? `pos-badge ${key}` : key === 'FLEX' ? 'flex-blend' : 'badge-all';
 
 function bodyHTML(set, rows, metaState) {
     const cfg = RANKING_TYPE_CONFIG[view.type];
@@ -508,6 +519,19 @@ export function openRankingSetView(opener, type, slot = null) {
         rsetEditInput() { showCheck(this); }
     });
     delegate(root, 'change', { rsetPick() { mine.setId = this.value; mine.list = null; mine.unmatchedOnly = false; render(mine.metaState); } });
+    // Focus starts on the title (outside the scrolling body), so the keys that scroll a page scroll the list from
+    // there too (round 7): before, the first PageDown after opening did nothing.
+    root.addEventListener('keydown', (e) => {
+        if (!e.target.classList || !e.target.classList.contains('sheet-title')) return;
+        const body = root.querySelector('.sheet-body');
+        const page = body.clientHeight * 0.9;
+        const by = { PageDown: page, PageUp: -page, ArrowDown: 40, ArrowUp: -40, ' ': page }[e.key];
+        if (e.key === 'Home') body.scrollTop = 0;
+        else if (e.key === 'End') body.scrollTop = body.scrollHeight;
+        else if (by !== undefined) body.scrollBy({ top: e.shiftKey && e.key === ' ' ? -page : by });
+        else return;
+        e.preventDefault();
+    });
     // Escape: cancels a name being fixed, then clears a typed search, before the sheet's own Escape closes it.
     // Enter in the name field saves it.
     root.addEventListener('keydown', (e) => {
