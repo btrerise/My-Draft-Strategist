@@ -326,7 +326,7 @@
         <ul id="leagueCards" class="mls-lc-list"></ul>
         <!-- RECENT SYNC LOGS -->
         <details class="sos-details-accordion mt-4" id="syncLogAccordion" style="display: none; border-color: rgba(59, 130, 246, 0.3); background: rgba(0,0,0,0.15);">
-            <summary class="sos-summary" style="color: #60a5fa;" id="syncLogSummary">Recent Sync Logs</summary>
+            <summary class="sos-summary chevron-summary" style="color: #60a5fa;"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg><span id="syncLogSummary">Recent Sync Logs</span></summary>
             <div id="syncLogContent" class="stack stack-sm pt-3">
                 <!-- Populated by JS -->
             </div>
@@ -444,7 +444,7 @@
         </div>
 
         <details class="sos-details-accordion">
-            <summary class="sos-summary">Add Player Manually</summary>
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Add Player Manually</summary>
             <div class="accordion-body">
                 <div class="manual-player-grid">
                     <input type="text" id="manualName" class="form-input" placeholder="Player Name" autocomplete="off" aria-label="Player name" aria-describedby="manualKeyHint">
@@ -467,7 +467,7 @@
         
         <!-- The Scoreboard's MVPs and LVPs (week/recapLines.js, improvements S22). -->
         <details class="sos-details-accordion">
-            <summary class="sos-summary">MVP / LVP Lines</summary>
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>MVP / LVP Lines</summary>
             <div class="accordion-body">
                 <p class="card-desc">The points that make a player an MVP (Boom) or an LVP (under Bust) on the Scoreboard. Each player is judged once, on his points for the week in one scoring format from Sleeper's stats, the same in every league, so full PPR or TE premium doesn't make a line easier. K and DEF aren't covered. These are only for the Scoreboard's MVPs and LVPs; the Matchup Simulator's boom/bust chances are separate.</p>
                 <div class="recap-lines-scale">
@@ -502,7 +502,7 @@
         </details>
 
         <details class="sos-details-accordion">
-            <summary class="sos-summary">Backup & Restore</summary>
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Backup & Restore</summary>
             <div class="accordion-body flex-column gap-2">
                 <button class="btn btn-primary" data-action="exportMlsSettings">Export Backup</button>
                 <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" aria-label="Import backup file" data-action="importMlsSettings">
@@ -511,7 +511,7 @@
         </details>
 
         <details class="sos-details-accordion danger-card">
-            <summary class="sos-summary text-danger">Danger Zone</summary>
+            <summary class="sos-summary chevron-summary text-danger"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Danger Zone</summary>
             <div class="accordion-body">
                 <p class="card-desc">Having issues or starting a new season? This will completely erase all cached leagues, custom rankings, and settings from your device.</p>
                 <button class="btn btn-danger" data-action="factoryReset">Factory Reset App Data</button>
@@ -556,7 +556,7 @@
     <section class="settings-card rankings-card" id="rosRankingsCard">
         <header class="card-header rankings-card-header">
             <div class="rankings-header-titles">
-                <h3><button type="button" class="rankings-card-toggle btn-bare" data-action="toggleRankingsCard" data-card="rosRankingsCard" aria-expanded="false" aria-controls="rosRankingsBody"><span id="rosRankingsTitle">Rest-of-Season (ROS) Rankings</span><svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button></h3>
+                <h3><button type="button" class="rankings-card-toggle btn-bare" data-action="toggleRankingsCard" data-card="rosRankingsCard" aria-expanded="false" aria-controls="rosRankingsBody"><span id="rosRankingsTitle">Rest-of-Season (ROS) Rankings</span><svg class="chevron chevron-flip" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button></h3>
                 <!-- Name of the set this league uses, filled by populateRankingSetDropdown.
                      Lives in the header so it stays readable with the card collapsed. -->
                 <div id="rosHeaderSetName" class="rankings-header-set"></div>
@@ -676,7 +676,7 @@
                  change. The summary line names them (applyMarketSettingsToUI, js/mls/settings.js). Shared with the
                  Scout tab's market settings. -->
             <details id="rosAutoFetchSettings" class="mls-autofetch-settings mb-2">
-                <summary><span class="mls-autofetch-settings-label">Settings</span> <span id="rosMarketSummary" class="mls-autofetch-settings-values"></span></summary>
+                <summary class="chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg><span class="mls-autofetch-settings-label">Settings</span> <span id="rosMarketSummary" class="mls-autofetch-settings-values"></span></summary>
                 <div class="input-group">
                     <label for="rosMarketSourceSelect">Market Source</label>
                     <select id="rosMarketSourceSelect" class="form-input" data-action="updateMarketSetting" data-setting="source" aria-label="Select Market Source">
@@ -842,7 +842,7 @@
         <div id="sosStatus" class="sos-status" hidden></div>
         
         <details class="sos-details-accordion">
-            <summary class="sos-summary">Edit Manual SoS Grid</summary>
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Edit Manual SoS Grid</summary>
             <p class="sos-grid-note">Each team's matchup rank at each position: 1 = easiest, 32 = hardest.</p>
             <div class="sos-table-wrapper">
                 <table class="sos-grid" id="sosGridTable">
@@ -878,7 +878,7 @@
     <section class="settings-card rankings-card" id="weeklyRankingsCard">
         <header class="card-header rankings-card-header">
             <div class="rankings-header-titles">
-                <h3><button type="button" class="rankings-card-toggle btn-bare" data-action="toggleRankingsCard" data-card="weeklyRankingsCard" aria-expanded="false" aria-controls="weeklyRankingsBody"><span>Weekly Matchup Rankings</span><svg class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button></h3>
+                <h3><button type="button" class="rankings-card-toggle btn-bare" data-action="toggleRankingsCard" data-card="weeklyRankingsCard" aria-expanded="false" aria-controls="weeklyRankingsBody"><span>Weekly Matchup Rankings</span><svg class="chevron chevron-flip" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button></h3>
                 <div id="weeklyHeaderSetName" class="rankings-header-set"></div>
             </div>
             <div class="cluster cluster-sm">
@@ -995,7 +995,7 @@
         <!-- Lineup settings (improvements S31, owner's choice): FLEX Kickoff Optimization and the matchup ranks' 1 = hardest
              switch, folded like the Trade Analyzer's Value settings. -->
         <details class="sos-details-accordion mls-lineup-settings" id="lineupSettings">
-            <summary class="sos-summary">Lineup settings</summary>
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Lineup settings</summary>
             <div class="accordion-body">
                 <div class="toggle-row">
                     <div class="toggle-info">
@@ -1349,7 +1349,7 @@
 
         <!-- Waiver Adjustment, folded under the button (improvements S14, round 5): set once, rarely changed. -->
         <details class="sos-details-accordion mls-trade-value-settings">
-            <summary class="sos-summary">Value settings</summary>
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Value settings</summary>
             <div class="accordion-body">
             <div class="settings-subsection">
                 <div class="toggle-row">
@@ -1747,7 +1747,7 @@
                      destination line and the league list off a phone's screen. -->
                 <p class="preview-derived-body"></p>
                 <details class="preview-derived-more">
-                    <summary>Why?</summary>
+                    <summary class="chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Why?</summary>
                     <p class="preview-derived-detail"></p>
                 </details>
             </div>

@@ -77,8 +77,8 @@
 .lineup-needs-box { border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); padding: 0.5rem 0.75rem; margin-bottom: 0.75rem; font-size: 0.85rem; }
 .lineup-needs-title { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; font-weight: 600; color: var(--text-main); cursor: pointer; }
 .lineup-needs-title > span { flex: 1; min-width: 0; }
-.lineup-needs-title > .mls-change-chevron { flex-shrink: 0; color: var(--text-muted); transform: none; transition: transform 0.15s; }
-.lineup-needs-box.is-collapsed .lineup-needs-title > .mls-change-chevron { transform: rotate(-90deg); }
+/* Its chevron turns with the shared .chevron rule (css/base.css, CHEVRONS; improvements F11). */
+.lineup-needs-title > .mls-change-chevron { flex-shrink: 0; color: var(--text-muted); }
 .lineup-needs-title > svg { flex-shrink: 0; color: var(--text-muted); }
 .lineup-needs-box.has-problems .lineup-needs-title > svg { color: #f59e0b; }
 .lineup-needs-list { list-style: none; margin: 0.35rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
@@ -140,11 +140,8 @@
     cursor: pointer;
     width: 100%; /* <button> since Chunk 3; buttons don't stretch like the old <div> did */
 }
-.lock-countdown-header .chevron-icon {
+.lock-countdown-header .chevron {
     flex-shrink: 0;
-}
-.lineup-lock-countdown-collapsible.expanded .chevron-icon {
-    transform: rotate(180deg);
 }
 .lineup-lock-countdown-collapsible:not(.expanded) .lock-countdown-detail {
     display: none;
@@ -1435,14 +1432,14 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
     position: absolute;
     inset: 0;
 }
-.settings-card.rankings-card > .rankings-card-header .chevron-icon {
+.settings-card.rankings-card > .rankings-card-header .chevron {
     position: absolute;
     right: 0;
     top: 0;
     bottom: 0.75rem; /* .card-header's padding-bottom: centre on the content, not the padding */
     margin: auto 0;
 }
-.settings-card.rankings-card:not(.expanded) > .rankings-card-header .chevron-icon {
+.settings-card.rankings-card:not(.expanded) > .rankings-card-header .chevron {
     bottom: 0; /* padding-bottom is 0 when collapsed (rule below) */
 }
 .settings-card.rankings-card > .rankings-card-header > .cluster {
@@ -1459,10 +1456,6 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
     margin-bottom: 0;
     padding-bottom: 0;
     border-bottom: none;
-}
-
-.rankings-card.expanded .chevron-icon {
-    transform: rotate(180deg);
 }
 
 .header-freshness {
@@ -1876,10 +1869,8 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .mls-lc-head { display: flex; align-items: flex-start; gap: 0.4rem; }
 .mls-lc-fold { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; color: var(--text-muted); cursor: pointer; }
 .mls-lc-fold:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.06); }
-/* The chevron turns with the card's fold (S16: at the same speed as the card, owner's request; no turn with Reduce Motion). */
-.mls-lc-chevron { transition: transform var(--vt-ms) var(--vt-ease); }
-@media (prefers-reduced-motion: reduce) { .mls-lc-chevron { transition: none; } }
-.mls-lc-card.is-collapsed .mls-lc-chevron { transform: rotate(-90deg); }
+/* The chevron turns with the card's fold at the card's speed (S16, owner's request): the shared .chevron rule since
+   improvements F11 (css/base.css, CHEVRONS), which every other chevron now follows too. */
 .mls-lc-name-btn { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0.2rem 0; background: none; border: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
 .mls-lc-name { color: var(--text-main); font-size: 0.95rem; overflow-wrap: break-word; }
 .mls-lc-meta { font-size: 0.75rem; color: var(--text-muted); }
@@ -2457,8 +2448,6 @@ button.ir-slot-badge { font-family: inherit; line-height: inherit; cursor: point
 .mls-change-details { padding-top: 0.6rem; border-top: 1px solid var(--border); }
 .mls-change-fold > summary { cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--primary-green); list-style: none; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.3rem 0.5rem; }
 .mls-change-fold > summary::-webkit-details-marker { display: none; }
-.mls-change-chevron { transform: rotate(-90deg); transition: transform 0.15s; }
-.mls-change-fold[open] > summary .mls-change-chevron { transform: none; }
 .mls-change-fold:not([open]) > summary .mls-change-when-open,
 .mls-change-fold[open] > summary .mls-change-when-closed { display: none; }
 .mls-change-all, .mls-change-yours-all { margin-top: 0.6rem; }
@@ -2473,14 +2462,12 @@ button.ir-slot-badge { font-family: inherit; line-height: inherit; cursor: point
 
 /* --- The Scoreboard's MVPs & LVPs (week/thisWeek.js, improvements S22): a folded section under the tiles. --- */
 .mls-recap { margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 0.6rem; }
-/* The Scoreboard's folds (Still in play, MVPs & LVPs; S22 round 3): the chevron turns at the league cards' speed while a
-   "cards" view transition moves the box (week/thisWeek.js, toggleWeekFold). */
+/* The Scoreboard's folds (Still in play, MVPs & LVPs; S22 round 3): the chevron turns (the shared .chevron rule,
+   css/base.css) while a "cards" view transition moves the box (week/thisWeek.js, toggleWeekFold). */
 .mls-week-fold-toggle { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; width: 100%; padding: 0.2rem 0; text-align: left; color: inherit; font: inherit; cursor: pointer; }
 .mls-week-fold-toggle .mls-week-sub { margin: 0; }
 .mls-week-inplay { margin-top: 0.6rem; }
-.mls-week-chevron { flex-shrink: 0; color: var(--text-muted); transition: transform var(--vt-ms) var(--vt-ease); }
-@media (prefers-reduced-motion: reduce) { .mls-week-chevron { transition: none; } }
-.mls-week-fold:not(.is-open) .mls-week-chevron { transform: rotate(-90deg); }
+.mls-week-chevron { flex-shrink: 0; color: var(--text-muted); }
 .mls-week-export { margin-top: 1rem; display: flex; justify-content: flex-end; }
 .mls-week-export .btn { display: inline-flex; align-items: center; gap: 0.4rem; margin-bottom: 0; }
 .mls-recap-title { font-size: 0.95rem; font-weight: 700; color: var(--text-main); }
@@ -2757,7 +2744,6 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .mls-root-window { margin-top: 0.6rem; }
 .mls-root-window-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.45rem; width: 100%; min-height: 36px; padding: 0.2rem 0; border-bottom: 1px solid var(--border); text-align: left; color: var(--text-muted); font: inherit; font-size: 0.75rem; cursor: pointer; }
 .mls-root-window:not(.is-open) .mls-root-window-head { border-bottom-style: dashed; }
-.mls-root-window:not(.is-open) .mls-root-chevron { transform: rotate(-90deg); }
 .mls-root-window-title { font-weight: 700; font-size: 0.8rem; color: var(--text-main); }
 .mls-root-window-body { padding-top: 0.35rem; }
 .mls-root-sides { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.4rem; }
