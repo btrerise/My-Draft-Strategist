@@ -220,19 +220,16 @@ import { State, getActiveDraft } from './state.js';
     // --- RECAP MATH TOGGLE HELPER ---
     export const toggleRecapMath = function() {
         const breakdown = document.getElementById('recapMathBreakdown');
-        const arrow = document.getElementById('recapMathArrow');
         const btn = document.getElementById('toggleRecapMathBtn');
         const btnText = document.querySelector('#toggleRecapMathBtn span');
         if (!breakdown) return;
 
         if (breakdown.style.display === 'none') {
             breakdown.style.display = 'block';
-            if (arrow) arrow.style.transform = 'rotate(180deg)';
             if (btnText) btnText.innerText = 'Hide Value Breakdown';
             if (btn) btn.setAttribute('aria-expanded', 'true');
         } else {
             breakdown.style.display = 'none';
-            if (arrow) arrow.style.transform = 'rotate(0deg)';
             if (btnText) btnText.innerText = 'Show Value Breakdown';
             if (btn) btn.setAttribute('aria-expanded', 'false');
         }

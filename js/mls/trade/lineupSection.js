@@ -16,6 +16,7 @@ import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { getSleeperMetaByName, makeLeagueGetPos } from '../scout/waivers.js';
 import { buildRankDisplayIndex } from '../scout/waiverScanner.js';
 import { isDraftPickName } from './valueCurve.js';
+import { FOLD_CHEVRON } from '../lineup/gameInfo.js';
 import { tradeSeasonSet, tradeVerdictNumbers, unknownNames } from './verdict.js';
 import { tradeAnalysisBasis } from './fairSection.js';
 import {
@@ -216,7 +217,7 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
         const pHoles = holes(impact.partner, 'their');
         body += `
         <details class="mls-trade-impact-partner">
-            <summary>Their team: ${escapeHtml(partner)}</summary>
+            <summary class="chevron-summary">${FOLD_CHEVRON}<span>Their team: ${escapeHtml(partner)}</span></summary>
             ${summaryLines(impact.partner, impact.teams)}
             ${powerTable([impact.partner], impact.teams, pIn, pOut, columns)}
             ${notesHTML(pHoles)}

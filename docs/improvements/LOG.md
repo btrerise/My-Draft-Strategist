@@ -9849,3 +9849,84 @@ already moved locked players to their first fitting slot, so a starter-to-starte
 only `visual.spec.mjs`'s cloud-fonts guard (MDS and MLS, both widths), which fails the same way on main here.
 
 **Left over:** nothing.
+
+## F11 — Every chevron turns when its section opens
+
+**Goal** (owner, 2026-11-08): "All chevrons need to animate (similar to the chevrons on the Dashboard)." M3 hasn't
+merged, so the timing is S16's `--vt-ms` / `--vt-ease` (the Dashboard league cards' own: 275 ms on phones, 375 ms from
+768px, `cubic-bezier(0.2, 0, 0, 1)`). When M3 moves every transition onto its motion tokens, the one `.chevron` rule
+moves with the view transitions' timings (M3's card keeps S16's durations).
+
+**User-visible effect.** Every fold and unfold in the three pages turns its chevron the same way, at the Dashboard's
+speed; with Reduce Motion it switches without moving. Chevrons that turned faster (0.15 s or 0.2 s with another curve)
+now turn at the Dashboard's speed; chevrons that jumped (a redrawn box, an inline style) now turn. The folds that showed
+the browser's own triangle (▸) show the site's chevron (Feather `chevron-down`, 14px, stroke 2.5, like the "What
+changed?" folds; 18px on T-Score's large appendix title) pointing right when closed and down when open, and it turns.
+No fold's resting look changed otherwise: the ones that pointed right/down still do, the ones that pointed down/up
+(rankings cards, next-lock line, Draft Strategist's cards) still do.
+
+**The shared rule** (css/base.css, CHEVRONS): `<svg class="chevron">` as a direct child of its toggle (a `<summary>`,
+or a button with `aria-expanded`). `.chevron` rests at −90° (right) and turns to 0 (down) under
+`:is(details[open] > summary, [aria-expanded="true"]) > .chevron`; `.chevron.chevron-flip` rests at 0 and turns to 180°
+(up). `transition: transform var(--vt-ms) var(--vt-ease)`, `none` under Reduce Motion. `.chevron-summary` (on a
+`<summary>`) drops the browser's marker (`list-style: none`, `::-webkit-details-marker`) and lays the chevron and the
+title out in a row (`display: flex; gap: 0.4rem`). The state comes from the toggle's own `[open]` / `aria-expanded`,
+which every fold already set (the screen-reader state), rather than from each card's class.
+
+**Redrawn folds** (new `js/shared/ui/chevron.js`, in `PRECACHE_ASSETS`): `turnChevronAcrossRedraw(selector, redraw)`
+reads the old chevron's angle, runs the redraw, and plays the turn on the new chevron with the duration and curve the
+CSS rule gives it (Web Animations; no turn when the computed duration is 0s, i.e. Reduce Motion). Used by the two folds
+that redraw their whole box on every click: the Lineup tab's "This lineup needs you" title (`toggleLineupNeeds`,
+renderLineupUI) and Draft Strategist's My Queue (`toggleQueueCollapse`, renderBoard). Folding them in place would have
+meant reworking each render; the helper keeps the code paths as they were.
+
+**Inventory** (grep of css/, js/ and the three pages for `chevron`, `<summary>`, Feather chevron polylines and
+`rotate(`):
+
+| Where | Before | Now |
+|---|---|---|
+| Dashboard league cards (`.mls-lc-chevron`, render/leagueCards.js) | turned, `--vt-ms`, own rule in mls.css | shared rule (own rule removed) |
+| Scoreboard folds: Still in play, MVPs & LVPs (`.mls-week-chevron`, week/thisWeek.js) | turned, `--vt-ms`, own rule | shared rule (own rule removed; color and flex-shrink kept) |
+| Scoreboard kickoff windows (`.mls-root-chevron`, same SVG) | turned (via `.mls-week-chevron`), own −90° rule | shared rule |
+| "What changed?" folds, Best Available (Dashboard cards), "Differs from your Sleeper lineup" (`.mls-change-chevron` in `<details class="mls-change-fold">`) | turned in 0.15 s, default ease | shared rule |
+| Lineup tab "This lineup needs you" title (`.mls-change-chevron` in a button) | 0.15 s rule, but the box is redrawn on click, so it jumped | shared rule + `turnChevronAcrossRedraw` |
+| Lineup tab "Next lock: N players" (`.chevron-icon`, lineup/gameInfo.js) | turned 0.2 s (M2-era curve), down → up | `.chevron.chevron-flip`, in place |
+| Roster tab rankings cards: ROS, Weekly (`.chevron-icon`, lineup/index.html) | turned 0.2 s, down → up | `.chevron.chevron-flip`, in place |
+| Waiver Wire position groups (`.chevron-icon` in `.rankings-card`, scout/waivers.js) | turned 0.2 s, down → up | `.chevron.chevron-flip`, in place |
+| Draft Strategist player cards on phones (`.btn-expand`, tracker.js) | inline `rotate(…)` + `transition: 0.2s` written at render; the toggle (ui.js) flips the class in place, and the inline style beat the class rule, so it never turned until the next redraw | inline style gone; `.chevron.chevron-flip` |
+| Draft Strategist My Queue (`.queue-header`, tracker.js) | 0.2 s rule, but renderBoard redraws it, so it jumped | `.chevron.chevron-flip` + `turnChevronAcrossRedraw` |
+| Draft Strategist Recap "Show Value Breakdown" (`#recapMathArrow`, index.html / recap.js) | inline `style.transform` set by JS, no transition: jumped | `.chevron.chevron-flip`; the JS lines go |
+| Lineup Strategist `<details class="sos-details-accordion">`: Recent Sync Logs, Add Player Manually, MVP / LVP Lines, Backup & Restore, Danger Zone, Edit Manual SoS Grid, Lineup settings, Value settings | browser triangle, swaps in one frame | shared chevron, `.chevron-summary`; Recent Sync Logs' text moved into `<span id="syncLogSummary">` so its count update (render/dashboard.js) keeps the icon |
+| Roster tab Auto-Fetch "Settings" (`.mls-autofetch-settings`) | browser triangle | shared chevron |
+| Upload preview "Why?" (`.preview-derived-more`) | browser triangle | shared chevron |
+| Trade Analyzer "Their team: …" (`.mls-trade-impact-partner`, trade/lineupSection.js) | browser triangle | `FOLD_CHEVRON` + `.chevron-summary`; Export Trade's image still swaps the `<summary>` for a plain title (`textContent`, so no icon) |
+| T-Score appendix (`sos-details-accordion`) | browser triangle | shared chevron (18px) |
+| T-Score "View WR / RB Model Baseline Variables" | `display: flex` summaries: no marker and no chevron (an info icon) | unchanged: no chevron to turn |
+| Not folds: Scoreboard week arrows, tile "go" arrows, the header's league arrows | — | unchanged |
+
+**Tests.** `tests/chevrons.spec.mjs` (new, both widths): Lineup Strategist's Backup & Restore (shared SVG,
+`aria-hidden`, `stroke=currentColor`, no list marker, the Dashboard's duration and curve, −90° → 0 → −90°), a Dashboard
+league card and the Roster tab's ROS rankings card (0 → 180°); Draft Strategist's My Queue (the redrawn chevron runs one
+animation and settles at the new angle); T-Score's appendix; Reduce Motion (duration 0s, no animation on the redraw).
+Ran it with `mls-lineup-needs`, `mls-league-cards`, `mls-mvp-lvp`, `mls-root-for`, `mls-rankings-change`,
+`mls-best-available`, `mls-trade-impact`, `view-transitions`, `svg-icons`, `tooltips-onscreen`, `touch-targets`,
+`focus-ring`, `mls-weekly-locks`, `mls-waiver-tiers`, `mls-market`, `mds-upload-preview`, `tscore-refresh`, `smoke`,
+`mls-this-week`, `badge-legend` (283 passed, 7 skipped as on main), check-precache and the unit tests (540 pass).
+
+**Screenshots.** The card expected none, but swapping the browser's triangle for the chevron (in scope) is visible.
+Rendered main and this branch the same way here (`RENDER_ENV=any`, worktree of origin/main) and compared with
+`npm run pxdiff`: 30 PNGs identical, 12 differ, each only at a `<summary>` whose triangle is now a chevron (the title
+moves about a pixel):
+- `desktop/` and `phone/` `mls-empty-setup.png`, `mls-league-setup.png` (Setup tab's accordions);
+- `mls-league-roster.png` (Auto-Fetch Settings, Edit Manual SoS Grid);
+- `mls-league-lineup.png` (Lineup settings); `mls-league-scout.png` (Value settings);
+- `tscore-researchTab.png` (the appendix).
+None re-taken here (this container can't match CI's fonts); take those 12 from the pull request's CI run
+("When your machine can't reproduce the baselines", docs/TESTING.md).
+
+**Decisions (mine, no "Asks you" on the card).** Kept both resting pairs (right/down and down/up) rather than turning
+every chevron the Dashboard's way: the card says end states don't change. `sw.js`: `CACHE_NAME` v2.9.11 → v2.9.12.
+CHANGELOG lines under both apps (T-Score's appendix in Draft Strategist's, as K3 did for T-Score).
+
+**Left over.** The 12 screenshots from CI. For M3: the `.chevron` rule uses S16's `--vt-ms` / `--vt-ease`; M3 moves
+it with the view transitions. F16 (closed tooltips, also css/base.css) waits for this to merge.

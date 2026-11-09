@@ -15,6 +15,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Every chevron turns as its section opens.** My Queue's chevron on the Tracker, a player card's on phones and the
+  Recap's "Show Value Breakdown" now turn smoothly, at the same speed as Lineup Strategist's Dashboard cards. On the
+  T-Score page, the appendix's triangle is now the site's chevron, and it turns too. With Reduce Motion on, they
+  switch without moving.
+
 - **Shared links show a picture.** A link to Draft Strategist or the T-Score page sent in a group chat, or posted on
   Facebook, Slack, Discord or X, now previews with the site's logo, a line about the page and "free, no ads" (it showed
   no picture before). Opening a link shared with the Share button counts once as a shared visit, and `?ref=share` is
@@ -152,6 +157,14 @@ What changed for users in each version of the two apps, in plain language. Newes
 ## Lineup Strategist
 
 ### Unreleased
+
+- **Every chevron turns as its section opens, at the Dashboard's speed.** The Dashboard's league cards and the
+  Scoreboard's folds already did; now the Lineup tab's "This lineup needs you" box and the next-lock line, the
+  rankings cards, the Waiver Wire's position groups, Best Available, the Sleeper differences and "What
+  changed?" turn the same way (some used to turn faster, some jumped). The folds that showed a small triangle (Add Player
+  Manually, MVP / LVP Lines, Backup & Restore, Danger Zone, Recent Sync Logs, Edit Manual SoS Grid, Lineup settings,
+  Value settings, Auto-Fetch's Settings, the upload preview's "Why?" and the Trade Analyzer's "Their team") show the
+  site's chevron instead, which turns as well. With Reduce Motion on, they switch without moving.
 
 - **Players you lock still follow kickoff order.** With FLEX Kickoff Optimization on, a player you locked is placed by
   his game time like everyone else: a locked Monday-night WR now takes FLEX instead of staying in a WR slot while FLEX

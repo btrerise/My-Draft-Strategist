@@ -7,6 +7,7 @@ import { getSleeperMatchups } from '../../shared/api/sleeper.js';
 import { getWeeklyProjections } from '../../shared/api/sleeperStats.js';
 import { escapeHtml } from '../../shared/html.js';
 import { showToast } from '../../shared/ui/toast.js';
+import { turnChevronAcrossRedraw } from '../../shared/ui/chevron.js';
 import { LINEUP_PROJECTION_TTL_MS, LINEUP_STATS_TTL_MS } from '../constants.js';
 import { getByeWeek } from '../../shared/data/byes.js';
 import { KEYS } from '../../shared/storage/keys.js';
@@ -435,7 +436,7 @@ import { leagueNeeds, lineupIssueItems, lineupIssues, sleeperLineupChanges, stat
         }
 
         const namesHTML = lockingPlayers.map(p => escapeHtml(p.name)).join(', ');
-        const chevronSvg = `<svg aria-hidden="true" class="chevron-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+        const chevronSvg = `<svg aria-hidden="true" class="chevron chevron-flip" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
         return `<div id="lockCountdownCard" class="lineup-lock-countdown-collapsible">
             <button type="button" class="lock-countdown-header btn-bare" data-action="toggleLockCountdown" aria-expanded="false" aria-controls="lockCountdownDetail">
                 ${clockSvg}
@@ -508,12 +509,13 @@ import { leagueNeeds, lineupIssueItems, lineupIssues, sleeperLineupChanges, stat
             if (State.lineupNeedsCollapsed) localStorage.setItem(KEYS.mls.lineupNeedsCollapsed, '1');
             else localStorage.removeItem(KEYS.mls.lineupNeedsCollapsed);
         } catch (e) { /* storage blocked: it still folds for this visit */ }
-        renderLineupUI();
+        // The box is redrawn, so its chevron is a new element: turn it from the old one's angle (improvements F11).
+        turnChevronAcrossRedraw('#optimalLineupContainer .lineup-needs-title > .chevron', renderLineupUI);
     }
 
     // The "What changed?" card's fold chevron (js/mls/rankings/changeSummary.js), for the Sleeper fold here and on
     // the Dashboard.
-    export const FOLD_CHEVRON = `<svg class="mls-change-chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+    export const FOLD_CHEVRON = `<svg class="chevron mls-change-chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 
     // Your lineup here against the one on Sleeper as of the last sync: { start: [names], bench: [names], benchNotes,
     // urgent }, or null when they match or there's nothing to compare (Best Ball, manual leagues, no lineup yet). A

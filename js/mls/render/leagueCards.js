@@ -42,7 +42,7 @@ import { renderBestAvailable } from '../scout/bestAvailable.js';
 import { refreshThisWeek, renderThisWeek } from '../week/thisWeek.js';
 import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/viewTransition.js';
 
-    const CHEVRON = `<svg class="mls-lc-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+    const CHEVRON = `<svg class="chevron mls-lc-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
     const isOffSleeper = (l) => /^(manual|handoff)_/.test(l.leagueId);
 
     // --- Folded cards: your own choices, remembered: { folded: [leagueId], open: [leagueId] } ---

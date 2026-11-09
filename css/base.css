@@ -1843,10 +1843,24 @@ input[type="file"]::-webkit-file-upload-button:hover {
   }
 }
 
-/* --- MOBILE COLLAPSIBLE CARDS --- */
-.chevron-icon {
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+/* --- CHEVRONS (improvements F11) ---
+   Every fold's chevron, in all three pages: <svg class="chevron"> as a direct child of its toggle, which is a
+   <summary> or a button with aria-expanded. It turns with the fold at the Dashboard's league cards' speed (S16's
+   --vt-ms and --vt-ease: 275 ms on phones, 375 ms wider), and not at all with Reduce Motion. Two resting pairs, so no
+   fold's look changed: .chevron points right when closed and down when open (the Dashboard's); .chevron-flip
+   points down when closed and up when open (the rankings cards, Draft Strategist's player cards). A <summary> with one
+   gets .chevron-summary in place of the browser's marker. Folds that redraw their toggle on every click turn the new
+   chevron from the old one's angle with turnChevronAcrossRedraw (js/shared/ui/chevron.js). */
+.chevron { transform: rotate(-90deg); transition: transform var(--vt-ms) var(--vt-ease); }
+:is(details[open] > summary, [aria-expanded="true"]) > .chevron { transform: none; }
+.chevron.chevron-flip { transform: none; }
+:is(details[open] > summary, [aria-expanded="true"]) > .chevron.chevron-flip { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) {
+    .chevron { transition: none; }
 }
+.chevron-summary { list-style: none; display: flex; align-items: center; gap: 0.4rem; }
+.chevron-summary::-webkit-details-marker { display: none; }
+.chevron-summary > .chevron { flex-shrink: 0; }
 
 /* --- PLAYER CARD GRID LAYOUT --- */
 .actions {

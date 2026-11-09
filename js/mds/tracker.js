@@ -3,6 +3,7 @@
 // above RENDER DRAFT MATRIX, the T-Score cache reader, buildPlayerCardHTML/buildQueueCardHTML,
 // the queue collapse toggle, renderBoard and toggleHeadshots.
 import { escapeHtml } from '../shared/html.js';
+import { turnChevronAcrossRedraw } from '../shared/ui/chevron.js';
 import { State, getActiveDraft } from './state.js';
 import { renderDraftMatrix } from './board.js';
 import { renderFantasyRoster } from './team.js';
@@ -175,7 +176,7 @@ import { STACK_BADGE_HTML, tierChipMarkup, tScoreBadgeMarkup, valueBadgeMarkup }
                             <button class="mds-btn-sm btn-draft" data-action="draftPlayer" data-id="${p.id}" data-mine="false" aria-label="${escapeHtml(p.name)} taken by another team">Taken</button>
                             <button class="mds-btn-sm btn-mine" data-action="draftPlayer" data-id="${p.id}" data-mine="true" aria-label="Pick ${escapeHtml(p.name)} for my team">Pick</button>
                             <button class="btn-expand hide-on-desktop" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center;" data-action="toggleCardDetails" data-id="${p.id}" aria-label="Expand details" aria-expanded="${p.isExpanded ? 'true' : 'false'}">
-                                <svg aria-hidden="true" class="chevron-icon" style="transform: ${p.isExpanded ? 'rotate(180deg)' : 'rotate(0deg)'}; transition: transform 0.2s;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                <svg aria-hidden="true" class="chevron chevron-flip" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </button>
                         </div>
                     </div>
@@ -275,7 +276,8 @@ import { STACK_BADGE_HTML, tierChipMarkup, tScoreBadgeMarkup, valueBadgeMarkup }
         // focus to <body>; put it back on the new header if it was focused before the toggle.
         const hadFocus = !!(document.activeElement && document.activeElement.classList.contains('queue-header'));
         isQueueCollapsed = !isQueueCollapsed;
-        renderBoard();
+        // A new header, so a new chevron: turn it from the old one's angle (improvements F11).
+        turnChevronAcrossRedraw('#queueContainer .queue-header > .chevron', renderBoard);
         if (hadFocus) {
             const newHeader = document.querySelector('#queueContainer .queue-header');
             if (newHeader) newHeader.focus();
@@ -512,7 +514,7 @@ import { STACK_BADGE_HTML, tierChipMarkup, tScoreBadgeMarkup, valueBadgeMarkup }
             if (activeQueue.length > 0) {
                 let queueExpandedClass = isQueueCollapsed ? "" : " is-expanded";
                 newQueueHTML += `<button type="button" class="queue-header btn-bare${queueExpandedClass}" data-action="toggleQueueCollapse" aria-expanded="${isQueueCollapsed ? 'false' : 'true'}" aria-label="Toggle Queue">                    <span class="queue-header-title"><span class="pulse-dot" style="background-color: #f59e0b; box-shadow: none; animation: none;"></span> My Queue (${activeQueue.length})</span>
-                    <svg aria-hidden="true" class="chevron-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    <svg aria-hidden="true" class="chevron chevron-flip" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </button>`;
 
                 if (!isQueueCollapsed) {

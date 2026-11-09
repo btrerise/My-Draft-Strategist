@@ -942,7 +942,7 @@ function setFoldOpen(which, open) {
         if (open !== f.byDefault) localStorage.setItem(f.key, '1'); else localStorage.removeItem(f.key);
     } catch (e) { /* this visit only */ }
 }
-const CHEVRON = `<svg class="mls-week-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+const CHEVRON = `<svg class="chevron mls-week-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
 function foldSection(which, headHTML, bodyHTML, label, extraClass = '') {
     const open = foldOpen(which);
     const id = `mlsWeekFold-${which}`;

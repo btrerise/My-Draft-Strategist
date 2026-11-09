@@ -736,10 +736,6 @@ button.edit-link {
     padding: 0 0.4rem;
 }
 
-.player-card.is-expanded .chevron-icon {
-    transform: rotate(180deg);
-}
-
 .queue-header {
     font-weight: 700;
     color: #f59e0b;
@@ -760,13 +756,9 @@ button.edit-link {
     gap: 0.5rem;
 }
 
-.queue-header .chevron-icon {
+.queue-header .chevron {
     color: #f59e0b;
     flex-shrink: 0;
-}
-
-.queue-header.is-expanded .chevron-icon {
-    transform: rotate(180deg);
 }
 
 /* Mobile Default: Details hidden only if setting is enabled.
