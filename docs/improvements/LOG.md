@@ -9841,3 +9841,11 @@ already moved locked players to their first fitting slot, so a starter-to-starte
   fail on main.
 - `tests/mls-locked-kickoff.spec.mjs` (new): the lock moves to FLEX (fails on main), and the toggle off keeps the fill.
 - `mls-sflex-kickoff`, `mls-weekly-locks`, `mls-lineup-needs` pass.
+
+**Screenshots:** none changed. No screenshot fixture has a locked player. This container can't match CI's baselines
+(fonts, F1); rendered here the same way, main and this branch give 42 pixel-identical PNGs (`npm run pxdiff`).
+
+**Checks.** `npm run check`: precache OK, 540 unit tests pass, 848 Playwright tests pass (48 skipped). The 4 failures are
+only `visual.spec.mjs`'s cloud-fonts guard (MDS and MLS, both widths), which fails the same way on main here.
+
+**Left over:** nothing.
