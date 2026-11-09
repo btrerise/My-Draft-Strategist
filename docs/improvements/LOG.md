@@ -9924,6 +9924,9 @@ moves about a pixel):
 None re-taken here (this container can't match CI's fonts); take those 12 from the pull request's CI run
 ("When your machine can't reproduce the baselines", docs/TESTING.md).
 
+**Checks.** `npm run check`: precache OK, 540 unit tests pass, 856 Playwright tests pass (48 skipped). The 4 failures are
+only `visual.spec.mjs`'s cloud-fonts guard (MDS and MLS, both widths), which fails the same way on main here.
+
 **Decisions (mine, no "Asks you" on the card).** Kept both resting pairs (right/down and down/up) rather than turning
 every chevron the Dashboard's way: the card says end states don't change. `sw.js`: `CACHE_NAME` v2.9.11 → v2.9.12.
 CHANGELOG lines under both apps (T-Score's appendix in Draft Strategist's, as K3 did for T-Score).
