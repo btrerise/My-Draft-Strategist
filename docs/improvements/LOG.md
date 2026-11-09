@@ -9800,9 +9800,11 @@ x 306–1218, y 684–908; phone 2,173 px in x 55–358, y 684–991. The `-actu
 
 ## F13 — Locked players still follow kickoff order
 
-**Status: built, waiting on the owner's answers** (asked 2026-11-09, with a 375px today/after picture). Committed so far:
-the fix, unit tests, a spec, CHANGELOG, `CACHE_NAME`. Still to do after the answers: record them here, adjust if needed,
-run the full check.
+**Owner's decisions** (asked after reproducing, with a 375px today/after picture of the Lineup tab, 2026-11-09):
+1. Manual locks join the relabel; players whose game has started stay put, including one you locked yourself: **yes**.
+2. Only slot placement was meant: no other on-screen change (rows already read in slot order).
+3. A manual swap (which locks both players) stays as set until the next re-optimize, which may then relabel two swapped
+   starters by kickoff: **agreed**, no special handling.
 
 **The bug, reproduced on main** (`tests/mls-locked-kickoff.spec.mjs`, both widths). Fixture league (QB, 2 RB, 2 WR, TE,
 FLEX), Gibbs moved to mds_test so both RB slots fill. CeeDee Lamb (DAL) plays Monday night, everyone else Sunday at 1 pm.
