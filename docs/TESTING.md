@@ -32,6 +32,10 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
   HTML report and `test-results/`, which holds each failed screenshot's expected, actual and diff PNGs. No secrets
   are needed: the tests stub every outside request.
 - **Run before pushing:** `npm run check`. CI runs it too, but a red PR costs a round trip.
+- **While iterating, run what you touched; the full suite once at the end** (owner's decision, 2026-11-08, after S30
+  ran it after every round). The whole Playwright suite takes ~20 minutes in a cloud session. Between rounds of a card,
+  run check-precache, `node --test` and the specs for the code you changed (`npx playwright test <spec> …`, a minute
+  or two), and push. Run the full `npm run check` once, before the card's last push; CI runs it again on the PR.
 - **Node 22 or newer**, and run `node --test` with no arguments (from the repo root or `tests/`). The tests import
   the app's `.js` ES modules directly, and with no root package.json Node has to detect module syntax itself.
   `node --test tests/unit/` doesn't work (Node 22 treats a directory argument as a file); for one suite use
