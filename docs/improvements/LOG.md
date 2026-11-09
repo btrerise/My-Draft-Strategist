@@ -9660,6 +9660,32 @@ ownership row hidden in the unmatched list, "QB" badges in the weekly QB list.
 This round: check-precache, the unit tests, this view's spec (22 tests), and the sheet, legend and In-Season specs; the
 full suite runs once before the last push (and CI runs it on the PR).
 
+### S30, round 8: no Pos column in a position's own list (owner's choice)
+
+In a set of separate lists (a weekly sheet), a position's list showed "WR" on every row once round 6 dropped the rank
+from the badge. The Pos column is hidden there (`.rset-table.no-pos`); FLEX, All and a ROS set's position chips keep it.
+
+**Rule 7 and testing time (owner, 2026-11-09).** `docs/TESTING.md` now says to run what you touched while iterating
+and the full suite once before a card's last push. The owner also asked for rule 7 in the runbook to say so; this
+session couldn't republish the runbook (the page is ~460 KB and has to be read in full before a republish), so the
+owner was given the new wording to paste:
+"While iterating, run check-precache, node --test and the Playwright specs for what you changed (`cd tests && npx
+playwright test <spec>`, a minute or two), and push. Run the full `cd tests && npm ci && npm run check` (about 20
+minutes) once, before your card's last push; CI runs it again on the pull request. See "While iterating" in
+docs/TESTING.md. Chromium is preinstalled at /opt/pw-browsers; don't run playwright install."
+
+**For a runbook card (found in round 8's review): keep each player's position from the file.** A rankings file of
+separate lists (a weekly sheet with "QB Rank" / "RB Rank" / … / "FLEX Pos" columns, or one file per position) says
+which list each player is in, but `js/shared/rankings/parse.js` keeps only his ranks, and the app takes positions from
+Sleeper's player map or the league. A name that doesn't match Sleeper therefore drops out of its position's list in
+this view (the owner's WR list read 1–6, 10, 11, 13, 38, with "Tier 8" right after "Tier 3"), and gets no position
+anywhere else either; defenses are the likeliest ("Seattle Seahawks" vs Sleeper's name). The card: store the file's
+position on each parsed row (`pos`, only when the file says it: a position column, a per-position file, a list's
+column prefix, FLEX Pos), use it as the last fallback for position (after the league and Sleeper, so a wrong file can't
+override them), and check Draft Strategist's import, which shares the parser. Tests: the owner's sample layout
+(`Weekly-Rankings-All-11-8.csv`, attached in this session) with an unmatched name in each list. Small; before the
+playoffs is fine.
+
 **For a runbook card (owner's idea, 2026-11-08): player stats and research.** Tapping a player here (and perhaps in
 other lists) could open a card with season stats; how much (this season, past seasons, T-Score data) is the open
 question, so it's its own card, after S32 (whose row sheet it could share) and M11's sheet.

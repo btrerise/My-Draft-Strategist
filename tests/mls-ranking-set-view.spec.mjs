@@ -252,6 +252,7 @@ test('A weekly sheet of separate lists shows each list on its own, FLEX first, w
     await expect(visibleRows(sheet).locator('.rset-rank')).toHaveText(['1', '2', '3', '4', '5', '6']);
     await expect(visibleRows(sheet).locator('.rset-name')).toHaveText(["Ja'Marr Chase", 'Bijan Robinson', 'Jahmyr Gibbs', 'Justin Jefferson', 'Derrick Henry', 'Puka Nacua']);
     await expect(visibleRows(sheet).locator('.rset-pos')).toHaveText(['WR1', 'RB1', 'RB2', 'WR2', 'RB3', 'WR3']);
+    await expect(sheet.locator('.rset-table thead th.rset-pos')).toBeVisible();
     await expect(visibleTierLines(sheet)).toHaveCount(0);
     await expect(sheet.locator('.rset-count')).toHaveText('6 players');
 
@@ -265,8 +266,9 @@ test('A weekly sheet of separate lists shows each list on its own, FLEX first, w
     await lists.getByRole('button', { name: 'QB 3' }).click();
     await expect(visibleRows(sheet).locator('.rset-rank')).toHaveText(['1', '2', '3']);
     await expect(visibleRows(sheet).locator('.rset-name')).toHaveText(['Josh Allen', 'Lamar Jackson', 'Jalen Hurts']);
-    // The # is the QB rank, so the badge says only QB (round 6); FLEX above keeps "RB1" etc.
-    await expect(visibleRows(sheet).locator('.rset-pos')).toHaveText(['QB', 'QB', 'QB']);
+    // The # is the QB rank and every row is a QB, so there's no Pos column (round 8); FLEX above keeps "RB1" etc.
+    await expect(sheet.locator('.rset-table thead th.rset-pos')).toBeHidden();
+    await expect(visibleRows(sheet).first().locator('.rset-pos')).toBeHidden();
     await expect(visibleTierLines(sheet)).toHaveText(['Tier 1', 'Tier 2']);
     await expect(sheet.locator('.rset-count')).toHaveText('3 players');
     await expect(visibleRows(sheet).locator('.rset-sos')).toHaveText(['MIA 5', 'CLE 30', 'DAL']);

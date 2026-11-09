@@ -256,7 +256,7 @@ ${ownerChips ? `<div class="rset-chips rset-owner-chips" role="group" aria-label
 <p class="rset-count" aria-live="polite"></p>
 ${rows.length ? `<table class="rset-table${hasSos ? '' : ' no-sos'}">
     <caption class="sr-only">${escapeHtml(set.name)}: rank, player, position and position rank${hasSos ? `, ${lastCol[1].toLowerCase()}` : ''}</caption>
-    <thead><tr><th scope="col" class="rset-rank">#</th><th scope="col">Player</th><th scope="col">Pos</th><th scope="col" class="rset-sos"><abbr title="${lastCol[1]}">${lastCol[0]}</abbr></th></tr></thead>
+    <thead><tr><th scope="col" class="rset-rank">#</th><th scope="col">Player</th><th scope="col" class="rset-pos">Pos</th><th scope="col" class="rset-sos"><abbr title="${lastCol[1]}">${lastCol[0]}</abbr></th></tr></thead>
     <tbody></tbody>
 </table>` : ''}
 <div class="rset-empty" hidden><p></p><button type="button" class="mls-btn-sm btn-link-inline" data-action="rsetClear">Clear search and filter</button></div>`;
@@ -277,6 +277,9 @@ function renderList() {
     });
     tbody.innerHTML = html;
     view.listSize = items.length;
+    // A position's own list: every row is that position and the # is his position rank, so the Pos column would only
+    // repeat "WR" (round 8). FLEX, All and a ROS set's position chips keep it.
+    tbody.closest('.rset-table').classList.toggle('no-pos', items.length > 0 && items.every(it => it.posOnly));
     // The ownership chips count within this list (round 4): "Yours 2" on the RB list means two of these RBs.
     const n = { ALL: items.length, MINE: 0, FREE: 0, OTHERS: 0, NONE: 0 };
     items.forEach(({ r }) => { n[r.owner === 'You' ? 'MINE' : r.owner ? 'OTHERS' : isFree(r, mapped) ? 'FREE' : 'NONE'] += 1; });
