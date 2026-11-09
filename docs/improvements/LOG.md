@@ -9782,6 +9782,10 @@ so its strip reads "1 lineup needs you · 1 to fix" (was "1 lineup needs you bef
 "1 to do"). The screenshot league has no Sleeper lineup, so no set shows. This container can't render CI's baselines:
 take them from the PR's CI run ("Accepting an intended visual change" in docs/TESTING.md).
 
+**Checks** (full `npm run check`, once, before the push): check-precache OK, 534 unit tests pass, 844 Playwright tests
+pass, 48 skipped. The 4 failures are `visual.spec.mjs`'s environment check (this container's fonts differ from CI's), as
+on main; the screenshot comparison above was made here the same way for main and this branch.
+
 **Left over.**
 - The Guide's step 7 and the Command Center's (i) still describe the strip as counting "the lineups that need you",
   which stays true; they don't mention sets by name. Left as is, so the Guide's screenshots don't move for it.
