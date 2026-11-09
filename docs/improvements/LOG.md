@@ -9921,8 +9921,10 @@ moves about a pixel):
 - `mls-league-roster.png` (Auto-Fetch Settings, Edit Manual SoS Grid);
 - `mls-league-lineup.png` (Lineup settings); `mls-league-scout.png` (Value settings);
 - `tscore-researchTab.png` (the appendix).
-None re-taken here (this container can't match CI's fonts); take those 12 from the pull request's CI run
-("When your machine can't reproduce the baselines", docs/TESTING.md).
+Re-taken from CI's renders on the pull request (#232, run 42696573869): exactly these 12 failed and no other test;
+each `-expected.png` was identical to the committed baseline, and each change sits at a `<summary>` whose triangle is
+now a chevron. On the phone's Lineup PNG the box is larger (the bottom tab bar): in CI's render the "Lineup settings"
+summary sits under the translucent bar and shows through its blur.
 
 **Checks.** `npm run check`: precache OK, 540 unit tests pass, 856 Playwright tests pass (48 skipped). The 4 failures are
 only `visual.spec.mjs`'s cloud-fonts guard (MDS and MLS, both widths), which fails the same way on main here.
@@ -9931,5 +9933,5 @@ only `visual.spec.mjs`'s cloud-fonts guard (MDS and MLS, both widths), which fai
 every chevron the Dashboard's way: the card says end states don't change. `sw.js`: `CACHE_NAME` v2.9.11 → v2.9.12.
 CHANGELOG lines under both apps (T-Score's appendix in Draft Strategist's, as K3 did for T-Score).
 
-**Left over.** The 12 screenshots from CI. For M3: the `.chevron` rule uses S16's `--vt-ms` / `--vt-ease`; M3 moves
+**Left over.** For M3: the `.chevron` rule uses S16's `--vt-ms` / `--vt-ease`; M3 moves
 it with the view transitions. F16 (closed tooltips, also css/base.css) waits for this to merge.
