@@ -31,6 +31,10 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
   (ubuntu-24.04, Node 22, Playwright's own Chromium). When it fails, the run's `playwright-results` artifact has the
   HTML report and `test-results/`, which holds each failed screenshot's expected, actual and diff PNGs. No secrets
   are needed: the tests stub every outside request.
+- **CI, screenshots only:** `.github/workflows/update-screenshots.yml` (improvements S38) re-takes the baselines a
+  change is meant to touch on CI's renderer and commits them to the branch, before the pull request. It must be told
+  which PNGs to expect and fails, committing nothing, if any other screenshot changed. It doesn't replace `check`.
+  Steps: "Cloud sessions: let CI re-take them before the pull request", below.
 - **The full suite runs once per card: when the owner asks for the pull request** (owner's decision, 2026-11-08, after
   S30 ran it after every round; made exact on 2026-11-11, after S38 ran it at the end of round 1 and started it again
   after round 2). The whole Playwright suite takes ~20 minutes in a cloud session, and CI runs it on every pull
