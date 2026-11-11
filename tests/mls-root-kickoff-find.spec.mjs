@@ -264,6 +264,21 @@ test.describe('Player Scoreboard: find a player', () => {
                 }).length;
             });
             expect(over, `width ${width}`).toBe(0);
+            // Round 3: on a wide window the result spans the boxes, his row on the left and the two sides' leagues side
+            // by side to its right; on a phone they stack under the row.
+            const box = async (sel) => (await found(page).locator(sel).first().boundingBox());
+            const [cardBox, rowBox, yoursBox] = [await found(page).boundingBox(), await box('.mls-root-player'), await box('.mls-root-detail-side')];
+            const theirsBox = await found(page).locator('.mls-root-detail-side').nth(1).boundingBox();
+            const spotBox = await board(page).locator('.mls-root-spot').boundingBox();
+            if (width >= 900) {
+                expect(Math.abs(cardBox.width - spotBox.width)).toBeLessThan(2);
+                expect(yoursBox.x).toBeGreaterThanOrEqual(rowBox.x + rowBox.width - 1);
+                expect(theirsBox.x).toBeGreaterThanOrEqual(yoursBox.x + yoursBox.width - 1);
+                expect(Math.abs(theirsBox.y - yoursBox.y)).toBeLessThan(2);
+            } else {
+                expect(yoursBox.y).toBeGreaterThanOrEqual(rowBox.y + rowBox.height - 1);
+                expect(theirsBox.y).toBeGreaterThanOrEqual(yoursBox.y + yoursBox.height - 1);
+            }
             await page.keyboard.press('Escape');
         }
         await expectClean(page, state);

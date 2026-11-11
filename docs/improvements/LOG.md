@@ -10051,3 +10051,11 @@ result card is 640px wide with empty space beside it. **Owner: do 1, 2 and 3; as
   suggestion list or intro change shows in them beyond the Scoreboard PNGs already listed).
 - **5, proposed, not built:** from 900px, the result card as wide as the three boxes, his row on the left and "Yours
   in" / "Against you in" side by side to its right. Waiting for the owner.
+
+### S33, round 3: the result card as wide as the boxes on desktop (owner: "Yes")
+
+Round 2's point 5. From 900px `.mls-root-found` has no `max-width`: his row sits over the first box's column (a third),
+and "Yours in" / "Against you in" are two columns to its right, with "Your stake" across both (css/mls.css; phones
+unchanged, the leagues still stack under the row). The spec's 375 / 1280px test checks both layouts.
+`CACHE_NAME` v2.9.14 → v2.9.15. `mls-root-kickoff-find.spec.mjs` and `mls-root-for.spec.mjs` pass (36). Screenshots:
+no further change (no baseline shows a found player).

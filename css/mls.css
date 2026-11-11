@@ -2791,6 +2791,14 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .mls-root-found { --root-c: #10b981; max-width: 640px; margin: 0 0 0.7rem; padding: 0.5rem 0.55rem; border: 1px solid var(--border); border-left: 3px solid var(--root-c); border-radius: 10px; background: rgba(255, 255, 255, 0.03); }
 .mls-root-found.is-against { --root-c: #ef4444; }
 .mls-root-found.is-both { --root-c: #f59e0b; }
+/* Round 3: from 900px the result is as wide as the three boxes, his row over the first box's column and the leagues on
+   each side in two columns beside it (at 640px it left the rest of the row empty). */
+@media (min-width: 900px) {
+    .mls-root-found { max-width: none; }
+    .mls-root-found .mls-root-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 0 0.6rem; align-items: start; }
+    .mls-root-found .mls-root-detail:not([hidden]) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 0.8rem; margin: 0.3rem 0 0.2rem; }
+    .mls-root-found .mls-root-stake { grid-column: 1 / -1; }
+}
 .mls-root-settled { font-style: italic; }
 
 /* --- A SAVED RANKING SET, READ-ONLY (improvements S30) ---
