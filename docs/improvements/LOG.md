@@ -9935,3 +9935,188 @@ CHANGELOG lines under both apps (T-Score's appendix in Draft Strategist's, as K3
 
 **Left over.** For M3: the `.chevron` rule uses S16's `--vt-ms` / `--vt-ease`; M3 moves
 it with the view transitions. F16 (closed tooltips, also css/base.css) waits for this to merge.
+
+## S33 — Player Scoreboard: kickoff order (Thursday night first), and find a player
+
+**User-visible effect.**
+- **Root for, Against you and Both sides list players by kickoff while games are left.** The earliest game that isn't
+  final comes first, so Thursday night's players are on top of each box until that game ends, then Sunday's early games,
+  and so on; a game with no known kickoff comes after the known ones. A small divider starts each kickoff time
+  ("Thu 8:15 PM · Live"), and the rows under it no longer repeat the time or "Live". Inside one kickoff the order is the
+  board's own, as before: by weight, then by how many leagues; a "decided" player is last in his kickoff.
+- **Finished players fold into "N finished" at the bottom of their box.** Tap it (or Enter) to open them in place,
+  dimmed, with "Final" and their points; five, then Show all. Before, the boxes left them out and an empty box pointed
+  to the "games final" line further down; an empty box now reads "All 7 have finished." with its own line under it.
+  The count in a box's title is still who's left to play.
+- **A past week, or a week whose every game is final, is unchanged:** everyone listed by weight, no dividers.
+- **Find a player.** A search field above the three boxes ("Find a player in this week's matchups") with the site's
+  autocomplete, limited to this week's starters, yours and your opponents'. Each suggestion says where he stands
+  ("QB · BUF · Both sides, 2 of 3 yours"; "Yours in 1" for a player in one matchup). Pick one (tap, or Enter when one
+  name is left) and his row appears right under the field in his box's color and title, with his leagues open: yours
+  in, against you in, his points and the win chance in each. Focus moves to that row. The boxes don't move. Escape (in
+  the field or on the row) or the field's ✕ clears and returns to the field. A name nobody matches says 'No starter in
+  this week's matchups matches "kelce".' The text and the result survive a Refresh; another week starts empty.
+- The intro line, the (i) beside Both sides and the Guide's Who to root for item say "by kickoff".
+
+**Owner's decisions (asked before building; sketches at 375 and 1280px on the real page with sample players: order
+1A–1D, find 2 and 2A–2E). Answer: "All your recommendations".**
+1. Inside a kickoff window: by weight, then count, as today (not by count alone).
+2. Finished games: folded into "N finished" at the bottom of each box (1C), not kept in kickoff order (1D).
+3. The kickoff label: a divider between windows, rows without the time (1A), not on each row (1B).
+4. A past week, or once every game is final: today's order by weight.
+5. Find: the result right under the field, boxes unmoved (2C, my recommendation), rather than the card's suggestion of
+   jumping to and highlighting his row (2A) or a filter (2B). Why: a player in one matchup, one behind Show all or one
+   whose game is over has no visible row to jump to; on a phone a jump scrolls away from the field.
+6. League tiles are not marked (2D): the result already lists his leagues.
+7. Nobody matches: a line under the field (2E). The search covers only this week's starters, so that line is how "not
+   in any of this week's lineups" reads.
+Defaults I stated and the owner accepted: Thursday is no special case (the earliest unfinished game is first, live
+games included), and a decided player is last within his kickoff rather than last in the box.
+
+**What changed, and where.**
+- `js/mls/week/rootFor.js`: `kickoffOrder(gameOf)`, a pure comparator: finished last, then kickoff (unknown after
+  known), then settled, weight, count, id. `buildRootFor`'s own order is untouched (a finished week and the window
+  lists still use it).
+- `js/mls/week/thisWeek.js`:
+  - `rootHTML` sorts each box's players still to play with `kickoffOrder` (kickoff from the week's `times`, i.e.
+    `State.gameTimesByTeam`; finished from the row's `over` or the game's `post` state) and draws the finished ones in a
+    `.mls-root-finished` fold (`toggleRootFinished`, in place; open boxes kept in `rootView.fin` for the week shown).
+  - `rootList` takes `dividers` (an `li.mls-root-kick` where the kickoff changes; "Live" when any player of that
+    kickoff in the box is in a live game) and `rootRow` / `rootMeta` take `noTime`.
+  - Find: `rootFindUi` builds the field once and `mountRootFind` moves that node into a slot in each redraw, so typing
+    and the autocomplete survive the card's `innerHTML` redraws (focus is put back when it was in the field).
+    `attachPlayerAutocomplete` gets a `pool` (this week's rows) and a `tag` (`standingText`). `pickRootFind` /
+    `clearRootFind`; `foundHTML` draws the result with the same `rootRow` (list key `find`). State in memory
+    (`rootView.found`, `findText`); no storage key.
+- `js/mls/main.js`: actions `toggleRootFinished`, `clearRootFind`. The field's `input` and `keydown` listeners are added
+  in code on the node it builds (delegate() has no table for those events on this page).
+- `css/mls.css`: the divider, the finished line, the field and the result (end of the root-for rules).
+- `lineup/index.html`: the Guide's Who to root for item. `CHANGELOG.md`: one line under Lineup Strategist.
+- `sw.js`: `CACHE_NAME` v2.9.12 → v2.9.13. No file added, so `PRECACHE_ASSETS` is unchanged.
+- No new badge, chip or pill (the divider and the finished line are text), so the legend has no new line.
+
+**Tests.**
+- `tests/unit/rootFor.test.mjs`: `kickoffOrder` (Thursday unfinished first though it weighs least; Thursday final at the
+  bottom, under an unknown kickoff; unknown after known; inside a kickoff by weight, then count, settled last; finished
+  games in kickoff order among themselves; timestamps; no `gameOf`).
+- `tests/mls-root-kickoff-find.spec.mjs` (new, both widths), S27's three fixture leagues with BUF @ BAL moved to
+  Thursday night and a fixed clock:
+  - Thursday evening: each box's dividers and order, no finished line;
+  - Sunday: Thursday's players in "N finished" (opens in place, focus kept, Enter folds), an all-finished box;
+  - a past week: no dividers, no finished line;
+  - find: Josh Allen (Both sides) by Enter with focus on his row and both sides' leagues, Escape back to the field; a
+    tap on a suggestion, a Root for player, a second pick replacing the first, a Refresh keeping text and result, ✕,
+    Escape in the field; nobody matches; another week starts empty; nothing past the card's edges at 375 and 1280px; no
+    field without starters.
+- `tests/mls-root-for.spec.mjs`: the empty box's words ("All 7 have finished."), and the mid-Sunday test reads a box's
+  first list (its finished players are now in the fold under it).
+
+**Screenshots.** Rendered main and this branch the same way here (`RENDER_ENV=any`, a worktree of origin/main) and
+compared with `npm run pxdiff`: 38 PNGs identical, 4 differ, all by design. Not re-taken here (this container's fonts);
+take them from the pull request's CI run as docs/TESTING.md describes.
+- `desktop/mls-league-scoreboard.png`, `phone/mls-league-scoreboard.png`: the Find a player field above "Nobody starts
+  in 2 or more of your matchups this week." (the screenshot league is one league before kickoff, so no boxes, dividers
+  or finished line show). The phone PNG grows 1203 → 1259px; the desktop one keeps its height, with everything under
+  the field moved down.
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: the Guide's longer Who to root for item (desktop 9758 →
+  9827px, phone 23073 → 23280px).
+
+**Checks.** `npm run check`: precache OK, 541 unit tests pass, 872 Playwright tests pass (48 skipped). The 4 failures
+are only `visual.spec.mjs`'s cloud-fonts guard (MDS and MLS, both widths), which fails the same way on main here.
+
+**Left over.**
+- Re-take the four PNGs from CI once there's a pull request (none opened: the owner hasn't asked).
+- The fixture has no player in exactly one matchup, so the result's "Your starter, in one matchup" / "Against you, in
+  one matchup" title is not covered by the spec.
+- The league tiles aren't marked for a found player (owner's choice); the result lists his leagues.
+- Open follow-ups this touched: the Scoreboard's dense lists on `ALLOW` in `tests/touch-targets.spec.mjs` ("No card
+  yet") now include the new rows and the "N finished" line; nothing was added to `ALLOW`.
+
+### S33, round 2: my review as a user; the owner took 1, 2 and 3
+
+On the three fixture leagues (16 starters), Thursday evening and Sunday, at 1280 and 390px. Not on the owner's real
+leagues, so nothing here was seen at 19-league scale. My notes: (1) a second lookup appended to the picked name
+("Ja'Marr Chaselamar", no suggestions, no "nobody matches" line); (2) the intro line had grown to three lines on a
+phone; (3) a suggestion's standing beside the name only just fit at 390px, so a long name would wrap; (4) the result
+repeats a row already visible when he's in his box's first five (the cost of the choice, left); (5) on desktop the
+result card is 640px wide with empty space beside it. **Owner: do 1, 2 and 3; asked how I'd fix 5.**
+- **1.** While the field holds the picked player's name, focusing or tapping it selects the name, so typing replaces
+  it. The "No starter … matches" line now shows with a player picked too.
+- **2.** The intro reads "Players in 2 or more of your matchups still to play, by kickoff. Tap one for the leagues."
+  (a finished week keeps "…, those that matter most first.").
+- **3.** In the find field's suggestions, position, team and standing sit under the name (css/mls.css, scoped to
+  `.mls-root-find`; the site's other autocompletes are unchanged).
+- `CACHE_NAME` v2.9.13 → v2.9.14 (a second push to the branch's preview). `mls-root-kickoff-find.spec.mjs` covers the
+  three; it and `mls-root-for.spec.mjs` pass (36), check-precache OK. Screenshots: the same four as above (no
+  suggestion list or intro change shows in them beyond the Scoreboard PNGs already listed).
+- **5, proposed, not built:** from 900px, the result card as wide as the three boxes, his row on the left and "Yours
+  in" / "Against you in" side by side to its right. Waiting for the owner.
+
+### S33, round 3: the result card as wide as the boxes on desktop (owner: "Yes")
+
+Round 2's point 5. From 900px `.mls-root-found` has no `max-width`: his row sits over the first box's column (a third),
+and "Yours in" / "Against you in" are two columns to its right, with "Your stake" across both (css/mls.css; phones
+unchanged, the leagues still stack under the row). The spec's 375 / 1280px test checks both layouts.
+`CACHE_NAME` v2.9.14 → v2.9.15. `mls-root-kickoff-find.spec.mjs` and `mls-root-for.spec.mjs` pass (36). Screenshots:
+no further change (no baseline shows a found player).
+
+### S33, round 4: a second review as a user; the owner took all four, plus the one-league test
+
+By keyboard and by touch, Thursday evening, Sunday with finished players, a past week and one league (every player in
+one matchup), on the fixture leagues. The owner asked me to check first whether 1 and 2 belong in the site's other
+player searches. They don't:
+- **Enter takes the top suggestion: this field only.** The other three (`attachPlayerAutocomplete`'s callers) search
+  the whole player index in Sleeper's order, so the top row for "jo" is an arbitrary player, and a pick there does
+  something: the manual-add form (js/mls/leagues/addPlayer.js) fills position and team, and its next Enter saves to the
+  roster; the trade picker (js/mls/trade/picker.js) adds him to the trade; the Simulator's lookup (js/mls/init.js) runs
+  a simulation. Their rule stays (Enter picks an arrowed-to row or the only row). Here the pool is this week's starters
+  in the board's order and a pick only shows a card.
+- **Escape closes the list first, then clears: already true elsewhere.** The shared autocomplete's Escape only ever
+  closes its list, and no other field has a clear step; the wipe was this field's own listener.
+
+What changed:
+1. `attachPlayerAutocomplete` takes `enterPicksFirst` (js/mls/players.js): the first suggestion starts highlighted, so
+   Enter takes it and the arrows move from there. Only the find field passes it.
+2. The find field's Escape listener is registered before the autocomplete's and does nothing while the list is open, so
+   the first Escape closes the suggestions (text and result kept) and the second clears.
+3. From 900px, a result with one side ("Yours in" only, or "Against you in" only) spans both columns (css/mls.css).
+4. The suggestions' "WR ·DAL" is "WR · DAL" in every player search (js/mls/players.js; two assertions in
+   `mls-player-lookup.spec.mjs` follow).
+- The test gap from round 1 is closed: a one-league test finds a player in one matchup on each side ("Against you, in
+  one matchup", "Your starter, in one matchup", "in 1") and checks the lone side's width on desktop.
+- `CACHE_NAME` v2.9.15 → v2.9.16. CHANGELOG: the S33 line gains Enter and the space. Ran check-precache and
+  `mls-root-kickoff-find`, `mls-root-for`, `mls-player-lookup`, `mls-trade-impact`, `nav-rail` (the specs that use a
+  player search): all pass. Screenshots: no further change (no baseline shows a suggestion list or a found player).
+
+### S33, round 5: a review as a user on the owner's 19 leagues (backup of 2026-11-10); the owner took both notes
+
+The owner's backup restored in this container's browser, this week's Scoreboard (`?week=10`, 114 starters) at 1280 and
+390px in Eastern time. Sleeper's matchups live; ESPN's real week 10 schedule fetched outside the browser (its own
+request is blocked here) and handed to the page with the clock and game states moved to Thursday 8:45 PM and Sunday
+2:30 PM. Points were all 0.0 (no game played yet). Nothing from the backup is in the repo.
+- Thursday night: Root for opened with its four WAS @ NYG players under "Thu 8:15 PM · Live", then "Sun 9:30 AM"; Both
+  sides (42) with its two Thursday players first; Against you (none on Thursday in 2+) at "Sun 9:30 AM".
+- Sunday: each box started at "Sun 1:00 PM · Live" and ended with "5 finished" / "2 finished" / "3 finished".
+- Find: "ja" put the Thursday player first on Thursday; the card took about 50 to 115 ms with 19 leagues.
+- Not from this card: "Show all 42" in Both sides is about 2,100px tall on desktop, as long as before.
+
+**Owner: do both.**
+1. The find field's suggestions go up to 20 (`limit`, was the default 8): "ja" matched more than 8 starters, and on
+   Sunday a finished player fell off the end until more letters were typed. The list scrolls. No test of its own (the
+   fixture's 16 starters have no two letters that match more than 8).
+2. When no kickoff is known for anyone in a box (ESPN's schedule didn't load), the box has no divider, rather than one
+   "Kickoff time unknown" over everything; a box with some known kickoffs keeps its dividers, the unknown last. New test
+   in `mls-root-kickoff-find.spec.mjs` (an empty ESPN scoreboard).
+- `CACHE_NAME` v2.9.16 → v2.9.17. check-precache OK; `mls-root-kickoff-find` and `mls-root-for` pass (40).
+  Screenshots: no further change.
+
+### S33: screenshot baselines from CI (PR #233)
+
+No further review pass (the owner asked whether one was needed; round 5's two changes were small and covered by the
+spec). CI's first run (42968266020) failed only in `visual.spec.mjs`, on exactly the four PNGs listed above; each
+`-expected.png` was byte-identical to the committed baseline. Committed CI's `-actual.png` for each:
+- `desktop/mls-league-scoreboard.png` (1280x1016, same height), `phone/mls-league-scoreboard.png` (1203 → 1226px in CI's
+  render): the Find a player field above "Nobody starts in 2 or more of your matchups this week."
+- `desktop/mls-league-guide.png` (9471 → 9518px), `phone/mls-league-guide.png` (21839 → 22023px): the Guide's longer Who
+  to root for item. On desktop the page is unchanged above the item (388 pixels differ by one level) and identical
+  below it once shifted by its two extra lines (46px).

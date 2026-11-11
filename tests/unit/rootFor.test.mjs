@@ -194,3 +194,30 @@ test('every league counts; a player whose every matchup is decided is settled, d
     assert.equal(past.anyOpen, false);
     assert.equal(past.root[0].settled, false);
 });
+
+// --- Kickoff order (improvements S33) ---
+test('kickoffOrder: the earliest unfinished game first, finished last, unknown kickoff after the known, ties by weight', async () => {
+    const { kickoffOrder } = await import('../../js/mls/week/rootFor.js');
+    const THU = '2026-11-13T01:15:00Z', SUN1 = '2026-11-15T18:00:00Z', SUN4 = '2026-11-15T21:25:00Z';
+    const rows = [
+        { id: 'sunLight', team: 'MIN', weight: 0.2, count: 2 },
+        { id: 'sunHeavy', team: 'DET', weight: 0.9, count: 2 },
+        { id: 'late', team: 'LAR', weight: 2, count: 5 },
+        { id: 'thu', team: 'BUF', weight: 0.1, count: 2 },
+        { id: 'noTime', team: 'XXX', weight: 3, count: 6 },
+        { id: 'sunCount', team: 'CIN', weight: 0.2, count: 4 },
+        { id: 'sunSettled', team: 'ATL', weight: 5, count: 6, settled: true },
+    ];
+    const times = { BUF: THU, MIN: SUN1, DET: SUN1, CIN: SUN1, ATL: SUN1, LAR: SUN4 };
+    const order = (games) => [...rows].sort(kickoffOrder(r => ({ kickoff: times[r.team] || null, finished: (games[r.team] || {}).state === 'post' }))).map(r => r.id);
+    // Thursday evening: Thursday's player on top though he weighs least; inside Sunday 1:00 by weight, then count, a
+    // settled player last; then the late game; no known kickoff after every known one.
+    assert.deepEqual(order({ BUF: { state: 'in' } }), ['thu', 'sunHeavy', 'sunCount', 'sunLight', 'sunSettled', 'late', 'noTime']);
+    // Thursday's game final: he drops to the bottom, under even the unknown kickoff.
+    assert.deepEqual(order({ BUF: { state: 'post' } }), ['sunHeavy', 'sunCount', 'sunLight', 'sunSettled', 'late', 'noTime', 'thu']);
+    // Finished games keep kickoff order among themselves.
+    assert.deepEqual(order({ BUF: { state: 'post' }, DET: { state: 'post' }, LAR: { state: 'post' } }).slice(-3), ['thu', 'sunHeavy', 'late']);
+    // A timestamp works as well as an ISO time, and no gameOf at all falls back to weight.
+    assert.deepEqual([{ id: 'b', weight: 1 }, { id: 'a', weight: 2 }].sort(kickoffOrder()).map(r => r.id), ['a', 'b']);
+    assert.deepEqual([{ id: 'x', k: 2000 }, { id: 'y', k: 1000 }].sort(kickoffOrder(r => ({ kickoff: r.k }))).map(r => r.id), ['y', 'x']);
+});

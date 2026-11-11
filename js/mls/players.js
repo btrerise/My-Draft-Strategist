@@ -128,6 +128,10 @@ export async function ensureSleeperPosByName() {
 //                     side can offer "your roster" or one team's roster before anything is typed.
 //   tag(p) -> a short label after the position and team ("Yours", a manager's name, "Free agent").
 //   limit -> how many to show (8 by default).
+//   enterPicksFirst -> the first suggestion starts highlighted, so Enter takes it (improvements S33, the Scoreboard's
+//                     find field: a small pool in the board's order, and a pick only shows something). The other
+//                     fields keep "Enter picks only an arrowed-to row or the only row": their list is the whole
+//                     player index in Sleeper's order, and a pick there adds to a roster or a trade, or runs a lookup.
 export function attachPlayerAutocomplete(inputEl, onSelect, opts = {}) {
     if (!inputEl || inputEl.dataset.autocompleteAttached) return;
     inputEl.dataset.autocompleteAttached = '1';
@@ -155,7 +159,7 @@ export function attachPlayerAutocomplete(inputEl, onSelect, opts = {}) {
         dropdown.innerHTML = matches.map((p, i) => `
             <div class="autocomplete-item${i === highlightedIdx ? ' highlighted' : ''}" role="option" data-idx="${i}">
                 <span>${escapeHtml(p.name)}</span>
-                <span class="autocomplete-meta">${escapeHtml(p.pos)} ·${escapeHtml(p.team)}${opts.tag && opts.tag(p) ? ` · ${escapeHtml(opts.tag(p))}` : ''}</span>
+                <span class="autocomplete-meta">${escapeHtml(p.pos)} · ${escapeHtml(p.team)}${opts.tag && opts.tag(p) ? ` · ${escapeHtml(opts.tag(p))}` : ''}</span>
             </div>
         `).join('');
         dropdown.style.display = 'block';
@@ -193,6 +197,7 @@ export function attachPlayerAutocomplete(inputEl, onSelect, opts = {}) {
                 else if (contains.length < limit && p.searchKey.includes(q)) contains.push(p);
             }
             matches = starts.concat(contains).slice(0, limit);
+            if (opts.enterPicksFirst && matches.length) highlightedIdx = 0;
             render();
         }).catch(() => { pending = false; });
     }

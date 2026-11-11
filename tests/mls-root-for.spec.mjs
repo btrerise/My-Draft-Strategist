@@ -79,11 +79,13 @@ test.describe('Scoreboard: who to root for', () => {
         await expect(board(page).locator('.mls-root-intro')).toContainText('still to play');
         await expect(group(page, 'root').locator('.mls-root-group-title')).toContainText('Root for 1');
         // Every league counts (round 6), decided ones too: "in 3"; two are still open, so he isn't settled.
-        await expect(names(group(page, 'root'))).toHaveText(['Justin Jefferson in 3']);
-        await expect(group(page, 'root').locator('.mls-root-count')).toHaveText('in 3');
+        // (The box's first list: its finished players are in the folded "6 finished" line under it, S33.)
+        await expect(names(group(page, 'root').locator('.mls-root-list').first())).toHaveText(['Justin Jefferson in 3']);
+        await expect(group(page, 'root').locator('.mls-root-list').first().locator('.mls-root-count')).toHaveText('in 3');
+        await expect(group(page, 'root').locator('.mls-root-fin-toggle')).toHaveText('6 finished');
         await expect(group(page, 'root').locator('.mls-root-row.is-settled')).toHaveCount(0);
-        await expect(group(page, 'against')).toContainText('All 7 have finished: see the games final line below.');
-        await expect(group(page, 'both')).toContainText('All 2 have finished: see the games final line below.');
+        await expect(group(page, 'against')).toContainText('All 7 have finished.');
+        await expect(group(page, 'both')).toContainText('All 2 have finished.');
 
         // Tap: which leagues on which side; Enter closes it again, with focus kept on the row.
         const jj = group(page, 'root').locator('.mls-root-row').first();

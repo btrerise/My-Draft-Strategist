@@ -158,6 +158,14 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Player Scoreboard: players by kickoff, and a way to find one.** While games are left, Root for, Against you and
+  Both sides list players by kickoff, the earliest game first, so Thursday night's players are on top until that game
+  ends. A small label ("Thu 8:15 PM · Live") starts each kickoff time; inside one, the players that matter most come
+  first, as before. Players whose games are over fold into an "N finished" line at the bottom of each box (tap to open).
+  A past week keeps its order. A new **Find a player** field above the boxes searches this week's starters, yours and
+  your opponents': pick one and his row appears right under the field with his leagues open (which box, which leagues,
+  his points and the win chance in each). Escape or ✕ clears it. Enter takes the top suggestion. Every player search on the site now
+  shows "WR · DAL" with a space before the team.
 - **Every chevron turns as its section opens, at the Dashboard's speed.** The Dashboard's league cards and the
   Scoreboard's folds already did; now the Lineup tab's "This lineup needs you" box and the next-lock line, the
   rankings cards, the Waiver Wire's position groups, Best Available, the Sleeper differences and "What

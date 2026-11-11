@@ -54,7 +54,7 @@ import { loadRosterTab, setRosterPosFilter, setRosterSort } from './render/roste
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
 import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeaguePaid, toggleLeagueReorder, withCardsTransition } from './render/leagueCards.js';
-import { dismissPaidHint, exportScoreboard, leaveScoreboardWeek, refreshThisWeek, renderThisWeek, scoreboardThisWeek, showAllRecap, showAllRoot, showAllSwings, stepScoreboardWeek, toggleRootPlayer, toggleRootWindow, toggleWeekFold } from './week/thisWeek.js';
+import { dismissPaidHint, exportScoreboard, leaveScoreboardWeek, clearRootFind, refreshThisWeek, renderThisWeek, scoreboardThisWeek, showAllRecap, showAllRoot, showAllSwings, stepScoreboardWeek, toggleRootFinished, toggleRootPlayer, toggleRootWindow, toggleWeekFold } from './week/thisWeek.js';
 import { resetRecapLines, saveRecapLines } from './week/recapLines.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
@@ -78,7 +78,7 @@ export { activeOwnRankings, activePowerRankings, activeSeasonRankings, getLeague
 export { applyDefaultFolds, applyWaiverScanSettingsToUI, checkForDraftStrategistHandoff, clearLocksForNewWeek, computePositionalPower, generateSoSGrid, getLeagueRankings, getPowerLeagueKind, isAutoLockOverridden, loadRosterTab, lookupSimPlayer, onScoutTabShown, optimizeLineup, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank, refreshPowerRankings, refreshTopAvailable, renderBestAvailable, renderLeagueCards, renderLineupUI, renderSyncLogs, reoptimizeProjectionlessLeagues, runMarketDisconnectAnalysis, runScout, showTab, switchActiveLeague, updateMarketMetaDisplay };
 // For the Playwright tests, which import this module (`import('/js/mls/main.js')` in the page returns
 // this same instance) instead of reading the functions off window.
-export { confirmRankingsPreview, createManualLeague, leaveScoreboardWeek, refreshThisWeek, renderThisWeek, stepScoreboardWeek, openRankingSetLeagues, setWaiverCompare, setWaiverMode, setWaiverPos, setWaiverScope, toggleDrawer };
+export { confirmRankingsPreview, createManualLeague, leaveScoreboardWeek, clearRootFind, refreshThisWeek, renderThisWeek, stepScoreboardWeek, openRankingSetLeagues, setWaiverCompare, setWaiverMode, setWaiverPos, setWaiverScope, toggleDrawer };
 // The Trade Analyzer's picker, for tests (callApp) to set a whole trade at once.
 export { setTradePlayers };
 export { fitRankBadges } from './render/lineup.js'; // the Roster tab's two-set badge (render/roster.js, S24)
@@ -155,6 +155,9 @@ const clickActions = {
     toggleRootPlayer() { toggleRootPlayer(this.dataset.key); },
     toggleRootWindow() { toggleRootWindow(this.dataset.window); },
     showAllRoot() { showAllRoot(this.dataset.list); },
+    // S33: a box's "N finished" line, and the find field's clear button
+    toggleRootFinished() { toggleRootFinished(this.dataset.kind); },
+    clearRootFind() { clearRootFind(); },
     saveRecapLines() { if (saveRecapLines()) renderThisWeek(); },
     resetRecapLines() { resetRecapLines(); renderThisWeek(); },
     jumpToLeagueNeeds() { jumpToLeagueNeeds(); },
