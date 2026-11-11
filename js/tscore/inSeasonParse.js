@@ -9,6 +9,37 @@
 
 export const IN_SEASON_POSITIONS = ['wr', 'rb', 'te'];
 
+// --- LABELS ---
+// The preseason tabs' six labels, from ROS rank (owner's pick, 2026-11-11: percentiles, as the preseason T-Score's
+// 95th / 90th / 80th / 65th / 50th cutoffs, with "Flex Play" in place of Boom/Bust). The percentiles are taken over a
+// FIXED pool per position, twice the model's Buy/Sell line (WR 96, RB 72, TE 36), not over every row in the sheet: the
+// sheet's rows depend on a games-and-XFP filter, so a week where more fringe players qualify would otherwise relabel
+// players whose projection didn't move. With that pool the 50th percentile falls exactly on the Buy/Sell line, so the
+// labelled tiers end where Buy and Sell are measured; past the line is Depth Player.
+export const DEFAULT_LINES = { wr: 48, rb: 36, te: 18 };
+export const LABEL_BANDS = [
+    { label: 'Elite', share: 0.05, cls: 'label-elite' },
+    { label: 'High-End Starter', share: 0.10, cls: 'label-high' },
+    { label: 'Strong Starter', share: 0.20, cls: 'label-strong' },
+    { label: 'Quality Contributor', share: 0.35, cls: 'label-quality' },
+    { label: 'Flex Play', share: 0.50, cls: 'label-boom' },
+];
+export const DEPTH_LABEL = { label: 'Depth Player', cls: 'label-depth' };
+// A Label column in the sheet wins over the computed one (a hand override); these are the names it may use.
+const SHEET_LABEL_CLASS = { ...Object.fromEntries(LABEL_BANDS.map(b => [b.label.toLowerCase(), b.cls])), 'boom/bust': 'label-boom', 'depth player': 'label-depth' };
+
+/** Each band's last ROS rank for a Buy/Sell line: line 48 → Elite 1–5, High-End 6–10, Strong 11–19, Quality 20–34, Flex 35–48. */
+export function labelCutoffs(line) {
+    const pool = 2 * (line > 0 ? line : 0);
+    return LABEL_BANDS.map(b => ({ ...b, maxRank: Math.round(pool * b.share) }));
+}
+
+/** The label for a ROS rank: { label, cls }. */
+export function inSeasonLabel(rank, line) {
+    const band = labelCutoffs(line).find(b => rank <= b.maxRank);
+    return band ? { label: band.label, cls: band.cls } : DEPTH_LABEL;
+}
+
 export class InSeasonColumnError extends Error {
     constructor(what, missing) {
         super(`The ${what} sheet is missing ${missing.length === 1 ? 'a column' : 'columns'} this table needs: ${missing.join(', ')}.`);
@@ -51,6 +82,7 @@ export function parseInSeasonPlayers(rows, pos) {
     const col = headerIndex(rows[0]);
     const idx = Object.fromEntries(PLAYER_COLUMNS.map(([key, header]) => [key, col(header)]));
     const moveIdx = col('Rank move');
+    const labelIdx = col('Label'); // optional: a hand-set label, used over the computed one
     const ytdIdx = col('YTD rank');
 
     const missing = PLAYER_COLUMNS.filter(([key]) => idx[key] === -1).map(([, header]) => header);
@@ -78,6 +110,9 @@ export function parseInSeasonPlayers(rows, pos) {
             move,
             buySell: bs === 'buy' ? 'Buy' : bs === 'sell' ? 'Sell' : '',
         });
+        const sheetLabel = cell(row, labelIdx);
+        const cls = SHEET_LABEL_CLASS[sheetLabel.toLowerCase()];
+        if (cls) players[players.length - 1].label = { label: sheetLabel, cls };
     }
     if (!players.length) throw new Error(`The ${what} sheet has no players.`);
     return players.sort((a, b) => a.rank - b.rank);

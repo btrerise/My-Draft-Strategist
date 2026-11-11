@@ -344,6 +344,12 @@ const clickActions = {
     // The In-Season tab's WR / RB / TE and "Buy & Sell only" (improvements T1)
     switchInSeasonPos() { switchInSeasonPos(this.dataset.pos); },
     toggleBuySellOnly() { toggleBuySellOnly(this); },
+    // "How it differs from the preseason T-Score": The Research, at its In-Season section
+    readInSeasonModel(event) {
+        event.preventDefault();
+        switchTab('researchTab');
+        document.getElementById('inSeasonModel')?.scrollIntoView({ block: 'start' });
+    },
     // "Share this site" (drawer) and the line at the end of The Research: improvements K2
     shareSite() { shareSite(this.dataset.share); },
 };

@@ -17,10 +17,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 - **T-Score: in-season rankings.** The T-Score page now opens on a new **In-Season** tab: rest-of-season points per
   game for WRs, RBs and (new) TEs, with team, points per game so far, target share, how far each player is projected
-  to move from his rank so far, and Buy and Sell calls, plus a "Buy & Sell only" switch. "How it's projected" shows
+  to move from his rank so far, Buy and Sell calls and the preseason tabs' labels (Elite, High-End Starter, Strong
+  Starter, Quality Contributor, Flex Play, Depth Player, by percentile of ROS rank), plus a "Buy & Sell only" switch. "How it's projected" shows
   the formula and this week's weights. The rankings update from the sheet each time the page opens, and offline it
   shows the last ones that loaded. The preseason tabs (The Research, 2026 Top-50 and the rest) are one tap away, and
-  Draft Strategist's T-Score badges still use the preseason model.
+  Draft Strategist's T-Score badges still use the preseason model. The Research opens with a new section, "The In-Season Model",
+  on what changed from the preseason T-Score and why (linked from the In-Season tab).
 - **Every chevron turns as its section opens.** My Queue's chevron on the Tracker, a player card's on phones and the
   Recap's "Show Value Breakdown" now turn smoothly, at the same speed as Lineup Strategist's Dashboard cards. On the
   T-Score page, the appendix's triangle is now the site's chevron, and it turns too. With Reduce Motion on, they

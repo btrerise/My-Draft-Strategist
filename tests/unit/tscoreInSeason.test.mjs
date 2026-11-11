@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import Papa from 'papaparse';
-import { parseInSeasonPlayers, parseInSeasonWeights, InSeasonColumnError } from '../../js/tscore/inSeasonParse.js';
+import { parseInSeasonPlayers, parseInSeasonWeights, InSeasonColumnError, labelCutoffs, inSeasonLabel } from '../../js/tscore/inSeasonParse.js';
 
 const fixture = (tab) => Papa.parse(readFileSync(new URL(`../fixtures/tscore-inseason/${tab}.csv`, import.meta.url), 'utf8').trim(), { skipEmptyLines: true }).data;
 const csv = (text) => Papa.parse(text.trim(), { skipEmptyLines: true }).data;
@@ -54,4 +54,22 @@ test('Model Weights: a row per position and the "Fit after week" row', () => {
     assert.deepEqual(w.byPos.rb, { intercept: 1.4927, xfp: 0.6655, fpoe: 0.4805, lastSeason: 0.1668, noPrior: 1.7096, r2: 0.55, line: 36 });
     assert.deepEqual(Object.keys(w.byPos), ['wr', 'rb', 'te']);
     assert.throws(() => parseInSeasonWeights(csv('Position,Intercept\nWR,1')), InSeasonColumnError);
+});
+
+test('labels: percentiles of ROS rank over twice the Buy/Sell line, Depth Player past the line', () => {
+    assert.deepEqual(labelCutoffs(48).map(b => b.maxRank), [5, 10, 19, 34, 48]);
+    assert.deepEqual(labelCutoffs(36).map(b => b.maxRank), [4, 7, 14, 25, 36]);
+    assert.deepEqual(labelCutoffs(18).map(b => b.maxRank), [2, 4, 7, 13, 18]);
+    assert.deepEqual(inSeasonLabel(5, 48), { label: 'Elite', cls: 'label-elite' });
+    assert.deepEqual(inSeasonLabel(6, 48), { label: 'High-End Starter', cls: 'label-high' });
+    assert.deepEqual(inSeasonLabel(48, 48), { label: 'Flex Play', cls: 'label-boom' });
+    assert.deepEqual(inSeasonLabel(49, 48), { label: 'Depth Player', cls: 'label-depth' });
+});
+
+test('a Label column with a known name is kept as a hand-set label; anything else is ignored', () => {
+    const players = parseInSeasonPlayers(csv(`ROS rank,Player,Team,ROS PPG,FP/G,Target share,Rank move,Buy/Sell,Label
+1,A,X,20,20,30%,0,,boom/bust
+2,B,X,19,19,30%,0,,Maybe`), 'wr');
+    assert.deepEqual(players[0].label, { label: 'boom/bust', cls: 'label-boom' });
+    assert.equal(players[1].label, undefined);
 });

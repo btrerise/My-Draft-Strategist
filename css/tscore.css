@@ -377,6 +377,9 @@
     text-align: center;
 }
 .tscore-move {
+    /* Holds its .sr-only words (position: absolute): without it they'd be placed against the page, outside the
+       table's scroll box, and widen the page on phones. */
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 2px;
@@ -408,3 +411,18 @@
 /* Links inside the credit sentence: WCAG 2.5.8's inline exception. Their 48px areas (css/base.css, TOUCH TARGETS)
    would cover each other on a phone's wrapped lines, so they keep their text's size. */
 .tscore-credit a::after { content: none; }
+/* The Research's In-Season section (improvements T1): its dated note, and the preseason-vs-in-season table's first
+   column (row names, not sticky player names). */
+.article-content p.tscore-article-note { font-size: 0.9rem; color: var(--text-muted); }
+.tscore-compare-table td { white-space: normal; }
+.tscore-compare-table td:first-child { font-weight: 600; white-space: nowrap; }
+.tscore-compare-table th:nth-child(2),
+.tscore-compare-table td:nth-child(2) { position: static; box-shadow: none; }
+/* Below the sticky header and tab bar when "How it differs…" scrolls to it. */
+#inSeasonModel { scroll-margin-top: 140px; }
+@media (max-width: 600px) {
+    /* All three columns on a phone's width, no sideways scroll. */
+    .tscore-compare-table th,
+    .tscore-compare-table td { padding: 0.6rem 0.5rem; font-size: 0.82rem; white-space: normal; }
+    .tscore-compare-table td:first-child { white-space: normal; }
+}

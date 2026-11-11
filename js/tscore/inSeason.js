@@ -11,7 +11,7 @@ import { escapeHtml } from '../shared/html.js';
 import { KEYS } from '../shared/storage/keys.js';
 import { mdsFetch } from '../shared/net.js';
 import { getFreshness } from '../shared/freshness.js';
-import { IN_SEASON_POSITIONS, parseInSeasonPlayers, parseInSeasonWeights } from './inSeasonParse.js';
+import { IN_SEASON_POSITIONS, parseInSeasonPlayers, parseInSeasonWeights, inSeasonLabel, labelCutoffs, DEFAULT_LINES, DEPTH_LABEL } from './inSeasonParse.js';
 
 const SHEET = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRr7BzWeODc_BSDvhRfj2h53ETFKgtoeQKKWSvUVrX7jPEei5ctHVKX7Coqx9apmBAhKEkzkNZpCe_M/pub';
 export const IN_SEASON_URLS = {
@@ -100,8 +100,12 @@ function buySellHTML(bs) {
     return '';
 }
 
-function rowHTML(p) {
-    return `<tr><td>${p.rank}</td><td><strong>${escapeHtml(p.name)}</strong></td><td>${escapeHtml(p.team)}</td><td>${num(p.rosPpg)}</td><td>${num(p.fpg)}</td><td>${escapeHtml(p.targetShare)}</td><td>${moveHTML(p.move)}</td><td>${buySellHTML(p.buySell)}</td></tr>`;
+// The model's Buy/Sell line for a position (Model Weights), which also sets the label cutoffs.
+const lineFor = (pos) => state.data.weights?.byPos?.[pos]?.line || DEFAULT_LINES[pos];
+
+function rowHTML(p, line) {
+    const { label, cls } = p.label || inSeasonLabel(p.rank, line);
+    return `<tr><td>${p.rank}</td><td><strong>${escapeHtml(p.name)}</strong></td><td><span class="${cls}">${escapeHtml(label)}</span></td><td>${escapeHtml(p.team)}</td><td>${num(p.rosPpg)}</td><td>${num(p.fpg)}</td><td>${escapeHtml(p.targetShare)}</td><td>${moveHTML(p.move)}</td><td>${buySellHTML(p.buySell)}</td></tr>`;
 }
 
 function weightsHTML() {
@@ -112,6 +116,16 @@ function weightsHTML() {
     const rows = IN_SEASON_POSITIONS.filter(p => w.byPos[p]).map(p => {
         const x = w.byPos[p];
         return `<tr><td>${POS_LABEL[p]}</td><td>${num4(x.intercept)}</td><td>${num4(x.xfp)}</td><td>${num4(x.fpoe)}</td><td>${num4(x.lastSeason)}</td><td>${num4(x.noPrior)}</td><td>${x.r2 === null ? '–' : x.r2.toFixed(2)}</td><td>${x.line ?? '–'}</td></tr>`;
+    }).join('');
+    const span = (from, to) => (to < from ? '–' : from === to ? `${from}` : `${from}–${to}`);
+    const cuts = Object.fromEntries(IN_SEASON_POSITIONS.map(p => [p, labelCutoffs(lineFor(p))]));
+    const labelRows = [...cuts.wr.map((b, i) => [b.label, b.cls, i]), [DEPTH_LABEL.label, DEPTH_LABEL.cls, -1]].map(([label, cls, i]) => {
+        const cell = (p) => {
+            if (i === -1) return `${lineFor(p) + 1}+`;
+            const from = i === 0 ? 1 : cuts[p][i - 1].maxRank + 1;
+            return span(from, cuts[p][i].maxRank);
+        };
+        return `<tr><td><span class="${cls}">${label}</span></td>${IN_SEASON_POSITIONS.map(p => `<td>${cell(p)}</td>`).join('')}</tr>`;
     }).join('');
     const lines = IN_SEASON_POSITIONS.filter(p => w.byPos[p]?.line).map(p => `${POS_LABEL[p]} ${w.byPos[p].line}`).join(', ');
     return `
@@ -128,8 +142,15 @@ function weightsHTML() {
             <li><strong>FPOE/G:</strong> fantasy points over expected per game, how much more (or less) he scores than that usage predicts.</li>
             <li><strong>Last-season PPG:</strong> his full-PPR points per game last season.</li>
             <li><strong>Move:</strong> his ROS rank against his rank so far this season (YTD). Up means projected to finish higher than he has scored.</li>
+            <li><strong>Labels:</strong> the preseason tabs' tiers, by ROS rank: the top 5%, 10%, 20%, 35% and 50% of each position's fantasy-relevant pool (twice its Buy/Sell line), so Flex Play ends at the line and Depth Player starts past it.</li>
             <li><strong>Buy / Sell:</strong> Buy is outside the line by YTD rank but projected inside it by ROS rank; Sell is inside now but projected outside it.${lines ? ` Lines: ${lines}.` : ''}</li>
-        </ul>`;
+        </ul>
+        <div class="data-table-wrapper" style="margin-bottom: 0;">
+            <table class="data-table tscore-labels-table">
+                <thead><tr><th>Label</th><th>WR</th><th>RB</th><th>TE</th></tr></thead>
+                <tbody>${labelRows}</tbody>
+            </table>
+        </div>`;
 }
 
 const num4 = (n) => (n === null || n === undefined ? '–' : Number(n).toFixed(4));
@@ -166,8 +187,8 @@ function render() {
     if (players) {
         const shown = state.buySellOnly ? players.filter(p => p.buySell) : players;
         body.innerHTML = shown.length
-            ? shown.map(rowHTML).join('')
-            : `<tr><td colspan="8" class="tscore-inseason-empty">No Buy or Sell calls at ${POS_LABEL[pos]} right now.</td></tr>`;
+            ? shown.map(p => rowHTML(p, lineFor(pos))).join('')
+            : `<tr><td colspan="9" class="tscore-inseason-empty">No Buy or Sell calls at ${POS_LABEL[pos]} right now.</td></tr>`;
     } else {
         body.innerHTML = '';
     }

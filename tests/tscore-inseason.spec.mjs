@@ -24,14 +24,24 @@ test('opens on In-Season and draws the sheet: WR, RB, TE, Move, Buy/Sell, the fi
     await expect(page.locator('#inSeasonMessage')).toBeHidden();
 
     await expect(rows(page)).toHaveCount(21);
-    expect(await cells(rows(page).first())).toEqual(['1', 'Puka Nacua', 'LA', '22.14', '24.80', '36.1%', 'Up 1', '']);
+    expect(await cells(rows(page).first())).toEqual(['1', 'Puka Nacua', 'Elite', 'LA', '22.14', '24.80', '36.1%', 'Up 1', '']);
     // Move: an arrow drawn as SVG, the number, and words for screen readers; 0 reads "No change".
     await expect(rows(page).nth(1).locator('.tscore-move.is-down svg[aria-hidden="true"]')).toHaveCount(1);
-    expect(await cells(rows(page).nth(1))).toEqual(['2', 'Jaxon Smith-Njigba', 'SEA', '20.73', '25.78', '35.7%', 'Down 1', '']);
+    expect(await cells(rows(page).nth(1))).toEqual(['2', 'Jaxon Smith-Njigba', 'Elite', 'SEA', '20.73', '25.78', '35.7%', 'Down 1', '']);
     await expect(rows(page).nth(2).locator('.tscore-move.is-flat')).toHaveText('No change–');
     const waddle = rows(page).filter({ hasText: 'Jaylen Waddle' });
     await expect(waddle.locator('.tscore-chip.tscore-chip-buy')).toHaveText('Buy');
     await expect(rows(page).filter({ hasText: 'DeMario Douglas' }).locator('.tscore-chip-sell')).toHaveText('Sell');
+
+    // Labels: percentiles of ROS rank over twice the Buy/Sell line (WR 96: Elite 1–5, High-End 6–10, Strong 11–19,
+    // Quality 20–34, Flex Play 35–48, Depth past 48), drawn with the preseason tabs' badges.
+    const labelOf = (name) => rows(page).filter({ hasText: name }).locator('td').nth(2).locator('span');
+    await expect(labelOf('Chris Olave')).toHaveText('High-End Starter');
+    await expect(labelOf('Chris Olave')).toHaveClass('label-high');
+    await expect(labelOf('DeVonta Smith')).toHaveText('Strong Starter');
+    await expect(waddle.locator('.label-boom')).toHaveText('Flex Play');
+    await expect(labelOf('Tyquan Thornton')).toHaveText('Depth Player');
+    await expect(labelOf('Tyquan Thornton')).toHaveClass('label-depth');
 
     // Buy & Sell only, then RB and TE (the filter stays on), then off again.
     const filter = page.getByRole('button', { name: 'Buy & Sell only' });
@@ -46,6 +56,10 @@ test('opens on In-Season and draws the sheet: WR, RB, TE, Move, Buy/Sell, the fi
     await filter.click();
     await expect(rows(page)).toHaveCount(10);
     await expect(rows(page).first()).toContainText('Brock Bowers');
+    // TE (line 18, pool 36): Elite 1–2, High-End 3–4, Strong 5–7, Quality 8–13, Flex Play 14–18.
+    expect(await page.locator('#inSeasonBody tr td:nth-child(3)').allTextContents()).toEqual([
+        'Elite', 'Elite', 'High-End Starter', 'High-End Starter', 'Strong Starter', 'Strong Starter',
+        'Quality Contributor', 'Flex Play', 'Depth Player', 'Depth Player']);
 
     // How it's projected: the formula, a row per position and the Buy/Sell lines.
     const panel = page.locator('#inSeasonTab details');
@@ -54,6 +68,10 @@ test('opens on In-Season and draws the sheet: WR, RB, TE, Move, Buy/Sell, the fi
     expect(await page.locator('.tscore-weights-table tbody tr').first().locator('td').allInnerTexts())
         .toEqual(['WR', '0.8756', '0.6627', '0.4165', '0.2121', '1.9888', '0.54', '48']);
     await expect(panel).toContainText('Lines: WR 48, RB 36, TE 18.');
+    const labelRows = page.locator('.tscore-labels-table tbody tr');
+    expect(await labelRows.first().locator('td').allTextContents()).toEqual(['Elite', '1–5', '1–4', '1–2']);
+    expect(await labelRows.nth(4).locator('td').allTextContents()).toEqual(['Flex Play', '35–48', '26–36', '14–18']);
+    expect(await labelRows.nth(5).locator('td').allTextContents()).toEqual(['Depth Player', '49+', '37+', '19+']);
     await expect(page.locator('.tscore-credit')).toContainText('CC BY-SA 4.0');
 
     // Saved for the next visit; Draft Strategist's preseason T-Score cache is untouched.
@@ -92,8 +110,8 @@ test('columns are found by name: reordered, an extra column, and Move from YTD r
     ].join('\n');
     await openApp(page, '/t-score/', { beforeGoto: (p) => stubInSeasonSheets(p, { wr }) });
     await expect(rows(page)).toHaveCount(2);
-    expect(await cells(rows(page).first())).toEqual(['1', 'Puka Nacua', 'LA', '22.14', '24.80', '36.1%', 'Up 1', '']);
-    expect(await cells(rows(page).nth(1))).toEqual(['41', 'Jaylen <b>Waddle</b>', 'DEN', '9.71', '9.11', '20.1%', 'Up 15', 'Buy']);
+    expect(await cells(rows(page).first())).toEqual(['1', 'Puka Nacua', 'Elite', 'LA', '22.14', '24.80', '36.1%', 'Up 1', '']);
+    expect(await cells(rows(page).nth(1))).toEqual(['41', 'Jaylen <b>Waddle</b>', 'Flex Play', 'DEN', '9.71', '9.11', '20.1%', 'Up 15', 'Buy']);
 });
 
 test('a tab missing a column shows a plain message, and keeps the last good rankings when it has them', async ({ page }) => {
@@ -134,4 +152,37 @@ test('a #tab link still opens that tab, and Back returns to In-Season', async ({
     await page.locator('.tscore-nav-btn[data-tab="researchTab"]').click();
     await page.goBack();
     await expect(page.locator('#inSeasonTab')).toHaveClass(/\bactive\b/);
+});
+
+test('a Label column in the sheet overrides the computed label', async ({ page }) => {
+    const wr = inSeasonFixture('wr').replace('Buy/Sell', 'Buy/Sell,Label').replace(/\n1,Puka Nacua,LA,22.14,24.80,36.1%,2,1,/, '\n1,Puka Nacua,LA,22.14,24.80,36.1%,2,1,,Strong Starter')
+        .replace(/\n2,Jaxon Smith-Njigba,(.*)/, '\n2,Jaxon Smith-Njigba,$1,Not a label');
+    await openApp(page, '/t-score/', { beforeGoto: (p) => stubInSeasonSheets(p, { wr }) });
+    await expect(rows(page).first().locator('td').nth(2)).toHaveText('Strong Starter');
+    await expect(rows(page).nth(1).locator('td').nth(2)).toHaveText('Elite'); // an unknown name: the computed label
+});
+
+test('"How it differs from the preseason T-Score" opens The Research at its In-Season section', async ({ page }) => {
+    await openApp(page, '/t-score/', { beforeGoto: (p) => stubInSeasonSheets(p) });
+    await page.getByRole('link', { name: 'How it differs from the preseason T-Score' }).click();
+    await expect(page.locator('#researchTab')).toHaveClass(/\bactive\b/);
+    await expect(page).toHaveURL(/#researchTab$/);
+    const heading = page.locator('#inSeasonModel');
+    await expect(heading).toHaveText('The In-Season Model: Rest-of-Season Points per Game');
+    await expect(heading).toBeInViewport();
+    await expect(page.locator('#researchTab .tscore-compare-table')).toContainText('Percentiles of ROS rank');
+});
+
+test('the page never scrolls sideways: only the table does', async ({ page }) => {
+    await openApp(page, '/t-score/', { beforeGoto: (p) => stubInSeasonSheets(p) });
+    await expect(rows(page)).toHaveCount(21);
+    // The Move column's screen-reader words are absolutely placed; held by .tscore-move, not the page (they widened
+    // a phone's page to 612px before).
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+});
+
+test('The Research\'s "What Changed" table fits the screen, phones included', async ({ page }) => {
+    await openApp(page, '/t-score/#researchTab', { beforeGoto: (p) => stubInSeasonSheets(p) });
+    const box = page.locator('#researchTab .tscore-compare-table').locator('..');
+    expect(await box.evaluate(e => e.scrollWidth - e.clientWidth)).toBe(0);
 });
