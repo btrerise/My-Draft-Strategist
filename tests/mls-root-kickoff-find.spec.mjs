@@ -186,8 +186,18 @@ test.describe('Player Scoreboard: find a player', () => {
         await expect(found(page).locator('.mls-root-group-title')).toHaveText('Root for');
         await expect(found(page).locator('.mls-root-count')).toHaveText('in 3');
         await expect(found(page).locator('.mls-root-detail li')).toHaveCount(3);
-        // Another pick replaces him.
-        await input(page).fill('lamar');
+        // A suggestion's position, team and standing sit under the name, so a long name has the row's width.
+        await input(page).fill('ja');
+        const item = board(page).locator('.autocomplete-item').first();
+        const [nameBox, metaBox] = [await item.locator('span').first().boundingBox(), await item.locator('.autocomplete-meta').boundingBox()];
+        expect(metaBox.y).toBeGreaterThanOrEqual(nameBox.y + nameBox.height - 1);
+        await input(page).fill('Justin Jefferson');
+        await found(page).locator('.mls-root-player').focus();
+        // Another pick replaces him: tapping the field selects the picked name, so typing starts a new search.
+        await input(page).click();
+        await page.keyboard.type('lamar');
+        await expect(input(page)).toHaveValue('lamar');
+        await expect(board(page).locator('.autocomplete-item')).toHaveCount(1);
         await page.keyboard.press('Enter');
         await expect(found(page).locator('.mls-root-name')).toContainText('Lamar Jackson');
         await expect(found(page)).toHaveCount(1);
@@ -216,6 +226,14 @@ test.describe('Player Scoreboard: find a player', () => {
         await expect(none).toBeHidden();
         await input(page).fill('kelce');
         await expect(none).toHaveText('No starter in this week\'s matchups matches "kelce".');
+        // With a player picked, a name nobody matches still says so.
+        await input(page).fill('allen');
+        await page.keyboard.press('Enter');
+        await expect(found(page)).toHaveCount(1);
+        await input(page).fill('kelce');
+        await expect(none).toHaveText('No starter in this week\'s matchups matches "kelce".');
+        await board(page).locator('.mls-root-find-clear').click();
+        await input(page).fill('kelce');
         await expect(board(page).locator('.autocomplete-item')).toHaveCount(0);
         await page.keyboard.press('Enter');
         await expect(found(page)).toHaveCount(0);

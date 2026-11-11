@@ -1329,7 +1329,7 @@ function rootHTML(m) {
     const found = st.found != null ? rootRows.get(st.found) : null;
     if (st.found != null && !found) st.found = null;
     if (found) parts.push(foundHTML(found, ctx));
-    if (rf.root.length || rf.against.length || rf.both.length) parts.push(`<p class="mls-root-intro">Players in 2 or more of your matchups${toCome ? ' still to play, by kickoff; in each kickoff, ' : ', '}those that matter most first. Tap one for the leagues.</p>`);
+    if (rf.root.length || rf.against.length || rf.both.length) parts.push(`<p class="mls-root-intro">Players in 2 or more of your matchups${toCome ? ' still to play, by kickoff.' : ', those that matter most first.'} Tap one for the leagues.</p>`);
     if (pending) parts.push(`<p class="text-helper mls-root-pending">Still loading ${pending} league${pending === 1 ? '' : 's'}; ${pending === 1 ? 'it joins' : 'they join'} the board when ${pending === 1 ? 'it arrives' : 'they arrive'}.</p>`);
     // While any game is still to come, the groups hold only players still to play (round 4, owner: on Monday night every
     // Root for and Against you player was Final); the rest are in the games final line. Once every game is over (a past
@@ -1429,6 +1429,17 @@ function rootFindUi() {
         tag: (p) => (rootRows.has(p.id) ? standingText(rootRows.get(p.id)) : ''),
     });
     input.addEventListener('input', () => { rootState(weekCtx().week).findText = input.value; syncRootFind(); });
+    // A second lookup (review as a user): while the field still holds the picked player's name, focusing or tapping it
+    // selects the name, so typing replaces it (before, typing appended: "Ja'Marr Chaselamar"). A mouse click places
+    // the caret after focus, so the first click selects again.
+    const holdsPick = () => {
+        const st = rootState(weekCtx().week);
+        return st.found != null && input.value !== '' && input.value === ((rootModelInfo.get(st.found) || {}).name || '');
+    };
+    let justFocused = false;
+    input.addEventListener('focus', () => { if (holdsPick()) { input.select(); justFocused = true; } });
+    input.addEventListener('click', () => { if (justFocused && holdsPick()) input.select(); justFocused = false; });
+    input.addEventListener('blur', () => { justFocused = false; });
     input.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && (input.value || rootState(weekCtx().week).found != null)) { e.preventDefault(); clearRootFind(); }
     });
@@ -1444,7 +1455,7 @@ function syncRootFind() {
     const st = rootState(weekCtx().week);
     clear.hidden = !input.value && st.found == null;
     const q = input.value.trim().toLowerCase();
-    const miss = q.length >= 2 && st.found == null && !findPool().some(p => p.searchKey.includes(q));
+    const miss = q.length >= 2 && !findPool().some(p => p.searchKey.includes(q));
     none.hidden = !miss;
     none.textContent = miss ? `No starter in this week's matchups matches "${input.value.trim()}".` : '';
 }

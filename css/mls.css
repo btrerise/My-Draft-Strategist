@@ -2785,6 +2785,9 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .mls-root-find-clear { position: absolute; right: 0.35rem; top: calc(50% - 16px); width: 32px; height: 32px; border-radius: 50%; color: var(--text-muted); font-size: 0.9rem; cursor: pointer; z-index: 1; }
 .mls-root-find-clear[hidden] { display: none; }
 .mls-root-find-none { margin-top: 0.35rem; }
+/* A suggestion's position, team and standing go under the name: beside it, a long name wrapped on a phone. */
+.mls-root-find .autocomplete-item { flex-direction: column; align-items: flex-start; gap: 1px; }
+.mls-root-find .autocomplete-meta { margin-left: 0; white-space: normal; }
 .mls-root-found { --root-c: #10b981; max-width: 640px; margin: 0 0 0.7rem; padding: 0.5rem 0.55rem; border: 1px solid var(--border); border-left: 3px solid var(--root-c); border-radius: 10px; background: rgba(255, 255, 255, 0.03); }
 .mls-root-found.is-against { --root-c: #ef4444; }
 .mls-root-found.is-both { --root-c: #f59e0b; }

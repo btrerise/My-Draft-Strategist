@@ -10031,3 +10031,23 @@ are only `visual.spec.mjs`'s cloud-fonts guard (MDS and MLS, both widths), which
 - The league tiles aren't marked for a found player (owner's choice); the result lists his leagues.
 - Open follow-ups this touched: the Scoreboard's dense lists on `ALLOW` in `tests/touch-targets.spec.mjs` ("No card
   yet") now include the new rows and the "N finished" line; nothing was added to `ALLOW`.
+
+### S33, round 2: my review as a user; the owner took 1, 2 and 3
+
+On the three fixture leagues (16 starters), Thursday evening and Sunday, at 1280 and 390px. Not on the owner's real
+leagues, so nothing here was seen at 19-league scale. My notes: (1) a second lookup appended to the picked name
+("Ja'Marr Chaselamar", no suggestions, no "nobody matches" line); (2) the intro line had grown to three lines on a
+phone; (3) a suggestion's standing beside the name only just fit at 390px, so a long name would wrap; (4) the result
+repeats a row already visible when he's in his box's first five (the cost of the choice, left); (5) on desktop the
+result card is 640px wide with empty space beside it. **Owner: do 1, 2 and 3; asked how I'd fix 5.**
+- **1.** While the field holds the picked player's name, focusing or tapping it selects the name, so typing replaces
+  it. The "No starter … matches" line now shows with a player picked too.
+- **2.** The intro reads "Players in 2 or more of your matchups still to play, by kickoff. Tap one for the leagues."
+  (a finished week keeps "…, those that matter most first.").
+- **3.** In the find field's suggestions, position, team and standing sit under the name (css/mls.css, scoped to
+  `.mls-root-find`; the site's other autocompletes are unchanged).
+- `CACHE_NAME` v2.9.13 → v2.9.14 (a second push to the branch's preview). `mls-root-kickoff-find.spec.mjs` covers the
+  three; it and `mls-root-for.spec.mjs` pass (36), check-precache OK. Screenshots: the same four as above (no
+  suggestion list or intro change shows in them beyond the Scoreboard PNGs already listed).
+- **5, proposed, not built:** from 900px, the result card as wide as the three boxes, his row on the left and "Yours
+  in" / "Against you in" side by side to its right. Waiting for the owner.
