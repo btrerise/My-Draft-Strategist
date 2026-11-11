@@ -10426,7 +10426,9 @@ In-Season tab as in the fixture, and only the tab bar's new pill elsewhere.
   words are absolutely placed and were held by the page, outside the table's scroll box. `.tscore-move { position:
   relative }` fixes it; a spec checks the page's scroll width, another that What Changed fits a phone.
 - **Screenshots:** this branch before and after, rendered in the same container: only `tscore-inSeasonTab.png` and
-  `tscore-researchTab.png` change (desktop and phone); re-taken on CI.
+  `tscore-researchTab.png` change (desktop and phone); re-taken on CI. The tagged push's run was cancelled by the
+  next push (the LOG commit, seconds later: the workflow keeps one run per branch), so I started it by hand with the
+  same four names (workflow_dispatch, `expected`); it committed exactly those. Lesson: push the tagged commit last.
 
 **Left over.**
 - On phones the table scrolls sideways (Player stays put), as the preseason tables do; ROS PPG and Buy/Sell sit past
