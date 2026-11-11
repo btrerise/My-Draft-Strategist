@@ -31,11 +31,20 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
   (ubuntu-24.04, Node 22, Playwright's own Chromium). When it fails, the run's `playwright-results` artifact has the
   HTML report and `test-results/`, which holds each failed screenshot's expected, actual and diff PNGs. No secrets
   are needed: the tests stub every outside request.
-- **Run before a card's last push:** `npm run check`. CI runs it too, but a red PR costs a round trip.
-- **While iterating, run what you touched; the full suite once at the end** (owner's decision, 2026-11-08, after S30
-  ran it after every round). The whole Playwright suite takes ~20 minutes in a cloud session. Between rounds of a card,
-  run check-precache, `node --test` and the specs for the code you changed (`npx playwright test <spec> …`, a minute
-  or two), and push. Run the full `npm run check` once, before the card's last push; CI runs it again on the PR.
+- **CI, screenshots only:** `.github/workflows/update-screenshots.yml` (improvements S38) re-takes the baselines a
+  change is meant to touch on CI's renderer and commits them to the branch, before the pull request. It must be told
+  which PNGs to expect and fails, committing nothing, if any other screenshot changed. It doesn't replace `check`.
+  Steps: "Cloud sessions: let CI re-take them before the pull request", below.
+- **The full suite runs once per card: when the owner asks for the pull request** (owner's decision, 2026-11-08, after
+  S30 ran it after every round; made exact on 2026-11-11, after S38 ran it at the end of round 1 and started it again
+  after round 2). The whole Playwright suite takes ~20 minutes in a cloud session, and CI runs it on every pull
+  request anyway.
+  - **Every push before that**, however finished the round feels: check-precache, `node --test` and the specs for the
+    code you changed (`npx playwright test <spec> …`, a minute or two). Say in your summary that the full suite hasn't
+    run yet.
+  - **When the owner asks for the pull request:** `npm run check` once, then push and open it.
+  - **After it has run** (more rounds on an open pull request, review fixes, re-taken screenshots): back to the checks
+    for what you touched. Don't run it again unless the owner asks; CI does.
 - **Node 22 or newer**, and run `node --test` with no arguments (from the repo root or `tests/`). The tests import
   the app's `.js` ES modules directly, and with no root package.json Node has to detect module syntax itself.
   `node --test tests/unit/` doesn't work (Node 22 treats a directory argument as a file); for one suite use
@@ -73,6 +82,8 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
     it load and checks it.
     `/api/ffc/*` (the Pages Function in `functions/`) isn't run by `serve.mjs`, so it 404s unless a spec stubs it
     (`stubFfc` in `mds-sync.spec.mjs`).
+    `/api/fantasycalc` (the other Pages Function) is aborted unless a spec stubs it with `page.route()`: Analyze Trade
+    fetches market values by itself (improvements S38), so an unstubbed test sees the "couldn't load" line.
 - **Fixed clock:** 2026-09-15T16:00Z, so "Updated 3 days ago" labels and season logic don't drift.
 - **What fails a test:** any uncaught exception, any `console.error`, any local HTTP status ≥ 400, or the fatal
   boot banner (`#mds-boot-error`). `openApp()` checks right after load, so a broken import names the missing file.
@@ -156,13 +167,32 @@ something looks:
    Anything else it lists means rendering has become unrepeatable again: that's a bug to fix, not drift to accept.
 3. Look at each changed PNG, then list them (and why) in your commit message or PR.
 
+**Cloud sessions: let CI re-take them before the pull request** (improvements S38, 2026-11-11; before it, every
+visual change cost a red CI run just to get CI's pixels). `.github/workflows/update-screenshots.yml` runs
+`visual.spec.mjs` on CI's renderer with `--update-snapshots=changed` and commits the PNGs that changed to your branch.
+1. Find the PNGs your change touches, as below (main and your branch rendered in the same container, `npm run pxdiff`).
+2. Start the workflow on your branch once the code is final, **naming those PNGs** (paths under
+   `tests/baselines/linux/`): push a commit whose message contains, on one line,
+   `[update screenshots: desktop/mls-league-scout.png phone/mls-league-scout.png]` (your last real commit, never an
+   empty one), or run "Update screenshots" from the Actions tab for the branch with the same list (needs the file on
+   main).
+3. **The list is the guard.** If any screenshot you didn't name changed, the job fails and commits nothing: that's an
+   unintended visual change (or a wrong prediction) to find and explain, not a baseline to accept. Its PNGs are in the
+   run's `retaken-screenshots` artifact. Never add a name to the list just to get past it.
+4. When it succeeds, `git pull` and open each PNG in its commit: different only where your change is. List them in LOG.
+5. Then open the pull request: `check` runs on the new baselines and should be green the first time. Do it in this
+   order: a commit the workflow pushes doesn't start `check`, so on a pull request that's already open, push one more
+   real commit afterwards.
+It never runs on main, and it doesn't replace looking at the images.
+
 **When your machine can't reproduce the baselines** (Claude Code cloud sessions since 2026-10-03, whose image adds
 fonts and font rules CI doesn't have, and since 2026-10 a newer Chromium; see docs/improvements/LOG.md, F1, S9 and S23):
 render main and your branch the same way there and compare them with `npm run pxdiff` to find the PNGs your change
 touches. For main, a worktree works: `git worktree add <scratch dir> origin/main`, `npm ci` in its `tests/`, then
 `RENDER_ENV=any npx playwright test visual.spec.mjs --update-snapshots=all` there and in yours, one at a time (both
 use port 4173; `RENDER_ENV=any` skips the environment check, outside CI only),
-and compare the two `baselines/linux` folders; put your own back with `git checkout -- tests/baselines`. Push without re-taking them, and
+and compare the two `baselines/linux` folders; put your own back with `git checkout -- tests/baselines`. Then have CI
+re-take them (above). The older way still works if the workflow can't be used: push without re-taking them, and
 let the PR's CI fail on exactly those. Then take CI's renders from the run's `playwright-results` artifact:
 `gh run download <run-id> -R btrerise/My-Draft-Strategist -n playwright-results -D <new empty folder>` works from
 cloud sessions. Before committing an `-actual.png` as the baseline, check that its `-expected.png` is identical to the
@@ -297,10 +327,6 @@ done or dropped, remove its line here in the same change. Background for each is
   Trade Analyzer, "To make it fair" and the Future column. Not needed in season (improvements S19, round 4).
 
 **Needs the owner's decision first**
-- Keep market values for each format (S23 follow-up, the Scout tab after a league switch). Market values are one set
-  from the last fetch; a league that plays another format (redraft vs. dynasty, 1QB vs. Superflex, PPR, TE premium)
-  only gets a warning saying so. Keeping one set per format, fetched as each league needs it, would give every
-  league's Trade Analyzer and Market Disconnect its own values. Owner: "look into a bigger change in the future".
 - Manual leagues can't be dynasty (improvements S23, round 12). They have no league type, so they always count as
   redraft: no In-Season rankings, no Future column, no draft picks in trades. A "League type" choice for manual leagues
   (beside League style on the Setup tab) would fix that, but the owner noted the payoff is small: Power Rankings need a

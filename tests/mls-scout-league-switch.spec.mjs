@@ -6,7 +6,7 @@
 // Setup: Fixture League (redraft) and Second Fixture League (dynasty), both synced, the same rankings in each, and
 // FantasyCalc stubbed with the 24 fixture players in reverse order.
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, callApp, loadMlsRankings, RANKINGS_CSV, FIXTURE_LEAGUE_ID, FIXTURE_LEAGUE2_ID } from './helpers.mjs';
+import { openApp, expectClean, showTab, seedMls, callApp, loadMlsRankings, RANKINGS_CSV, FIXTURE_LEAGUE_ID, FIXTURE_LEAGUE2_ID, fetchMarketValue, openMarketSource } from './helpers.mjs';
 
 const rows = RANKINGS_CSV.trim().split('\n').slice(1).map(l => l.split(','));
 
@@ -78,7 +78,7 @@ test.describe('Scout tab: a league switch made on the tab', () => {
             const { State } = await import('/js/mls/state.js');
             delete State.leagues.find(l => l.leagueId === leagueId).globalRosterMap['bijanrobinson'];
         }, FIXTURE_LEAGUE2_ID);
-        await page.click('#scoutTab #fetchMarketValueBtn');
+        await fetchMarketValue(page);
         await expect(page.locator('#marketSuccessMsg')).toContainText('Pulled Successfully');
         await page.locator('[data-action="runMarketDisconnectAnalysis"]').click();
         const bijan = page.locator('#marketDisconnectOutput').locator('.scout-result-card', { hasText: 'Bijan Robinson' });
@@ -91,21 +91,26 @@ test.describe('Scout tab: a league switch made on the tab', () => {
     test('market values fetched for another format than the league say so', async ({ page }) => {
         const state = await setUp(page);
         const meta = page.locator('#marketMetaDisplay');
-        await page.click('#scoutTab #fetchMarketValueBtn'); // in the redraft league
+        await fetchMarketValue(page); // in the redraft league
         await expect(page.locator('#marketSuccessMsg')).toContainText('Pulled Successfully');
         await expect(meta.locator('.mls-market-format-warning')).toHaveCount(0);
         await switchTo(page, FIXTURE_LEAGUE2_ID);
         await expect(meta.locator('.mls-market-format-warning')).toHaveText("Fetched for redraft; this league is dynasty. Fetch again for this league's values.");
-        // The Trade Analyzer says it under the values' age.
+        // The Trade Analyzer says it under the values' age, when it isn't fetching by itself (improvements S38: with
+        // "Auto-fetch market values" on, Analyze brings this league's values; mls-trade-market-auto.spec.mjs).
+        await page.locator('.mls-trade-value-settings > summary').click();
+        await page.locator('#tradeAutoMarketToggle').uncheck();
         await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson']);
         await callApp(page, 'setTradePlayers', 'give', ["Ja'Marr Chase"]);
         await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
         await expect(page.locator('#tradeOutput .mls-trade-market-age.is-stale')).toHaveText('Fetched for redraft; this league is dynasty. Fetch again in Trade Finder (below).');
-        // Fetched again here, the warning goes; back in the redraft league it's the other way round.
-        await page.click('#scoutTab #fetchMarketValueBtn');
+        // Fetched again here, the warning goes. Back in the redraft league its own values return (each format's set is
+        // kept since S38), so there's no warning there either.
+        await fetchMarketValue(page);
         await expect(meta.locator('.mls-market-format-warning')).toHaveCount(0);
         await switchTo(page, FIXTURE_LEAGUE_ID);
-        await expect(meta.locator('.mls-market-format-warning')).toHaveText("Fetched for dynasty; this league is redraft. Fetch again for this league's values.");
+        await expect.poll(() => page.evaluate(async () => (await import('/js/mls/state.js')).State.marketFormat.type)).toBe('redraft');
+        await expect(meta.locator('.mls-market-format-warning')).toHaveCount(0);
         // A file upload's format is unknown: no warning.
         await page.setInputFiles('#marketFileInput', { name: 'market.csv', mimeType: 'text/csv', buffer: Buffer.from('Player,Overall Rank\nBijan Robinson,1\n') });
         await expect(meta).toContainText('Market Consensus Loaded: 1 players');

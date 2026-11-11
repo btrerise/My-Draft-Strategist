@@ -90,10 +90,17 @@ test.describe('Trade Analyzer: how your team changes', () => {
         // Short labeled lines (improvements S24, round 5: every Sleeper league, as with In-Season rankings).
         await expect(s.locator('.mls-trade-impact-lines').first().locator('dt')).toHaveText(['Lineup', 'Rooms']);
         await expect(s.locator('.mls-trade-impact-lines').first().locator('dd').nth(1)).toHaveText('RB 2nd → 1st · WR 1st → 2nd');
-        // The headline puts the value verdict (Fair, by your rankings) and the lineup change together; the key explains the ranks.
+        // The pick has no value (no market data, and the tests are offline), so the verdict is Incomplete and there's no
+        // value headline (improvements S38, round 3). Without the pick, the headline puts the value verdict (Fair, by your
+        // rankings) and the lineup change together; the key explains the ranks.
+        await expect(page.locator('#tradeOutput .trade-verdict-banner').first()).toContainText('Incomplete');
+        await expect(s.locator('.mls-trade-impact-headline')).toHaveCount(0);
+        await runTrade(page, 'Bijan Robinson\nJahmyr Gibbs\nSaquon Barkley', "Ja'Marr Chase\nJustin Jefferson\nCeeDee Lamb");
         await expect(s.locator('.mls-trade-impact-headline')).toHaveText(/^A fair trade by value (that makes your starting lineup stronger|, but your starting lineup gets weaker|that doesn't change your starting lineup)/);
         await expect(s.locator('.mls-trade-impact-key')).toHaveText('1 = strongest of 2. Green better, red worse.');
         await expect(s.locator('.mls-trade-impact-lines').first().locator('dd').first()).toHaveText(/^1st of 2(, (stronger|weaker))?$/); // the headline gives the percent
+        // The pick back on, for the rest of this test (without a headline, the Lineup line carries the percent).
+        await runTrade(page, 'Bijan Robinson\nJahmyr Gibbs\nSaquon Barkley\n2027 1st', "Ja'Marr Chase\nJustin Jefferson\nCeeDee Lamb");
         // The source line is in "How this is worked out".
         await expect(s.locator('[data-about]').first()).toHaveText('Ranked by your ROS rankings.');
         const you = s.locator('table').first().locator('tr.mls-power-you');
@@ -403,7 +410,8 @@ test.describe('Trade Analyzer: how your team changes', () => {
         await showTab(page, 'scout');
         await page.locator('[data-action="addTradePick"][data-side="get"]').click();
         const out = page.locator('#tradeOutput');
-        await expect(out).toContainText('2027 1st has no value without Market Consensus data (Trade Finder below)');
+        await expect(out.locator('[data-picks-unvalued]').first()).toHaveText('2027 1st needs market values, so this total is missing it.');
+        await expect(out.locator('.trade-verdict-banner').first()).toContainText('Incomplete');
         await expect(out).not.toContainText('player not found');
         const pickRow = out.locator('.mls-trade-row', { hasText: '2027 1st' });
         await expect(pickRow).toContainText('Needs market data');
@@ -416,7 +424,7 @@ test.describe('Trade Analyzer: how your team changes', () => {
             State.marketUpdatedAt = String(Date.now() - 3 * 24 * 3600 * 1000);
         });
         await analyze(page);
-        await expect(out.locator('.mls-trade-market-age')).toHaveText('Market values: Updated 3 days ago (Sat, Sep 12 at 4:00 PM). Refresh them in Trade Finder (below) before you trade.');
+        await expect(out.locator('.mls-trade-market-age')).toHaveText('Market values: Updated 3 days ago (Sat, Sep 12 at 4:00 PM). They\'re from a file or an earlier fetch, so they aren\'t refreshed automatically: tap Fetch Market Value in Trade Finder (below) for current ones.');
         await expect(out.locator('.mls-trade-market-age')).toHaveClass(/is-stale/);
         await expect(out).toContainText("2027 1st isn't in the Market Consensus data");
         // Fresh today: dated, not amber.

@@ -3,9 +3,10 @@
 // only that block calls.
 import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
+import { pickBase } from './entries.js';
 import { getFreshness } from '../../shared/freshness.js';
 import { verdictFromValues } from './makeFair.js';
-import { activeOwnRankings, leagueQbMarketPricing, marketFormatWarning } from '../main.js';
+import { activeOwnRankings, leagueQbMarketPricing, marketFetchFailed, marketFormatWarning } from '../main.js';
 import { getActiveLeague } from '../helpers.js';
 import { IN_SEASON, hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superflexQbPrices } from '../rankings/nowAndLater.js';
@@ -77,7 +78,7 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
             ]);
             const tiles = dualVerdictTiles(seasonSet, now, later, dualHeadline(both.now, both.later), box.marks);
             verdictHTML = tiles + box.html + oneQbNote(getResults, giveResults, seasonSet) + marketStrip(market, box.marks.market) + marketAgeHTML();
-            return verdictHTML || `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
+            return (verdictHTML || `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`) + noMarketFailHTML();
         } else {
             yours = renderTradeVerdict(
                 "Your Rankings", YOUR_METHOD,
@@ -94,6 +95,9 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
         verdictHTML = yours && market ? `<div class="trade-verdict-pair">${yours}${market}</div>` : yours + market;
 
         verdictHTML += oneQbNote(getResults, giveResults, null) + marketAgeHTML();
+        // The failed fetch's line right under the verdict it explains (round 3: it sat below the In-Season hint).
+        const fail = noMarketFailHTML();
+        if (verdictHTML) verdictHTML += fail;
         // A dynasty or keeper league with no In-Season set (S24, owner's report): one verdict by your rankings, as before,
         // and a line saying how to get the this-season one beside it. On screen only (Export Trade doesn't pick it up).
         if (!seasonSet && yours && hasSeasonSlot(getActiveLeague())) {
@@ -102,7 +106,7 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
         }
 
         if (!verdictHTML) {
-            verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
+            verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`; + fail;
         }
         return verdictHTML;
     }
@@ -111,6 +115,24 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
     // nudge from the day after they were fetched (calendar days since 2026-11, the shared getFreshness), since trade
     // values move with every injury and depth-chart change.
     // On screen only: Export Trade copies the banners and notes, not this line.
+    // Analyze Trade fetches market values by itself (improvements S38). When that fails (offline, FantasyCalc down), one
+    // line says so, in place of an error toast: the trade is still analyzed by your rankings, and by the market values
+    // loaded earlier if there are any.
+    function marketFailHTML() {
+        if (!marketFetchFailed()) return '';
+        return `<div class="mls-trade-market-age is-stale" data-market-fail>${State.marketRankings.length === 0
+            ? (State.rosRankings.length > 0 ? "Market values couldn't load, so this is by your rankings only." : "Market values couldn't load.")
+            : "Market values couldn't be refreshed: these are the ones loaded earlier."} Analyze again to retry.</div>`;
+    }
+
+    // With no market values at all the age line is absent, so the failure goes under whatever the verdict shows.
+    const noMarketFailHTML = () => (State.marketRankings.length === 0 ? marketFailHTML() : '');
+
+    // Values with no saved format are an uploaded file, or a fetch from before formats were saved (S23 follow-up): the
+    // app can't tell which, so it never replaces them by itself (improvements S38). Once they're a day old the line
+    // says so and names the button that does.
+    const OLD_FILE_NOTE = ". They're from a file or an earlier fetch, so they aren't refreshed automatically: tap Fetch Market Value in Trade Finder (below) for current ones.";
+
     function marketAgeHTML() {
         if (State.marketRankings.length === 0) return '';
         const fresh = getFreshness(State.marketUpdatedAt, 0);
@@ -123,9 +145,10 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
             ? `Market values from <a href="https://fantasycalc.com" target="_blank" rel="noopener noreferrer">FantasyCalc</a>, ${fresh ? fresh.detail.charAt(0).toLowerCase() + fresh.detail.slice(1) : ''}`
             : `Market values: ${fresh ? fresh.detail : ''}`;
         return (fresh
-            ? `<div class="mls-trade-market-age${fresh.isStale ? ' is-stale' : ''}">${source}${fresh.isStale ? '. Refresh them in Trade Finder (below) before you trade.' : '.'}</div>`
+            ? `<div class="mls-trade-market-age${fresh.isStale ? ' is-stale' : ''}">${source}${fresh.isStale ? (State.marketFormat ? '. Refresh them in Trade Finder (below) before you trade.' : OLD_FILE_NOTE) : '.'}</div>`
             : '')
-            + (warning ? `<div class="mls-trade-market-age is-stale">${escapeHtml(warning)} Fetch again in Trade Finder (below).</div>` : '');
+            + (warning ? `<div class="mls-trade-market-age is-stale">${escapeHtml(warning)} Fetch again in Trade Finder (below).</div>` : '')
+            + marketFailHTML();
     }
 
     // The names in a trade that match no player at all (runScout's rows mark them known: false), as shown on their rows.
@@ -177,7 +200,7 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
                 </div>
                 <div class="mls-trade-tile-set">by ${set}</div>
                 <div class="trade-verdict-result mls-trade-tile-result">${p.verdictText}</div>
-                <div class="mls-trade-tile-diff">${signedPts(nums.diff)} pts &middot; ${nums.swingPct.toFixed(0)}%</div>
+                ${p.incomplete ? '' : `<div class="mls-trade-tile-diff">${signedPts(nums.diff)} pts &middot; ${nums.swingPct.toFixed(0)}%</div>`}
                 <div class="mls-trade-tile-totals">Get ${nums.getTotal.toLocaleString()} &middot; Give ${nums.giveTotal.toLocaleString()}${cardMark(mark)}</div>
             </div>`;
         };
@@ -251,6 +274,19 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
         });
     }
 
+    // Draft picks in a note, repeats joined (improvements S38): "2027 1st" and "2027 1st (2)" read "both 2027 1sts".
+    function pickListText(names) {
+        const groups = new Map();
+        names.forEach(n => { const base = pickBase(n); groups.set(base, (groups.get(base) || 0) + 1); });
+        return [...groups].map(([base, n]) => escapeHtml(n === 1 ? base : n === 2 ? `both ${base}s` : `all ${n} ${base}s`)).join(', ');
+    }
+
+    // A pick in the trade with no value by this source (matchedKey: 'userMatched' | 'seasonMatched' | 'marketMatched'):
+    // the total is missing it, so there's no verdict, no "To make it fair" and no value headline until it has one.
+    export function hasUnvaluedPick(getResults, giveResults, matchedKey) {
+        return getResults.concat(giveResults).some(r => !r[matchedKey] && r.exportRow && r.exportRow.pos === 'Pick');
+    }
+
     // Builds one verdict banner (label + totals + Fair/Favors-You/Favors-Them) from a set of
     // GET/GIVE card results, keyed off whichever value field ("userValue" or "marketValue") and
     // matched flag the caller wants. Returns "" when the underlying data source isn't loaded at
@@ -285,16 +321,23 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
         // Real players this source has no value for (round 11; typos never get this far). By your rankings an unranked
         // player is worth 0, by your own board (the Trade Analyzer's rule), so the verdict stands and says so. The market
         // simply doesn't know him, so its total is missing a piece: no verdict from it ("Incomplete").
-        const incomplete = matchedKey === 'marketMatched' && missing.length > 0;
+        // A draft pick with no value (S38, round 3, owner's choice after "Fair Trade" showed over two unvalued 1sts when the
+        // market fetch failed): a pick only ever has a market value, so by any source the total is missing it. No verdict.
+        const incomplete = (matchedKey === 'marketMatched' && missing.length > 0) || picks.length > 0;
+        const marketPlayersMissing = matchedKey === 'marketMatched' && missing.length > 0;
         let unmatchedNote = !missing.length ? ""
-            : incomplete
+            : marketPlayersMissing
                 ? `<div class="trade-verdict-note">${missing.join(', ')} ${plural ? "aren't" : "isn't"} in the Market Consensus data, so this total is missing ${plural ? 'them' : 'him'}.</div>`
                 : `<div class="trade-verdict-note">${missing.join(', ')} ${plural ? "aren't" : "isn't"} in ${setWord}, so ${plural ? 'they count' : 'he counts'} as 0.</div>`;
         if (picks.length) {
-            const names = picks.map(n => escapeHtml(n)).join(', ');
+            // "both 2027 1sts" for a repeated pick, not "2027 1st, 2027 1st (2)". Where the values come from is said by the
+            // line under the verdicts (fetched, failed, or a file), so the note only says what's missing.
+            const listed = pickListText(picks);
+            const names = listed.charAt(0).toUpperCase() + listed.slice(1);
+            const many = picks.length > 1;
             unmatchedNote += State.marketRankings.length > 0
-                ? `<div class="trade-verdict-note">${names} ${picks.length > 1 ? "aren't" : "isn't"} in the Market Consensus data, so ${picks.length > 1 ? "they're" : "it's"} left out of this total.</div>`
-                : `<div class="trade-verdict-note">${names} ${picks.length > 1 ? 'have' : 'has'} no value without Market Consensus data (Trade Finder below), so ${picks.length > 1 ? "they're" : "it's"} left out of this total.</div>`;
+                ? `<div class="trade-verdict-note" data-picks-unvalued>${names} ${many ? "aren't" : "isn't"} in the Market Consensus data, so this total is missing ${many ? 'them' : 'it'}.</div>`
+                : `<div class="trade-verdict-note" data-picks-unvalued>${names} ${many ? 'need' : 'needs'} market values, so this total is missing ${many ? 'them' : 'it'}.${marketFetchFailed() ? '' : ' Turn on Auto-fetch market values (Value settings, above), or fetch them in Trade Finder (below).'}</div>`;
         }
 
         let verdictClass, verdictText;

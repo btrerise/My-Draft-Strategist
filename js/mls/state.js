@@ -30,6 +30,8 @@ import { mdsFetch } from '../shared/net.js';
         // When marketRankings was last pulled or uploaded (ms epoch). Null for market data saved
         // before this was tracked -- updateMarketMetaDisplay shows no age rather than guess one.
         marketUpdatedAt: localStorage.getItem(KEYS.mls.marketUpdated) || null,
+        // Every fetched set by its format (improvements S38, scout/marketSets.js); marketRankings is the one in use.
+        marketSets: readJSON(KEYS.mls.marketSets, {}),
         // FantasyCalc is the only source since refactor 7A (LeagueLogs retired its API), so a
         // saved 'leaguelogs' -- or anything else -- reads as 'fantasycalc'. Same key.
         marketSettings: Object.assign({ source: 'fantasycalc', type: 'redraft', qbs: '1', ppr: '1', tep: false }, readJSON(KEYS.mls.marketSettings, {}), { source: 'fantasycalc' }),

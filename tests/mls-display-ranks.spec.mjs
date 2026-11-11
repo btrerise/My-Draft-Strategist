@@ -9,7 +9,7 @@
 // still the overall one, is derived too. Trade Finder's Positional Rank basis
 // compared the overall rank against the market's position rank; it now uses the same position ranks.
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, WAIVER_RANKINGS_CSV } from './helpers.mjs';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, WAIVER_RANKINGS_CSV, fetchMarketValue, openMarketSource } from './helpers.mjs';
 
 const rankBadge = (page, scope, name) =>
     page.locator(scope).locator('.mls-player-row-info').filter({ hasText: name }).locator('.mls-rank-badge');
@@ -164,7 +164,7 @@ test.describe('Lineup Strategist: position ranks on the Lineup and Roster tabs',
         await seedMls(page);
         await uploadOne(page, 'ros', WAIVER_RANKINGS_CSV, 30);
         await showTab(page, 'scout');
-        await page.click('#scoutTab #fetchMarketValueBtn');
+        await fetchMarketValue(page);
         await expect(page.locator('#marketSuccessMsg')).toContainText('Pulled Successfully');
         await page.selectOption('#disconnectRankBasis', 'positional');
         await page.fill('#disconnectThreshold', '2');

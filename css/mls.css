@@ -1108,6 +1108,11 @@ button.close-chip {
 .mls-trade-pick-row select { width: auto; flex: 0 0 auto; padding-top: 0.4rem; padding-bottom: 0.4rem; }
 .mls-trade-value-settings { margin-top: 0.75rem; }
 .mls-trade-value-settings .settings-subsection { margin: 0; }
+/* The second setting (Auto-fetch market values, improvements S38): a gap from the first, no space under its only row. */
+.mls-trade-value-settings .settings-subsection + .settings-subsection { margin-top: 0.5rem; }
+.mls-trade-value-settings .settings-subsection .toggle-row:last-child { margin-bottom: 0; }
+/* A button while market values load (S38): dimmed, with the site's spinner. */
+.btn.mls-btn-busy { opacity: 0.7; cursor: progress; }
 .mls-trade-row { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.55rem 0; border-bottom: 1px solid var(--border); }
 .mls-trade-row .badge { flex: 0 0 auto; min-width: 3.3em; justify-content: center; text-align: center; margin-top: 2px; }
 .mls-trade-row-main { flex: 1 1 auto; min-width: 0; }
@@ -2685,6 +2690,7 @@ button.ir-slot-badge { font-family: inherit; line-height: inherit; cursor: point
     max-width: 100%;
 }
 .mls-autofetch-settings-label { font-weight: 600; color: var(--text-main); }
+#marketSourceSettings .mls-autofetch-settings-label { white-space: nowrap; } /* "Market source" stays on one line (S38) */
 .mls-autofetch-settings[open] > summary { padding-bottom: 0.75rem; }
 
 /* --- The Scoreboard's two halves and Who to root for (week/thisWeek.js, improvements S27) --- */

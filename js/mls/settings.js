@@ -3,6 +3,7 @@
 // for those three. The lineup optimizer's setting went to state.js, next to its State field.
 import { State } from './state.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { useLeagueMarketSet } from './main.js';
 // --- SHARED MARKET SETTINGS (Scout tab + Roster tab's ROS auto-fetch) ---
 // Both tabs have their own copy of these controls (different element IDs, prefixed "ros" on
 // the Roster tab) so the user doesn't have to navigate to Scout just to configure them before
@@ -13,6 +14,8 @@ export const updateMarketSetting = function(key, value) {
     State.marketSettings[key] = value;
     localStorage.setItem(KEYS.mls.marketSettings, JSON.stringify(State.marketSettings));
     applyMarketSettingsToUI();
+    // Values already fetched for the format now chosen come back without a new fetch (improvements S38).
+    useLeagueMarketSet();
 };
 
 // --- TRADE ANALYZER SETTINGS (Waiver Adjustment) ---
@@ -40,6 +43,9 @@ export function applyTradeSettingsToUI() {
     const valueWrap = document.getElementById('tradeWaiverValueWrap');
     const valueEl = document.getElementById('tradeWaiverAdjustValue');
     if (toggleEl) toggleEl.checked = !!s.waiverAdjustment;
+    // "Auto-fetch market values" (improvements S38): on unless turned off, so settings saved before it count as on.
+    const autoEl = document.getElementById('tradeAutoMarketToggle');
+    if (autoEl) autoEl.checked = s.autoMarket !== false;
     if (valueEl) valueEl.value = s.waiverAdjustmentValue;
     if (valueWrap) valueWrap.style.display = s.waiverAdjustment ? 'block' : 'none';
 }
@@ -71,12 +77,14 @@ export function applyMarketSettingsToUI() {
 
     // The folded Auto-Fetch settings' summary on the ROS card (improvements F10, round 2):
     // "FantasyCalc · Redraft · 1QB · Full PPR" (and "· TEP").
-    const summaryEl = document.getElementById('rosMarketSummary');
-    if (summaryEl) {
-        const ppr = { '1': 'Full PPR', '0.5': 'Half PPR', '0': 'Standard' }[String(s.ppr)] || 'PPR';
-        summaryEl.textContent = ['FantasyCalc', s.type === 'dynasty' ? 'Dynasty' : 'Redraft',
-            String(s.qbs) === '2' ? 'Superflex' : '1QB', ppr, ...(s.tep ? ['TEP'] : [])].join(' · ');
-    }
+    // ... and the same line on Trade Finder's folded Market source (improvements S38, round 4).
+    const ppr = { '1': 'Full PPR', '0.5': 'Half PPR', '0': 'Standard' }[String(s.ppr)] || 'PPR';
+    const summary = ['FantasyCalc', s.type === 'dynasty' ? 'Dynasty' : 'Redraft',
+        String(s.qbs) === '2' ? 'Superflex' : '1QB', ppr, ...(s.tep ? ['TEP'] : [])].join(' · ');
+    ['rosMarketSummary', 'marketSourceSummary'].forEach(id => {
+        const summaryEl = document.getElementById(id);
+        if (summaryEl) summaryEl.textContent = summary;
+    });
 
     const brandEl = document.getElementById('attributionBrand');
     const attrLink = document.getElementById('attributionLink');

@@ -10,7 +10,7 @@ import { State } from '../state.js';
 import { rankingIndex, getActiveLeague } from '../helpers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { getFreshness } from '../../shared/freshness.js';
-import { showStatusFeedback } from '../../shared/ui/statusFeedback.js';
+import { showStatusFeedback, SPINNER_SVG } from '../../shared/ui/statusFeedback.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 import { showToast } from '../../shared/ui/toast.js';
@@ -18,6 +18,7 @@ import { loadSheetJS } from '../../shared/ui/scriptLoader.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { edgeBadgeMarkup } from '../badges.js';
 import { getPowerLeagueKind } from '../power/directionLabels.js';
+import { marketFormatKey, marketFormatOf, marketPlan, putMarketSet } from './marketSets.js';
 // --- MARKET DISCONNECT ENGINE ---
     const marketFileEl = document.getElementById('marketFileInput');
     if (marketFileEl) {
@@ -108,6 +109,102 @@ import { getPowerLeagueKind } from '../power/directionLabels.js';
         }
     }
 
+    // --- ONE SET PER FORMAT (improvements S38; the rules are in ./marketSets.js) ---
+    // The format the active league's market values are fetched for: the Market Consensus settings, which follow the
+    // league on every switch (leagues/sync.js), and the league's size.
+    function wantedMarketFormat() {
+        return marketFormatOf(State.marketSettings, getActiveLeague()?.settings?.teams || 12);
+    }
+    // Makes a set the one in use (State.marketRankings and its three keys, so a reload starts with it).
+    function useMarketSet(rows, format, updatedAt) {
+        State.marketRankings = rows;
+        State.marketUpdatedAt = updatedAt;
+        State.marketFormat = format;
+        try {
+            localStorage.setItem(KEYS.mls.market, JSON.stringify(rows)); // State.marketRankings is read back from this key on load
+            localStorage.setItem(KEYS.mls.marketUpdated, updatedAt);
+            localStorage.setItem(KEYS.mls.marketFormat, JSON.stringify(format));
+        } catch (e) {
+            console.warn('Market values not saved (storage full); they stay loaded until the page closes.', e);
+        }
+        updateMarketMetaDisplay();
+    }
+    // Fetches the active league's format (through /api/fantasycalc), keeps it under that format and puts it in use.
+    // Two callers at once (the button and a re-run) share one request. Throws what the fetch throws.
+    let _marketFetch = null; // { key, promise }
+    function fetchMarketForActiveLeague() {
+        const format = wantedMarketFormat();
+        const key = marketFormatKey(format);
+        if (_marketFetch && _marketFetch.key === key) return _marketFetch.promise;
+        const s = State.marketSettings;
+        const promise = (async () => {
+            const { parsed, formatText } = await fetchMarketConsensusData(s.source, format.type, format.qbs, format.ppr, format.tep ? 'true' : 'false', format.teams);
+            if (!parsed.length) throw new Error('FantasyCalc returned no values.');
+            const now = Date.now();
+            State.marketSets = putMarketSet(State.marketSets, format, parsed, now);
+            try { localStorage.setItem(KEYS.mls.marketSets, JSON.stringify(State.marketSets)); }
+            catch (e) { console.warn('Market values for this format not kept (storage full).', e); }
+            _marketFail = null;
+            useMarketSet(parsed, format, now);
+            return { parsed, formatText };
+        })();
+        _marketFetch = { key, promise };
+        const done = () => { if (_marketFetch && _marketFetch.promise === promise) _marketFetch = null; };
+        promise.then(done, done);
+        return promise;
+    }
+
+    // The active league's stored set, put in use when another format's is loaded: on a league switch and when a
+    // Market Consensus setting changes. An uploaded file stays (it has no format). Nothing stored: what's loaded stays,
+    // with its "Fetched for …" warning, until Analyze Trade or Fetch Market Value brings this league's.
+    export function useLeagueMarketSet() {
+        const active = { rows: State.marketRankings, format: State.marketFormat, updatedAt: State.marketUpdatedAt };
+        if (active.rows.length > 0 && !active.format) return false;
+        const key = marketFormatKey(wantedMarketFormat());
+        const stored = key && State.marketSets ? State.marketSets[key] : null;
+        if (!stored || !stored.rows || !stored.rows.length) return false;
+        if (active.rows.length > 0 && marketFormatKey(active.format) === key) return false;
+        useMarketSet(stored.rows, stored.format, stored.updatedAt);
+        return true;
+    }
+
+    // Analyze Trade's market values (improvements S38, owner's choice: fetched by itself when none are loaded for this
+    // league or they're over three hours old, unless "Auto-fetch market values" is off). A failed fetch is
+    // remembered so the verdict can say so (trade/verdict.js) and so the live re-runs don't ask again on every change
+    // for a minute; tapping Analyze Trade always tries (force). No toast and no console.error: an offline phone is an
+    // ordinary case, and the trade is still analyzed by your rankings.
+    let _marketFail = null; // { key, at }
+    const MARKET_RETRY_MS = 60 * 1000;
+    export async function ensureMarketValues({ force = false, onFetch = null } = {}) {
+        const want = wantedMarketFormat();
+        const key = marketFormatKey(want);
+        const plan = marketPlan({
+            want, sets: State.marketSets, auto: State.tradeSettings.autoMarket !== false,
+            active: { rows: State.marketRankings, format: State.marketFormat, updatedAt: State.marketUpdatedAt }
+        });
+        if (plan !== 'fetch') {
+            _marketFail = null;
+            if (plan === 'cached') useLeagueMarketSet();
+            return plan;
+        }
+        if (!force && _marketFail && _marketFail.key === key && Date.now() - _marketFail.at < MARKET_RETRY_MS) return 'failed';
+        if (onFetch) onFetch();
+        try {
+            await fetchMarketForActiveLeague();
+            return 'fetched';
+        } catch (e) {
+            console.warn('Trade Analyzer: market values unavailable.', e && e.message ? e.message : e);
+            _marketFail = { key, at: Date.now() };
+            // An older stored set for this league's format still beats another format's values.
+            useLeagueMarketSet();
+            return 'failed';
+        }
+    }
+    // Whether the last automatic fetch for the active league's format failed (the line under the verdicts).
+    export function marketFetchFailed() {
+        return !!_marketFail && _marketFail.key === marketFormatKey(wantedMarketFormat());
+    }
+
     export const fetchMarketValue = async function(btn) {
     const outputEl = document.getElementById('marketDisconnectOutput');
     const msgEl = document.getElementById('marketSuccessMsg');
@@ -118,19 +215,7 @@ import { getPowerLeagueKind } from '../power/directionLabels.js';
     btn.disabled = true;
 
     try {
-        const s = State.marketSettings;
-        const isTEP = s.tep ? 'true' : 'false';
-        let teamCount = (typeof getActiveLeague === 'function' && getActiveLeague()?.settings?.teams) || 12;
-
-        const { parsed, formatText } = await fetchMarketConsensusData(s.source, s.type, s.qbs, s.ppr, isTEP, teamCount);
-
-        // Save to state and local storage
-        State.marketRankings = parsed;
-        localStorage.setItem(KEYS.mls.market, JSON.stringify(State.marketRankings)); // was 'mls_season_market' -- State.marketRankings is always read back from KEYS.mls.market on load (see State init above), so this key must match or fetched data silently disappears on reload
-        State.marketUpdatedAt = Date.now();
-        localStorage.setItem(KEYS.mls.marketUpdated, State.marketUpdatedAt);
-        State.marketFormat = { type: s.type, qbs: s.qbs, ppr: s.ppr, tep: !!s.tep };
-        localStorage.setItem(KEYS.mls.marketFormat, JSON.stringify(State.marketFormat));
+        const { formatText } = await fetchMarketForActiveLeague();
 
         // Update UI
         updateMarketMetaDisplay(); 
@@ -228,8 +313,8 @@ import { getPowerLeagueKind } from '../power/directionLabels.js';
         return f;
     }
 
-    // Market values are one set, from the last fetch (owner, S23 follow-up: a warning for now; keeping a set per
-    // format is an open follow-up in docs/improvements/LOG.md). When the active league plays a different format than
+    // The values in use can still be another format's (S23 follow-up): a league whose own set hasn't been fetched yet
+    // (improvements S38 keeps one per format and Analyze Trade fetches it), or the switch off. When the active league plays a different format than
     // the loaded values were fetched for, one line saying both, e.g. "Fetched for redraft, 1QB; this league is
     // dynasty, Superflex." '' when they match, when there are no values, or after a file upload (format unknown).
     export function marketFormatWarning() {
@@ -270,12 +355,44 @@ import { getPowerLeagueKind } from '../power/directionLabels.js';
         }
     }
 
+    // A button while market values load: the site's spinner, "Fetching market values…", dimmed and disabled (round 3:
+    // with only the words changed it didn't look busy). Returns the function that puts it back, or null.
+    export function marketBusyButton(btn) {
+        if (!btn || btn.disabled) return null;
+        const html = btn.innerHTML;
+        btn.innerHTML = `${SPINNER_SVG}<span>Fetching market values…</span>`;
+        btn.disabled = true;
+        btn.classList.add('mls-btn-busy');
+        btn.setAttribute('aria-busy', 'true');
+        return () => { btn.innerHTML = html; btn.disabled = false; btn.classList.remove('mls-btn-busy'); btn.removeAttribute('aria-busy'); };
+    }
+
+    // The Find Trade Targets button (owner, after S38: "work the same way as Trade Analyzer does now"): the active
+    // league's market values first, fetched when none are loaded for its format or they're over three hours old (same
+    // switch, same rules: ensureMarketValues), with the button busy meanwhile; then the report. A failed fetch leaves
+    // the report on the values loaded earlier, with a line saying so, or a message when there are none. No toast.
+    export async function findTradeTargets(btn) {
+        let restore = null;
+        await ensureMarketValues({
+            force: true,
+            onFetch: () => { restore = marketBusyButton(btn); }
+        });
+        if (restore) restore();
+        runMarketDisconnectAnalysis();
+        const outputEl = document.getElementById('marketDisconnectOutput');
+        if (outputEl && marketFetchFailed() && State.marketRankings.length > 0 && State.rosRankings.length > 0) {
+            outputEl.insertAdjacentHTML('afterbegin', `<div class="mls-trade-market-age is-stale" data-market-fail>Market values couldn't be refreshed: these are the ones loaded earlier. Tap Find Trade Targets to retry.</div>`);
+        }
+    }
+
     export const runMarketDisconnectAnalysis = function() {
         const outputEl = document.getElementById('marketDisconnectOutput');
         if (!outputEl) return;
 
         if (State.marketRankings.length === 0) {
-            outputEl.innerHTML = `<span class="mls-error-text">Please upload a market consensus file (KTC/FantasyCalc) first.</span>`;
+            outputEl.innerHTML = marketFetchFailed()
+                ? `<span class="mls-error-text" data-market-fail>Market values couldn't load. Tap Find Trade Targets to try again, or upload a market file above.</span>`
+                : `<span class="mls-error-text">Please upload a market consensus file (KTC/FantasyCalc) or tap Fetch Market Value first.</span>`;
             return;
         }
         if (State.rosRankings.length === 0) {

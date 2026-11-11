@@ -3,7 +3,7 @@
 // FantasyCalc is credited near its numbers: on the Trade Analyzer's line under the verdicts (only when the market came
 // from FantasyCalc, not from a file) and beside Auto-Fetch ROS Rankings.
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp } from './helpers.mjs';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, fetchMarketValue, openMarketSource } from './helpers.mjs';
 
 test.use({ timezoneId: 'UTC', locale: 'en-US' });
 
@@ -28,7 +28,7 @@ test('market values come from /api/fantasycalc, and the Trade Analyzer credits F
     await expect(rosCredit).toHaveText(/Powered by\s+FantasyCalc/);
 
     await showTab(page, 'scout');
-    await page.click('#scoutTab #fetchMarketValueBtn');
+    await fetchMarketValue(page);
     await expect(page.locator('#marketSuccessMsg')).toContainText('Pulled Successfully');
     expect(proxied).toEqual(['?isDynasty=false&numQbs=1&numTeams=12&ppr=1&tep=none']);
 
@@ -63,8 +63,9 @@ test('TE Premium on asks FantasyCalc for tep=te+, and a 16-team league for 14 te
         league.settings = { ...(league.settings || {}), teams: 16 };
     });
     await showTab(page, 'scout');
+    await openMarketSource(page);
     await page.locator('#marketTep').check();
-    await page.click('#scoutTab #fetchMarketValueBtn');
+    await fetchMarketValue(page);
     await expect(page.locator('#marketSuccessMsg')).toContainText('Pulled Successfully');
     expect(proxied).toEqual(['?isDynasty=false&numQbs=1&numTeams=14&ppr=1&tep=te%2B']);
     await expectClean(page, state);

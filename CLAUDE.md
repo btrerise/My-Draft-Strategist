@@ -33,8 +33,10 @@ While iterating, run only what you touched (a minute or two), and push:
 cd tests && node ../scripts/check-precache.mjs && node --test && npx playwright test <spec> …
 ```
 
-Run the full suite (about 20 minutes in a cloud session) once, before your card's last push; CI runs it again on the
-pull request. See "While iterating" in `docs/TESTING.md`.
+Run the full suite (about 20 minutes in a cloud session) **once per card: when the owner asks for the pull request**,
+before that push. Not at the end of a round, and not again after it has run: every other push, including rounds the
+owner adds after the pull request is open, gets only the checks above, and CI runs the full suite on the pull request.
+See "While iterating" in `docs/TESTING.md`.
 
 ```sh
 cd tests && npm ci && npm run check   # check-precache + node --test + Playwright (smoke, features, screenshots)
@@ -47,7 +49,10 @@ In cloud sessions Chromium is preinstalled at `/opt/pw-browsers`: don't run `pla
 If the image moves ahead again, the tests launch the preinstalled one by themselves (`tests/browser.mjs`). Screenshots
 still can't match in a cloud session: the image adds font rules CI doesn't have, and `visual.spec.mjs` fails with one
 message saying so. Compare main and your branch in the same container ("When your machine can't reproduce the
-baselines" in `docs/TESTING.md`) and let CI judge. `cd tests && node render-env.mjs` shows the browser and fonts.
+baselines" in `docs/TESTING.md`), then have CI re-take the changed ones before the pull request: a commit message
+containing `[update screenshots: desktop/x.png phone/x.png]` (the PNGs you predicted) starts
+`.github/workflows/update-screenshots.yml`, which commits them to your branch, or fails and commits nothing if any
+other screenshot changed ("Cloud sessions: let CI re-take them" in `docs/TESTING.md`). `cd tests && node render-env.mjs` shows the browser and fonts.
 Baselines are tied to Playwright 1.63.0 on Ubuntu 24.04 with CI's fonts (`tests/render-env.mjs`); upgrading either means
 re-taking all of them ("Upgrading Playwright or the CI runner" in `docs/TESTING.md`).
 

@@ -65,7 +65,9 @@ export const KEYS = {
         manualStarters: 'mls_manual_starters',
         market: 'mls_market',
         marketUpdated: 'mls_market_updated',
-        marketFormat: 'mls_market_format', // what the loaded market values were fetched for, { type, qbs, ppr, tep }; gone after a file upload (S23 follow-up)
+        marketFormat: 'mls_market_format', // what the loaded market values were fetched for, { type, qbs, ppr, tep, teams }; gone after a file upload (S23 follow-up)
+        // Fetched market values by format, { [format]: { format, rows, updatedAt } }, so each league reads its own (improvements S38; js/mls/scout/marketSets.js).
+        marketSets: 'mls_market_sets',
         ros: 'mls_ros',
         rosUpdated: 'mls_ros_updated',
         sos: 'mls_sos',

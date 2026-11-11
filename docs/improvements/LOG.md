@@ -10120,3 +10120,221 @@ spec). CI's first run (42968266020) failed only in `visual.spec.mjs`, on exactly
 - `desktop/mls-league-guide.png` (9471 → 9518px), `phone/mls-league-guide.png` (21839 → 22023px): the Guide's longer Who
   to root for item. On desktop the page is unchanged above the item (388 pixels differ by one level) and identical
   below it once shifted by its two extra lines (46px).
+
+## S38 — Trade Analyzer: the same draft pick twice, and market values without a trip to Value settings
+
+Two requests from the owner (2026-11-08), before the trade deadlines. Branch `ccr-d061837a-5hnofo`, from main at
+48e3cd6 (S33 merged). Needs nothing.
+
+**User-visible effect.**
+1. **A draft pick can repeat.** Adding "2027 1st" to a side that already has one adds a second entry, "2027 1st (2)"
+   (a third is "(3)"). Each has its own token and Remove, its own row under You Receive / You Give Up, and its own value
+   in every verdict, in "To make it fair", in Power Rankings after the trade (two picks move) and in Export Trade's
+   image. Removing one of two leaves a plain "2027 1st". In a league with synced picks the row says whether the team
+   holds that many: "Yours" twice when you hold two, "Not yours (you hold 2)" on a third, "Rival holds only 1".
+   "To make it fair" can now suggest a second pick like one already in the trade, when that team holds another.
+   A player still can't be on a side twice.
+2. **Analyze Trade brings the market values.** With none loaded for the league's format, or with ones over three hours
+   old, Analyze Trade fetches them (the button reads "Fetching market values…" and is disabled meanwhile), so the Market
+   Consensus verdict is there on the first tap. A new switch, **Fetch market values automatically**, is under Value
+   settings (on by default). A market file uploaded in Trade Finder is never replaced. When the fetch fails, there's no
+   error toast: the trade is analyzed by your rankings, and an amber line under the verdicts says "Market values couldn't
+   load, so this is by your rankings only. Analyze again to retry." (or, with older values still loaded, "Market values
+   couldn't be refreshed: these are the ones loaded earlier.").
+3. **Each league has its own market values.** A fetch is for the league's format (redraft or dynasty, 1QB or Superflex,
+   PPR, TE premium, and league size) and is kept under it. Switching leagues, or changing a Market Consensus setting,
+   brings back the values already fetched for that format, in the Trade Analyzer, Trade Finder and everything else that
+   reads Market Consensus. The "Fetched for redraft; this league is dynasty" warning now shows only until that league's
+   values are fetched (one Analyze), or with the switch off.
+
+**The owner's decisions (2026-11-11).**
+1. A repeated pick reads **"2027 1st" and "2027 1st (2)"** (not "2027 1st (Rival)").
+2. Market values are **fetched on Analyze, automatically, with the switch on by default**; an uploaded file is never
+   replaced.
+3. The format is **each league's own**, which settles the open follow-up "Keep market values for each format" (its line
+   is removed from docs/TESTING.md).
+
+**What changed, where.**
+- `js/mls/trade/entries.js` (new, pure): a side's list of entries. `addEntries` (a pick is always added, a player once),
+  `removeEntryAt`, `removeEntries` (one entry per name), `numberPicks` (repeats numbered in order, so labels are unique),
+  `pickBase`, `pickNumber`. The "(2)" is only a label: `pickKey` and `isDraftPickName` ignore it, so the hidden
+  textareas, `runScout`, the verdicts, `picksAfterTrade` and Export Trade needed no change to count each entry.
+- `js/mls/trade/picker.js`: `addNames`, `removeTradeNames` and `removeTradeToken` go through entries.js (before:
+  duplicates dropped case-insensitively, and Remove took every entry with that name). `restoreTrade` (Undo) and
+  `setTradePlayers` rebuild the same lists.
+- `js/mls/leagues/picks.js`: `pickCount(picks, owner, name)`. `js/mls/scout/engine.js` (`pickOwnerText`): the nth entry
+  of a pick needs n held. `js/mls/trade/fairSection.js`: with synced picks, a team's picks minus the ones its side
+  already has are the candidates (before: a pick on that side was never offered again).
+- `js/mls/scout/marketSets.js` (new, pure): `marketFormatOf` (settings and FantasyCalc's league size), `marketFormatKey`,
+  `isMarketStale` (three hours, K8's cache), `putMarketSet` (the newest six sets), `marketPlan` ('none' | 'cached' |
+  'fetch': what Analyze does).
+- `js/mls/scout/marketDisconnect.js`: one fetch-and-store path for Fetch Market Value and Analyze
+  (`fetchMarketForActiveLeague`, through `/api/fantasycalc` as before; two callers share one request);
+  `useLeagueMarketSet` (the stored set for the active format, on a league switch from `leagues/sync.js` and on a setting
+  change from `settings.js`); `ensureMarketValues` and `marketFetchFailed`. A failure is a `console.warn`, kept for a
+  minute so live re-runs don't ask on every change; tapping Analyze always tries. `State.marketFormat` now also has
+  `teams`.
+- `js/mls/scout/engine.js`: `runScout('trade', { button })` calls `ensureMarketValues` first and shows the busy state.
+  `js/mls/trade/verdict.js`: the failure line. `lineup/index.html`: the switch (`tradeSettings.autoMarket`, a field in
+  the existing `mls_trade_settings`; unset counts as on), `id="analyzeTradeBtn"`, the Guide's Trade Analyzer step and
+  the card's tooltip.
+- Storage: one new key, `mls_market_sets` (`KEYS.mls.marketSets`): `{ [format]: { format, rows, updatedAt } }`, about
+  20 KB a set, six at most. `mls_market`, `mls_market_updated` and `mls_market_format` still hold the set in use.
+- `sw.js`: the two new files precached; `CACHE_NAME` v2.9.17 → v2.9.18. `CHANGELOG.md`: a line under Lineup Strategist.
+- Tests: `tests/unit/tradeEntries.test.mjs` (repeat picks kept, repeat players dropped, remove one of two, Undo),
+  `tests/unit/marketSets.test.mjs` (formats, three hours, the store, every branch of the plan);
+  `tests/mls-trade-picks-market.spec.mjs` (two 2027 1sts count twice; a third says you hold two; Remove and Undo from
+  "To make it fair"; a second held pick suggested; Analyze fetches once with the button busy and shows the market
+  verdict, again after three hours; a failed fetch shows the line and the rankings verdict with no toast and no
+  console.error, then recovers; older values with a failed refresh; the switch off; an uploaded file; two leagues, two
+  formats, back and forth with no new request). `tests/helpers.mjs` aborts `/api/fantasycalc` unless a spec stubs it
+  (serve.mjs doesn't run Pages Functions, and an unstubbed Analyze would 404). `mls-scout-league-switch.spec.mjs`: the
+  Trade Analyzer's format warning is checked with the switch off, and going back to the redraft league now finds its
+  own values.
+
+**Seen, not changed (for the owner).**
+- Market values fetched before this card carry no league size, so the first Analyze in each league fetches once. Ones
+  from before the S23 follow-up (no saved format at all) look like an uploaded file and stay until Fetch Market Value
+  is tapped once.
+- Auto-Fetch ROS Rankings (Roster tab) fetches as before and doesn't add to the stored sets.
+- The lines under the verdicts still say "Refresh them in Trade Finder (below)" for day-old values and "Fetch again in
+  Trade Finder (below)" for another format's; with the switch on they now show only for an uploaded file or after a
+  failed fetch.
+- Pick values by slot stay with S44. F14 (after this card) edits the same trade files.
+
+**Checked.** `npm run check` in the session: check-precache OK (161 precached), 554 unit tests pass, 890 Playwright tests
+pass; the 4 failures are `visual.spec.mjs` refusing this container's fonts (the environment check), as on main.
+
+**Screenshots.** Main and this branch rendered the same way here (`RENDER_ENV=any`) and compared with `npm run pxdiff`:
+exactly two PNGs change, both taller for the Guide's longer Trade Analyzer step (repeated picks, and Analyze fetching
+market values): `desktop/mls-league-guide.png` (1280x9827 → 1280x9873 here) and `phone/mls-league-guide.png`
+(390x23280 → 390x23419 here). Not re-taken in the session (its fonts differ from CI's): CI will fail on exactly these
+two on the pull request, and its `-actual.png` files become the baselines. The Scout tab's screenshots are unchanged
+(Value settings is folded, and no screenshot analyzes a trade).
+
+### S38, round 2: Trade Finder fetches the same way; old values say how to refresh them (owner, 2026-11-11)
+
+The owner, on the leftovers: "I would like to have the Trade Finder work the same way as Trade Analyzer does now", and
+asked whether users would know what to do with old values that look like an uploaded file (they wouldn't have).
+- **Find Trade Targets** (`findTradeTargets` in `js/mls/scout/marketDisconnect.js`, the button's handler; the button is
+  now `#findTradeTargetsBtn`): the active league's market values first, by the same `ensureMarketValues` (none loaded
+  for its format, or over three hours old; the same switch; a file never replaced), the button reading "Fetching market
+  values…" meanwhile, then the report. A failed fetch: with no values, "Market values couldn't load. Tap Find Trade
+  Targets to try again, or upload a market file above."; with earlier ones, the report on those under "Market values
+  couldn't be refreshed: these are the ones loaded earlier." No toast. The re-run after a league switch doesn't fetch
+  (it reads that league's stored set when there is one). The switch's tooltip names both buttons.
+- **Old values** (`marketAgeHTML`, `js/mls/trade/verdict.js`): values with no saved format (a file, or a fetch from
+  before the S23 follow-up; the app can't tell which, so it never replaces them) that are a day old or more now read
+  "Market values: Updated 3 days ago (…). They're from a file or an earlier fetch, so they aren't refreshed
+  automatically: tap Fetch Market Value in Trade Finder (below) for current ones." (was "Refresh them in Trade Finder
+  (below) before you trade.", which stays for fetched values, shown with the switch off or after a failed fetch).
+- Tests: a Find Trade Targets test in `mls-trade-picks-market.spec.mjs` (offline message, one fetch with the button
+  busy, no second request from it or from Analyze, a failed refresh, the switch off); `mls-trade-impact.spec.mjs`'s
+  three-day-old line updated. `CACHE_NAME` stays v2.9.18 (once per branch). No screenshot shows either change.
+
+### S38: rule 7 made exact (owner, 2026-11-11)
+
+This session ran the full suite at the end of round 1 and started it again after round 2 (stopped). The owner: the
+full check runs once, before the final push, which is when he asks for the pull request. Reworded in `CLAUDE.md`
+("Before pushing"), `docs/TESTING.md` ("The checks") and the runbook's rule 7: every push before that gets only the
+checks for what changed; after it has run, the same again, and CI covers the rest. Docs only, no `CACHE_NAME` bump.
+
+### S38, round 3: a review as a user; Incomplete for unvalued picks, the failure state, the busy button, the switch (owner: "Yes")
+
+I looked at each new state at 390 and 1280px as a user. Helpful: the repeat picks and the market verdict on the first
+tap. Misleading or clunky, all four fixed here on the owner's yes:
+1. **"Fair Trade" over two unvalued 1sts.** With the fetch failed (or no market data), a pick has no value and was left
+   out of the total, under a confident verdict. Older behaviour (S14 round 6), but the failed fetch makes it common.
+   Now a verdict whose total is missing a pick says **Incomplete**, as the market's already did for a player it
+   doesn't price: the banners, the Now / Long-term tiles (no points line) and the market strip. "To make it fair" and
+   the Power Rankings section's value headline wait too (`hasUnvaluedPick`, `js/mls/trade/verdict.js`). **This changes
+   what the verdict shows, which the card had out of scope; the owner chose it.** The math and the fair band are
+   untouched.
+2. **The failure said the same thing three times**, and pointed at Trade Finder. The note under the total now reads
+   "Both 2027 1sts need market values, so this total is missing them." (repeats joined; "Fetch them in Trade Finder
+   (below)." only when nothing failed, i.e. the switch is off), and the amber line sits right under the verdict, above
+   the In-Season hint. The rows keep "Needs market data".
+3. **The busy button didn't look busy.** `marketBusyButton` (`js/mls/scout/marketDisconnect.js`): the site's spinner,
+   "Fetching market values…", 70% opacity, disabled; both buttons use it.
+4. **The switch.** Renamed **Auto-fetch market values** (the old name wrapped on phones and its "i" floated), with
+   its explanation as a line under the title in place of the tooltip, a gap from Waiver Adjustment and no empty space
+   under it (`css/mls.css`).
+- Tests: a new Incomplete test and the spinner, placement and switch text in `mls-trade-picks-market.spec.mjs`;
+  `mls-trade-impact.spec.mjs` (a trade with an unvalued pick is Incomplete with no headline; the headline is checked
+  without the pick) and `mls-now-and-later.spec.mjs` (the note's new wording in Export Trade). check-precache, 554 unit
+  tests and the trade specs pass. The full suite isn't re-run (rule 7; CI runs it on the pull request).
+- Screenshots: none shows these states (Value settings is folded; no screenshot analyzes a trade). The two Guide PNGs
+  from round 1 still change (the switch's new name is in that text).
+- **Noted for a follow-up** (docs/TESTING.md, Small polish): fold Trade Finder's market source controls.
+
+### S38, round 4: Trade Finder's market source folded (owner: "take care of it" after the other fixes)
+
+From my review as a user: with Find Trade Targets fetching by itself, the card still opened with the file chooser,
+Market Source, League Type, QB Format, PPR, TE Premium and Fetch Market Value before the button most people need.
+- `lineup/index.html`: those controls are inside `<details id="marketSourceSettings">` ("Market source", closed, with
+  the format on its summary line: "FantasyCalc · Redraft · 1QB · Full PPR"), the same pattern as the Roster tab's
+  Auto-Fetch settings (F10 round 2). The loaded-values line stays above it, the success message below it. **The
+  "Powered by FantasyCalc" mark moved** from under Fetch Market Value to under Find Trade Targets, so K8's credit
+  stays in view beside the report its values feed rather than inside the fold.
+- `js/mls/settings.js`: `applyMarketSettingsToUI` fills both summaries. `css/mls.css`: the label stays on one line.
+- Tests: `openMarketSource` and `fetchMarketValue` in `tests/helpers.mjs`, used by the four specs that tap the folded
+  controls; `mls-market.spec.mjs` checks the fold, its summary and that the credit is visible. The follow-up noted in
+  round 3 is removed from docs/TESTING.md. check-precache, 554 unit tests and the affected specs pass (150). The full
+  suite isn't re-run (rule 7).
+- **Screenshots**, main against this branch in this container (`RENDER_ENV=any`, `npm run pxdiff`): four PNGs change,
+  and CI will fail on exactly these on the pull request; its `-actual.png` files become the baselines.
+  - `desktop/mls-league-scout.png` (1280x1945 → 1280x1576 here) and `phone/mls-league-scout.png` (390x2214 → 390x1861):
+    Trade Finder is shorter, its market source folded and the mark under Find Trade Targets.
+  - `desktop/mls-league-guide.png` and `phone/mls-league-guide.png`: the Guide's longer Trade Analyzer step (round 1).
+
+### S38: CI re-takes changed screenshots before the pull request (owner, 2026-11-11: "fix it now")
+
+The owner asked why screenshots always cost two CI runs when the session already knows which PNGs change. A cloud
+session can't draw CI's pixels: hiding the image's two extra font rules from Chromium (`FONTCONFIG_PATH`, tried here)
+made page heights match CI's baselines, but most PNGs still differed by about 1% of pixels. So the pixels come from CI,
+but before the pull request rather than from a failed run: `.github/workflows/update-screenshots.yml` (new) runs
+`visual.spec.mjs` with `--update-snapshots=changed` on check.yml's runner and commits the changed PNGs to the branch.
+Started by "[update screenshots]" in a commit message (any branch but main that has the file) or from the Actions tab.
+Steps in docs/TESTING.md ("Cloud sessions: let CI re-take them before the pull request") and a line in CLAUDE.md.
+Tooling and docs only; no `CACHE_NAME` bump.
+
+**The guard (owner, 2026-11-11: "CI will still do its actual job in catching problems?").** As first written the
+workflow re-took every PNG that differed, intended or not, and the screenshot check would then pass. Now the PNGs must
+be named when it's started (`[update screenshots: desktop/a.png phone/a.png]`, or the dispatch input): any other
+changed screenshot fails the job with nothing committed, and its renders are in the `retaken-screenshots` artifact. A
+named PNG that didn't change is only noted. `check` itself is unchanged. The first run of the workflow (43044251160,
+before the guard) failed at `playwright install`: the runner couldn't resolve Ubuntu's package mirror, nothing of ours.
+
+**The workflow's first good run, and S38's baselines (2026-11-11).** Runs 1, 2 and 3 (and a re-run) failed at
+`npx playwright install --with-deps chromium` before taking a screenshot: Canonical had an outage from 04:06 MST
+(status.canonical.com, Ubuntu's archive and DNS among the components), so the runner couldn't resolve Ubuntu's
+package mirrors for Playwright's fonts. Not GitHub's fault (its status page was green; the owner checked both) and not
+the workflow's; `check.yml` has the same step and would have failed the same way. Once Canonical's DNS was back, a
+re-run of run 43052857777 passed in 80 seconds: the guard accepted the four named PNGs and the workflow committed them
+(d53c59a, "Screenshots re-taken on CI (4 PNGs)"), so its token can push to a branch with the repo's settings as they
+are. The four, each checked against the one it replaces:
+- `desktop/mls-league-scout.png` (1280x1901 → 1280x1544) and `phone/mls-league-scout.png` (390x2144 → 390x1787): Trade
+  Finder with its market source folded and the FantasyCalc mark under Find Trade Targets (round 4).
+- `desktop/mls-league-guide.png` (1280x9518 → 1280x9564) and `phone/mls-league-guide.png` (390x22023 → 390x22161): the
+  Guide's longer Trade Analyzer step (rounds 1 and 3).
+The size changes match what this container predicted (the Guide 46px and 138px taller, Scout about 357px shorter).
+If the mirrors fail like this again: re-run the failed job from the Actions tab when status.canonical.com is green.
+
+### S38, round 5: a second review as a user; three wording fixes (owner: "Yes")
+
+Every state again at 390 and 1280px, after rounds 3 and 4. Nothing misleading left; three small things fixed:
+1. With the switch off and a pick in the trade, the note said only "Fetch them in Trade Finder (below)" under the
+   switch the user had just turned off. Now: "Turn on Auto-fetch market values (Value settings, above), or fetch them
+   in Trade Finder (below)." (`js/mls/trade/verdict.js`).
+2. The switch's description, four lines on a phone, is shorter: "Analyze Trade and Find Trade Targets fetch
+   FantasyCalc's values for this league when they're missing or over 3 hours old. A market file you uploaded is never
+   replaced."
+3. Inside Trade Finder's opened Market source, the file chooser has a label: "Upload a market file (KTC or
+   FantasyCalc, .csv or .xlsx)".
+Left as they are, with the owner's agreement: the Market source summary wraps by one word on a phone for the longer
+formats ("… · Full / PPR"), and a valued pick's row shows the same number twice (its value by your rankings is the
+market's; the line under the rows says so). Seen, not from this card: the "Choose In-Season rankings" hint under every
+verdict in a dynasty league without an In-Season set pushes the rows down on phones.
+- Tests: the note's wording with the switch off, and the label, in `mls-trade-picks-market.spec.mjs` and
+  `mls-market.spec.mjs`. No screenshot shows these (the fold and Value settings are closed; no screenshot analyzes a
+  trade), so no baselines are re-taken.

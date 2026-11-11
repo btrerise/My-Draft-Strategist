@@ -679,7 +679,7 @@ test('Export Trade leaves out the superflex QB note, and keeps the notes about t
     expect(text).not.toContain('look 1QB');
     // Round 17: the superflex note was the Now tile's; the pick's note (about both tiles) keeps both marks.
     expect(text).toContain('*\u2020 2029 1st');
-    expect(text).toContain("2029 1st has no value without Market Consensus data");
+    expect(text).toContain("2029 1st needs market values, so this total is missing it.");
     await expectClean(page, state);
 });
 
