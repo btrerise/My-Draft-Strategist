@@ -36,7 +36,8 @@ import { fantasyPosition } from '../constants.js';
 import { ensureLineupProjections, formatKickoffLabel, getLeagueScoringKey, storeLeagueMatchups } from '../lineup/gameInfo.js';
 import { ROOT_ICONS, paidBadgeMarkup, rootCountBadgeMarkup, rootOfBadgeMarkup, rootShareMarkup, weekResultMarkup, weekStatusMarkup } from '../badges.js';
 import { playerHeadshotHTML } from '../lineup/headshots.js';
-import { buildRootFor, sideOrder, starterIdsOf } from './rootFor.js';
+import { buildRootFor, kickoffOrder, sideOrder, starterIdsOf } from './rootFor.js';
+import { attachPlayerAutocomplete } from '../players.js';
 import { matchupWinChances } from '../sim/winChance.js';
 import { RECAP_SCALES, buildPlayerRecap, ownText, pointsRange, slotLabel, startedText } from './playerRecap.js';
 import { getRecapLines } from './recapLines.js';
@@ -779,6 +780,8 @@ function renderScoreboard(m) {
     const focused = active && el.contains(active) && active.classList.contains('mls-week-step') ? Number(active.dataset.step) : null;
     // And on a root-for row or window it was on (S27).
     const focusKey = active && el.contains(active) ? active.dataset.focusKey || null : null;
+    // And in the find field (S33), whose node is moved into the new HTML.
+    const inFind = !!(active && el.contains(active) && active.classList.contains('mls-root-find-input'));
     // While another week loads, the last week drawn stays up, dimmed and inert, under the new week's title (round 2: the
     // card shrank to "Loading matchups…" and grew back on each step). Only for a week change; a first load draws as before.
     const waiting = m.pending && !listed.length;
@@ -810,6 +813,7 @@ function renderScoreboard(m) {
         if (!waiting) view.lastBody = { week: ctx.week, html: body };
         el.innerHTML = `${head}<div class="mls-week-body">${body}</div>`;
     }
+    mountRootFind(el, inFind);
     if (focused) focusStep(focused);
     restoreFocus(el, focusKey);
 }
@@ -1124,9 +1128,10 @@ function recapHTML(m) {
 // the leagues on each side. Show all, the windows' folds and the open rows are in memory, for the week shown.
 const ROOT_SPOT_ROWS = 5;
 const ROOT_WINDOW_ROWS = 5;
-const rootView = { week: null, all: new Set(), open: new Set(), toggled: new Set() };
+// fin: the boxes whose "N finished" line is open; found: the player the find field picked; findText: its text (S33).
+const rootView = { week: null, all: new Set(), open: new Set(), toggled: new Set(), fin: new Set(), found: null, findText: '' };
 function rootState(week) {
-    if (rootView.week !== week) Object.assign(rootView, { week, all: new Set(), open: new Set(), toggled: new Set() });
+    if (rootView.week !== week) Object.assign(rootView, { week, all: new Set(), open: new Set(), toggled: new Set(), fin: new Set(), found: null, findText: '' });
     return rootView;
 }
 
@@ -1183,11 +1188,13 @@ function rootPoints(pl, ctx, started) {
     const vals = Object.values(pl.points).filter(v => typeof v === 'number');
     return fmt(vals.length ? Math.max(...vals) : 0);
 }
-function rootMeta(pl, ctx) {
+// noTime (S33): under a kickoff divider, which already says the time and Live.
+function rootMeta(pl, ctx, { noTime = false } = {}) {
     const g = pl.team ? ctx.games[pl.team] : null;
     const opp = g && g.opp ? `${g.home ? 'vs' : '@'} ${escapeHtml(g.opp)}` : '';
     let state = '';
-    if (pl.gameState === 'in') state = '<span class="mls-root-live">Live</span>';
+    if (noTime) state = '';
+    else if (pl.gameState === 'in') state = '<span class="mls-root-live">Live</span>';
     else if (pl.gameState === 'post') state = 'Final';
     else if (pl.team && ctx.times[pl.team]) state = escapeHtml(formatKickoffLabel(ctx.times[pl.team]));
     return [[escapeHtml(pl.team || ''), opp].filter(Boolean).join(' '), state].filter(Boolean).join(' · ');
@@ -1210,7 +1217,7 @@ function rootPart(x, pl, side = 'yours') {
 let rootRowSeq = 0;
 // A player's row: a button (tap or Enter) that opens the leagues on each side. compact (the window lists): no count chip
 // or share bar, and "in N" for that side under the points.
-function rootRow(r, pl, list, ctx, { compact = false, side = null } = {}) {
+function rootRow(r, pl, list, ctx, { compact = false, side = null, noTime = false } = {}) {
     const st = rootState(ctx.week);
     const key = `${list}|${r.id}`;
     const open = st.open.has(key);
@@ -1234,7 +1241,7 @@ function rootRow(r, pl, list, ctx, { compact = false, side = null } = {}) {
     return `<li class="mls-root-row${compact ? ' is-compact' : ''}${r.settled ? ' is-settled' : ''}">
         <button type="button" class="btn-bare mls-root-player" data-action="toggleRootPlayer" data-key="${escapeHtml(key)}" data-focus-key="${escapeHtml(key)}" aria-expanded="${open}" aria-controls="${id}">
             ${playerHeadshotHTML({ id: pl.id, name: pl.name, pos, team: pl.team })}<span class="badge pos-badge ${escapeHtml(pos)} mls-root-pos">${escapeHtml(pos === 'DEF' ? 'D/ST' : pos)}</span>
-            <span class="mls-root-who"><span class="mls-root-name">${escapeHtml(pl.name)}${chip}${inText}</span><span class="mls-root-meta">${rootMeta(pl, ctx)}${r.settled ? ' · <span class="mls-root-settled">decided</span>' : ''}</span></span>
+            <span class="mls-root-who"><span class="mls-root-name">${escapeHtml(pl.name)}${chip}${inText}</span><span class="mls-root-meta">${rootMeta(pl, ctx, { noTime })}${r.settled ? ' · <span class="mls-root-settled">decided</span>' : ''}</span></span>
             <span class="mls-root-pts">${rootPoints(pl, ctx, rootStarted)}<small>pts</small></span>
         </button>
         <div id="${id}" class="mls-root-detail"${open ? '' : ' hidden'}>${detail}</div>
@@ -1245,9 +1252,26 @@ function rootList(rows, list, ctx, cap, opts) {
     const st = rootState(ctx.week);
     const shown = st.all.has(list) ? rows : rows.slice(0, cap);
     const more = moreButton('showAllRoot', list, rows.length, cap, st.all.has(list));
-    return `<ul class="mls-root-list">${shown.map(r => rootRow(r, rootModelInfo.get(r.id) || { id: r.id, name: r.id, points: {} }, list, ctx, opts)).join('')}</ul>${more}`;
+    // dividers (S33, owner's choice): a small kickoff label where the window changes ("Thu 8:15 PM · Live"), so the rows
+    // under it don't repeat the time.
+    let last = null;
+    const items = shown.map(r => {
+        const pl = rootModelInfo.get(r.id) || { id: r.id, name: r.id, points: {} };
+        let div = '';
+        const k = kickoffKey(pl, ctx);
+        if (opts && opts.dividers && k !== last) {
+            last = k;
+            const live = rows.some(x => { const o = rootModelInfo.get(x.id); return o && kickoffKey(o, ctx) === k && o.gameState === 'in'; });
+            div = `<li class="mls-root-kick"><span>${k === 'unknown' ? 'Kickoff time unknown' : escapeHtml(formatKickoffLabel(k))}${live ? ' · <span class="mls-root-live">Live</span>' : ''}</span></li>`;
+        }
+        return div + rootRow(r, pl, list, ctx, opts);
+    });
+    return `<ul class="mls-root-list">${items.join('')}</ul>${more}`;
 }
+const kickoffKey = (pl, ctx) => (pl && pl.team && ctx.times[pl.team]) || 'unknown';
 let rootModelInfo = new Map();
+// Every row on the board by player id, for the find field (S33).
+let rootRows = new Map();
 let rootStarted = false;
 const ROOT_GROUPS = [
     ['root', 'Root for', 'Nobody starts for you in 2 or more matchups without also starting against you.'],
@@ -1287,6 +1311,8 @@ function rootHTML(m) {
     rootRowSeq = 0;
     const { rf, info, pending } = rootModel(m);
     rootModelInfo = info;
+    rootRows = new Map(rf.players.map(r => [r.id, r]));
+    const st = rootState(ctx.week);
     rootStarted = !!m.started;
     const parts = [];
     if (!rf.players.length) {
@@ -1298,21 +1324,40 @@ function rootHTML(m) {
     }
     // One line (the weights are in the header's (i) and the Guide: S21 round 11, long helper text filled a phone screen).
     const toCome = rf.players.some(r => !r.over);
-    if (rf.root.length || rf.against.length || rf.both.length) parts.push(`<p class="mls-root-intro">Players in 2 or more of your matchups${toCome ? ' still to play' : ''}, those that matter most first. Tap one for the leagues.</p>`);
+    // Find a player (S33): the field (a node kept across redraws, mountRootFind) and, under it, the player it picked.
+    parts.push('<div class="mls-root-find-slot"></div>');
+    const found = st.found != null ? rootRows.get(st.found) : null;
+    if (st.found != null && !found) st.found = null;
+    if (found) parts.push(foundHTML(found, ctx));
+    if (rf.root.length || rf.against.length || rf.both.length) parts.push(`<p class="mls-root-intro">Players in 2 or more of your matchups${toCome ? ' still to play, by kickoff; in each kickoff, ' : ', '}those that matter most first. Tap one for the leagues.</p>`);
     if (pending) parts.push(`<p class="text-helper mls-root-pending">Still loading ${pending} league${pending === 1 ? '' : 's'}; ${pending === 1 ? 'it joins' : 'they join'} the board when ${pending === 1 ? 'it arrives' : 'they arrive'}.</p>`);
     // While any game is still to come, the groups hold only players still to play (round 4, owner: on Monday night every
     // Root for and Against you player was Final); the rest are in the games final line. Once every game is over (a past
     // week), everyone.
-    const spot = Object.fromEntries(ROOT_GROUPS.map(([kind]) => [kind, toCome ? rf[kind].filter(r => !r.over) : rf[kind]]));
+    // S33 (owner's choices): while games are left, each box lists its players by kickoff, the earliest unfinished game
+    // first (kickoffOrder), with a divider per kickoff window, and its finished players fold into "N finished" at the
+    // bottom. Once every game is over, the board's own order (by weight), as before.
+    const byKickoff = kickoffOrder(r => {
+        const pl = info.get(r.id);
+        return { kickoff: pl && pl.team ? ctx.times[pl.team] : null, finished: r.over || (pl && pl.gameState === 'post') };
+    });
+    const spot = Object.fromEntries(ROOT_GROUPS.map(([kind]) => [kind, toCome ? rf[kind].filter(r => !r.over).sort(byKickoff) : rf[kind]]));
     const group = ([kind, title, none]) => {
         const rows = spot[kind];
-        const done = rf[kind].length - rows.length;
-        if (!rows.length && done) none = `${done === 1 ? 'The one player here has' : `All ${done} have`} finished: see the games final line below.`;
+        const finished = toCome ? rf[kind].filter(r => r.over) : [];
+        const done = finished.length;
+        if (!rows.length && done) none = `${done === 1 ? 'The one player here has' : `All ${done} have`} finished.`;
+        const finOpen = st.fin.has(kind);
+        const finId = `mlsRootFin-${kind}`;
+        const finHTML = !done ? '' : `<div class="mls-root-finished">
+            <button type="button" class="btn-bare mls-root-fin-toggle" data-action="toggleRootFinished" data-kind="${kind}" data-focus-key="fin|${kind}" aria-expanded="${finOpen}" aria-controls="${finId}">${CHEVRON.replace('mls-week-chevron', 'mls-week-chevron mls-root-chevron')}<span>${done} finished</span></button>
+            <div id="${finId}" class="mls-root-fin-body"${finOpen ? '' : ' hidden'}>${rootList(finished, `fin:${kind}`, ctx, ROOT_SPOT_ROWS, {})}</div>
+        </div>`;
         // Both sides explains its chip and the stake (round 2, owner: "at bare minimum, a tooltip").
-        const tip = kind === 'both' ? `<span class="tooltip-container mls-week-info mls-root-info"><span class="tooltip-icon">i</span><span class="tooltip-text"><strong>3 of 4 yours:</strong> for you in 3 of his matchups, against you in 1. Mostly yours (75%+) puts him in Root for, mostly theirs (25% or less) in Against you.<br><br><strong>Order:</strong> paid, close and high-scoring matchups first; tap a player for his stake. "Decided": none of his matchups can change.</span></span>` : '';
+        const tip = kind === 'both' ? `<span class="tooltip-container mls-week-info mls-root-info"><span class="tooltip-icon">i</span><span class="tooltip-text"><strong>3 of 4 yours:</strong> for you in 3 of his matchups, against you in 1. Mostly yours (75%+) puts him in Root for, mostly theirs (25% or less) in Against you.<br><br><strong>Order:</strong> by kickoff while games are left, then paid, close and high-scoring matchups first; tap a player for his stake. "Decided": none of his matchups can change.</span></span>` : '';
         return `<div class="mls-root-group is-${kind}"><h5 class="mls-root-group-title">${ROOT_ICONS[kind]}${title} <span class="mls-root-group-n">${rows.length}</span>${tip}</h5>${rows.length
-            ? rootList(rows, `spot:${kind}`, ctx, ROOT_SPOT_ROWS, {})
-            : `<p class="mls-root-none">${none}</p>`}</div>`;
+            ? rootList(rows, `spot:${kind}`, ctx, ROOT_SPOT_ROWS, { dividers: toCome, noTime: toCome })
+            : `<p class="mls-root-none">${none}</p>`}${finHTML}</div>`;
     };
     // Nobody in 2 or more (one league, say): one line rather than three empty boxes.
     if (rf.root.length || rf.against.length || rf.both.length) parts.push(`<div class="mls-root-spot">${ROOT_GROUPS.map(group).join('')}</div>`);
@@ -1343,6 +1388,106 @@ function rootHTML(m) {
     }
     if (rf.noOpponent.length) parts.push(`<p class="text-helper mls-root-note">${rf.noOpponent.map(escapeHtml).join(', ')} ${rf.noOpponent.length === 1 ? 'has' : 'have'} no opponent this week (guillotine or median only), so ${rf.noOpponent.length === 1 ? 'its' : 'their'} starters count for you only.</p>`);
     return { html: parts.join(''), rf, spot };
+}
+
+// --- FIND A PLAYER (improvements S33, owner's choices) ---
+// A search field above the three boxes: the site's player autocomplete (players.js), limited to this week's starters in
+// your matchups, each suggestion saying where he stands. Picking one (a tap, or Enter) shows his row with his leagues
+// open right under the field, in his box's color, and moves focus to it; the boxes don't move. Escape, or the field's
+// clear button, clears. The field is one node kept across the card's redraws (the HTML has a slot for it), so typing
+// survives a refresh. In memory, for the week shown.
+const FIND_ICON = `<svg class="mls-root-find-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
+const ROOT_TITLES = { root: 'Root for', against: 'Against you', both: 'Both sides' };
+// Where a player stands, in words: "Both sides, 2 of 3 yours", "Root for, in 4", "Yours in 1".
+function standingText(r) {
+    if (r.yours.length && r.against.length) return `${ROOT_TITLES[r.group]}, ${r.yours.length} of ${r.count} yours`;
+    if (r.group) return `${ROOT_TITLES[r.group]}, in ${r.count}`;
+    return r.yours.length ? `Yours in ${r.yours.length}` : `Against you in ${r.against.length}`;
+}
+const findPool = () => [...rootRows.values()].map(r => {
+    const pl = rootModelInfo.get(r.id) || { name: String(r.id) };
+    return { id: r.id, name: pl.name, pos: pl.pos === 'DEF' ? 'D/ST' : (pl.pos || ''), team: pl.team || '', searchKey: String(pl.name).toLowerCase() };
+});
+function foundHTML(r, ctx) {
+    const pl = rootModelInfo.get(r.id) || { id: r.id, name: r.id, points: {} };
+    const mine = r.yours.length > 0;
+    const kind = r.group || (mine ? 'root' : 'against');
+    // A player in one matchup is in none of the three boxes; say whose he is.
+    const title = r.group ? ROOT_TITLES[r.group] : (mine ? 'Your starter, in one matchup' : 'Against you, in one matchup');
+    return `<div class="mls-root-found is-${kind}" role="group" aria-label="${escapeHtml(pl.name)}: ${escapeHtml(standingText(r))}"><h5 class="mls-root-group-title">${ROOT_ICONS[kind]}${title}</h5><ul class="mls-root-list">${rootRow(r, pl, 'find', ctx, { side: r.group ? null : (mine ? 'yours' : 'against') })}</ul></div>`;
+}
+let findUi = null;
+function rootFindUi() {
+    if (findUi) return findUi;
+    const node = document.createElement('div');
+    node.className = 'mls-root-find';
+    node.innerHTML = `<div class="mls-root-find-field">${FIND_ICON}<input type="text" class="form-input mls-root-find-input" placeholder="Find a player in this week's matchups" autocomplete="off" aria-label="Find a player in this week's matchups"><button type="button" class="btn-bare mls-root-find-clear" data-action="clearRootFind" aria-label="Clear the search" hidden>✕</button></div><p class="mls-root-none mls-root-find-none" role="status" hidden></p>`;
+    const input = node.querySelector('input');
+    findUi = { node, input, clear: node.querySelector('.mls-root-find-clear'), none: node.querySelector('.mls-root-find-none') };
+    attachPlayerAutocomplete(input, (p) => pickRootFind(p.id), {
+        pool: (q) => (q ? findPool() : []),
+        tag: (p) => (rootRows.has(p.id) ? standingText(rootRows.get(p.id)) : ''),
+    });
+    input.addEventListener('input', () => { rootState(weekCtx().week).findText = input.value; syncRootFind(); });
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && (input.value || rootState(weekCtx().week).found != null)) { e.preventDefault(); clearRootFind(); }
+    });
+    // Escape on the found row clears too, and goes back to the field.
+    document.getElementById('thisWeekCard')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && e.target.closest && e.target.closest('.mls-root-found')) { e.preventDefault(); clearRootFind(); }
+    });
+    return findUi;
+}
+// The clear button, and the line for a name nobody matches.
+function syncRootFind() {
+    const { input, clear, none } = findUi;
+    const st = rootState(weekCtx().week);
+    clear.hidden = !input.value && st.found == null;
+    const q = input.value.trim().toLowerCase();
+    const miss = q.length >= 2 && st.found == null && !findPool().some(p => p.searchKey.includes(q));
+    none.hidden = !miss;
+    none.textContent = miss ? `No starter in this week's matchups matches "${input.value.trim()}".` : '';
+}
+// After the card's HTML is drawn: the field into its slot, with its text for the week shown.
+function mountRootFind(el, refocus) {
+    const slot = el.querySelector('.mls-week-body:not(.is-stale) .mls-root-find-slot');
+    if (!slot) return;
+    const ui = rootFindUi();
+    slot.replaceWith(ui.node);
+    const st = rootState(weekCtx().week);
+    if (ui.input.value !== st.findText) ui.input.value = st.findText;
+    syncRootFind();
+    if (refocus) ui.input.focus();
+}
+function pickRootFind(id) {
+    if (!rootRows.has(id)) return;
+    const st = rootState(weekCtx().week);
+    if (st.found != null) st.open.delete(`find|${st.found}`);
+    st.found = id;
+    st.open.add(`find|${id}`);
+    st.findText = (rootModelInfo.get(id) || {}).name || '';
+    view.focusNext = { list: 'find', index: 0 };
+    renderThisWeek();
+}
+export function clearRootFind() {
+    const st = rootState(weekCtx().week);
+    if (st.found != null) st.open.delete(`find|${st.found}`);
+    st.found = null;
+    st.findText = '';
+    if (findUi) findUi.input.value = '';
+    renderThisWeek();
+    if (findUi && findUi.node.isConnected) findUi.input.focus();
+}
+// A box's "N finished" line (S33), opened and folded in place.
+export function toggleRootFinished(kind) {
+    const btn = [...document.querySelectorAll('#thisWeekCard .mls-root-fin-toggle')].find(b => b.dataset.kind === kind);
+    if (!btn) return;
+    const st = rootState(weekCtx().week);
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    if (open) st.fin.add(kind); else st.fin.delete(kind);
+    btn.setAttribute('aria-expanded', String(open));
+    const body = document.getElementById(btn.getAttribute('aria-controls'));
+    if (body) body.hidden = !open;
 }
 
 // A row's leagues, opened and closed in place (no redraw, so focus stays on it).

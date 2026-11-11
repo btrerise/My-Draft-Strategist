@@ -9935,3 +9935,78 @@ CHANGELOG lines under both apps (T-Score's appendix in Draft Strategist's, as K3
 
 **Left over.** For M3: the `.chevron` rule uses S16's `--vt-ms` / `--vt-ease`; M3 moves
 it with the view transitions. F16 (closed tooltips, also css/base.css) waits for this to merge.
+
+## S33 — Player Scoreboard: kickoff order (Thursday night first), and find a player
+
+**User-visible effect.**
+- **Root for, Against you and Both sides list players by kickoff while games are left.** The earliest game that isn't
+  final comes first, so Thursday night's players are on top of each box until that game ends, then Sunday's early games,
+  and so on; a game with no known kickoff comes after the known ones. A small divider starts each kickoff time
+  ("Thu 8:15 PM · Live"), and the rows under it no longer repeat the time or "Live". Inside one kickoff the order is the
+  board's own, as before: by weight, then by how many leagues; a "decided" player is last in his kickoff.
+- **Finished players fold into "N finished" at the bottom of their box.** Tap it (or Enter) to open them in place,
+  dimmed, with "Final" and their points; five, then Show all. Before, the boxes left them out and an empty box pointed
+  to the "games final" line further down; an empty box now reads "All 7 have finished." with its own line under it.
+  The count in a box's title is still who's left to play.
+- **A past week, or a week whose every game is final, is unchanged:** everyone listed by weight, no dividers.
+- **Find a player.** A search field above the three boxes ("Find a player in this week's matchups") with the site's
+  autocomplete, limited to this week's starters, yours and your opponents'. Each suggestion says where he stands
+  ("QB · BUF · Both sides, 2 of 3 yours"; "Yours in 1" for a player in one matchup). Pick one (tap, or Enter when one
+  name is left) and his row appears right under the field in his box's color and title, with his leagues open: yours
+  in, against you in, his points and the win chance in each. Focus moves to that row. The boxes don't move. Escape (in
+  the field or on the row) or the field's ✕ clears and returns to the field. A name nobody matches says 'No starter in
+  this week's matchups matches "kelce".' The text and the result survive a Refresh; another week starts empty.
+- The intro line, the (i) beside Both sides and the Guide's Who to root for item say "by kickoff".
+
+**Owner's decisions (asked before building; sketches at 375 and 1280px on the real page with sample players: order
+1A–1D, find 2 and 2A–2E). Answer: "All your recommendations".**
+1. Inside a kickoff window: by weight, then count, as today (not by count alone).
+2. Finished games: folded into "N finished" at the bottom of each box (1C), not kept in kickoff order (1D).
+3. The kickoff label: a divider between windows, rows without the time (1A), not on each row (1B).
+4. A past week, or once every game is final: today's order by weight.
+5. Find: the result right under the field, boxes unmoved (2C, my recommendation), rather than the card's suggestion of
+   jumping to and highlighting his row (2A) or a filter (2B). Why: a player in one matchup, one behind Show all or one
+   whose game is over has no visible row to jump to; on a phone a jump scrolls away from the field.
+6. League tiles are not marked (2D): the result already lists his leagues.
+7. Nobody matches: a line under the field (2E). The search covers only this week's starters, so that line is how "not
+   in any of this week's lineups" reads.
+Defaults I stated and the owner accepted: Thursday is no special case (the earliest unfinished game is first, live
+games included), and a decided player is last within his kickoff rather than last in the box.
+
+**What changed, and where.**
+- `js/mls/week/rootFor.js`: `kickoffOrder(gameOf)`, a pure comparator: finished last, then kickoff (unknown after
+  known), then settled, weight, count, id. `buildRootFor`'s own order is untouched (a finished week and the window
+  lists still use it).
+- `js/mls/week/thisWeek.js`:
+  - `rootHTML` sorts each box's players still to play with `kickoffOrder` (kickoff from the week's `times`, i.e.
+    `State.gameTimesByTeam`; finished from the row's `over` or the game's `post` state) and draws the finished ones in a
+    `.mls-root-finished` fold (`toggleRootFinished`, in place; open boxes kept in `rootView.fin` for the week shown).
+  - `rootList` takes `dividers` (an `li.mls-root-kick` where the kickoff changes; "Live" when any player of that
+    kickoff in the box is in a live game) and `rootRow` / `rootMeta` take `noTime`.
+  - Find: `rootFindUi` builds the field once and `mountRootFind` moves that node into a slot in each redraw, so typing
+    and the autocomplete survive the card's `innerHTML` redraws (focus is put back when it was in the field).
+    `attachPlayerAutocomplete` gets a `pool` (this week's rows) and a `tag` (`standingText`). `pickRootFind` /
+    `clearRootFind`; `foundHTML` draws the result with the same `rootRow` (list key `find`). State in memory
+    (`rootView.found`, `findText`); no storage key.
+- `js/mls/main.js`: actions `toggleRootFinished`, `clearRootFind`. The field's `input` and `keydown` listeners are added
+  in code on the node it builds (delegate() has no table for those events on this page).
+- `css/mls.css`: the divider, the finished line, the field and the result (end of the root-for rules).
+- `lineup/index.html`: the Guide's Who to root for item. `CHANGELOG.md`: one line under Lineup Strategist.
+- `sw.js`: `CACHE_NAME` v2.9.12 → v2.9.13. No file added, so `PRECACHE_ASSETS` is unchanged.
+- No new badge, chip or pill (the divider and the finished line are text), so the legend has no new line.
+
+**Tests.**
+- `tests/unit/rootFor.test.mjs`: `kickoffOrder` (Thursday unfinished first though it weighs least; Thursday final at the
+  bottom, under an unknown kickoff; unknown after known; inside a kickoff by weight, then count, settled last; finished
+  games in kickoff order among themselves; timestamps; no `gameOf`).
+- `tests/mls-root-kickoff-find.spec.mjs` (new, both widths), S27's three fixture leagues with BUF @ BAL moved to
+  Thursday night and a fixed clock:
+  - Thursday evening: each box's dividers and order, no finished line;
+  - Sunday: Thursday's players in "N finished" (opens in place, focus kept, Enter folds), an all-finished box;
+  - a past week: no dividers, no finished line;
+  - find: Josh Allen (Both sides) by Enter with focus on his row and both sides' leagues, Escape back to the field; a
+    tap on a suggestion, a Root for player, a second pick replacing the first, a Refresh keeping text and result, ✕,
+    Escape in the field; nobody matches; another week starts empty; nothing past the card's edges at 375 and 1280px; no
+    field without starters.
+- `tests/mls-root-for.spec.mjs`: the empty box's words ("All 7 have finished."), and the mid-Sunday test reads a box's
+  first list (its finished players are now in the fold under it).

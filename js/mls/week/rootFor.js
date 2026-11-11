@@ -138,6 +138,28 @@ export function buildRootFor({ leagues = [] } = {}) {
     };
 }
 
+// --- KICKOFF ORDER (improvements S33, owner's choices) ---
+// The order inside Root for, Against you and Both sides while games are left: the earliest game not yet final first
+// (Thursday night's on top until it ends; Thursday is no special case, just the earliest), then later kickoffs, a game
+// with no known kickoff after those, and finished games last. Inside one kickoff window, the board's own order: a
+// settled player last, then by weight, by how many leagues, by id.
+// gameOf(row) -> { kickoff: an ISO time, a timestamp or null (unknown), finished: boolean }; week/thisWeek.js reads
+// them from State.gameTimesByTeam and State.gamesByTeam[team].state === 'post'. Returns a comparator for rows.
+export function kickoffOrder(gameOf = () => null) {
+    const read = (r) => {
+        const g = gameOf(r) || {};
+        const ms = g.kickoff == null || g.kickoff === '' ? NaN : new Date(g.kickoff).getTime();
+        return { finished: !!g.finished, ms: Number.isFinite(ms) ? ms : Infinity };
+    };
+    return (a, b) => {
+        const x = read(a), y = read(b);
+        return Number(x.finished) - Number(y.finished)
+            || (x.ms === y.ms ? 0 : (x.ms < y.ms ? -1 : 1))
+            || Number(!!a.settled) - Number(!!b.settled) || (b.weight || 0) - (a.weight || 0) || (b.count || 0) - (a.count || 0)
+            || String(a.id).localeCompare(String(b.id));
+    };
+}
+
 // One side's list for a kickoff window ("Your starters" / "Against you"), ordered by that side's weight, then count.
 export function sideOrder(rows, side) {
     const w = side === 'yours' ? 'yoursWeight' : 'againstWeight';

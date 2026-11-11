@@ -2771,6 +2771,23 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .mls-root-detail li.mls-root-part-off { opacity: 0.6; }
 /* A player whose every matchup is decided or over (round 6): listed, dimmed, last. */
 .mls-root-row.is-settled .mls-root-player { opacity: 0.55; }
+/* S33: kickoff dividers inside a box, its "N finished" line, and the find field with its result. */
+.mls-root-kick { display: flex; align-items: center; gap: 0.4rem; margin: 0.35rem 0.25rem 0.05rem; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; color: var(--text-muted); }
+.mls-root-kick:first-child { margin-top: 0; }
+.mls-root-kick::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.mls-root-finished { margin-top: 0.35rem; border-top: 1px dashed var(--border); }
+.mls-root-fin-toggle { display: flex; align-items: center; gap: 0.3rem; width: 100%; min-height: 36px; padding: 0.2rem 0.25rem; text-align: left; font: inherit; font-size: 0.75rem; color: var(--text-muted); cursor: pointer; }
+.mls-root-fin-body .mls-root-player { opacity: 0.55; }
+.mls-root-find { margin: 0.2rem 0 0.6rem; max-width: 420px; }
+.mls-root-find-field { position: relative; }
+.mls-root-find-input { width: 100%; padding-left: 2.2rem; padding-right: 2.6rem; }
+.mls-root-find-icon { position: absolute; left: 0.75rem; top: calc(50% - 8px); color: var(--text-muted); pointer-events: none; z-index: 1; }
+.mls-root-find-clear { position: absolute; right: 0.35rem; top: calc(50% - 16px); width: 32px; height: 32px; border-radius: 50%; color: var(--text-muted); font-size: 0.9rem; cursor: pointer; z-index: 1; }
+.mls-root-find-clear[hidden] { display: none; }
+.mls-root-find-none { margin-top: 0.35rem; }
+.mls-root-found { --root-c: #10b981; max-width: 640px; margin: 0 0 0.7rem; padding: 0.5rem 0.55rem; border: 1px solid var(--border); border-left: 3px solid var(--root-c); border-radius: 10px; background: rgba(255, 255, 255, 0.03); }
+.mls-root-found.is-against { --root-c: #ef4444; }
+.mls-root-found.is-both { --root-c: #f59e0b; }
 .mls-root-settled { font-style: italic; }
 
 /* --- A SAVED RANKING SET, READ-ONLY (improvements S30) ---
