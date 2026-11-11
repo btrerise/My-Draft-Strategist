@@ -1,0 +1,73 @@
+# Re-takes the screenshot baselines on CI's own renderer and commits the ones that changed to the branch, so a pull
+# request with an intended visual change passes `check` on its first run (docs/TESTING.md, "Accepting an intended
+# visual change"). Cloud sessions can tell which PNGs a change touches but can't draw CI's pixels (their image has
+# other font rules), so before this the first CI run existed only to produce the new PNGs.
+#
+# Two ways to start it, on any branch but main:
+#   - Actions > Update screenshots > Run workflow, choosing the branch (once this file is on main), or
+#   - push a commit whose message contains "[update screenshots]" (works on any branch that has this file).
+# It never approves anything: whoever started it looks at the PNGs in the commit it adds and checks they're the ones
+# the change was meant to touch. A commit pushed with the workflow's own token starts no other workflow, so this
+# can't loop, and `check` runs when the pull request is opened or next pushed to.
+name: Update screenshots
+
+on:
+  workflow_dispatch:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update:
+    if: >-
+      github.ref_name != 'main' &&
+      (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[update screenshots]'))
+    # The same runner as check.yml: the baselines depend on the OS's fonts.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      # New baselines are only worth committing from the environment the old ones were made in.
+      - name: Rendering environment matches the baselines
+        run: node render-env.mjs
+
+      # Rewrites only the PNGs whose comparison fails (more than 10 pixels, playwright.config.mjs).
+      - name: Re-take the screenshots that changed
+        run: npx playwright test visual.spec.mjs --update-snapshots=changed --trace off
+
+      - name: Commit the changed baselines
+        run: |
+          git add -A baselines
+          if git diff --cached --quiet; then
+            echo "No screenshot changed." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "Re-taken baselines:"
+            echo
+            git diff --cached --name-status | sed 's/^/- /'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "Screenshots re-taken on CI ($(git diff --cached --name-only | wc -l) PNGs)" -m "$(git diff --cached --name-status)"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

@@ -163,13 +163,26 @@ something looks:
    Anything else it lists means rendering has become unrepeatable again: that's a bug to fix, not drift to accept.
 3. Look at each changed PNG, then list them (and why) in your commit message or PR.
 
+**Cloud sessions: let CI re-take them before the pull request** (improvements S38, 2026-11-11; before it, every
+visual change cost a red CI run just to get CI's pixels). `.github/workflows/update-screenshots.yml` runs
+`visual.spec.mjs` on CI's renderer with `--update-snapshots=changed` and commits the PNGs that changed to your branch.
+1. Find the PNGs your change touches, as below (main and your branch rendered in the same container, `npm run pxdiff`).
+2. Start the workflow on your branch once the code is final: push a commit whose message contains
+   `[update screenshots]` (your last real commit, never an empty one), or run "Update screenshots" from the Actions
+   tab for the branch (needs the file on main).
+3. When it finishes, `git pull`, and check its commit: exactly the PNGs you predicted, each different only where your
+   change is (open them). Anything else it re-took is a finding to explain, not a baseline to keep. List them in LOG.
+4. Then open the pull request: `check` runs on the new baselines and should be green the first time.
+It never runs on main, and it doesn't replace looking at the images.
+
 **When your machine can't reproduce the baselines** (Claude Code cloud sessions since 2026-10-03, whose image adds
 fonts and font rules CI doesn't have, and since 2026-10 a newer Chromium; see docs/improvements/LOG.md, F1, S9 and S23):
 render main and your branch the same way there and compare them with `npm run pxdiff` to find the PNGs your change
 touches. For main, a worktree works: `git worktree add <scratch dir> origin/main`, `npm ci` in its `tests/`, then
 `RENDER_ENV=any npx playwright test visual.spec.mjs --update-snapshots=all` there and in yours, one at a time (both
 use port 4173; `RENDER_ENV=any` skips the environment check, outside CI only),
-and compare the two `baselines/linux` folders; put your own back with `git checkout -- tests/baselines`. Push without re-taking them, and
+and compare the two `baselines/linux` folders; put your own back with `git checkout -- tests/baselines`. Then have CI
+re-take them (above). The older way still works if the workflow can't be used: push without re-taking them, and
 let the PR's CI fail on exactly those. Then take CI's renders from the run's `playwright-results` artifact:
 `gh run download <run-id> -R btrerise/My-Draft-Strategist -n playwright-results -D <new empty folder>` works from
 cloud sessions. Before committing an `-actual.png` as the baseline, check that its `-expected.png` is identical to the

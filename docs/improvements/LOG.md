@@ -10286,3 +10286,14 @@ Market Source, League Type, QB Format, PPR, TE Premium and Fetch Market Value be
   - `desktop/mls-league-scout.png` (1280x1945 → 1280x1576 here) and `phone/mls-league-scout.png` (390x2214 → 390x1861):
     Trade Finder is shorter, its market source folded and the mark under Find Trade Targets.
   - `desktop/mls-league-guide.png` and `phone/mls-league-guide.png`: the Guide's longer Trade Analyzer step (round 1).
+
+### S38: CI re-takes changed screenshots before the pull request (owner, 2026-11-11: "fix it now")
+
+The owner asked why screenshots always cost two CI runs when the session already knows which PNGs change. A cloud
+session can't draw CI's pixels: hiding the image's two extra font rules from Chromium (`FONTCONFIG_PATH`, tried here)
+made page heights match CI's baselines, but most PNGs still differed by about 1% of pixels. So the pixels come from CI,
+but before the pull request rather than from a failed run: `.github/workflows/update-screenshots.yml` (new) runs
+`visual.spec.mjs` with `--update-snapshots=changed` on check.yml's runner and commits the changed PNGs to the branch.
+Started by "[update screenshots]" in a commit message (any branch but main that has the file) or from the Actions tab.
+Steps in docs/TESTING.md ("Cloud sessions: let CI re-take them before the pull request") and a line in CLAUDE.md.
+Tooling and docs only; no `CACHE_NAME` bump.
