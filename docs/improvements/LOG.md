@@ -10202,3 +10202,13 @@ Two requests from the owner (2026-11-08), before the trade deadlines. Branch `cc
   Trade Finder (below)" for another format's; with the switch on they now show only for an uploaded file or after a
   failed fetch.
 - Pick values by slot stay with S44. F14 (after this card) edits the same trade files.
+
+**Checked.** `npm run check` in the session: check-precache OK (161 precached), 554 unit tests pass, 890 Playwright tests
+pass; the 4 failures are `visual.spec.mjs` refusing this container's fonts (the environment check), as on main.
+
+**Screenshots.** Main and this branch rendered the same way here (`RENDER_ENV=any`) and compared with `npm run pxdiff`:
+exactly two PNGs change, both taller for the Guide's longer Trade Analyzer step (repeated picks, and Analyze fetching
+market values): `desktop/mls-league-guide.png` (1280x9827 → 1280x9873 here) and `phone/mls-league-guide.png`
+(390x23280 → 390x23419 here). Not re-taken in the session (its fonts differ from CI's): CI will fail on exactly these
+two on the pull request, and its `-actual.png` files become the baselines. The Scout tab's screenshots are unchanged
+(Value settings is folded, and no screenshot analyzes a trade).
