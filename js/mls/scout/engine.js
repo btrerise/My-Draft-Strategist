@@ -13,16 +13,18 @@ import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js'
 import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
 import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
 import { buildTradeVerdictHTML, tradeSeasonSet } from '../trade/verdict.js';
-import { activeOwnRankings } from '../main.js';
+import { activeOwnRankings, ensureMarketValues } from '../main.js';
 import { buildTradeImpactHTML } from '../trade/lineupSection.js';
 import { buildMakeFairHTML, moreAnalysisHTML, placeFairFocus } from '../trade/fairSection.js';
-import { pickHolders } from '../leagues/picks.js';
+import { pickCount, pickHolders } from '../leagues/picks.js';
+import { pickNumber } from '../trade/entries.js';
 import { setTradeExport } from '../trade/export.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 
     // --- SCOUT TAB ENGINE ---
-    export const runScout = async function(type) {
+    // button: the Analyze Trade button when it was tapped (a live re-run after a change to the trade passes none).
+    export const runScout = async function(type, { button = null } = {}) {
         const inputEl = document.getElementById(type === 'waiver' ? 'waiverInput' : 'buyInput');
         const sellEl = document.getElementById('sellInput');
         const outputEl = document.getElementById(type === 'waiver' ? 'waiverOutput' : 'tradeOutput');
@@ -41,6 +43,30 @@ import { normalizeName } from '../../shared/names.js';
         // than threading a scope flag through buildCard's lineup/verdict logic below.
         if (type === 'waiver' && State.waiverScanSettings.scope === 'all') {
             return runAllLeaguesSearch(targetNames, outputEl);
+        }
+
+        // Market values for this league, brought in without a trip to Trade Finder (improvements S38): fetched when none
+        // are loaded for its format or they're over three hours old, unless the Value settings switch is off. The
+        // button is busy meanwhile. A failed fetch changes nothing here: the verdict says so (trade/verdict.js).
+        if (type === 'trade') {
+            const btn = button || document.getElementById('analyzeTradeBtn');
+            let restore = null;
+            await ensureMarketValues({
+                force: !!button,
+                onFetch: () => {
+                    if (!btn || btn.disabled) return;
+                    const text = btn.textContent;
+                    btn.textContent = 'Fetching market values…';
+                    btn.disabled = true;
+                    btn.setAttribute('aria-busy', 'true');
+                    restore = () => { btn.textContent = text; btn.disabled = false; btn.removeAttribute('aria-busy'); };
+                }
+            });
+            if (restore) restore();
+            // The trade may have changed while the values loaded: read it again.
+            targetNames = inputEl.value.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+            sellNames = sellEl ? sellEl.value.split(/[\n,]+/).map(s => s.trim()).filter(Boolean) : [];
+            if (targetNames.length === 0 && sellNames.length === 0) { outputEl.innerHTML = ''; return; }
         }
 
         let league = getActiveLeague();
@@ -498,12 +524,23 @@ import { normalizeName } from '../../shared/names.js';
     function pickOwnerText(league, name, roleLabel) {
         const holders = pickHolders(league && league.picks, name);
         if (!holders) return null;
+        // The same pick entered more than once (improvements S38): the second entry needs a second pick like it.
+        const nth = pickNumber(name);
+        const count = (owner) => pickCount(league.picks, owner, name);
         if (roleLabel === 'GIVE') {
-            return holders.includes('You') ? { text: 'Yours', cls: '' } : { text: "Not yours (you don't hold it)", cls: 'mls-trade-row-warn' };
+            const have = count('You');
+            return have >= nth ? { text: 'Yours', cls: '' }
+                : { text: have ? `Not yours (you hold ${have})` : "Not yours (you don't hold it)", cls: 'mls-trade-row-warn' };
         }
         const others = holders.filter(o => o !== 'You');
         const team = document.getElementById('tradeGetTeam')?.value || '';
-        if (team) return others.includes(team) ? { text: `${team}'s`, cls: '' } : { text: `${team} doesn't hold it`, cls: 'mls-trade-row-warn' };
+        if (team) {
+            const have = count(team);
+            return have >= nth ? { text: `${team}'s`, cls: '' }
+                : { text: have ? `${team} holds only ${have}` : `${team} doesn't hold it`, cls: 'mls-trade-row-warn' };
+        }
         if (others.length === 0) return { text: holders.length ? 'Already yours' : 'No team holds it', cls: 'mls-trade-row-warn' };
+        const total = others.reduce((sum, o) => sum + count(o), 0);
+        if (total < nth) return { text: `Other teams hold only ${total}`, cls: 'mls-trade-row-warn' };
         return { text: `Held by ${others.join(', ')}`, cls: '' };
     }

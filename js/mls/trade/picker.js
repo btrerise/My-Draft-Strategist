@@ -27,6 +27,7 @@ import { getPowerLeagueKind } from '../power/directionLabels.js';
 import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { runScout } from '../main.js';
 import { nextDraftYears } from './makeFair.js';
+import { addEntries, isPickEntry, removeEntries, removeEntryAt } from './entries.js';
 
 const SIDES = {
     get: { textarea: 'buyInput', tokens: 'tradeGetTokens', search: 'tradeGetSearch', year: 'tradeGetPickYear', round: 'tradeGetPickRound', pickRow: 'tradeGetPickRow' },
@@ -36,7 +37,6 @@ const TEAM_SELECT = 'tradeGetTeam';
 // What the search knew about a picked name (position and team), for the token's small print. Names
 // added any other way show without it.
 const _meta = new Map();
-const PICK_RE = /\b(19|20)\d{2}\b.*\b(1st|2nd|3rd|4th)\b/i;
 const _search = {}; // side -> the autocomplete's handle (refresh after the team changes)
 
 const el = (id) => document.getElementById(id);
@@ -101,7 +101,7 @@ function renderTokens(side) {
     if (!list) return;
     list.innerHTML = namesOf(side).map((name, i) => {
         const m = _meta.get(name.toLowerCase());
-        const sub = PICK_RE.test(name) ? 'Pick' : (m ? `${m.pos}${m.team ? ` &middot; ${escapeHtml(m.team)}` : ''}` : '');
+        const sub = isPickEntry(name) ? 'Pick' : (m ? `${m.pos}${m.team ? ` &middot; ${escapeHtml(m.team)}` : ''}` : '');
         return `<li class="mls-trade-token">
             <span class="mls-trade-token-name">${escapeHtml(name)}</span>${sub ? `<span class="mls-trade-token-meta">${sub}</span>` : ''}
             <button type="button" class="mls-trade-token-remove btn-bare" data-action="removeTradeToken" data-side="${side}" data-idx="${i}" aria-label="Remove ${escapeHtml(name)}">&#x2715;</button>
@@ -125,16 +125,13 @@ function rerunIfAnalyzed() {
     }, 250);
 }
 
+// A side is a list of entries (trade/entries.js, improvements S38): a player once, a draft pick as often as it's
+// added ("2027 1st", "2027 1st (2)").
 function addNames(side, names) {
-    const current = namesOf(side);
-    const have = new Set(current.map(n => n.toLowerCase()));
-    names.map(n => String(n).trim()).filter(Boolean).forEach(n => {
-        if (!have.has(n.toLowerCase())) { current.push(n); have.add(n.toLowerCase()); }
-    });
-    writeNames(side, current);
+    writeNames(side, addEntries(namesOf(side), names));
 }
 
-// Adds names to a side from the picker (search, Enter, paste), skipping ones already on it.
+// Adds names to a side from the picker (search, Enter, paste), skipping players already on it; a pick is added again.
 export function addTradeNames(side, names) {
     if (!SIDES[side]) return;
     addNames(side, names);
@@ -153,12 +150,11 @@ export function tradeNames() {
     return { get: namesOf('get'), give: namesOf('give') };
 }
 
-// Takes names off a side ("To make it fair"'s Remove) and re-runs, without focusing the search: on a phone that
+// Takes entries off a side, one per name ("To make it fair"'s Remove), and re-runs, without focusing the search: on a phone that
 // would open the keyboard over the result you're reading.
 export function removeTradeNames(side, names) {
     if (!SIDES[side]) return;
-    const drop = new Set((names || []).map(n => String(n).trim().toLowerCase()));
-    writeNames(side, namesOf(side).filter(n => !drop.has(n.toLowerCase())));
+    writeNames(side, removeEntries(namesOf(side), names));
     rerunIfAnalyzed();
 }
 
@@ -180,9 +176,7 @@ export function clearTradeSide(side) {
 
 export function removeTradeToken(side, idx) {
     if (!SIDES[side]) return;
-    const names = namesOf(side);
-    names.splice(idx, 1);
-    writeNames(side, names);
+    writeNames(side, removeEntryAt(namesOf(side), idx));
     el(SIDES[side].search)?.focus();
     rerunIfAnalyzed();
 }

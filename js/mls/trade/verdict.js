@@ -5,7 +5,7 @@ import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
 import { getFreshness } from '../../shared/freshness.js';
 import { verdictFromValues } from './makeFair.js';
-import { activeOwnRankings, leagueQbMarketPricing, marketFormatWarning } from '../main.js';
+import { activeOwnRankings, leagueQbMarketPricing, marketFetchFailed, marketFormatWarning } from '../main.js';
 import { getActiveLeague } from '../helpers.js';
 import { IN_SEASON, hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superflexQbPrices } from '../rankings/nowAndLater.js';
@@ -77,7 +77,7 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
             ]);
             const tiles = dualVerdictTiles(seasonSet, now, later, dualHeadline(both.now, both.later), box.marks);
             verdictHTML = tiles + box.html + oneQbNote(getResults, giveResults, seasonSet) + marketStrip(market, box.marks.market) + marketAgeHTML();
-            return verdictHTML || `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
+            return (verdictHTML || `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`) + noMarketFailHTML();
         } else {
             yours = renderTradeVerdict(
                 "Your Rankings", YOUR_METHOD,
@@ -104,13 +104,26 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
         if (!verdictHTML) {
             verdictHTML = `<div class="trade-verdict-note" style="margin-bottom:1rem;">Load your ROS Rankings (Roster tab) and/or Market Value data (Trade Finder section below) to get a value total and fairness verdict.</div>`;
         }
-        return verdictHTML;
+        return verdictHTML + noMarketFailHTML();
     }
 
     // How old the market values are (improvements S14, round 6, owner's choice): always dated, and amber with a
     // nudge from the day after they were fetched (calendar days since 2026-11, the shared getFreshness), since trade
     // values move with every injury and depth-chart change.
     // On screen only: Export Trade copies the banners and notes, not this line.
+    // Analyze Trade fetches market values by itself (improvements S38). When that fails (offline, FantasyCalc down), one
+    // line says so, in place of an error toast: the trade is still analyzed by your rankings, and by the market values
+    // loaded earlier if there are any.
+    function marketFailHTML() {
+        if (!marketFetchFailed()) return '';
+        return `<div class="mls-trade-market-age is-stale" data-market-fail>${State.marketRankings.length === 0
+            ? (State.rosRankings.length > 0 ? "Market values couldn't load, so this is by your rankings only." : "Market values couldn't load.")
+            : "Market values couldn't be refreshed: these are the ones loaded earlier."} Analyze again to retry.</div>`;
+    }
+
+    // With no market values at all the age line is absent, so the failure goes under whatever the verdict shows.
+    const noMarketFailHTML = () => (State.marketRankings.length === 0 ? marketFailHTML() : '');
+
     function marketAgeHTML() {
         if (State.marketRankings.length === 0) return '';
         const fresh = getFreshness(State.marketUpdatedAt, 0);
@@ -125,7 +138,8 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
         return (fresh
             ? `<div class="mls-trade-market-age${fresh.isStale ? ' is-stale' : ''}">${source}${fresh.isStale ? '. Refresh them in Trade Finder (below) before you trade.' : '.'}</div>`
             : '')
-            + (warning ? `<div class="mls-trade-market-age is-stale">${escapeHtml(warning)} Fetch again in Trade Finder (below).</div>` : '');
+            + (warning ? `<div class="mls-trade-market-age is-stale">${escapeHtml(warning)} Fetch again in Trade Finder (below).</div>` : '')
+            + marketFailHTML();
     }
 
     // The names in a trade that match no player at all (runScout's rows mark them known: false), as shown on their rows.

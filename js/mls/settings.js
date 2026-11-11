@@ -3,6 +3,7 @@
 // for those three. The lineup optimizer's setting went to state.js, next to its State field.
 import { State } from './state.js';
 import { KEYS } from '../shared/storage/keys.js';
+import { useLeagueMarketSet } from './main.js';
 // --- SHARED MARKET SETTINGS (Scout tab + Roster tab's ROS auto-fetch) ---
 // Both tabs have their own copy of these controls (different element IDs, prefixed "ros" on
 // the Roster tab) so the user doesn't have to navigate to Scout just to configure them before
@@ -13,6 +14,8 @@ export const updateMarketSetting = function(key, value) {
     State.marketSettings[key] = value;
     localStorage.setItem(KEYS.mls.marketSettings, JSON.stringify(State.marketSettings));
     applyMarketSettingsToUI();
+    // Values already fetched for the format now chosen come back without a new fetch (improvements S38).
+    useLeagueMarketSet();
 };
 
 // --- TRADE ANALYZER SETTINGS (Waiver Adjustment) ---
@@ -40,6 +43,9 @@ export function applyTradeSettingsToUI() {
     const valueWrap = document.getElementById('tradeWaiverValueWrap');
     const valueEl = document.getElementById('tradeWaiverAdjustValue');
     if (toggleEl) toggleEl.checked = !!s.waiverAdjustment;
+    // "Fetch market values automatically" (improvements S38): on unless turned off, so settings saved before it count as on.
+    const autoEl = document.getElementById('tradeAutoMarketToggle');
+    if (autoEl) autoEl.checked = s.autoMarket !== false;
     if (valueEl) valueEl.value = s.waiverAdjustmentValue;
     if (valueWrap) valueWrap.style.display = s.waiverAdjustment ? 'block' : 'none';
 }

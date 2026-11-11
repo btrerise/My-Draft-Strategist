@@ -9,6 +9,7 @@
 //   * The site's own font (fonts/*.woff2, self-hosted since improvements S17) is aborted too, as Google Fonts was
 //     before it: the screenshots are drawn in the OS's fallback fonts. fonts.spec.mjs checks the font itself.
 //     /api/ffc/ (a Cloudflare Pages Function, not run by serve.mjs) 404s unless a spec stubs it.
+//     /api/fantasycalc (the other one) is aborted unless a spec stubs it: Analyze Trade fetches it by itself (S38).
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect } from '@playwright/test';
@@ -78,6 +79,11 @@ export async function preparePage(page) {
     });
 
     await page.route(/^http:\/\/localhost(:\d+)?\/fonts\/[^/]+\.woff2$/, (route) => route.abort());
+    // /api/fantasycalc is a Pages Function serve.mjs doesn't run. Analyze Trade asks it for market values by itself
+    // (improvements S38), so it's aborted here like FantasyCalc itself: the tests are offline unless a spec stubs it
+    // (a page.route() of the spec's, before or after this, wins over a context route), and the Trade Analyzer then
+    // says the values couldn't load.
+    await page.context().route(/^http:\/\/localhost(:\d+)?\/api\/fantasycalc\?/, (route) => route.abort());
 
     page.on('pageerror', (err) => errors.push(`uncaught: ${err.message}`));
     page.on('console', (msg) => {

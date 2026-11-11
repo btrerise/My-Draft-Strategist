@@ -96,16 +96,21 @@ test.describe('Scout tab: a league switch made on the tab', () => {
         await expect(meta.locator('.mls-market-format-warning')).toHaveCount(0);
         await switchTo(page, FIXTURE_LEAGUE2_ID);
         await expect(meta.locator('.mls-market-format-warning')).toHaveText("Fetched for redraft; this league is dynasty. Fetch again for this league's values.");
-        // The Trade Analyzer says it under the values' age.
+        // The Trade Analyzer says it under the values' age, when it isn't fetching by itself (improvements S38: with
+        // "Fetch market values automatically" on, Analyze brings this league's values; mls-trade-market-auto.spec.mjs).
+        await page.locator('.mls-trade-value-settings > summary').click();
+        await page.locator('#tradeAutoMarketToggle').uncheck();
         await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson']);
         await callApp(page, 'setTradePlayers', 'give', ["Ja'Marr Chase"]);
         await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
         await expect(page.locator('#tradeOutput .mls-trade-market-age.is-stale')).toHaveText('Fetched for redraft; this league is dynasty. Fetch again in Trade Finder (below).');
-        // Fetched again here, the warning goes; back in the redraft league it's the other way round.
+        // Fetched again here, the warning goes. Back in the redraft league its own values return (each format's set is
+        // kept since S38), so there's no warning there either.
         await page.click('#scoutTab #fetchMarketValueBtn');
         await expect(meta.locator('.mls-market-format-warning')).toHaveCount(0);
         await switchTo(page, FIXTURE_LEAGUE_ID);
-        await expect(meta.locator('.mls-market-format-warning')).toHaveText("Fetched for dynasty; this league is redraft. Fetch again for this league's values.");
+        await expect.poll(() => page.evaluate(async () => (await import('/js/mls/state.js')).State.marketFormat.type)).toBe('redraft');
+        await expect(meta.locator('.mls-market-format-warning')).toHaveCount(0);
         // A file upload's format is unknown: no warning.
         await page.setInputFiles('#marketFileInput', { name: 'market.csv', mimeType: 'text/csv', buffer: Buffer.from('Player,Overall Rank\nBijan Robinson,1\n') });
         await expect(meta).toContainText('Market Consensus Loaded: 1 players');

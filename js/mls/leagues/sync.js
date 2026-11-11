@@ -16,7 +16,7 @@ import { updatePulsePrompts } from '../init.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { runScout } from '../scout/engine.js';
-import { applyWaiverScanSettingsToUI, getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderLeagueCards, runMarketDisconnectAnalysis, updateMarketMetaDisplay, leagueMarketFormat } from '../main.js';
+import { applyWaiverScanSettingsToUI, getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderLeagueCards, runMarketDisconnectAnalysis, updateMarketMetaDisplay, leagueMarketFormat, useLeagueMarketSet } from '../main.js';
 import { updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { applyMarketSettingsToUI } from '../settings.js';
 import { KEYS } from '../../shared/storage/keys.js';
@@ -398,6 +398,8 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
         Object.assign(State.marketSettings, leagueMarketFormat(league)); // scout/marketDisconnect.js
         localStorage.setItem(KEYS.mls.marketSettings, JSON.stringify(State.marketSettings));
         applyMarketSettingsToUI();
+        // This league's own market values, if they've been fetched before (improvements S38).
+        useLeagueMarketSet();
     }
 
     export function loadActiveLeagueData() {

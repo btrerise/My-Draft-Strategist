@@ -158,6 +158,16 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Trade Analyzer: the same draft pick twice, and market values by themselves.** A draft pick can now be on a side
+  more than once: add "2027 1st" again and it shows as "2027 1st (2)", with its own token, its own row and its own
+  value in the verdict; each row says whether that team holds that many. Players still can't repeat. **Analyze Trade
+  now fetches FantasyCalc's market values by itself** when none are loaded for the league or they're more than three
+  hours old, so the market verdict is there without a trip to Trade Finder. Turn it off with **Fetch market values
+  automatically** under Value settings. A market file you uploaded is never replaced. If the values can't load (no
+  connection), the trade is still analyzed by your rankings and a line says so. **Each league keeps its own market
+  values**, fetched for its format (redraft or dynasty, 1QB or Superflex, PPR, TE premium, league size): switching
+  leagues brings that league's values back, in the Trade Analyzer and Trade Finder, instead of a warning that they
+  were fetched for another format.
 - **Player Scoreboard: players by kickoff, and a way to find one.** While games are left, Root for, Against you and
   Both sides list players by kickoff, the earliest game first, so Thursday night's players are on top until that game
   ends. A small label ("Thu 8:15 PM · Live") starts each kickoff time; inside one, the players that matter most come

@@ -64,6 +64,13 @@ export function pickHolders(picks, name) {
     return Object.keys(picks).filter(owner => picks[owner].some(p => slotKey(p.name) === key));
 }
 
+// How many picks with this name one team holds (improvements S38: the same pick can be in a trade more than once,
+// "2027 1st" and "2027 1st (2)"; the "(2)" isn't part of the key). 0 when the league has no synced picks.
+export function pickCount(picks, owner, name) {
+    const key = slotKey(name);
+    return ((picks && picks[owner]) || []).filter(p => slotKey(p.name) === key).length;
+}
+
 // A pick's worth in the Power Rankings' Future column when the market has no value for it (round 3, owner's choice:
 // the market's value when dynasty Market Consensus is loaded, else this table): the overall rank of a player it
 // counts like, by round (a 1st like the 48th player, a 2nd the 100th, a 3rd the 160th, a 4th the 230th), each draft

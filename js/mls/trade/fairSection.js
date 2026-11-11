@@ -162,6 +162,19 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
     const roster = new Map();
     Object.entries(rosterMap).forEach(([clean, owner]) => { if (owner === team) roster.set(clean, null); });
     if (team === 'You') (league.roster || []).forEach(p => roster.set(p.cleanName, p));
+    // A pick can be in the trade more than once (improvements S38), so with synced picks a team's pick is offered
+    // while it holds more of them than its side already has: one 2027 1st in the trade, two held, one to suggest.
+    const addingNames = adder === 'them' ? getNames : giveNames;
+    let heldPicks = null;
+    if (league.picks) {
+        const used = new Map();
+        addingNames.filter(isDraftPickName).forEach(n => used.set(keyOf(n), (used.get(keyOf(n)) || 0) + 1));
+        heldPicks = (league.picks[team] || []).filter(p => {
+            const left = used.get(keyOf(p.name)) || 0;
+            if (left > 0) { used.set(keyOf(p.name), left - 1); return false; }
+            return true;
+        });
+    }
     const candidates = fairCandidates({
         roster: [...roster].map(([clean, p]) => {
             const ros = rosIndex.get(clean), mkt = marketIndex.get(clean);
@@ -179,15 +192,15 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
         dynasty: getPowerLeagueKind(league) === 'dynasty',
         pickValue: State.marketRankings.length > 0 ? (name) => getMarketValue(null, name)?.value || 0 : null,
         // The picks this team holds, as Sleeper had them at the last sync (round 2); null assumes its own.
-        picks: league.picks ? (league.picks[team] || []) : null,
+        picks: heldPicks,
         normalize: keyOf
     });
 
-    const addingNames = adder === 'them' ? getNames : giveNames;
     const result = fairSuggestions({
         getValues, giveValues, candidates, waiver,
         inTrade: getNames.concat(giveNames).filter(n => !isDraftPickName(n)).map(normalizeName),
-        onAddingSide: addingNames.map(keyOf)
+        // Without synced picks every team is assumed to hold one of each, so a pick already on its side isn't offered again.
+        onAddingSide: heldPicks ? [] : addingNames.map(keyOf)
     });
     if (!result) return '';
 

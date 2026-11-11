@@ -10120,3 +10120,85 @@ spec). CI's first run (42968266020) failed only in `visual.spec.mjs`, on exactly
 - `desktop/mls-league-guide.png` (9471 → 9518px), `phone/mls-league-guide.png` (21839 → 22023px): the Guide's longer Who
   to root for item. On desktop the page is unchanged above the item (388 pixels differ by one level) and identical
   below it once shifted by its two extra lines (46px).
+
+## S38 — Trade Analyzer: the same draft pick twice, and market values without a trip to Value settings
+
+Two requests from the owner (2026-11-08), before the trade deadlines. Branch `ccr-d061837a-5hnofo`, from main at
+48e3cd6 (S33 merged). Needs nothing.
+
+**User-visible effect.**
+1. **A draft pick can repeat.** Adding "2027 1st" to a side that already has one adds a second entry, "2027 1st (2)"
+   (a third is "(3)"). Each has its own token and Remove, its own row under You Receive / You Give Up, and its own value
+   in every verdict, in "To make it fair", in Power Rankings after the trade (two picks move) and in Export Trade's
+   image. Removing one of two leaves a plain "2027 1st". In a league with synced picks the row says whether the team
+   holds that many: "Yours" twice when you hold two, "Not yours (you hold 2)" on a third, "Rival holds only 1".
+   "To make it fair" can now suggest a second pick like one already in the trade, when that team holds another.
+   A player still can't be on a side twice.
+2. **Analyze Trade brings the market values.** With none loaded for the league's format, or with ones over three hours
+   old, Analyze Trade fetches them (the button reads "Fetching market values…" and is disabled meanwhile), so the Market
+   Consensus verdict is there on the first tap. A new switch, **Fetch market values automatically**, is under Value
+   settings (on by default). A market file uploaded in Trade Finder is never replaced. When the fetch fails, there's no
+   error toast: the trade is analyzed by your rankings, and an amber line under the verdicts says "Market values couldn't
+   load, so this is by your rankings only. Analyze again to retry." (or, with older values still loaded, "Market values
+   couldn't be refreshed: these are the ones loaded earlier.").
+3. **Each league has its own market values.** A fetch is for the league's format (redraft or dynasty, 1QB or Superflex,
+   PPR, TE premium, and league size) and is kept under it. Switching leagues, or changing a Market Consensus setting,
+   brings back the values already fetched for that format, in the Trade Analyzer, Trade Finder and everything else that
+   reads Market Consensus. The "Fetched for redraft; this league is dynasty" warning now shows only until that league's
+   values are fetched (one Analyze), or with the switch off.
+
+**The owner's decisions (2026-11-11).**
+1. A repeated pick reads **"2027 1st" and "2027 1st (2)"** (not "2027 1st (Rival)").
+2. Market values are **fetched on Analyze, automatically, with the switch on by default**; an uploaded file is never
+   replaced.
+3. The format is **each league's own**, which settles the open follow-up "Keep market values for each format" (its line
+   is removed from docs/TESTING.md).
+
+**What changed, where.**
+- `js/mls/trade/entries.js` (new, pure): a side's list of entries. `addEntries` (a pick is always added, a player once),
+  `removeEntryAt`, `removeEntries` (one entry per name), `numberPicks` (repeats numbered in order, so labels are unique),
+  `pickBase`, `pickNumber`. The "(2)" is only a label: `pickKey` and `isDraftPickName` ignore it, so the hidden
+  textareas, `runScout`, the verdicts, `picksAfterTrade` and Export Trade needed no change to count each entry.
+- `js/mls/trade/picker.js`: `addNames`, `removeTradeNames` and `removeTradeToken` go through entries.js (before:
+  duplicates dropped case-insensitively, and Remove took every entry with that name). `restoreTrade` (Undo) and
+  `setTradePlayers` rebuild the same lists.
+- `js/mls/leagues/picks.js`: `pickCount(picks, owner, name)`. `js/mls/scout/engine.js` (`pickOwnerText`): the nth entry
+  of a pick needs n held. `js/mls/trade/fairSection.js`: with synced picks, a team's picks minus the ones its side
+  already has are the candidates (before: a pick on that side was never offered again).
+- `js/mls/scout/marketSets.js` (new, pure): `marketFormatOf` (settings and FantasyCalc's league size), `marketFormatKey`,
+  `isMarketStale` (three hours, K8's cache), `putMarketSet` (the newest six sets), `marketPlan` ('none' | 'cached' |
+  'fetch': what Analyze does).
+- `js/mls/scout/marketDisconnect.js`: one fetch-and-store path for Fetch Market Value and Analyze
+  (`fetchMarketForActiveLeague`, through `/api/fantasycalc` as before; two callers share one request);
+  `useLeagueMarketSet` (the stored set for the active format, on a league switch from `leagues/sync.js` and on a setting
+  change from `settings.js`); `ensureMarketValues` and `marketFetchFailed`. A failure is a `console.warn`, kept for a
+  minute so live re-runs don't ask on every change; tapping Analyze always tries. `State.marketFormat` now also has
+  `teams`.
+- `js/mls/scout/engine.js`: `runScout('trade', { button })` calls `ensureMarketValues` first and shows the busy state.
+  `js/mls/trade/verdict.js`: the failure line. `lineup/index.html`: the switch (`tradeSettings.autoMarket`, a field in
+  the existing `mls_trade_settings`; unset counts as on), `id="analyzeTradeBtn"`, the Guide's Trade Analyzer step and
+  the card's tooltip.
+- Storage: one new key, `mls_market_sets` (`KEYS.mls.marketSets`): `{ [format]: { format, rows, updatedAt } }`, about
+  20 KB a set, six at most. `mls_market`, `mls_market_updated` and `mls_market_format` still hold the set in use.
+- `sw.js`: the two new files precached; `CACHE_NAME` v2.9.17 → v2.9.18. `CHANGELOG.md`: a line under Lineup Strategist.
+- Tests: `tests/unit/tradeEntries.test.mjs` (repeat picks kept, repeat players dropped, remove one of two, Undo),
+  `tests/unit/marketSets.test.mjs` (formats, three hours, the store, every branch of the plan);
+  `tests/mls-trade-picks-market.spec.mjs` (two 2027 1sts count twice; a third says you hold two; Remove and Undo from
+  "To make it fair"; a second held pick suggested; Analyze fetches once with the button busy and shows the market
+  verdict, again after three hours; a failed fetch shows the line and the rankings verdict with no toast and no
+  console.error, then recovers; older values with a failed refresh; the switch off; an uploaded file; two leagues, two
+  formats, back and forth with no new request). `tests/helpers.mjs` aborts `/api/fantasycalc` unless a spec stubs it
+  (serve.mjs doesn't run Pages Functions, and an unstubbed Analyze would 404). `mls-scout-league-switch.spec.mjs`: the
+  Trade Analyzer's format warning is checked with the switch off, and going back to the redraft league now finds its
+  own values.
+
+**Seen, not changed (for the owner).**
+- Market values fetched before this card carry no league size, so the first Analyze in each league fetches once. Ones
+  from before the S23 follow-up (no saved format at all) look like an uploaded file and stay until Fetch Market Value
+  is tapped once.
+- Trade Finder's "Find Trade Targets" doesn't fetch by itself: it reads the active league's values and keeps its Fetch
+  Market Value button. Auto-Fetch ROS Rankings (Roster tab) fetches as before and doesn't add to the stored sets.
+- The lines under the verdicts still say "Refresh them in Trade Finder (below)" for day-old values and "Fetch again in
+  Trade Finder (below)" for another format's; with the switch on they now show only for an uploaded file or after a
+  failed fetch.
+- Pick values by slot stay with S44. F14 (after this card) edits the same trade files.
