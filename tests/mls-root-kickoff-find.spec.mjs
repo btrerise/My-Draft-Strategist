@@ -35,12 +35,12 @@ async function addLeague(page, id, count) {
     await page.click('#mainSyncBtn');
     await expect(page.locator('#headerLeagueSelect option')).toHaveCount(count);
 }
-async function setup(page, when) {
+async function setup(page, when, { noSchedule = false } = {}) {
     const sunday = when === SUNDAY;
     await page.clock.setFixedTime(when);
     const state = await openApp(page, '/lineup/');
     await page.clock.setFixedTime(when);
-    await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, route => route.fulfill({ json: scoreboard(sunday) }));
+    await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, route => route.fulfill({ json: noSchedule ? { events: [] } : scoreboard(sunday) }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: fixture('league-matchups-live.json') }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE2_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: fixture('league2-matchups.json') }));
     await seedMls(page);
@@ -118,6 +118,15 @@ test.describe('Player Scoreboard: kickoff order', () => {
         expect((await both.locator('.mls-root-fin-body .mls-root-name').allTextContents()).map(t => t.trim()).sort()).toEqual(['Josh Allen 2 of 3 yours', 'Lamar Jackson 1 of 3 yours']);
         // Against you: nobody has finished.
         await expect(group(page, 'against').locator('.mls-root-fin-toggle')).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
+    test('no schedule from ESPN: no "Kickoff time unknown" divider over a whole box', async ({ page }) => {
+        const state = await setup(page, THURSDAY, { noSchedule: true });
+        await expect(group(page, 'root').locator('.mls-root-row')).toHaveCount(5);
+        await expect(board(page).locator('.mls-root-kick')).toHaveCount(0);
+        // The list by kickoff window below still says so, once.
+        await expect(board(page).locator('.mls-root-window-title').first()).toHaveText('Kickoff time unknown');
         await expectClean(page, state);
     });
 

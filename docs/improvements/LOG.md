@@ -10087,3 +10087,25 @@ What changed:
 - `CACHE_NAME` v2.9.15 → v2.9.16. CHANGELOG: the S33 line gains Enter and the space. Ran check-precache and
   `mls-root-kickoff-find`, `mls-root-for`, `mls-player-lookup`, `mls-trade-impact`, `nav-rail` (the specs that use a
   player search): all pass. Screenshots: no further change (no baseline shows a suggestion list or a found player).
+
+### S33, round 5: a review as a user on the owner's 19 leagues (backup of 2026-11-10); the owner took both notes
+
+The owner's backup restored in this container's browser, this week's Scoreboard (`?week=10`, 114 starters) at 1280 and
+390px in Eastern time. Sleeper's matchups live; ESPN's real week 10 schedule fetched outside the browser (its own
+request is blocked here) and handed to the page with the clock and game states moved to Thursday 8:45 PM and Sunday
+2:30 PM. Points were all 0.0 (no game played yet). Nothing from the backup is in the repo.
+- Thursday night: Root for opened with its four WAS @ NYG players under "Thu 8:15 PM · Live", then "Sun 9:30 AM"; Both
+  sides (42) with its two Thursday players first; Against you (none on Thursday in 2+) at "Sun 9:30 AM".
+- Sunday: each box started at "Sun 1:00 PM · Live" and ended with "5 finished" / "2 finished" / "3 finished".
+- Find: "ja" put the Thursday player first on Thursday; the card took about 50 to 115 ms with 19 leagues.
+- Not from this card: "Show all 42" in Both sides is about 2,100px tall on desktop, as long as before.
+
+**Owner: do both.**
+1. The find field's suggestions go up to 20 (`limit`, was the default 8): "ja" matched more than 8 starters, and on
+   Sunday a finished player fell off the end until more letters were typed. The list scrolls. No test of its own (the
+   fixture's 16 starters have no two letters that match more than 8).
+2. When no kickoff is known for anyone in a box (ESPN's schedule didn't load), the box has no divider, rather than one
+   "Kickoff time unknown" over everything; a box with some known kickoffs keeps its dividers, the unknown last. New test
+   in `mls-root-kickoff-find.spec.mjs` (an empty ESPN scoreboard).
+- `CACHE_NAME` v2.9.16 → v2.9.17. check-precache OK; `mls-root-kickoff-find` and `mls-root-for` pass (40).
+  Screenshots: no further change.

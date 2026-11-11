@@ -1255,11 +1255,14 @@ function rootList(rows, list, ctx, cap, opts) {
     // dividers (S33, owner's choice): a small kickoff label where the window changes ("Thu 8:15 PM · Live"), so the rows
     // under it don't repeat the time.
     let last = null;
+    // No divider when no kickoff is known at all (ESPN's schedule didn't load): one "Kickoff time unknown" over the
+    // whole box said nothing (round 5).
+    const dividers = !!(opts && opts.dividers) && rows.some(r => kickoffKey(rootModelInfo.get(r.id), ctx) !== 'unknown');
     const items = shown.map(r => {
         const pl = rootModelInfo.get(r.id) || { id: r.id, name: r.id, points: {} };
         let div = '';
         const k = kickoffKey(pl, ctx);
-        if (opts && opts.dividers && k !== last) {
+        if (dividers && k !== last) {
             last = k;
             const live = rows.some(x => { const o = rootModelInfo.get(x.id); return o && kickoffKey(o, ctx) === k && o.gameState === 'in'; });
             div = `<li class="mls-root-kick"><span>${k === 'unknown' ? 'Kickoff time unknown' : escapeHtml(formatKickoffLabel(k))}${live ? ' · <span class="mls-root-live">Live</span>' : ''}</span></li>`;
@@ -1437,6 +1440,9 @@ function rootFindUi() {
         pool: (q) => (q ? findPool() : []),
         tag: (p) => (rootRows.has(p.id) ? standingText(rootRows.get(p.id)) : ''),
         enterPicksFirst: true,
+        // Round 5 (the owner's 19 leagues, 114 starters): "ja" matched more than the default 8, and a finished player
+        // fell off the end. The list scrolls.
+        limit: 20,
     });
     input.addEventListener('input', () => { rootState(weekCtx().week).findText = input.value; syncRootFind(); });
     // A second lookup (review as a user): while the field still holds the picked player's name, focusing or tapping it
