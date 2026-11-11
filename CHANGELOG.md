@@ -164,7 +164,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   now fetches FantasyCalc's market values by itself** when none are loaded for the league or they're more than three
   hours old, so the market verdict is there without a trip to Trade Finder. Turn it off with **Fetch market values
   automatically** under Value settings. A market file you uploaded is never replaced. If the values can't load (no
-  connection), the trade is still analyzed by your rankings and a line says so. **Each league keeps its own market
+  connection), the trade is still analyzed by your rankings and a line says so. Trade Finder's **Find Trade Targets**
+  fetches them the same way. Values from a file (or fetched before this version) aren't refreshed by themselves: once
+  they're a day old, the line under the verdicts says so and points to Fetch Market Value. **Each league keeps its own market
   values**, fetched for its format (redraft or dynasty, 1QB or Superflex, PPR, TE premium, league size): switching
   leagues brings that league's values back, in the Trade Analyzer and Trade Finder, instead of a warning that they
   were fetched for another format.

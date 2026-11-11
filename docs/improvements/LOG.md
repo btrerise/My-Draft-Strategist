@@ -10196,8 +10196,7 @@ Two requests from the owner (2026-11-08), before the trade deadlines. Branch `cc
 - Market values fetched before this card carry no league size, so the first Analyze in each league fetches once. Ones
   from before the S23 follow-up (no saved format at all) look like an uploaded file and stay until Fetch Market Value
   is tapped once.
-- Trade Finder's "Find Trade Targets" doesn't fetch by itself: it reads the active league's values and keeps its Fetch
-  Market Value button. Auto-Fetch ROS Rankings (Roster tab) fetches as before and doesn't add to the stored sets.
+- Auto-Fetch ROS Rankings (Roster tab) fetches as before and doesn't add to the stored sets.
 - The lines under the verdicts still say "Refresh them in Trade Finder (below)" for day-old values and "Fetch again in
   Trade Finder (below)" for another format's; with the switch on they now show only for an uploaded file or after a
   failed fetch.
@@ -10212,3 +10211,23 @@ market values): `desktop/mls-league-guide.png` (1280x9827 → 1280x9873 here) an
 (390x23280 → 390x23419 here). Not re-taken in the session (its fonts differ from CI's): CI will fail on exactly these
 two on the pull request, and its `-actual.png` files become the baselines. The Scout tab's screenshots are unchanged
 (Value settings is folded, and no screenshot analyzes a trade).
+
+### S38, round 2: Trade Finder fetches the same way; old values say how to refresh them (owner, 2026-11-11)
+
+The owner, on the leftovers: "I would like to have the Trade Finder work the same way as Trade Analyzer does now", and
+asked whether users would know what to do with old values that look like an uploaded file (they wouldn't have).
+- **Find Trade Targets** (`findTradeTargets` in `js/mls/scout/marketDisconnect.js`, the button's handler; the button is
+  now `#findTradeTargetsBtn`): the active league's market values first, by the same `ensureMarketValues` (none loaded
+  for its format, or over three hours old; the same switch; a file never replaced), the button reading "Fetching market
+  values…" meanwhile, then the report. A failed fetch: with no values, "Market values couldn't load. Tap Find Trade
+  Targets to try again, or upload a market file above."; with earlier ones, the report on those under "Market values
+  couldn't be refreshed: these are the ones loaded earlier." No toast. The re-run after a league switch doesn't fetch
+  (it reads that league's stored set when there is one). The switch's tooltip names both buttons.
+- **Old values** (`marketAgeHTML`, `js/mls/trade/verdict.js`): values with no saved format (a file, or a fetch from
+  before the S23 follow-up; the app can't tell which, so it never replaces them) that are a day old or more now read
+  "Market values: Updated 3 days ago (…). They're from a file or an earlier fetch, so they aren't refreshed
+  automatically: tap Fetch Market Value in Trade Finder (below) for current ones." (was "Refresh them in Trade Finder
+  (below) before you trade.", which stays for fetched values, shown with the switch off or after a failed fetch).
+- Tests: a Find Trade Targets test in `mls-trade-picks-market.spec.mjs` (offline message, one fetch with the button
+  busy, no second request from it or from Analyze, a failed refresh, the switch off); `mls-trade-impact.spec.mjs`'s
+  three-day-old line updated. `CACHE_NAME` stays v2.9.18 (once per branch). No screenshot shows either change.

@@ -355,12 +355,39 @@ import { marketFormatKey, marketFormatOf, marketPlan, putMarketSet } from './mar
         }
     }
 
+    // The Find Trade Targets button (owner, after S38: "work the same way as Trade Analyzer does now"): the active
+    // league's market values first, fetched when none are loaded for its format or they're over three hours old (same
+    // switch, same rules: ensureMarketValues), with the button busy meanwhile; then the report. A failed fetch leaves
+    // the report on the values loaded earlier, with a line saying so, or a message when there are none. No toast.
+    export async function findTradeTargets(btn) {
+        let restore = null;
+        await ensureMarketValues({
+            force: true,
+            onFetch: () => {
+                if (!btn || btn.disabled) return;
+                const text = btn.textContent;
+                btn.textContent = 'Fetching market values…';
+                btn.disabled = true;
+                btn.setAttribute('aria-busy', 'true');
+                restore = () => { btn.textContent = text; btn.disabled = false; btn.removeAttribute('aria-busy'); };
+            }
+        });
+        if (restore) restore();
+        runMarketDisconnectAnalysis();
+        const outputEl = document.getElementById('marketDisconnectOutput');
+        if (outputEl && marketFetchFailed() && State.marketRankings.length > 0 && State.rosRankings.length > 0) {
+            outputEl.insertAdjacentHTML('afterbegin', `<div class="mls-trade-market-age is-stale" data-market-fail>Market values couldn't be refreshed: these are the ones loaded earlier. Tap Find Trade Targets to retry.</div>`);
+        }
+    }
+
     export const runMarketDisconnectAnalysis = function() {
         const outputEl = document.getElementById('marketDisconnectOutput');
         if (!outputEl) return;
 
         if (State.marketRankings.length === 0) {
-            outputEl.innerHTML = `<span class="mls-error-text">Please upload a market consensus file (KTC/FantasyCalc) first.</span>`;
+            outputEl.innerHTML = marketFetchFailed()
+                ? `<span class="mls-error-text" data-market-fail>Market values couldn't load. Tap Find Trade Targets to try again, or upload a market file above.</span>`
+                : `<span class="mls-error-text">Please upload a market consensus file (KTC/FantasyCalc) or tap Fetch Market Value first.</span>`;
             return;
         }
         if (State.rosRankings.length === 0) {

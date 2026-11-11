@@ -41,7 +41,7 @@ import { openRankingSetView } from './rankings/setView.js';
 import { cancelRankingsPreview, confirmRankingsPreview, processMultiRankings } from './rankings/uploadPreview.js';
 import { dismissRankingsChange } from './rankings/changeSummary.js';
 import { explainRankMove } from './rankings/moveChips.js';
-import { ensureMarketValues, fetchMarketValue, leagueMarketFormat, marketFetchFailed, marketFormatWarning, useLeagueMarketSet, runMarketDisconnectAnalysis, toggleDisconnectMode, toggleDisconnectRankBasis, updateMarketMetaDisplay } from './scout/marketDisconnect.js';
+import { ensureMarketValues, fetchMarketValue, findTradeTargets, leagueMarketFormat, marketFetchFailed, marketFormatWarning, useLeagueMarketSet, runMarketDisconnectAnalysis, toggleDisconnectMode, toggleDisconnectRankBasis, updateMarketMetaDisplay } from './scout/marketDisconnect.js';
 import { autoFetchRosRankings } from './rankings/rosFetch.js';
 import { updateMarketSetting, updateSimSetting, updateTradeSetting } from './settings.js';
 import './trade/valueCurve.js';
@@ -267,7 +267,7 @@ const clickActions = {
     // Price QBs by Market Consensus (superflex), per league (S24, round 9)
     setQbMarketPrices() { setQbMarketPrices(this.checked); },
     fetchMarketValue() { fetchMarketValue(this); },
-    runMarketDisconnectAnalysis() { runMarketDisconnectAnalysis(); },
+    runMarketDisconnectAnalysis() { findTradeTargets(this); },
     // Rankings upload preview modal
     cancelRankingsPreview() { cancelRankingsPreview(); },
     confirmRankingsPreview() { confirmRankingsPreview(); },

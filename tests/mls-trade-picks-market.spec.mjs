@@ -338,4 +338,51 @@ test.describe('Trade Analyzer: market values on Analyze', () => {
         expect(asked.length).toBe(2);
         await expectClean(page, state);
     });
+
+    // Trade Finder's Find Trade Targets works the same way (owner, after S38).
+    test('Find Trade Targets: fetches the league\'s market values once, busy meanwhile; a failed fetch says so', async ({ page }) => {
+        const state = await setup(page); // /api/fantasycalc aborted: offline
+        const btn = page.locator('#findTradeTargetsBtn');
+        const report = page.locator('#marketDisconnectOutput');
+        await btn.click();
+        await expect(report.locator('[data-market-fail]')).toHaveText("Market values couldn't load. Tap Find Trade Targets to try again, or upload a market file above.");
+        await expect(btn).toBeEnabled();
+        await expect(page.locator('.mds-toast.show')).toHaveCount(0);
+
+        // Online: one request for the league's format, the button busy until it answers, then the report.
+        let release;
+        const gate = new Promise(r => { release = r; });
+        const asked = await stubMarket(page, { gate });
+        await btn.click();
+        await expect(btn).toBeDisabled();
+        await expect(btn).toHaveText('Fetching market values…');
+        release();
+        await expect(report.locator('.scout-result-card').first()).toBeVisible();
+        await expect(btn).toBeEnabled();
+        await expect(btn).toHaveText('Find Trade Targets');
+        await expect(report.locator('[data-market-fail]')).toHaveCount(0);
+        expect(asked).toEqual(['?isDynasty=false&numQbs=1&numTeams=12&ppr=1&tep=none']);
+        // Again, and Analyze Trade after it: the same values, no new request.
+        await btn.click();
+        await setTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase"]);
+        await analyze(page);
+        await expect(marketBanner(page)).toHaveCount(1);
+        expect(asked.length).toBe(1);
+
+        // Three hours on and offline again: the report stays on the earlier values and says so.
+        await page.unroute(/\/api\/fantasycalc\?/);
+        await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + 4 * 60 * 60 * 1000));
+        await btn.click();
+        await expect(report.locator('[data-market-fail]')).toHaveText("Market values couldn't be refreshed: these are the ones loaded earlier. Tap Find Trade Targets to retry.");
+        await expect(report.locator('.scout-result-card').first()).toBeVisible();
+
+        // The switch off: nothing is fetched.
+        const again = await stubMarket(page);
+        await page.locator('.mls-trade-value-settings > summary').click();
+        await page.locator('#tradeAutoMarketToggle').uncheck();
+        await btn.click();
+        await expect(report.locator('.scout-result-card').first()).toBeVisible();
+        expect(again).toEqual([]);
+        await expectClean(page, state);
+    });
 });

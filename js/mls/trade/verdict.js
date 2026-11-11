@@ -124,6 +124,11 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
     // With no market values at all the age line is absent, so the failure goes under whatever the verdict shows.
     const noMarketFailHTML = () => (State.marketRankings.length === 0 ? marketFailHTML() : '');
 
+    // Values with no saved format are an uploaded file, or a fetch from before formats were saved (S23 follow-up): the
+    // app can't tell which, so it never replaces them by itself (improvements S38). Once they're a day old the line
+    // says so and names the button that does.
+    const OLD_FILE_NOTE = ". They're from a file or an earlier fetch, so they aren't refreshed automatically: tap Fetch Market Value in Trade Finder (below) for current ones.";
+
     function marketAgeHTML() {
         if (State.marketRankings.length === 0) return '';
         const fresh = getFreshness(State.marketUpdatedAt, 0);
@@ -136,7 +141,7 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
             ? `Market values from <a href="https://fantasycalc.com" target="_blank" rel="noopener noreferrer">FantasyCalc</a>, ${fresh ? fresh.detail.charAt(0).toLowerCase() + fresh.detail.slice(1) : ''}`
             : `Market values: ${fresh ? fresh.detail : ''}`;
         return (fresh
-            ? `<div class="mls-trade-market-age${fresh.isStale ? ' is-stale' : ''}">${source}${fresh.isStale ? '. Refresh them in Trade Finder (below) before you trade.' : '.'}</div>`
+            ? `<div class="mls-trade-market-age${fresh.isStale ? ' is-stale' : ''}">${source}${fresh.isStale ? (State.marketFormat ? '. Refresh them in Trade Finder (below) before you trade.' : OLD_FILE_NOTE) : '.'}</div>`
             : '')
             + (warning ? `<div class="mls-trade-market-age is-stale">${escapeHtml(warning)} Fetch again in Trade Finder (below).</div>` : '')
             + marketFailHTML();

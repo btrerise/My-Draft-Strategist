@@ -1378,7 +1378,7 @@
                             <label for="tradeAutoMarketToggle">Fetch market values automatically</label>
                             <div class="tooltip-container">
                                 <div class="tooltip-icon">i</div>
-                                <span class="tooltip-text">When on, Analyze Trade brings in FantasyCalc's market values for this league's format (redraft or dynasty, 1QB or Superflex, PPR, TE premium) when none are loaded or they're more than three hours old. Each league keeps its own values. A market file you uploaded in Trade Finder is never replaced. Turn this off to fetch only with Trade Finder's Fetch Market Value button.</span>
+                                <span class="tooltip-text">When on, Analyze Trade (and Trade Finder's Find Trade Targets) brings in FantasyCalc's market values for this league's format (redraft or dynasty, 1QB or Superflex, PPR, TE premium) when none are loaded or they're more than three hours old. Each league keeps its own values. A market file you uploaded in Trade Finder is never replaced. Turn this off to fetch only with Trade Finder's Fetch Market Value button.</span>
                             </div>
                         </span>
                     </div>
@@ -1520,7 +1520,7 @@
         </select>
     </div>
 
-    <button class="btn btn-primary mt-2" data-action="runMarketDisconnectAnalysis">Find Trade Targets</button>
+    <button id="findTradeTargetsBtn" class="btn btn-primary mt-2" data-action="runMarketDisconnectAnalysis">Find Trade Targets</button>
     
     <div id="marketDisconnectOutput" class="scout-output-container" aria-live="polite"></div>
 </section>

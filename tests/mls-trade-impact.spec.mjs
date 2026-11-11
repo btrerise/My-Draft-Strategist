@@ -416,7 +416,7 @@ test.describe('Trade Analyzer: how your team changes', () => {
             State.marketUpdatedAt = String(Date.now() - 3 * 24 * 3600 * 1000);
         });
         await analyze(page);
-        await expect(out.locator('.mls-trade-market-age')).toHaveText('Market values: Updated 3 days ago (Sat, Sep 12 at 4:00 PM). Refresh them in Trade Finder (below) before you trade.');
+        await expect(out.locator('.mls-trade-market-age')).toHaveText('Market values: Updated 3 days ago (Sat, Sep 12 at 4:00 PM). They\'re from a file or an earlier fetch, so they aren\'t refreshed automatically: tap Fetch Market Value in Trade Finder (below) for current ones.');
         await expect(out.locator('.mls-trade-market-age')).toHaveClass(/is-stale/);
         await expect(out).toContainText("2027 1st isn't in the Market Consensus data");
         // Fresh today: dated, not amber.
