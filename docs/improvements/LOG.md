@@ -10402,6 +10402,32 @@ T-Score PNG differs only in the tab-bar row (the new In-Season button, y 268–3
 "Screenshots re-taken on CI (14 PNGs)") passed the guard on its first try; I opened the PNGs it committed: the
 In-Season tab as in the fixture, and only the tab bar's new pill elsewhere.
 
+**Round 2 (owner, 2026-11-11): labels and a write-up.**
+- **Labels.** The owner asked for the preseason tabs' labels back. Options: (A) percentiles of ROS PPG, as preseason;
+  (B) fixed rank tiers per position; (C) natural breaks. Owner's pick: **A**, open to adjusting the thresholds, with
+  **Flex Play** in place of Boom/Bust, worked out by the site. The adjustment: the percentiles are taken over a fixed
+  pool per position, **twice the Buy/Sell line** (WR 96, RB 72, TE 36), not over every row in the sheet, whose size
+  moves with its games-and-XFP filter (about 136 / 86 / 64 rows after week 9) and would relabel players whose
+  projection didn't move. The preseason cutoffs (top 5 / 10 / 20 / 35 / 50%) give WR 1–5 Elite, 6–10 High-End
+  Starter, 11–19 Strong Starter, 20–34 Quality Contributor, 35–48 Flex Play; RB 1–4, 5–7, 8–14, 15–25, 26–36; TE 1–2,
+  3–4, 5–7, 8–13, 14–18; past the line, Depth Player. So Flex Play ends where Buy and Sell are measured. The lines come
+  from Model Weights (defaults 48 / 36 / 18). A `Label` column in the sheet, if ever added, overrides the computed one
+  (known names only). The Label column sits after Player, with the preseason badges (`label-*`; Flex Play uses
+  `label-boom`'s red). How it's projected gains a Labels line and a Label × WR / RB / TE table of rank ranges. Code:
+  `labelCutoffs`, `inSeasonLabel`, `LABEL_BANDS` in `js/tscore/inSeasonParse.js`.
+- **Write-up.** "The In-Season Model: Rest-of-Season Points per Game" opens The Research (`#inSeasonModel`), above the
+  preseason article and a rule: why a second model (the owner's words, lightly edited and expanded), a What Changed
+  table (preseason vs in-season), the three ingredients, how it's fit (2016–2025, refit weekly; week-9 weights and R²
+  in prose), reading the In-Season tab, what it doesn't know, and the data credit. The In-Season tab's description
+  links to it ("How it differs from the preseason T-Score", `data-action="readInSeasonModel"`). It doesn't mention
+  that an AI assistant helped build the model (asked, no answer: left out, easy to add). The week-9 numbers in "How
+  It's Fit" will drift as the weights are refit; the paragraph points to the live panel.
+- **A fix to round 1:** on phones the In-Season tab's page scrolled sideways (612px wide): the Move column's `.sr-only`
+  words are absolutely placed and were held by the page, outside the table's scroll box. `.tscore-move { position:
+  relative }` fixes it; a spec checks the page's scroll width, another that What Changed fits a phone.
+- **Screenshots:** this branch before and after, rendered in the same container: only `tscore-inSeasonTab.png` and
+  `tscore-researchTab.png` change (desktop and phone); re-taken on CI.
+
 **Left over.**
 - On phones the table scrolls sideways (Player stays put), as the preseason tables do; ROS PPG and Buy/Sell sit past
   the first screen. M6 and M7 (T-Score's look) could fold columns on phones.
