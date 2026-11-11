@@ -65,6 +65,7 @@ jobs:
 
       # The guard: only the PNGs named when the workflow was started may change.
       - name: Only the expected screenshots changed
+        id: guard
         env:
           EXPECTED_INPUT: ${{ inputs.expected }}
         run: |
@@ -93,7 +94,7 @@ jobs:
 
       # What the run drew, when the guard stopped it: the PNGs to look at.
       - uses: actions/upload-artifact@v7
-        if: failure()
+        if: failure() && steps.guard.outcome == 'failure'
         with:
           name: retaken-screenshots
           path: tests/baselines/linux/
