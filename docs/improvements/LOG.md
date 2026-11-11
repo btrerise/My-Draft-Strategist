@@ -10109,3 +10109,14 @@ request is blocked here) and handed to the page with the clock and game states m
    in `mls-root-kickoff-find.spec.mjs` (an empty ESPN scoreboard).
 - `CACHE_NAME` v2.9.16 → v2.9.17. check-precache OK; `mls-root-kickoff-find` and `mls-root-for` pass (40).
   Screenshots: no further change.
+
+### S33: screenshot baselines from CI (PR #233)
+
+No further review pass (the owner asked whether one was needed; round 5's two changes were small and covered by the
+spec). CI's first run (42968266020) failed only in `visual.spec.mjs`, on exactly the four PNGs listed above; each
+`-expected.png` was byte-identical to the committed baseline. Committed CI's `-actual.png` for each:
+- `desktop/mls-league-scoreboard.png` (1280x1016, same height), `phone/mls-league-scoreboard.png` (1203 → 1226px in CI's
+  render): the Find a player field above "Nobody starts in 2 or more of your matchups this week."
+- `desktop/mls-league-guide.png` (9471 → 9518px), `phone/mls-league-guide.png` (21839 → 22023px): the Guide's longer Who
+  to root for item. On desktop the page is unchanged above the item (388 pixels differ by one level) and identical
+  below it once shifted by its two extra lines (46px).
