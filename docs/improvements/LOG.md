@@ -10304,3 +10304,18 @@ be named when it's started (`[update screenshots: desktop/a.png phone/a.png]`, o
 changed screenshot fails the job with nothing committed, and its renders are in the `retaken-screenshots` artifact. A
 named PNG that didn't change is only noted. `check` itself is unchanged. The first run of the workflow (43044251160,
 before the guard) failed at `playwright install`: the runner couldn't resolve Ubuntu's package mirror, nothing of ours.
+
+**The workflow's first good run, and S38's baselines (2026-11-11).** Runs 1, 2 and 3 (and a re-run) failed at
+`npx playwright install --with-deps chromium` before taking a screenshot: Canonical had an outage from 04:06 MST
+(status.canonical.com, Ubuntu's archive and DNS among the components), so the runner couldn't resolve Ubuntu's
+package mirrors for Playwright's fonts. Not GitHub's fault (its status page was green; the owner checked both) and not
+the workflow's; `check.yml` has the same step and would have failed the same way. Once Canonical's DNS was back, a
+re-run of run 43052857777 passed in 80 seconds: the guard accepted the four named PNGs and the workflow committed them
+(d53c59a, "Screenshots re-taken on CI (4 PNGs)"), so its token can push to a branch with the repo's settings as they
+are. The four, each checked against the one it replaces:
+- `desktop/mls-league-scout.png` (1280x1901 → 1280x1544) and `phone/mls-league-scout.png` (390x2144 → 390x1787): Trade
+  Finder with its market source folded and the FantasyCalc mark under Find Trade Targets (round 4).
+- `desktop/mls-league-guide.png` (1280x9518 → 1280x9564) and `phone/mls-league-guide.png` (390x22023 → 390x22161): the
+  Guide's longer Trade Analyzer step (rounds 1 and 3).
+The size changes match what this container predicted (the Guide 46px and 138px taller, Scout about 357px shorter).
+If the mirrors fail like this again: re-run the failed job from the Actions tab when status.canonical.com is green.
