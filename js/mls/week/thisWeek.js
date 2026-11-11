@@ -1424,9 +1424,19 @@ function rootFindUi() {
     node.innerHTML = `<div class="mls-root-find-field">${FIND_ICON}<input type="text" class="form-input mls-root-find-input" placeholder="Find a player in this week's matchups" autocomplete="off" aria-label="Find a player in this week's matchups"><button type="button" class="btn-bare mls-root-find-clear" data-action="clearRootFind" aria-label="Clear the search" hidden>✕</button></div><p class="mls-root-none mls-root-find-none" role="status" hidden></p>`;
     const input = node.querySelector('input');
     findUi = { node, input, clear: node.querySelector('.mls-root-find-clear'), none: node.querySelector('.mls-root-find-none') };
-    attachPlayerAutocomplete(input, (p) => pickRootFind(p.id), {
+    // Escape (round 4): with the suggestions open, the first Escape only closes them (the autocomplete's own handler,
+    // which runs after this one); with them closed, it clears the field and the result. Registered before the
+    // autocomplete so it can still see whether the list is open.
+    let ac = null;
+    input.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape' || (ac && ac.isOpen())) return;
+        if (input.value || rootState(weekCtx().week).found != null) { e.preventDefault(); clearRootFind(); }
+    });
+    // The pool is in the board's order (those that matter most first), and Enter takes the top suggestion (round 4).
+    ac = attachPlayerAutocomplete(input, (p) => pickRootFind(p.id), {
         pool: (q) => (q ? findPool() : []),
         tag: (p) => (rootRows.has(p.id) ? standingText(rootRows.get(p.id)) : ''),
+        enterPicksFirst: true,
     });
     input.addEventListener('input', () => { rootState(weekCtx().week).findText = input.value; syncRootFind(); });
     // A second lookup (review as a user): while the field still holds the picked player's name, focusing or tapping it
@@ -1440,9 +1450,6 @@ function rootFindUi() {
     input.addEventListener('focus', () => { if (holdsPick()) { input.select(); justFocused = true; } });
     input.addEventListener('click', () => { if (justFocused && holdsPick()) input.select(); justFocused = false; });
     input.addEventListener('blur', () => { justFocused = false; });
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && (input.value || rootState(weekCtx().week).found != null)) { e.preventDefault(); clearRootFind(); }
-    });
     // Escape on the found row clears too, and goes back to the field.
     document.getElementById('thisWeekCard')?.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && e.target.closest && e.target.closest('.mls-root-found')) { e.preventDefault(); clearRootFind(); }

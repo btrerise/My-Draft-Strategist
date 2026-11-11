@@ -2798,6 +2798,8 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
     .mls-root-found .mls-root-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 0 0.6rem; align-items: start; }
     .mls-root-found .mls-root-detail:not([hidden]) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 0.8rem; margin: 0.3rem 0 0.2rem; }
     .mls-root-found .mls-root-stake { grid-column: 1 / -1; }
+    /* Only one side (a player who's only yours, or only theirs): its leagues take the whole width. */
+    .mls-root-found .mls-root-detail-side:only-child { grid-column: 1 / -1; }
 }
 .mls-root-settled { font-style: italic; }
 

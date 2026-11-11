@@ -213,10 +213,28 @@ test.describe('Player Scoreboard: find a player', () => {
         await expect(found(page)).toHaveCount(0);
         await expect(input(page)).toHaveValue('');
         await expect(clear).toBeHidden();
-        // Escape in the field clears what's typed.
-        await input(page).fill('jo');
-        await input(page).press('Escape');
+        // Enter takes the top suggestion (highlighted from the start) when several match; the arrows still move.
+        await input(page).fill('ja');
+        const list = board(page).locator('.autocomplete-item');
+        await expect(list).toHaveCount(4);
+        await expect(list.first()).toHaveClass(/highlighted/);
+        const top = (await list.first().locator('span').first().textContent()).trim();
+        await expect(list.first().locator('.autocomplete-meta')).toContainText(/^(QB|RB|WR|TE|K|D\/ST) · [A-Z]{2,3} · /);
+        await page.keyboard.press('Enter');
+        await expect(found(page).locator('.mls-root-name')).toContainText(top);
+        // Escape while typing a new search: the first closes the suggestions and keeps the result and the text; the
+        // second clears both.
+        await input(page).click();
+        await page.keyboard.type('jo');
+        await expect(list.first()).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(list).toHaveCount(0);
+        await expect(input(page)).toHaveValue('jo');
+        await expect(found(page).locator('.mls-root-name')).toContainText(top);
+        await page.keyboard.press('Escape');
         await expect(input(page)).toHaveValue('');
+        await expect(found(page)).toHaveCount(0);
+        await expect(input(page)).toBeFocused();
         await expectClean(page, state);
     });
 
@@ -280,6 +298,38 @@ test.describe('Player Scoreboard: find a player', () => {
                 expect(theirsBox.y).toBeGreaterThanOrEqual(yoursBox.y + yoursBox.height - 1);
             }
             await page.keyboard.press('Escape');
+        }
+        await expectClean(page, state);
+    });
+
+    test('one league: a player in one matchup, his side in the title, his leagues across the card', async ({ page }) => {
+        await page.clock.setFixedTime(THURSDAY);
+        const state = await openApp(page, '/lineup/');
+        await page.clock.setFixedTime(THURSDAY);
+        await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, route => route.fulfill({ json: scoreboard(false) }));
+        await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: fixture('league-matchups-live.json') }));
+        await seedMls(page);
+        await page.waitForLoadState('networkidle');
+        await showTab(page, 'scoreboard');
+        // Nobody is in 2 or more matchups, so there are no boxes, but the field is there.
+        await expect(board(page).locator('.mls-root-none-all')).toBeVisible();
+        await input(page).fill('lamar');
+        await expect(board(page).locator('.autocomplete-item').first()).toContainText('Against you in 1');
+        await page.keyboard.press('Enter');
+        await expect(found(page)).toHaveClass(/is-against/);
+        await expect(found(page).locator('.mls-root-group-title')).toHaveText('Against you, in one matchup');
+        await expect(found(page).locator('.mls-root-count.is-against')).toHaveText('in 1');
+        await expect(found(page).locator('.mls-root-detail-side')).toHaveCount(1);
+        await expect(found(page).locator('.mls-root-detail-side')).toContainText('Against you in');
+        await input(page).fill('josh');
+        await page.keyboard.press('Enter');
+        await expect(found(page)).toHaveClass(/is-root/);
+        await expect(found(page).locator('.mls-root-group-title')).toHaveText('Your starter, in one matchup');
+        await expect(found(page).locator('.mls-root-count.is-root')).toHaveText('in 1');
+        // On a wide window a lone side takes the whole width beside his row.
+        if (page.viewportSize().width >= 900) {
+            const [detail, side] = [await found(page).locator('.mls-root-detail').boundingBox(), await found(page).locator('.mls-root-detail-side').boundingBox()];
+            expect(side.width).toBeGreaterThan(detail.width * 0.9);
         }
         await expectClean(page, state);
     });

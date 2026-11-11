@@ -58,7 +58,7 @@ test('looking up Josh Allen in the simulator shows the Bills QB, not the inactiv
     await page.locator('#simPlayerSearch').pressSequentially('Josh All');
     const row = page.locator('.autocomplete-item');
     await expect(row).toHaveCount(1);
-    await expect(row).toContainText('QB ·BUF');
+    await expect(row).toContainText('QB · BUF');
     await row.dispatchEvent('mousedown');
 
     const result = page.locator('#simPlayerLookupResult');
@@ -135,6 +135,6 @@ test('a two-way player (listed DB, scored at WR) is a WR on the roster and start
     // The simulator's search lists him as a WR (it used to leave him out: DB isn't a fantasy position).
     await page.locator('#simPlayerSearch').pressSequentially('Travis Hu');
     await expect(page.locator('.autocomplete-item')).toHaveCount(1);
-    await expect(page.locator('.autocomplete-item')).toContainText('WR ·JAX');
+    await expect(page.locator('.autocomplete-item')).toContainText('WR · JAX');
     await expectClean(page, state);
 });
