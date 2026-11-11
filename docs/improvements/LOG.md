@@ -10338,3 +10338,35 @@ verdict in a dynasty league without an In-Season set pushes the rows down on pho
 - Tests: the note's wording with the switch off, and the label, in `mls-trade-picks-market.spec.mjs` and
   `mls-market.spec.mjs`. No screenshot shows these (the fold and Value settings are closed; no screenshot analyzes a
   trade), so no baselines are re-taken.
+
+## T1 — T-Score: in-season data from your new Google Sheet (paused before building)
+
+**Status.** No app code yet. Paused on 2026-11-11 while the owner moves the sheet's inputs to open data (below). The
+next session picks up from "Owner's decisions" and builds once the new published links exist.
+
+**The sheet.** "T-Score ROS Projections" in the owner's Drive: tabs WR, RB, TE (headers `Player, Team, Games, FP/G,
+XFP/G, FPOE/G, Last-season PPG, Target share, ROS PPG, ROS rank, YTD rank, Rank move, Buy/Sell`), Model Weights and
+Data Sources. It is a new model (projected rest-of-season PPG), not an update of the preseason T-Score: no 0–100
+score, no Label or Classification, Buy/Sell instead of Value/Sleeper/Avoid, and it adds TE.
+
+**Owner's decisions (2026-11-11).**
+- Option A: a new **In-Season** tab, first in the tab bar and the default view; the preseason tabs and their Refresh
+  stay as they are. (Adds a nav button to all 12 T-Score baselines plus two new In-Season PNGs.)
+- Columns: ROS rank, Player, Team, ROS PPG, FP/G, Target share, Move (YTD rank → ROS rank, SVG arrow) and Buy/Sell.
+  **Not** XFP/G or FPOE/G.
+- The In-Season tab fetches on every page open, draws the saved copy first, and keeps the last data offline.
+- Draft Strategist: no change. It keeps reading the preseason T-Score (`tscore_cache` / `js/shared/data/tscore.js`);
+  the in-season data never writes that cache.
+- The "How it's projected" panel (Model Weights): decided once the data source is settled.
+
+**Why it paused: licensing.** Data Sources shows Player through Target share (except Last-season PPG) come from the
+owner's Late-Round Fantasy Football data dump, whose terms allow personal use only and forbid sharing it or
+derivatives, modified or not. ROS PPG, the ranks and Buy/Sell are computed from its XFP/G and FPOE/G, so hiding those
+two columns isn't enough; and a published CSV carries every column whatever the page shows. Plan: the owner reruns
+the model with nflverse inputs (open data; the weights were already fit on nflverse) and publishes tabs holding only
+the site's columns. Preseason data came from other sources and is fine (owner, 2026-11-11). The first published links
+(2PACX-1vRM3t…, gid 0/1/2) are not to be used by the site.
+
+**Left for the build.** Parse by header names; a missing column shows a plain message; a fixture CSV in the new format
+and a spec (draws, missing column, offline/cached); CHANGELOG (T-Score); CACHE_NAME; screenshots as above; nflverse
+credit line on the tab if its data is used (CC-BY).
