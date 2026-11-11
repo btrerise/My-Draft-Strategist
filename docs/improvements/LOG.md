@@ -10010,3 +10010,24 @@ games included), and a decided player is last within his kickoff rather than las
     field without starters.
 - `tests/mls-root-for.spec.mjs`: the empty box's words ("All 7 have finished."), and the mid-Sunday test reads a box's
   first list (its finished players are now in the fold under it).
+
+**Screenshots.** Rendered main and this branch the same way here (`RENDER_ENV=any`, a worktree of origin/main) and
+compared with `npm run pxdiff`: 38 PNGs identical, 4 differ, all by design. Not re-taken here (this container's fonts);
+take them from the pull request's CI run as docs/TESTING.md describes.
+- `desktop/mls-league-scoreboard.png`, `phone/mls-league-scoreboard.png`: the Find a player field above "Nobody starts
+  in 2 or more of your matchups this week." (the screenshot league is one league before kickoff, so no boxes, dividers
+  or finished line show). The phone PNG grows 1203 → 1259px; the desktop one keeps its height, with everything under
+  the field moved down.
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: the Guide's longer Who to root for item (desktop 9758 →
+  9827px, phone 23073 → 23280px).
+
+**Checks.** `npm run check`: precache OK, 541 unit tests pass, 872 Playwright tests pass (48 skipped). The 4 failures
+are only `visual.spec.mjs`'s cloud-fonts guard (MDS and MLS, both widths), which fails the same way on main here.
+
+**Left over.**
+- Re-take the four PNGs from CI once there's a pull request (none opened: the owner hasn't asked).
+- The fixture has no player in exactly one matchup, so the result's "Your starter, in one matchup" / "Against you, in
+  one matchup" title is not covered by the spec.
+- The league tiles aren't marked for a found player (owner's choice); the result lists his leagues.
+- Open follow-ups this touched: the Scoreboard's dense lists on `ALLOW` in `tests/touch-targets.spec.mjs` ("No card
+  yet") now include the new rows and the "N finished" line; nothing was added to `ALLOW`.
