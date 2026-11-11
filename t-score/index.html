@@ -191,7 +191,7 @@
                         <th>
                             <div class="table-header-tooltip">
                                 Label
-                                <span class="tooltip-text">His tier by ROS rank, as on the preseason tabs: the top 5%, 10%, 20%, 35% and 50% of his position's fantasy-relevant players.</span>
+                                <span class="tooltip-text">His tier, as on the preseason tabs, by projected points: each label has a ROS PPG cutoff (see How it's projected).</span>
                             </div>
                         </th>
                         <th>Team</th>
@@ -259,7 +259,7 @@
                     <tr><td>RB inputs</td><td>Scrimmage yards and high-value touches</td><td>The same three, with their own weights</td></tr>
                     <tr><td>Tight ends</td><td>Not covered</td><td>Covered, with their own weights</td></tr>
                     <tr><td>Rookies</td><td>Left out (no NFL data yet)</td><td>Included, with an adjustment in place of last season</td></tr>
-                    <tr><td>Labels</td><td>Percentiles of the T-Score</td><td>Percentiles of ROS rank</td></tr>
+                    <tr><td>Labels</td><td>Score cutoffs, at percentiles of the T-Score</td><td>Points cutoffs, at the same percentiles of past projections</td></tr>
                     <tr><td>Updated</td><td>Once, before drafts</td><td>Every week, refit on the season so far</td></tr>
                 </tbody>
             </table>
@@ -279,7 +279,7 @@
         <h3>Reading the In-Season Tab</h3>
         <ul>
             <li><strong>ROS rank and ROS PPG:</strong> the projection, and where it ranks at the position.</li>
-            <li><strong>Label:</strong> the same tiers as the preseason tabs, now from ROS rank. Each position's fantasy-relevant pool is twice its Buy/Sell line (96 WRs, 72 RBs, 36 TEs); the top 5% are Elite, then High-End Starter (10%), Strong Starter (20%), Quality Contributor (35%) and Flex Play (50%), which ends at the line. Everyone past it is a Depth Player.</li>
+            <li><strong>Label:</strong> the same tiers as the preseason tabs, and set the same way: by cutoffs. The preseason T-Score's were scores (65.5 for Elite, and so on); these are projected points. For each position, I took what this model would have projected for every 2016–2025 player at the same point of the season, and set the cutoffs at the same percentiles as before: the 95th for Elite, then the 90th (High-End Starter), 80th (Strong Starter), 65th (Quality Contributor) and 50th (Flex Play). Below that is a Depth Player. A player earns a label by reaching its number, so how many players reach a tier changes with the season. After week 9, that's seven Elite WRs, the decade's average, but fewer than usual in the WR2 tiers below them.</li>
             <li><strong>Move:</strong> ROS rank against his rank so far this season. An up arrow means the model expects him to finish higher than he has scored.</li>
             <li><strong>Buy and Sell:</strong> players projected to cross the line (WR 48, RB 36, TE 18). A Buy is outside it by points so far but projected inside it; a Sell is the reverse.</li>
             <li><strong>FP/G and target share:</strong> what he has done so far, for context.</li>

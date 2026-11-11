@@ -23,7 +23,7 @@ test('opens on In-Season and draws the sheet: WR, RB, TE, Move, Buy/Sell, the fi
     await expect(page.locator('#inSeasonWeek')).toHaveText('Projected after week 9.');
     await expect(page.locator('#inSeasonMessage')).toBeHidden();
 
-    await expect(rows(page)).toHaveCount(21);
+    await expect(rows(page)).toHaveCount(22);
     expect(await cells(rows(page).first())).toEqual(['1', 'Puka Nacua', 'Elite', 'LA', '22.14', '24.80', '36.1%', 'Up 1', '']);
     // Move: an arrow drawn as SVG, the number, and words for screen readers; 0 reads "No change".
     await expect(rows(page).nth(1).locator('.tscore-move.is-down svg[aria-hidden="true"]')).toHaveCount(1);
@@ -33,15 +33,19 @@ test('opens on In-Season and draws the sheet: WR, RB, TE, Move, Buy/Sell, the fi
     await expect(waddle.locator('.tscore-chip.tscore-chip-buy')).toHaveText('Buy');
     await expect(rows(page).filter({ hasText: 'DeMario Douglas' }).locator('.tscore-chip-sell')).toHaveText('Sell');
 
-    // Labels: percentiles of ROS rank over twice the Buy/Sell line (WR 96: Elite 1–5, High-End 6–10, Strong 11–19,
-    // Quality 20–34, Flex Play 35–48, Depth past 48), drawn with the preseason tabs' badges.
+    // Labels by points: ROS PPG at or above Model Weights' cutoff (WR: Elite 15.9, High-End 14.3, Strong 12.2,
+    // Quality 9.9, Flex Play 8.2), drawn with the preseason tabs' badges. Seven WRs reach Elite here, not a fixed five.
     const labelOf = (name) => rows(page).filter({ hasText: name }).locator('td').nth(2).locator('span');
-    await expect(labelOf('Chris Olave')).toHaveText('High-End Starter');
-    await expect(labelOf('Chris Olave')).toHaveClass('label-high');
-    await expect(labelOf('DeVonta Smith')).toHaveText('Strong Starter');
-    await expect(waddle.locator('.label-boom')).toHaveText('Flex Play');
-    await expect(labelOf('Tyquan Thornton')).toHaveText('Depth Player');
-    await expect(labelOf('Tyquan Thornton')).toHaveClass('label-depth');
+    await expect(labelOf('Tee Higgins')).toHaveText('Elite'); // 15.96
+    await expect(labelOf('Tee Higgins')).toHaveClass('label-elite');
+    await expect(labelOf('Christian Watson')).toHaveText('High-End Starter'); // 15.79, just under 15.9
+    await expect(labelOf('Christian Watson')).toHaveClass('label-high');
+    await expect(labelOf('Matthew Golden')).toHaveText('High-End Starter'); // 14.47
+    await expect(waddle.locator('.label-boom')).toHaveText('Flex Play'); // 9.71, under 9.9
+    await expect(labelOf('DeMario Douglas')).toHaveText('Flex Play'); // 8.70
+    await expect(labelOf('Dontayvion Wicks')).toHaveText('Depth Player'); // 8.01, under 8.2
+    await expect(labelOf('Dontayvion Wicks')).toHaveClass('label-depth');
+    expect(await page.locator('#inSeasonBody tr td:nth-child(3)').evaluateAll(tds => tds.filter(td => td.textContent === 'Elite').length)).toBe(7);
 
     // Buy & Sell only, then RB and TE (the filter stays on), then off again.
     const filter = page.getByRole('button', { name: 'Buy & Sell only' });
@@ -56,10 +60,10 @@ test('opens on In-Season and draws the sheet: WR, RB, TE, Move, Buy/Sell, the fi
     await filter.click();
     await expect(rows(page)).toHaveCount(10);
     await expect(rows(page).first()).toContainText('Brock Bowers');
-    // TE (line 18, pool 36): Elite 1–2, High-End 3–4, Strong 5–7, Quality 8–13, Flex Play 14–18.
+    // TE cutoffs: Elite 12.6, High-End 11.0, Strong 9.3, Quality 7.6. Kittle (13.74) is Elite; three High-End.
     expect(await page.locator('#inSeasonBody tr td:nth-child(3)').allTextContents()).toEqual([
-        'Elite', 'Elite', 'High-End Starter', 'High-End Starter', 'Strong Starter', 'Strong Starter',
-        'Quality Contributor', 'Flex Play', 'Depth Player', 'Depth Player']);
+        'Elite', 'Elite', 'Elite', 'High-End Starter', 'High-End Starter', 'High-End Starter',
+        'Strong Starter', 'Quality Contributor', 'Quality Contributor', 'Quality Contributor']);
 
     // How it's projected: the formula, a row per position and the Buy/Sell lines.
     const panel = page.locator('#inSeasonTab details');
@@ -69,15 +73,16 @@ test('opens on In-Season and draws the sheet: WR, RB, TE, Move, Buy/Sell, the fi
         .toEqual(['WR', '0.8756', '0.6627', '0.4165', '0.2121', '1.9888', '0.54', '48']);
     await expect(panel).toContainText('Lines: WR 48, RB 36, TE 18.');
     const labelRows = page.locator('.tscore-labels-table tbody tr');
-    expect(await labelRows.first().locator('td').allTextContents()).toEqual(['Elite', '1–5', '1–4', '1–2']);
-    expect(await labelRows.nth(4).locator('td').allTextContents()).toEqual(['Flex Play', '35–48', '26–36', '14–18']);
-    expect(await labelRows.nth(5).locator('td').allTextContents()).toEqual(['Depth Player', '49+', '37+', '19+']);
+    expect(await labelRows.first().locator('td').allTextContents()).toEqual(['Elite', '15.9+', '17.1+', '12.6+']);
+    expect(await labelRows.nth(4).locator('td').allTextContents()).toEqual(['Flex Play', '8.2+', '8.8+', '6.3+']);
+    expect(await labelRows.nth(5).locator('td').allTextContents()).toEqual(['Depth Player', 'under 8.2', 'under 8.8', 'under 6.3']);
+    await expect(panel).toContainText('(2016–2025 projections after week 9)');
     await expect(page.locator('.tscore-credit')).toContainText('CC BY-SA 4.0');
 
     // Saved for the next visit; Draft Strategist's preseason T-Score cache is untouched.
     const saved = await page.evaluate(() => ({ inSeason: JSON.parse(localStorage.getItem('tscore_inseason_cache')), mds: localStorage.getItem('tscore_cache') }));
     expect(saved.mds).toBeNull();
-    expect(saved.inSeason.wr).toHaveLength(21);
+    expect(saved.inSeason.wr).toHaveLength(22);
     expect(saved.inSeason.te[0]).toMatchObject({ rank: 1, name: 'Brock Bowers', team: 'LV', rosPpg: 17.45, move: 0, buySell: '' });
     expect(saved.inSeason.weights.fitWeek).toBe(9);
     await expectClean(page, state);
@@ -85,11 +90,11 @@ test('opens on In-Season and draws the sheet: WR, RB, TE, Move, Buy/Sell, the fi
 
 test('offline after a visit: the saved rankings, with a line saying they are the last that loaded', async ({ page }) => {
     await openApp(page, '/t-score/', { beforeGoto: (p) => stubInSeasonSheets(p) });
-    await expect(rows(page)).toHaveCount(21);
+    await expect(rows(page)).toHaveCount(22);
     await page.unroute(IN_SEASON_SHEET_RE); // back to preparePage's abort: the sheet can't be reached
     await page.reload();
     await expect(page.locator('#inSeasonStatus')).toHaveText('Couldn’t reach the sheet, so these are the last rankings that loaded (Updated today at 4:00 PM).');
-    await expect(rows(page)).toHaveCount(21);
+    await expect(rows(page)).toHaveCount(22);
     await expect(page.locator('#inSeasonMessage')).toBeHidden();
 });
 
@@ -127,18 +132,18 @@ test('a tab missing a column shows a plain message, and keeps the last good rank
     await page.unroute(IN_SEASON_SHEET_RE);
     await stubInSeasonSheets(page);
     await page.reload();
-    await expect(rows(page)).toHaveCount(21);
+    await expect(rows(page)).toHaveCount(22);
     await page.unroute(IN_SEASON_SHEET_RE);
     await stubInSeasonSheets(page, { wr: 'Player,Team\nPuka Nacua,LA' });
     await page.reload();
     await expect(page.locator('#inSeasonMessage')).toHaveText('The WR sheet is missing columns this table needs: ROS rank, ROS PPG, FP/G, Target share, Buy/Sell, Rank move. Showing the last WR rankings that loaded.');
-    await expect(rows(page)).toHaveCount(21);
+    await expect(rows(page)).toHaveCount(22);
 });
 
 test('Sync with most recent data fetches the In-Season sheet again', async ({ page }) => {
     let requested;
     await openApp(page, '/t-score/', { beforeGoto: async (p) => { requested = await stubInSeasonSheets(p); } });
-    await expect(rows(page)).toHaveCount(21);
+    await expect(rows(page)).toHaveCount(22);
     requested.length = 0;
     await page.locator('#tscoreRefreshBtn').click(); // the preseason sheets are aborted: its error toast is main.js's
     await expect.poll(() => requested.length).toBe(4);
@@ -170,12 +175,12 @@ test('"How it differs from the preseason T-Score" opens The Research at its In-S
     const heading = page.locator('#inSeasonModel');
     await expect(heading).toHaveText('The In-Season Model: Rest-of-Season Points per Game');
     await expect(heading).toBeInViewport();
-    await expect(page.locator('#researchTab .tscore-compare-table')).toContainText('Percentiles of ROS rank');
+    await expect(page.locator('#researchTab .tscore-compare-table')).toContainText('Points cutoffs, at the same percentiles of past projections');
 });
 
 test('the page never scrolls sideways: only the table does', async ({ page }) => {
     await openApp(page, '/t-score/', { beforeGoto: (p) => stubInSeasonSheets(p) });
-    await expect(rows(page)).toHaveCount(21);
+    await expect(rows(page)).toHaveCount(22);
     // The Move column's screen-reader words are absolutely placed; held by .tscore-move, not the page (they widened
     // a phone's page to 612px before).
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
@@ -185,4 +190,14 @@ test('The Research\'s "What Changed" table fits the screen, phones included', as
     await openApp(page, '/t-score/#researchTab', { beforeGoto: (p) => stubInSeasonSheets(p) });
     const box = page.locator('#researchTab .tscore-compare-table').locator('..');
     expect(await box.evaluate(e => e.scrollWidth - e.clientWidth)).toBe(0);
+});
+
+test('without the cutoffs block in Model Weights, labels fall back to ROS rank', async ({ page }) => {
+    const weights = inSeasonFixture('weights').split('\n').slice(0, 6).join('\n'); // the weights and "Fit after week" only
+    await openApp(page, '/t-score/', { beforeGoto: (p) => stubInSeasonSheets(p, { weights }) });
+    const labelOf = (name) => rows(page).filter({ hasText: name }).locator('td').nth(2);
+    await expect(labelOf('Chris Olave')).toHaveText('High-End Starter'); // rank 6: High-End by rank (Elite by points)
+    await expect(labelOf('Tyquan Thornton')).toHaveText('Depth Player'); // rank 49, past the WR line of 48
+    await page.locator('#inSeasonTab details summary').click();
+    expect(await page.locator('.tscore-labels-table tbody tr').first().locator('td').allTextContents()).toEqual(['Elite', '1–5', '1–4', '1–2']);
 });

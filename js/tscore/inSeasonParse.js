@@ -10,12 +10,13 @@
 export const IN_SEASON_POSITIONS = ['wr', 'rb', 'te'];
 
 // --- LABELS ---
-// The preseason tabs' six labels, from ROS rank (owner's pick, 2026-11-11: percentiles, as the preseason T-Score's
-// 95th / 90th / 80th / 65th / 50th cutoffs, with "Flex Play" in place of Boom/Bust). The percentiles are taken over a
-// FIXED pool per position, twice the model's Buy/Sell line (WR 96, RB 72, TE 36), not over every row in the sheet: the
-// sheet's rows depend on a games-and-XFP filter, so a week where more fringe players qualify would otherwise relabel
-// players whose projection didn't move. With that pool the 50th percentile falls exactly on the Buy/Sell line, so the
-// labelled tiers end where Buy and Sell are measured; past the line is Depth Player.
+// The preseason tabs' six labels ("Flex Play" in place of Boom/Bust). The owner's pick (2026-11-11, round 3): by
+// POINTS, as the preseason T-Score labelled by score cutoffs. Model Weights carries a ROS PPG cutoff per label and
+// position: the 95th / 90th / 80th / 65th / 50th percentiles of what this week's model would have projected for
+// 2016–2025's players at the same week (block "Label cutoffs (ROS PPG)", parseInSeasonWeights). A player at or above
+// a cutoff earns that label, so a tier's size changes with the projections, week to week and season to season.
+// Without that block (or with a position missing from it), the fallback is by ROS rank: the same percentiles over a
+// fixed pool of twice the Buy/Sell line (WR 96, RB 72, TE 36), where Flex Play ends at the line.
 export const DEFAULT_LINES = { wr: 48, rb: 36, te: 18 };
 export const LABEL_BANDS = [
     { label: 'Elite', share: 0.05, cls: 'label-elite' },
@@ -34,10 +35,24 @@ export function labelCutoffs(line) {
     return LABEL_BANDS.map(b => ({ ...b, maxRank: Math.round(pool * b.share) }));
 }
 
-/** The label for a ROS rank: { label, cls }. */
+/** The label for a ROS rank (the fallback): { label, cls }. */
 export function inSeasonLabel(rank, line) {
     const band = labelCutoffs(line).find(b => rank <= b.maxRank);
     return band ? { label: band.label, cls: band.cls } : DEPTH_LABEL;
+}
+
+/** The label for a projection, from one position's cutoffs ({ Elite: 15.9, …, 'Flex Play': 8.2 }): { label, cls }. */
+export function inSeasonLabelByPoints(rosPpg, cutoffs) {
+    if (rosPpg === null || rosPpg === undefined) return DEPTH_LABEL;
+    const band = LABEL_BANDS.find(b => rosPpg >= cutoffs[b.label]);
+    return band ? { label: band.label, cls: band.cls } : DEPTH_LABEL;
+}
+
+/** One player's label: the sheet's own Label if it has one, else by points when the position has cutoffs, else by rank. */
+export function labelFor(player, { cutoffs, line } = {}) {
+    if (player.label) return player.label;
+    if (cutoffs) return inSeasonLabelByPoints(player.rosPpg, cutoffs);
+    return inSeasonLabel(player.rank, line);
 }
 
 export class InSeasonColumnError extends Error {
@@ -127,8 +142,11 @@ const WEIGHT_COLUMNS = [
 ];
 
 /**
- * The Model Weights tab → { byPos: { wr: {intercept, xfp, fpoe, lastSeason, noPrior, r2, line}, ... }, fitWeek }.
- * r2, line and fitWeek are null when the sheet doesn't have them. Throws InSeasonColumnError.
+ * The Model Weights tab → { byPos: { wr: {intercept, xfp, fpoe, lastSeason, noPrior, r2, line}, ... }, fitWeek,
+ * cutoffs: { wr: { Elite: 15.9, …, 'Flex Play': 8.2 }, … } | null, cutoffsFrom }.
+ * r2, line and fitWeek are null when the sheet doesn't have them. The cutoffs block is found by its header row
+ * ("Label cutoffs (ROS PPG)", then a column per position) wherever it sits; a position is kept only with a number for
+ * all five labels (else it falls back to rank labels). Throws InSeasonColumnError.
  */
 export function parseInSeasonWeights(rows) {
     if (!Array.isArray(rows) || rows.length < 2) throw new Error('The Model Weights sheet is empty.');
@@ -142,8 +160,29 @@ export function parseInSeasonWeights(rows) {
 
     const byPos = {};
     let fitWeek = null;
+    let cutCols = null; // inside the cutoffs block: { wr: column, … }
+    const cutRaw = {};
+    let cutoffsFrom = '';
+    const bandOf = Object.fromEntries([...LABEL_BANDS.map(b => [norm(b.label), b.label]), ['boom/bust', 'Flex Play']]);
     for (const row of rows.slice(1)) {
         const first = cell(row, 0);
+        if (norm(first).startsWith('label cutoffs')) {
+            cutCols = {};
+            row.forEach((h, i) => { const pos = norm(h); if (i > 0 && IN_SEASON_POSITIONS.includes(pos)) cutCols[pos] = i; });
+            continue;
+        }
+        if (cutCols) {
+            const band = bandOf[norm(first)];
+            if (band) {
+                for (const [pos, i] of Object.entries(cutCols)) {
+                    const n = toNum(cell(row, i));
+                    if (n !== null) (cutRaw[pos] ??= {})[band] = n;
+                }
+                continue;
+            }
+            if (norm(first) === 'cutoffs from') { cutoffsFrom = cell(row, 1); continue; }
+            if (first) cutCols = null; // any other row ends the block
+        }
         if (norm(first) === 'fit after week') { fitWeek = parseInt(cell(row, 1), 10) || null; continue; }
         const pos = cell(row, posIdx).toLowerCase();
         if (!IN_SEASON_POSITIONS.includes(pos)) continue;
@@ -153,5 +192,7 @@ export function parseInSeasonWeights(rows) {
         byPos[pos] = w;
     }
     if (!Object.keys(byPos).length) throw new Error('The Model Weights sheet has no WR, RB or TE row.');
-    return { byPos, fitWeek };
+    const complete = Object.entries(cutRaw).filter(([, c]) => LABEL_BANDS.every(b => Number.isFinite(c[b.label])));
+    const cutoffs = complete.length ? Object.fromEntries(complete) : null;
+    return { byPos, fitWeek, cutoffs, cutoffsFrom: cutoffs ? cutoffsFrom : '' };
 }

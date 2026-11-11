@@ -3,14 +3,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import Papa from 'papaparse';
-import { parseInSeasonPlayers, parseInSeasonWeights, InSeasonColumnError, labelCutoffs, inSeasonLabel } from '../../js/tscore/inSeasonParse.js';
+import { parseInSeasonPlayers, parseInSeasonWeights, InSeasonColumnError, labelCutoffs, inSeasonLabel, inSeasonLabelByPoints, labelFor } from '../../js/tscore/inSeasonParse.js';
 
 const fixture = (tab) => Papa.parse(readFileSync(new URL(`../fixtures/tscore-inseason/${tab}.csv`, import.meta.url), 'utf8').trim(), { skipEmptyLines: true }).data;
 const csv = (text) => Papa.parse(text.trim(), { skipEmptyLines: true }).data;
 
 test('the fixture (the real sheet\'s format) reads into players sorted by ROS rank', () => {
     const wr = parseInSeasonPlayers(fixture('wr'), 'wr');
-    assert.equal(wr.length, 21);
+    assert.equal(wr.length, 22);
     assert.deepEqual(wr[0], { rank: 1, name: 'Puka Nacua', team: 'LA', rosPpg: 22.14, fpg: 24.8, targetShare: '36.1%', move: 1, buySell: '' });
     assert.deepEqual(wr.find(p => p.name === 'A.J. Brown'), { rank: 43, name: 'A.J. Brown', team: 'NE', rosPpg: 9.44, fpg: 6.37, targetShare: '22.0%', move: 38, buySell: 'Buy' });
     assert.equal(wr.filter(p => p.buySell === 'Sell').length, 4);
@@ -72,4 +72,35 @@ test('a Label column with a known name is kept as a hand-set label; anything els
 2,B,X,19,19,30%,0,,Maybe`), 'wr');
     assert.deepEqual(players[0].label, { label: 'boom/bust', cls: 'label-boom' });
     assert.equal(players[1].label, undefined);
+});
+
+test('Model Weights: the label cutoffs block, read by its header; incomplete positions are dropped', () => {
+    const w = parseInSeasonWeights(fixture('weights'));
+    assert.deepEqual(w.cutoffs.wr, { Elite: 15.9, 'High-End Starter': 14.3, 'Strong Starter': 12.2, 'Quality Contributor': 9.9, 'Flex Play': 8.2 });
+    assert.equal(w.cutoffs.te['Flex Play'], 6.3);
+    assert.equal(w.cutoffsFrom, '2016–2025 projections after week 9');
+    // Reordered columns, Boom/Bust for Flex Play, and TE missing a label: WR and RB only.
+    const partial = parseInSeasonWeights(csv(`Position,Intercept,XFP/G,FPOE/G,Last-season PPG,No-prior adjustment
+WR,1,1,1,1,1
+Label cutoffs (ROS PPG),TE,RB,WR
+Elite,12.6,17.1,15.9
+High-End Starter,11,15.3,14.3
+Strong Starter,9.3,13.1,12.2
+Quality Contributor,,10.6,9.9
+Boom/Bust,6.3,8.8,8.2`));
+    assert.deepEqual(Object.keys(partial.cutoffs).sort(), ['rb', 'wr']);
+    assert.equal(partial.cutoffs.wr['Flex Play'], 8.2);
+    assert.equal(parseInSeasonWeights(csv('Position,Intercept,XFP/G,FPOE/G,Last-season PPG,No-prior adjustment\nWR,1,1,1,1,1')).cutoffs, null);
+});
+
+test('labels by points: at or above a cutoff earns it; under the last is Depth Player', () => {
+    const c = parseInSeasonWeights(fixture('weights')).cutoffs.wr;
+    assert.equal(inSeasonLabelByPoints(15.9, c).label, 'Elite');
+    assert.equal(inSeasonLabelByPoints(15.89, c).label, 'High-End Starter');
+    assert.equal(inSeasonLabelByPoints(8.2, c).label, 'Flex Play');
+    assert.deepEqual(inSeasonLabelByPoints(8.19, c), { label: 'Depth Player', cls: 'label-depth' });
+    // labelFor: the sheet's own label, then points, then rank.
+    assert.equal(labelFor({ rank: 1, rosPpg: 9, label: { label: 'Elite', cls: 'label-elite' } }, { cutoffs: c }).label, 'Elite');
+    assert.equal(labelFor({ rank: 1, rosPpg: 9 }, { cutoffs: c, line: 48 }).label, 'Flex Play');
+    assert.equal(labelFor({ rank: 1, rosPpg: 9 }, { line: 48 }).label, 'Elite');
 });

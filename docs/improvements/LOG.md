@@ -10436,10 +10436,29 @@ rank over the list's size, so A, B and round 2 all ignore the projections themse
 every row; or (3) ROS PPG cutoffs per position, set from history at the preseason percentiles, as the preseason T-Score
 labelled by score cutoffs (65.5, 57.4, …). Owner's pick: **3**, because a tier's size can then change from week to
 week and season to season (the owner's example: an elite group of WRs, then a big drop, "the death of the WR2").
-The owner's sheet session computes the cutoffs and adds them to Model Weights (layout in the prompt given to the owner:
-a block headed `Label cutoffs (ROS PPG),WR,RB,TE`, one row per label down to Flex Play). Until it lands, the site keeps
-round 2's rank cutoffs. Next: read the block (by its header), label by ROS PPG ≥ cutoff, fall back to the rank cutoffs
-when the block is missing, update the panel, The Research's Label lines and the specs.
+The owner's sheet session computed the cutoffs and added them to Model Weights (rows 7–14): a block headed
+`Label cutoffs (ROS PPG),WR,RB,TE`, one row per label down to Flex Play, then `Cutoffs from,2016–2025 projections
+after week 9`. In tenths, at the owner's request. They're the 95th / 90th / 80th / 65th / 50th percentiles of this
+week's model applied to 2016–2025 players at the same week (2,886 player-seasons, the public sheet's filter); that
+session recomputes them weekly with the weights (`ros_model_open.py`, run by hand for now). After week 9: WR 15.9 /
+14.3 / 12.2 / 9.9 / 8.2, RB 17.1 / 15.3 / 13.1 / 10.6 / 8.8, TE 12.6 / 11.0 / 9.3 / 7.6 / 6.3.
+
+**Built.** `parseInSeasonWeights` finds the block by its header row wherever it sits (columns by name, `Boom/Bust`
+accepted for Flex Play) and keeps a position only with all five numbers; `inSeasonLabelByPoints` labels by ROS PPG ≥
+cutoff; `labelFor` takes the sheet's own Label, then points, then the round-2 rank labels (the fallback when the block
+is missing). The panel's Labels line and table show the cutoffs ("15.9+", "under 8.2") and "Cutoffs from"; the Label
+tooltip, The Research's What Changed row and its Label paragraph say how they're set (with one week-9 observation:
+seven Elite WRs, fewer than usual in the WR2 tiers, from the sheet session's report). The fixture's Model Weights
+has the block, and WR gains Dontayvion Wicks (8.01, Depth). Specs: labels by points (seven Elite WRs, Watson 15.79
+High-End, Wicks Depth, the TE list), the panel's cutoffs, the fallback without the block; unit tests for the block and
+the labels. Screenshots: `tscore-inSeasonTab.png` and `tscore-researchTab.png` (desktop, phone) change, compared
+before and after in this container; re-taken on CI with this commit.
+
+**From the sheet session's report, for the owner** (not on the site): the 2026 top is unusually strong (top-6 WRs
+average 18.99 projected PPG vs 17.95 for 2016–23) and WRs 13–24 are about 0.6 points lower in 2024–26, but there's
+no new cliff right below the elite group, and 2022–23 had gaps as wide. Players near a cutoff (Watson 15.79 vs 15.9)
+can change label from week to week. That session also found that its training skipped 2015, so 2016 players had no
+prior; it offered a fix and a weekly scheduled refresh: both the owner's call, outside this repo.
 
 **Left over.**
 - On phones the table scrolls sideways (Player stays put), as the preseason tables do; ROS PPG and Buy/Sell sit past
