@@ -10398,13 +10398,18 @@ data** fetches the In-Season sheet too. Draft Strategist is unchanged.
 T-Score PNG differs only in the tab-bar row (the new In-Season button, y 268–300 desktop, 348–380 phone), and
 `tscore-inSeasonTab.png` is new (the fixture). Re-taken on CI with `[update screenshots: …]`: desktop and phone
 `tscore-inSeasonTab`, `tscore-researchTab`, `tscore-top50Tab`, `tscore-valuesTab`, `tscore-avoidsTab`,
-`tscore-sleepersTab`, `tscore-tab-2024` (14). No other app's PNGs changed.
+`tscore-sleepersTab`, `tscore-tab-2024` (14). No other app's PNGs changed. The Update screenshots run (#8, commit
+"Screenshots re-taken on CI (14 PNGs)") passed the guard on its first try; I opened the PNGs it committed: the
+In-Season tab as in the fixture, and only the tab bar's new pill elsewhere.
 
 **Left over.**
 - On phones the table scrolls sideways (Player stays put), as the preseason tables do; ROS PPG and Buy/Sell sit past
   the first screen. M6 and M7 (T-Score's look) could fold columns on phones.
 - The hero still says "Wide Receiver and Running Back" and the page's description, link preview and Share text are
   preseason-only (`SHARE_DATA.tscore`, `og-tscore-1.png`); worth a word about in-season and TE when the look changes.
+- On a phone the tab bar now holds seven pills, so the active one from "Values at ADP" on starts past the right edge
+  (the bar scrolls; `tscore-valuesTab.png` phone shows it). Scrolling the active pill into view on a switch is small;
+  left for M6 (T-Score's tabs), which re-takes these PNGs anyway.
 - T2 (T-Score's start-up) now also has the In-Season fetch at load; it's async and draws the saved copy first.
 - Each week the owner updates the public sheet; the site picks it up on the next page open. The tab's title says
   "2026"; next season it needs the year (or the sheet could carry it).
