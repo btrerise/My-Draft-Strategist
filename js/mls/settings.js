@@ -43,7 +43,7 @@ export function applyTradeSettingsToUI() {
     const valueWrap = document.getElementById('tradeWaiverValueWrap');
     const valueEl = document.getElementById('tradeWaiverAdjustValue');
     if (toggleEl) toggleEl.checked = !!s.waiverAdjustment;
-    // "Fetch market values automatically" (improvements S38): on unless turned off, so settings saved before it count as on.
+    // "Auto-fetch market values" (improvements S38): on unless turned off, so settings saved before it count as on.
     const autoEl = document.getElementById('tradeAutoMarketToggle');
     if (autoEl) autoEl.checked = s.autoMarket !== false;
     if (valueEl) valueEl.value = s.waiverAdjustmentValue;

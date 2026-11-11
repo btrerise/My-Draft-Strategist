@@ -16,7 +16,7 @@ import { isFullyMappedLeague } from '../scout/allLeaguesSearch.js';
 import { getMarketValue, isDraftPickName, rankToTradeValue } from './valueCurve.js';
 import { fairCandidates, fairRemovals, fairSuggestions, gapToClose, landing, verdictFromValues } from './makeFair.js';
 import { pickKey } from '../leagues/picks.js';
-import { tradeSeasonSet, unknownNames } from './verdict.js';
+import { hasUnvaluedPick, tradeSeasonSet, unknownNames } from './verdict.js';
 import { activeOwnRankings } from '../main.js';
 import { roomsUseSeason } from '../rankings/season.js';
 
@@ -117,6 +117,8 @@ function fairBoxHTML(league, getNames, giveNames, getResults, giveResults, marke
     // Nothing to suggest while the verdict waits (round 11): a name that matches no player, or, when the market is
     // what decides, a piece it doesn't value.
     if (unknownNames(getResults, giveResults).length) return '';
+    // ... or a draft pick has no value (S38, round 3): the verdict is Incomplete, so there's no gap to close yet.
+    if (hasUnvaluedPick(getResults, giveResults, valueKey.replace('Value', 'Matched'))) return '';
     if (valueKey === 'marketValue' && !getResults.concat(giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick'))) return '';
 
     const waiver = { on: !!State.tradeSettings.waiverAdjustment, perSpot: State.tradeSettings.waiverAdjustmentValue };

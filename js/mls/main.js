@@ -41,7 +41,7 @@ import { openRankingSetView } from './rankings/setView.js';
 import { cancelRankingsPreview, confirmRankingsPreview, processMultiRankings } from './rankings/uploadPreview.js';
 import { dismissRankingsChange } from './rankings/changeSummary.js';
 import { explainRankMove } from './rankings/moveChips.js';
-import { ensureMarketValues, fetchMarketValue, findTradeTargets, leagueMarketFormat, marketFetchFailed, marketFormatWarning, useLeagueMarketSet, runMarketDisconnectAnalysis, toggleDisconnectMode, toggleDisconnectRankBasis, updateMarketMetaDisplay } from './scout/marketDisconnect.js';
+import { ensureMarketValues, fetchMarketValue, findTradeTargets, marketBusyButton, leagueMarketFormat, marketFetchFailed, marketFormatWarning, useLeagueMarketSet, runMarketDisconnectAnalysis, toggleDisconnectMode, toggleDisconnectRankBasis, updateMarketMetaDisplay } from './scout/marketDisconnect.js';
 import { autoFetchRosRankings } from './rankings/rosFetch.js';
 import { updateMarketSetting, updateSimSetting, updateTradeSetting } from './settings.js';
 import './trade/valueCurve.js';
@@ -82,7 +82,7 @@ export { confirmRankingsPreview, createManualLeague, leaveScoreboardWeek, clearR
 // The Trade Analyzer's picker, for tests (callApp) to set a whole trade at once.
 export { setTradePlayers };
 export { fitRankBadges } from './render/lineup.js'; // the Roster tab's two-set badge (render/roster.js, S24)
-export { ensureMarketValues, leagueMarketFormat, marketFetchFailed, marketFormatWarning, useLeagueMarketSet };
+export { ensureMarketValues, marketBusyButton, leagueMarketFormat, marketFetchFailed, marketFormatWarning, useLeagueMarketSet };
 
 // The only window.* names left. Until refactor chunk 5D this block held every name something read
 // through window (originally the inline on*="..." handlers); 5B and 5C replaced the handlers with

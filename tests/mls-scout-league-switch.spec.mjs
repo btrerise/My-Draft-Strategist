@@ -97,7 +97,7 @@ test.describe('Scout tab: a league switch made on the tab', () => {
         await switchTo(page, FIXTURE_LEAGUE2_ID);
         await expect(meta.locator('.mls-market-format-warning')).toHaveText("Fetched for redraft; this league is dynasty. Fetch again for this league's values.");
         // The Trade Analyzer says it under the values' age, when it isn't fetching by itself (improvements S38: with
-        // "Fetch market values automatically" on, Analyze brings this league's values; mls-trade-market-auto.spec.mjs).
+        // "Auto-fetch market values" on, Analyze brings this league's values; mls-trade-market-auto.spec.mjs).
         await page.locator('.mls-trade-value-settings > summary').click();
         await page.locator('#tradeAutoMarketToggle').uncheck();
         await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson']);

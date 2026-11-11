@@ -17,7 +17,7 @@ import { getSleeperMetaByName, makeLeagueGetPos } from '../scout/waivers.js';
 import { buildRankDisplayIndex } from '../scout/waiverScanner.js';
 import { isDraftPickName } from './valueCurve.js';
 import { FOLD_CHEVRON } from '../lineup/gameInfo.js';
-import { tradeSeasonSet, tradeVerdictNumbers, unknownNames } from './verdict.js';
+import { hasUnvaluedPick, tradeSeasonSet, tradeVerdictNumbers, unknownNames } from './verdict.js';
 import { tradeAnalysisBasis } from './fairSection.js';
 import {
     FUTURE_COLUMN, lineupSlotCount, lineupSummaryText, lineupTradeChanges, POWER_COLUMNS,
@@ -193,7 +193,9 @@ async function powerSection(league, title, give, get, notes, cards, tradedPicks)
     // The trade's values ("Your rankings") come from the dynasty set; without one, the market's (S23, round 12).
     const valueKey = own && State.rosRankings.length > 0 ? (seasonValues ? 'seasonValue' : 'userValue') : 'marketValue';
     const settled = cards.getResults && cards.giveResults && !unknownNames(cards.getResults, cards.giveResults).length
-        && (valueKey !== 'marketValue' || cards.getResults.concat(cards.giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick')));
+        && (valueKey !== 'marketValue' || cards.getResults.concat(cards.giveResults).every(r => r.marketMatched || (r.exportRow && r.exportRow.pos === 'Pick')))
+        // ... or while a pick has no value (S38, round 3): the banner says Incomplete.
+        && !hasUnvaluedPick(cards.getResults, cards.giveResults, valueKey.replace('Value', 'Matched'));
     const value = settled ? tradeVerdictNumbers(cards.getResults, cards.giveResults, valueKey) : null;
     // Short and the same in every Sleeper league (S24, rounds 4 and 5, owner: busy on a phone; "have Redraft leagues match"):
     // the summary as labeled lines, the source line in "How this is worked out", a shorter key. A league with both sets

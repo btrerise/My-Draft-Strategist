@@ -10,7 +10,7 @@ import { State } from '../state.js';
 import { rankingIndex, getActiveLeague } from '../helpers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { getFreshness } from '../../shared/freshness.js';
-import { showStatusFeedback } from '../../shared/ui/statusFeedback.js';
+import { showStatusFeedback, SPINNER_SVG } from '../../shared/ui/statusFeedback.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 import { showToast } from '../../shared/ui/toast.js';
@@ -169,7 +169,7 @@ import { marketFormatKey, marketFormatOf, marketPlan, putMarketSet } from './mar
     }
 
     // Analyze Trade's market values (improvements S38, owner's choice: fetched by itself when none are loaded for this
-    // league or they're over three hours old, unless "Fetch market values automatically" is off). A failed fetch is
+    // league or they're over three hours old, unless "Auto-fetch market values" is off). A failed fetch is
     // remembered so the verdict can say so (trade/verdict.js) and so the live re-runs don't ask again on every change
     // for a minute; tapping Analyze Trade always tries (force). No toast and no console.error: an offline phone is an
     // ordinary case, and the trade is still analyzed by your rankings.
@@ -355,6 +355,18 @@ import { marketFormatKey, marketFormatOf, marketPlan, putMarketSet } from './mar
         }
     }
 
+    // A button while market values load: the site's spinner, "Fetching market values…", dimmed and disabled (round 3:
+    // with only the words changed it didn't look busy). Returns the function that puts it back, or null.
+    export function marketBusyButton(btn) {
+        if (!btn || btn.disabled) return null;
+        const html = btn.innerHTML;
+        btn.innerHTML = `${SPINNER_SVG}<span>Fetching market values…</span>`;
+        btn.disabled = true;
+        btn.classList.add('mls-btn-busy');
+        btn.setAttribute('aria-busy', 'true');
+        return () => { btn.innerHTML = html; btn.disabled = false; btn.classList.remove('mls-btn-busy'); btn.removeAttribute('aria-busy'); };
+    }
+
     // The Find Trade Targets button (owner, after S38: "work the same way as Trade Analyzer does now"): the active
     // league's market values first, fetched when none are loaded for its format or they're over three hours old (same
     // switch, same rules: ensureMarketValues), with the button busy meanwhile; then the report. A failed fetch leaves
@@ -363,14 +375,7 @@ import { marketFormatKey, marketFormatOf, marketPlan, putMarketSet } from './mar
         let restore = null;
         await ensureMarketValues({
             force: true,
-            onFetch: () => {
-                if (!btn || btn.disabled) return;
-                const text = btn.textContent;
-                btn.textContent = 'Fetching market values…';
-                btn.disabled = true;
-                btn.setAttribute('aria-busy', 'true');
-                restore = () => { btn.textContent = text; btn.disabled = false; btn.removeAttribute('aria-busy'); };
-            }
+            onFetch: () => { restore = marketBusyButton(btn); }
         });
         if (restore) restore();
         runMarketDisconnectAnalysis();

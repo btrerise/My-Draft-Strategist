@@ -13,7 +13,7 @@ import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js'
 import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
 import { getDynamicWaiverAdjustmentValue } from '../trade/waiverValue.js';
 import { buildTradeVerdictHTML, tradeSeasonSet } from '../trade/verdict.js';
-import { activeOwnRankings, ensureMarketValues } from '../main.js';
+import { activeOwnRankings, ensureMarketValues, marketBusyButton } from '../main.js';
 import { buildTradeImpactHTML } from '../trade/lineupSection.js';
 import { buildMakeFairHTML, moreAnalysisHTML, placeFairFocus } from '../trade/fairSection.js';
 import { pickCount, pickHolders } from '../leagues/picks.js';
@@ -53,14 +53,7 @@ import { normalizeName } from '../../shared/names.js';
             let restore = null;
             await ensureMarketValues({
                 force: !!button,
-                onFetch: () => {
-                    if (!btn || btn.disabled) return;
-                    const text = btn.textContent;
-                    btn.textContent = 'Fetching market values…';
-                    btn.disabled = true;
-                    btn.setAttribute('aria-busy', 'true');
-                    restore = () => { btn.textContent = text; btn.disabled = false; btn.removeAttribute('aria-busy'); };
-                }
+                onFetch: () => { restore = marketBusyButton(btn); }
             });
             if (restore) restore();
             // The trade may have changed while the values loaded: read it again.

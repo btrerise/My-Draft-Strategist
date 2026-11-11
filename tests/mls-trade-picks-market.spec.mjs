@@ -3,7 +3,7 @@
 //      "2027 1st (2)", each with its own token, its own Remove and its own value in the verdict.
 //   2. Market values without a trip to Trade Finder. Analyze Trade fetches them by itself, through the site's
 //      /api/fantasycalc, when none are loaded for the league's format or they're over three hours old, unless
-//      "Fetch market values automatically" (Value settings) is off. Each format's values are kept, so a league
+//      "Auto-fetch market values" (Value settings) is off. Each format's values are kept, so a league
 //      switch brings that league's back. A failed fetch leaves the verdict by your rankings, with a line saying so.
 // helpers.mjs aborts /api/fantasycalc unless a spec stubs it, as here.
 import { readFileSync } from 'node:fs';
@@ -174,13 +174,16 @@ test.describe('Trade Analyzer: market values on Analyze', () => {
         // The switch is under Value settings, on by default.
         await page.locator('.mls-trade-value-settings > summary').click();
         await expect(page.locator('#tradeAutoMarketToggle')).toBeChecked();
-        await expect(page.locator('label[for="tradeAutoMarketToggle"]')).toHaveText('Fetch market values automatically');
+        await expect(page.locator('label[for="tradeAutoMarketToggle"]')).toHaveText('Auto-fetch market values');
+        await expect(page.locator('#tradeAutoMarketToggle').locator('xpath=..').locator('.toggle-desc')).toContainText('A market file you uploaded is never replaced.');
 
         await setTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase"]);
         await analyze(page);
         await expect(analyzeBtn(page)).toBeDisabled();
         await expect(analyzeBtn(page)).toHaveText('Fetching market values…');
         await expect(analyzeBtn(page)).toHaveAttribute('aria-busy', 'true');
+        await expect(analyzeBtn(page).locator('svg.sync-spinner')).toHaveCount(1); // it looks busy: the spinner, dimmed
+        await expect(analyzeBtn(page)).toHaveCSS('opacity', '0.7');
         release();
         await expect(marketBanner(page)).toHaveCount(1);
         await expect(yourBanner(page)).toHaveCount(1);
@@ -225,6 +228,8 @@ test.describe('Trade Analyzer: market values on Analyze', () => {
         await expect(marketBanner(page)).toHaveCount(0);
         await expect(failLine(page)).toHaveText("Market values couldn't load, so this is by your rankings only. Analyze again to retry.");
         await expect(analyzeBtn(page)).toBeEnabled();
+        // The line sits right under the verdict it explains.
+        expect(await page.evaluate(() => document.querySelector('#tradeOutput [data-market-fail]').previousElementSibling.className)).toContain('trade-verdict-banner');
         await expect(analyzeBtn(page)).toHaveText('Analyze Trade');
         await expect(page.locator('.mds-toast.show')).toHaveCount(0);
 
@@ -383,6 +388,32 @@ test.describe('Trade Analyzer: market values on Analyze', () => {
         await btn.click();
         await expect(report.locator('.scout-result-card').first()).toBeVisible();
         expect(again).toEqual([]);
+        await expectClean(page, state);
+    });
+
+    // Round 3 (owner's choice): "Fair Trade" showed over two unvalued 1sts when the fetch failed.
+    test('a pick with no value: Incomplete, not a verdict that leaves it out; valued, the verdict returns', async ({ page }) => {
+        const state = await setup(page); // offline
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.leagues.find(l => l.leagueId === State.activeLeagueId).leagueType = 'dynasty';
+        });
+        await setTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", '2027 1st', '2027 1st']);
+        await analyze(page);
+        await expect(yourBanner(page).locator('.trade-verdict-result')).toHaveText('Incomplete');
+        await expect(yourBanner(page).locator('[data-picks-unvalued]')).toHaveText('Both 2027 1sts need market values, so this total is missing them.');
+        await expect(failLine(page)).toHaveCount(1);
+        // No "To make it fair" and no value headline on a total that's missing pieces.
+        await expect(page.locator('#tradeOutput [data-trade-fair]')).toHaveCount(0);
+        await expect(page.locator('#tradeOutput .mls-trade-impact-headline')).toHaveCount(0);
+
+        // Online: the picks get the market's value and both verdicts are back.
+        await page.route(/\/api\/fantasycalc\?/, (route) => route.fulfill({ status: 200, contentType: 'application/json',
+            body: JSON.stringify(JSON.parse(FC_BODY).concat([{ player: { name: '2027 1st', position: 'PICK' }, overallRank: 12 }])) }));
+        await analyze(page);
+        await expect(yourBanner(page).locator('.trade-verdict-result')).toContainText('Favors Them');
+        await expect(marketBanner(page).locator('.trade-verdict-result')).toContainText('Favors Them');
+        await expect(page.locator('#tradeOutput [data-picks-unvalued]')).toHaveCount(0);
         await expectClean(page, state);
     });
 });

@@ -10238,3 +10238,31 @@ This session ran the full suite at the end of round 1 and started it again after
 full check runs once, before the final push, which is when he asks for the pull request. Reworded in `CLAUDE.md`
 ("Before pushing"), `docs/TESTING.md` ("The checks") and the runbook's rule 7: every push before that gets only the
 checks for what changed; after it has run, the same again, and CI covers the rest. Docs only, no `CACHE_NAME` bump.
+
+### S38, round 3: a review as a user; Incomplete for unvalued picks, the failure state, the busy button, the switch (owner: "Yes")
+
+I looked at each new state at 390 and 1280px as a user. Helpful: the repeat picks and the market verdict on the first
+tap. Misleading or clunky, all four fixed here on the owner's yes:
+1. **"Fair Trade" over two unvalued 1sts.** With the fetch failed (or no market data), a pick has no value and was left
+   out of the total, under a confident verdict. Older behaviour (S14 round 6), but the failed fetch makes it common.
+   Now a verdict whose total is missing a pick says **Incomplete**, as the market's already did for a player it
+   doesn't price: the banners, the Now / Long-term tiles (no points line) and the market strip. "To make it fair" and
+   the Power Rankings section's value headline wait too (`hasUnvaluedPick`, `js/mls/trade/verdict.js`). **This changes
+   what the verdict shows, which the card had out of scope; the owner chose it.** The math and the fair band are
+   untouched.
+2. **The failure said the same thing three times**, and pointed at Trade Finder. The note under the total now reads
+   "Both 2027 1sts need market values, so this total is missing them." (repeats joined; "Fetch them in Trade Finder
+   (below)." only when nothing failed, i.e. the switch is off), and the amber line sits right under the verdict, above
+   the In-Season hint. The rows keep "Needs market data".
+3. **The busy button didn't look busy.** `marketBusyButton` (`js/mls/scout/marketDisconnect.js`): the site's spinner,
+   "Fetching market values…", 70% opacity, disabled; both buttons use it.
+4. **The switch.** Renamed **Auto-fetch market values** (the old name wrapped on phones and its "i" floated), with
+   its explanation as a line under the title in place of the tooltip, a gap from Waiver Adjustment and no empty space
+   under it (`css/mls.css`).
+- Tests: a new Incomplete test and the spinner, placement and switch text in `mls-trade-picks-market.spec.mjs`;
+  `mls-trade-impact.spec.mjs` (a trade with an unvalued pick is Incomplete with no headline; the headline is checked
+  without the pick) and `mls-now-and-later.spec.mjs` (the note's new wording in Export Trade). check-precache, 554 unit
+  tests and the trade specs pass. The full suite isn't re-run (rule 7; CI runs it on the pull request).
+- Screenshots: none shows these states (Value settings is folded; no screenshot analyzes a trade). The two Guide PNGs
+  from round 1 still change (the switch's new name is in that text).
+- **Noted for a follow-up** (docs/TESTING.md, Small polish): fold Trade Finder's market source controls.

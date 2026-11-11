@@ -380,6 +380,11 @@ The card named does the item in its own session; remove the line when it's done.
   Lineup tab show a past week's lineup and points (read-only) would let those tiles open it again.
 
 **Small polish, one session each**
+- Trade Finder's top half, now that market values fetch by themselves (owner, improvements S38 round 3: "make a note
+  for us to follow up"). The card opens with the file chooser, Market Source, League Type, QB Format, PPR, TE Premium
+  and Fetch Market Value before the one button most people need (Find Trade Targets, which fetches since S38). Fold
+  those into a "Market source" section like the Trade Analyzer's Value settings, with a one-line summary of what's
+  loaded. A layout change: re-takes the Scout tab's screenshots.
 - One naming pattern for exported files (owner, improvements S22 round 4). The Scoreboard's is
   `Week_7_Recap_My_Lineup_Strategist.png` (what, when, then the app's full name); the others predate it:
   `My_Draft_Strategist_Team.png` (js/mds/export.js), `My_Lineup_Strategist.png` (Export Lineup) and

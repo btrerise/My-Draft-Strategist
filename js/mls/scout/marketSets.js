@@ -49,7 +49,7 @@ export function putMarketSet(sets, format, rows, updatedAt, max = MARKET_SETS_MA
 
 // What Analyze Trade should do about market values before it runs.
 //   want: the active league's format. active: { rows, format, updatedAt }, the set in use (format null after a file
-//   upload). sets: the store. auto: "Fetch market values automatically" (Value settings).
+//   upload). sets: the store. auto: "Auto-fetch market values" (Value settings).
 // Returns 'none' (use what's loaded), 'cached' (switch to the stored set for this format) or 'fetch'.
 //   - An uploaded file is the user's own data: never replaced here.
 //   - The loaded set is this league's and under three hours old: nothing to do.
