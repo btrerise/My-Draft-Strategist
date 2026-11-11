@@ -10430,6 +10430,17 @@ In-Season tab as in the fixture, and only the tab bar's new pill elsewhere.
   next push (the LOG commit, seconds later: the workflow keeps one run per branch), so I started it by hand with the
   same four names (workflow_dispatch, `expected`); it committed exactly those. Lesson: push the tagged commit last.
 
+**Round 3 (owner, 2026-11-11): labels by points, not rank (pending the sheet).** The owner pointed out that round 2's
+"A over a fixed pool" is B's method (fixed rank cutoffs) with A's percentages; a percentile within a list is only a
+rank over the list's size, so A, B and round 2 all ignore the projections themselves. Options given: keep it; A over
+every row; or (3) ROS PPG cutoffs per position, set from history at the preseason percentiles, as the preseason T-Score
+labelled by score cutoffs (65.5, 57.4, …). Owner's pick: **3**, because a tier's size can then change from week to
+week and season to season (the owner's example: an elite group of WRs, then a big drop, "the death of the WR2").
+The owner's sheet session computes the cutoffs and adds them to Model Weights (layout in the prompt given to the owner:
+a block headed `Label cutoffs (ROS PPG),WR,RB,TE`, one row per label down to Flex Play). Until it lands, the site keeps
+round 2's rank cutoffs. Next: read the block (by its header), label by ROS PPG ≥ cutoff, fall back to the rank cutoffs
+when the block is missing, update the panel, The Research's Label lines and the specs.
+
 **Left over.**
 - On phones the table scrolls sideways (Player stays put), as the preseason tables do; ROS PPG and Buy/Sell sit past
   the first screen. M6 and M7 (T-Score's look) could fold columns on phones.
