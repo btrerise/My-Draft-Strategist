@@ -10059,3 +10059,31 @@ and "Yours in" / "Against you in" are two columns to its right, with "Your stake
 unchanged, the leagues still stack under the row). The spec's 375 / 1280px test checks both layouts.
 `CACHE_NAME` v2.9.14 → v2.9.15. `mls-root-kickoff-find.spec.mjs` and `mls-root-for.spec.mjs` pass (36). Screenshots:
 no further change (no baseline shows a found player).
+
+### S33, round 4: a second review as a user; the owner took all four, plus the one-league test
+
+By keyboard and by touch, Thursday evening, Sunday with finished players, a past week and one league (every player in
+one matchup), on the fixture leagues. The owner asked me to check first whether 1 and 2 belong in the site's other
+player searches. They don't:
+- **Enter takes the top suggestion: this field only.** The other three (`attachPlayerAutocomplete`'s callers) search
+  the whole player index in Sleeper's order, so the top row for "jo" is an arbitrary player, and a pick there does
+  something: the manual-add form (js/mls/leagues/addPlayer.js) fills position and team, and its next Enter saves to the
+  roster; the trade picker (js/mls/trade/picker.js) adds him to the trade; the Simulator's lookup (js/mls/init.js) runs
+  a simulation. Their rule stays (Enter picks an arrowed-to row or the only row). Here the pool is this week's starters
+  in the board's order and a pick only shows a card.
+- **Escape closes the list first, then clears: already true elsewhere.** The shared autocomplete's Escape only ever
+  closes its list, and no other field has a clear step; the wipe was this field's own listener.
+
+What changed:
+1. `attachPlayerAutocomplete` takes `enterPicksFirst` (js/mls/players.js): the first suggestion starts highlighted, so
+   Enter takes it and the arrows move from there. Only the find field passes it.
+2. The find field's Escape listener is registered before the autocomplete's and does nothing while the list is open, so
+   the first Escape closes the suggestions (text and result kept) and the second clears.
+3. From 900px, a result with one side ("Yours in" only, or "Against you in" only) spans both columns (css/mls.css).
+4. The suggestions' "WR ·DAL" is "WR · DAL" in every player search (js/mls/players.js; two assertions in
+   `mls-player-lookup.spec.mjs` follow).
+- The test gap from round 1 is closed: a one-league test finds a player in one matchup on each side ("Against you, in
+  one matchup", "Your starter, in one matchup", "in 1") and checks the lone side's width on desktop.
+- `CACHE_NAME` v2.9.15 → v2.9.16. CHANGELOG: the S33 line gains Enter and the space. Ran check-precache and
+  `mls-root-kickoff-find`, `mls-root-for`, `mls-player-lookup`, `mls-trade-impact`, `nav-rail` (the specs that use a
+  player search): all pass. Screenshots: no further change (no baseline shows a suggestion list or a found player).
