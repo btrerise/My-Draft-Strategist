@@ -92,7 +92,7 @@ test.describe('Chevrons turn with their folds (improvements F11)', () => {
     });
 
     test('T-Score: the appendix shows the shared chevron and turns it', async ({ page }) => {
-        await openApp(page, '/t-score/');
+        await openApp(page, '/t-score/#researchTab'); // In-Season opens first without the hash (improvements T1)
         const details = page.locator('#researchTab details.sos-details-accordion').filter({ hasText: 'Appendix' });
         const summary = details.locator('> summary');
         const chev = summary.locator('> svg.chevron');
@@ -116,7 +116,7 @@ test.describe('Chevrons turn with their folds (improvements F11)', () => {
         expect(await chev.evaluate(el => el.getAnimations().length)).toBe(0);
         expect(await angle(chev)).toBe(0);
 
-        await page.goto('/t-score/');
+        await page.goto('/t-score/#researchTab');
         const summary = page.locator('#researchTab details.sos-details-accordion').filter({ hasText: 'Appendix' }).locator('> summary');
         const tchev = summary.locator('> svg.chevron');
         expect((await timing(tchev)).duration).toBe('0s');

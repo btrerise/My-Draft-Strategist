@@ -10339,34 +10339,72 @@ verdict in a dynasty league without an In-Season set pushes the rows down on pho
   `mls-market.spec.mjs`. No screenshot shows these (the fold and Value settings are closed; no screenshot analyzes a
   trade), so no baselines are re-taken.
 
-## T1 — T-Score: in-season data from your new Google Sheet (paused before building)
+## T1 — T-Score: in-season data from your new Google Sheet
 
-**Status.** No app code yet. Paused on 2026-11-11 while the owner moves the sheet's inputs to open data (below). The
-next session picks up from "Owner's decisions" and builds once the new published links exist.
+**User-visible effect.** The T-Score page opens on a new **In-Season** tab (first in the tab bar; the preseason tabs
+are one tap away, and a `#tab` link still opens its tab). It shows rest-of-season projections for **WR, RB and TE**
+(TE is new to the page): ROS rank, Player, Team, ROS PPG, FP/G, Tgt % (target share), **Move** (an up or down arrow
+and the places from YTD rank to ROS rank, "–" for none) and a green **Buy** or red **Sell** chip, with WR / RB / TE
+pills and a **Buy & Sell only** switch. A line above the table says when the rankings were loaded ("Updated today at
+4:00 PM"), the description says which week they were projected after, and **How it's projected** (closed by default)
+shows the formula, the Model Weights table (intercept, weights, no-prior adjustment, R², Buy/Sell line per position),
+what each term means and the Buy/Sell rule. Under the table, the data credit and licenses (nflverse CC BY 4.0,
+ffopportunity CC BY-SA 4.0, the projections shared under CC BY-SA 4.0). The tab fetches the sheet every time the page
+opens, draws the copy saved by the last visit first, and offline (or when Google doesn't answer) keeps that copy with
+"Couldn't reach the sheet, so these are the last rankings that loaded (…)". A first visit offline says the rankings
+couldn't load. A tab missing a column the table needs says so in a plain message ("The WR sheet is missing a column
+this table needs: Target share.") and keeps that position's last good rankings if it has them. **Sync with most recent
+data** fetches the In-Season sheet too. Draft Strategist is unchanged.
 
-**The sheet.** "T-Score ROS Projections" in the owner's Drive: tabs WR, RB, TE (headers `Player, Team, Games, FP/G,
-XFP/G, FPOE/G, Last-season PPG, Target share, ROS PPG, ROS rank, YTD rank, Rank move, Buy/Sell`), Model Weights and
-Data Sources. It is a new model (projected rest-of-season PPG), not an update of the preseason T-Score: no 0–100
-score, no Label or Classification, Buy/Sell instead of Value/Sleeper/Avoid, and it adds TE.
+**What changed and where.**
+- `js/tscore/inSeasonParse.js` (new, pure): reads each position tab and Model Weights by header name (case, spacing
+  and column order don't matter; extra columns are ignored; Move falls back to YTD rank − ROS rank when "Rank move" is
+  gone); a missing column throws `InSeasonColumnError` naming each one.
+- `js/tscore/inSeason.js` (new): the four published-CSV URLs (`IN_SEASON_URLS`, gid 0 WR, 1 RB, 2 TE, 3 Model
+  Weights of "T-Score In-Season (public)"), fetching through `mdsFetch`, the saved copy, drawing, the WR / RB / TE
+  pills and the Buy & Sell filter. Fails quietly (no `console.error`): what went wrong is drawn on the tab.
+- `js/tscore/main.js`: the default tab is `inSeasonTab` (`DEFAULT_TAB`; was `researchTab`), `initInSeason()` on
+  DOMContentLoaded, Refresh also calls `refreshInSeason()`, two `data-action`s. `t-score/index.html`: the tab and its
+  nav button; the Refresh button's title. `css/tscore.css`: the tab's styles (`.tscore-move`, `.tscore-chip-buy` /
+  `-sell`, the message, the credit; the credit's inline links keep their text size: WCAG's inline exception).
+- New key `tscore_inseason_cache` (`KEYS.tscore.inSeasonCache`): `{ wr, rb, te, weights, fetchedAt }`, read only by
+  the T-Score page; in neither app's backup, like the other `tscore_` keys. The preseason `tscore_cache` that Draft
+  Strategist reads is never written by the In-Season tab.
+- `sw.js`: the two modules in `PRECACHE_ASSETS`; `CACHE_NAME` v2.9.19. The service worker still lets the sheet's
+  cross-origin requests through; offline works from the saved copy, as the preseason tables do.
+- Tests: `tests/tscore-inseason.spec.mjs` (draws the fixture, the filter and positions, the panel, saved copy and
+  offline, first visit offline, reordered columns and escaping, missing columns with and without a saved copy, Sync,
+  deep links); `tests/unit/tscoreInSeason.test.mjs`; fixtures `tests/fixtures/tscore-inseason/{wr,rb,te,weights}.csv`
+  (rows from the public sheet of 2026-11-11, after week 9). `helpers.mjs`: `openApp(page, path, { beforeGoto })`,
+  `stubInSeasonSheets`, `inSeasonFixture`, `IN_SEASON_SHEET_RE`; `inSeasonTab` first in `TSCORE_TABS` (so smoke,
+  touch-targets, focus-ring and visual cover it). `tscore-refresh.spec.mjs`'s route skips the In-Season sheet;
+  `chevrons` and `support` open `/t-score/#researchTab`; `touch-targets` allows `.tscore-credit a`.
 
 **Owner's decisions (2026-11-11).**
-- Option A: a new **In-Season** tab, first in the tab bar and the default view; the preseason tabs and their Refresh
-  stay as they are. (Adds a nav button to all 12 T-Score baselines plus two new In-Season PNGs.)
-- Columns: ROS rank, Player, Team, ROS PPG, FP/G, Target share, Move (YTD rank → ROS rank, SVG arrow) and Buy/Sell.
-  **Not** XFP/G or FPOE/G.
-- The In-Season tab fetches on every page open, draws the saved copy first, and keeps the last data offline.
-- Draft Strategist: no change. It keeps reading the preseason T-Score (`tscore_cache` / `js/shared/data/tscore.js`);
-  the in-season data never writes that cache.
-- The "How it's projected" panel (Model Weights): decided once the data source is settled.
+- Option A: an **In-Season** tab beside the preseason ones, first and the default view.
+- Columns: ROS rank, Player, Team, ROS PPG, FP/G, Target share, Move and Buy/Sell (as sketched, without XFP/G and
+  FPOE/G).
+- Fetch on every page open, saved copy first, last data offline. Draft Strategist: no change.
+- **Licensing.** The first version of the sheet was built from the owner's Late-Round Fantasy Football data dump, whose
+  terms allow personal use only and forbid sharing it or anything derived from it, modified or not; its ROS PPG, ranks
+  and Buy/Sell were computed from Late-Round's XFP/G and FPOE/G, and a published CSV carries every column whatever the
+  page shows. The owner stopped publishing that sheet, had the model re-run on open data (nflverse player stats and
+  ffopportunity's expected points; the weights were already fit on nflverse) and published a separate sheet, "T-Score In-Season
+  (public)", holding only the site's columns plus YTD rank and Model Weights. The credit line is the one that session
+  suggested. Preseason data came from other sources and is fine. The first links (2PACX-1vRM3t…) must never be used.
+- The "How it's projected" panel: yes, once the weights were open-data based.
 
-**Why it paused: licensing.** Data Sources shows Player through Target share (except Last-season PPG) come from the
-owner's Late-Round Fantasy Football data dump, whose terms allow personal use only and forbid sharing it or
-derivatives, modified or not. ROS PPG, the ranks and Buy/Sell are computed from its XFP/G and FPOE/G, so hiding those
-two columns isn't enough; and a published CSV carries every column whatever the page shows. Plan: the owner reruns
-the model with nflverse inputs (open data; the weights were already fit on nflverse) and publishes tabs holding only
-the site's columns. Preseason data came from other sources and is fine (owner, 2026-11-11). The first published links
-(2PACX-1vRM3t…, gid 0/1/2) are not to be used by the site.
+**Screenshots.** Compared main and this branch in the same container (`RENDER_ENV=any`, pxdiff): every existing
+T-Score PNG differs only in the tab-bar row (the new In-Season button, y 268–300 desktop, 348–380 phone), and
+`tscore-inSeasonTab.png` is new (the fixture). Re-taken on CI with `[update screenshots: …]`: desktop and phone
+`tscore-inSeasonTab`, `tscore-researchTab`, `tscore-top50Tab`, `tscore-valuesTab`, `tscore-avoidsTab`,
+`tscore-sleepersTab`, `tscore-tab-2024` (14). No other app's PNGs changed.
 
-**Left for the build.** Parse by header names; a missing column shows a plain message; a fixture CSV in the new format
-and a spec (draws, missing column, offline/cached); CHANGELOG (T-Score); CACHE_NAME; screenshots as above; nflverse
-credit line on the tab if its data is used (CC-BY).
+**Left over.**
+- On phones the table scrolls sideways (Player stays put), as the preseason tables do; ROS PPG and Buy/Sell sit past
+  the first screen. M6 and M7 (T-Score's look) could fold columns on phones.
+- The hero still says "Wide Receiver and Running Back" and the page's description, link preview and Share text are
+  preseason-only (`SHARE_DATA.tscore`, `og-tscore-1.png`); worth a word about in-season and TE when the look changes.
+- T2 (T-Score's start-up) now also has the In-Season fetch at load; it's async and draws the saved copy first.
+- Each week the owner updates the public sheet; the site picks it up on the next page open. The tab's title says
+  "2026"; next season it needs the year (or the sheet could carry it).

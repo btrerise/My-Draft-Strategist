@@ -136,7 +136,8 @@
 </div>
 
 <div class="tscore-nav-wrapper">
-    <button class="tscore-nav-btn active" data-action="switchTab" data-tab="researchTab">The Research</button>
+    <button class="tscore-nav-btn active" data-action="switchTab" data-tab="inSeasonTab">In-Season</button>
+    <button class="tscore-nav-btn" data-action="switchTab" data-tab="researchTab">The Research</button>
     <button class="tscore-nav-btn" data-action="switchTab" data-tab="top50Tab">2026 Top-50</button>
     <button class="tscore-nav-btn" data-action="switchTab" data-tab="valuesTab">Values at ADP</button>
     <button class="tscore-nav-btn" data-action="switchTab" data-tab="avoidsTab">Avoids at ADP</button>
@@ -146,7 +147,7 @@
 
 <div style="max-width: 1100px; margin: 0.75rem auto 0; padding: 0 1rem; display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
     <span id="tscoreFreshness" aria-live="polite" style="font-size: 0.8rem; color: var(--text-muted, #9ca3af);"></span>
-    <button id="tscoreRefreshBtn" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" data-action="refreshTScoreData" title="Pulls the latest data from the WR and RB Google Sheets and updates every table on this page, plus the T-Score badges in My Draft Strategist.">
+    <button id="tscoreRefreshBtn" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" data-action="refreshTScoreData" title="Pulls the latest in-season rankings and the preseason WR and RB sheets, and updates every table on this page, plus the T-Score badges in My Draft Strategist.">
         <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
         Sync with most recent data
     </button>
@@ -154,8 +155,82 @@
 
 <main id="main" class="container" style="padding-top: 1rem;">
     
+    <!-- TAB: IN-SEASON (improvements T1): js/tscore/inSeason.js fills it from the "T-Score In-Season (public)" sheet -->
+<div id="inSeasonTab" class="tab-content active">
+    <div class="settings-card highlight-card">
+        <h2>2026 In-Season Rankings</h2>
+        <p class="card-desc">Projected fantasy points per game for the rest of the season (full PPR), from each player's expected points, his points over expected and last season's scoring. <span id="inSeasonWeek"></span></p>
+
+        <div class="pos-toggle-wrapper">
+            <button class="pos-toggle-btn active" data-pos="wr" data-action="switchInSeasonPos" aria-pressed="true">WR</button>
+            <button class="pos-toggle-btn" data-pos="rb" data-action="switchInSeasonPos" aria-pressed="false">RB</button>
+            <button class="pos-toggle-btn" data-pos="te" data-action="switchInSeasonPos" aria-pressed="false">TE</button>
+        </div>
+
+        <div class="tscore-inseason-tools">
+            <span id="inSeasonStatus" class="tscore-inseason-status" aria-live="polite"></span>
+            <button type="button" class="pos-toggle-btn tscore-buysell-btn" data-action="toggleBuySellOnly" aria-pressed="false">Buy &amp; Sell only</button>
+        </div>
+
+        <details class="sos-details-accordion" style="margin-top: 0; margin-bottom: 1.25rem;">
+            <summary class="sos-summary" style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-green);">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                How it's projected
+            </summary>
+            <div id="inSeasonWeights" style="margin-top: 1rem;"></div>
+        </details>
+
+        <p id="inSeasonMessage" class="tscore-inseason-message" role="status" hidden></p>
+
+        <div class="data-table-wrapper" id="inSeasonTableWrap" hidden>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ROS</th>
+                        <th>Player</th>
+                        <th>Team</th>
+                        <th>
+                            <div class="table-header-tooltip">
+                                ROS PPG
+                                <span class="tooltip-text">Projected fantasy points per game for the rest of the season (full PPR)</span>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="table-header-tooltip">
+                                FP/G
+                                <span class="tooltip-text">Fantasy points per game so far this season (full PPR)</span>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="table-header-tooltip">
+                                Tgt %
+                                <span class="tooltip-text">Share of his team's targets</span>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="table-header-tooltip">
+                                Move
+                                <span class="tooltip-text">ROS rank against his rank so far this season. Up means projected to finish higher.</span>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="table-header-tooltip align-right">
+                                Buy/Sell
+                                <span class="tooltip-text">Buy: projected to move inside the startable line. Sell: projected to drop outside it.</span>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="inSeasonBody"></tbody>
+            </table>
+        </div>
+
+        <p class="tscore-credit">Data: <a href="https://github.com/nflverse/nflverse-data" target="_blank" rel="noopener noreferrer">nflverse</a> player stats, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>; expected fantasy points from <a href="https://github.com/ffverse/ffopportunity" target="_blank" rel="noopener noreferrer">ffopportunity</a> by Joe Sydlowski and Tan Ho, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>. T-Score projections are derived from this data and shared under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>
+    </div>
+</div>
+
     <!-- TAB: THE RESEARCH -->
-<div id="researchTab" class="tab-content active">
+<div id="researchTab" class="tab-content">
     <div class="article-content">
 
         <!-- 2026 WR Section -->

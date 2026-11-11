@@ -34,7 +34,7 @@
 //   * Middle number (v2.8.x -> v2.9.0): when this file's own behavior changes -- the caching
 //     strategy, what works offline, how old caches are cleared -- as v2.8.0 marked the strategy
 //     change above. App features don't move it; they go in CHANGELOG.md and the apps' footer versions.
-const CACHE_NAME = 'draft-strategist-v2.9.18';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.9.19';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -129,6 +129,8 @@ const PRECACHE_ASSETS = [
     '/t-score/',
     '/t-score/index.html',
     '/js/tscore/main.js',             // the T-Score page's script (refactor 4B; was inline) -> shared names, html, keys
+    '/js/tscore/inSeason.js',         // T1: the In-Season tab (fetches the published sheet, draws, saves a copy)
+    '/js/tscore/inSeasonParse.js',    // T1: reads the In-Season CSVs by header name (pure)
     '/lineup/',
     '/lineup/index.html',
     '/js/mls/main.js',                // the Lineup page's entry point (refactor 3A; was lineup/mls.js)

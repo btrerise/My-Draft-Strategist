@@ -19,7 +19,7 @@ test.beforeEach(({}, info) => test.skip(info.project.name !== 'phone', 'measures
 // Controls allowed under 48x48px, each with its reason (the selector the control matches).
 const ALLOW = [
     // Not targets of their own.
-    { sel: '[data-inline-link], .mls-scoreboard-credit a', why: "a link inside a sentence (WCAG 2.5.8's inline exception)" },
+    { sel: '[data-inline-link], .mls-scoreboard-credit a, .tscore-credit a', why: "a link inside a sentence (WCAG 2.5.8's inline exception)" },
     // Left as they are by the card.
     { sel: '.lineup-slot .swap-btn, .lineup-slot .lock-btn', why: "the Lineup row's swap and lock, stacked on phones: S32 redoes the rows and gives them room (card M2)" },
     // Can't carry an invisible area.

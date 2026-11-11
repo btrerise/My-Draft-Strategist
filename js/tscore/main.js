@@ -15,6 +15,7 @@ import { delegate } from '../shared/ui/delegate.js';
 import { shareSite } from '../shared/ui/share.js';
 import { migrateKeyNames, deleteOldKeyNames } from '../shared/storage/keyMigration.js';
 import { getFreshness } from '../shared/freshness.js';
+import { initInSeason, refreshInSeason, switchInSeasonPos, toggleBuySellOnly } from './inSeason.js';
 
 // Refactor chunk 6B: copy the T-Score cache keys from their pre-6B names (mds_tscore_cache*)
 // before the DOMContentLoaded handler below reads them, then (6C) delete the old copies. Runs at
@@ -165,6 +166,8 @@ async function refreshTScoreData(btn) {
     const origText = btn ? btn.innerHTML : '';
     if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; btn.innerHTML = 'Refreshing…'; }
 
+    // The In-Season tab (improvements T1) fetches its own sheet alongside; it draws its own status and errors.
+    const inSeason = refreshInSeason();
     try {
         const [wrPlayers, rbPlayers] = await Promise.all([fetchTScoreSheet('wr'), fetchTScoreSheet('rb')]);
 
@@ -194,6 +197,7 @@ async function refreshTScoreData(btn) {
         console.error(err);
         showToast(`Could not refresh T-Score data:\n${err.message}`, { isError: true });
     } finally {
+        await inSeason;
         if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = origText; }
     }
 }
@@ -205,6 +209,8 @@ async function refreshTScoreData(btn) {
 // <script defer> and js/shared/). This module runs after both, so the wait is no longer needed,
 // but it keeps the render at the same moment.
 document.addEventListener('DOMContentLoaded', () => {
+    initInSeason(); // the In-Season tab: its saved copy now, the sheet's latest when it arrives (improvements T1)
+
     const cachedUpdatedAt = localStorage.getItem(KEYS.tscore.cacheUpdated);
     if (cachedUpdatedAt) updateTscoreFreshnessLabel(cachedUpdatedAt);
 
@@ -221,6 +227,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+
+// The tab a visit opens on without a #tab in the address (improvements T1: In-Season during the season).
+const DEFAULT_TAB = 'inSeasonTab';
 
 function switchTab(tabId, skipHistory) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -274,15 +283,15 @@ window.addEventListener('popstate', (e) => {
     } else if (window.location.hash) {
         switchTab(window.location.hash.substring(1), true);
     } else {
-        switchTab('researchTab', true);
+        switchTab(DEFAULT_TAB, true);
     }
 });
 
 // Deep link: open the tab named in the URL hash on load (a reload, or a shared #top50Tab
-// link), else The Research. Waits for DOMContentLoaded, like the cached render above.
+// link), else In-Season (the default since improvements T1; The Research before). Waits for DOMContentLoaded, like the cached render above.
 // replaceState stamps this first entry with its tab so Back restores it.
 document.addEventListener('DOMContentLoaded', () => {
-    const initialTab = getTabFromHash(id => id) || 'researchTab';
+    const initialTab = getTabFromHash(id => id) || DEFAULT_TAB;
     switchTab(initialTab, true);
     history.replaceState({ tab: initialTab }, '');
 
@@ -332,6 +341,9 @@ const clickActions = {
     switchTab() { switchTab(this.dataset.tab, this); },
     switchPosition() { switchPosition(this.dataset.pos, this.dataset.tab); },
     refreshTScoreData() { refreshTScoreData(this); },
+    // The In-Season tab's WR / RB / TE and "Buy & Sell only" (improvements T1)
+    switchInSeasonPos() { switchInSeasonPos(this.dataset.pos); },
+    toggleBuySellOnly() { toggleBuySellOnly(this); },
     // "Share this site" (drawer) and the line at the end of The Research: improvements K2
     shareSite() { shareSite(this.dataset.share); },
 };

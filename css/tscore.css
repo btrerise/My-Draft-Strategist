@@ -342,3 +342,69 @@
     font-size: 0.85rem;
     color: var(--text-muted);
 }
+
+/* The In-Season tab (improvements T1): the status line and "Buy & Sell only" above the table, the Move arrows, the
+   Buy and Sell chips, the plain message for a sheet that can't be read, and the data credit. */
+.tscore-inseason-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin: 0 0 1rem;
+}
+.tscore-inseason-status {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.tscore-inseason-tools .tscore-buysell-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+.tscore-inseason-message {
+    margin: 0 0 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.1);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-size: 0.9rem;
+}
+.tscore-inseason-message[hidden],
+.data-table-wrapper[hidden] { display: none; }
+.tscore-inseason-empty {
+    color: var(--text-muted);
+    text-align: center;
+}
+.tscore-move {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-weight: 700;
+}
+.tscore-move.is-up { color: #10b981; }
+.tscore-move.is-down { color: #ef4444; }
+.tscore-move.is-flat { color: var(--text-muted); font-weight: 400; }
+.tscore-chip { padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+.tscore-chip-buy { color: #10b981; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); }
+.tscore-chip-sell { color: #ef4444; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); }
+.tscore-inseason-note {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin: 0 0 1rem;
+}
+.tscore-inseason-terms {
+    margin: 0 0 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.tscore-inseason-terms li { margin-bottom: 0.35rem; }
+.tscore-credit {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+.tscore-credit a { color: inherit; text-decoration: underline; }
+/* Links inside the credit sentence: WCAG 2.5.8's inline exception. Their 48px areas (css/base.css, TOUCH TARGETS)
+   would cover each other on a phone's wrapped lines, so they keep their text's size. */
+.tscore-credit a::after { content: none; }

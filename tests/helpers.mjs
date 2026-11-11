@@ -116,8 +116,11 @@ export async function expectClean(page, { errors }) {
  * produced errors -- so a broken import reports the 404 rather than a confusing
  * "showTab is not a function" further down the test.
  */
-export async function openApp(page, path) {
+export async function openApp(page, path, { beforeGoto } = {}) {
     const state = await preparePage(page);
+    // A spec's own routes for requests the page makes while it loads (T-Score's In-Season sheet, improvements T1):
+    // added after preparePage's, so they win over its catch-all abort.
+    if (beforeGoto) await beforeGoto(page);
     await page.goto(path);
     await page.waitForLoadState('networkidle');
     await expectClean(page, state);
@@ -127,7 +130,7 @@ export async function openApp(page, path) {
 // Tab ids per page, in nav order. Kept here so a renamed tab fails loudly in every spec.
 export const MDS_TABS = ['setup', 'tracker', 'team', 'board', 'guide'];
 export const MLS_TABS = ['setup', 'roster', 'lineup', 'scoreboard', 'scout', 'guide'];
-export const TSCORE_TABS = ['researchTab', 'top50Tab', 'valuesTab', 'avoidsTab', 'sleepersTab', 'tab-2024'];
+export const TSCORE_TABS = ['inSeasonTab', 'researchTab', 'top50Tab', 'valuesTab', 'avoidsTab', 'sleepersTab', 'tab-2024'];
 
 /**
  * Calls a function the page's app module exports (js/mds/main.js on /, js/mls/main.js on /lineup/)
@@ -273,3 +276,25 @@ export async function fetchMarketValue(page) {
     await page.click('#scoutTab #fetchMarketValueBtn');
 }
 
+
+// --- T-Score's In-Season sheet (improvements T1) ---
+// The page fetches four published CSVs from one Google Sheet on load (js/tscore/inSeason.js, IN_SEASON_URLS): gid 0
+// WR, 1 RB, 2 TE, 3 Model Weights. preparePage aborts them like every other outside request; stubInSeasonSheets
+// answers them from tests/fixtures/tscore-inseason/ (a copy of the real sheet's format), or from `bodies` (a CSV
+// string, or a number for an HTTP status) per tab. Pass it as openApp's beforeGoto.
+export const IN_SEASON_SHEET_RE = /^https:\/\/docs\.google\.com\/spreadsheets\/d\/e\/2PACX-1vRr7BzWe[^/]*\/pub\?/;
+const IN_SEASON_GIDS = { 0: 'wr', 1: 'rb', 2: 'te', 3: 'weights' };
+export const inSeasonFixture = (tab) => readFileSync(new URL(`./fixtures/tscore-inseason/${tab}.csv`, import.meta.url), 'utf8');
+
+export async function stubInSeasonSheets(page, bodies = {}) {
+    const requested = [];
+    await page.route(IN_SEASON_SHEET_RE, (route) => {
+        const tab = IN_SEASON_GIDS[new URL(route.request().url()).searchParams.get('gid')];
+        requested.push(tab);
+        const body = tab in bodies ? bodies[tab] : inSeasonFixture(tab);
+        if (body === null) return route.abort();
+        if (typeof body === 'number') return route.fulfill({ status: body, body: '' });
+        return route.fulfill({ status: 200, contentType: 'text/csv', body });
+    });
+    return requested;
+}
