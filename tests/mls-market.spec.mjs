@@ -37,6 +37,7 @@ test('a saved LeagueLogs market source becomes FantasyCalc, and the fetch works'
     await expect(page.locator('#attributionLink')).toBeVisible(); // the credit stays in view, by Find Trade Targets
     await openMarketSource(page);
     await expect(page.locator('#fantasycalcSpecificControls')).toBeVisible();
+    await expect(page.locator('label[for="marketFileInput"]')).toHaveText('Upload a market file (KTC or FantasyCalc, .csv or .xlsx)');
     await expect(page.locator('#attributionLink')).toHaveAttribute('href', 'https://fantasycalc.com');
     await expect(page.locator('#attributionBrand')).toHaveText('FantasyCalc');
 

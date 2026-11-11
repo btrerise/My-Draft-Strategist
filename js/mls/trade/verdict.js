@@ -337,7 +337,7 @@ import { dualHeadline, dualVerdictNumbers, qbMarketNoteHTML, SF_QB_NOTE, superfl
             const many = picks.length > 1;
             unmatchedNote += State.marketRankings.length > 0
                 ? `<div class="trade-verdict-note" data-picks-unvalued>${names} ${many ? "aren't" : "isn't"} in the Market Consensus data, so this total is missing ${many ? 'them' : 'it'}.</div>`
-                : `<div class="trade-verdict-note" data-picks-unvalued>${names} ${many ? 'need' : 'needs'} market values, so this total is missing ${many ? 'them' : 'it'}.${marketFetchFailed() ? '' : ' Fetch them in Trade Finder (below).'}</div>`;
+                : `<div class="trade-verdict-note" data-picks-unvalued>${names} ${many ? 'need' : 'needs'} market values, so this total is missing ${many ? 'them' : 'it'}.${marketFetchFailed() ? '' : ' Turn on Auto-fetch market values (Value settings, above), or fetch them in Trade Finder (below).'}</div>`;
         }
 
         let verdictClass, verdictText;

@@ -277,6 +277,16 @@ test.describe('Trade Analyzer: market values on Analyze', () => {
         await expect(marketBanner(page)).toHaveCount(0);
         await expect(failLine(page)).toHaveCount(0);
         expect(asked).toEqual([]);
+        // With a pick in the trade, the note points back at the switch as well as Trade Finder.
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.leagues.find(l => l.leagueId === State.activeLeagueId).leagueType = 'dynasty';
+        });
+        await setTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase", '2027 1st']);
+        await analyze(page);
+        await expect(page.locator('#tradeOutput [data-picks-unvalued]').first()).toHaveText('2027 1st needs market values, so this total is missing it. Turn on Auto-fetch market values (Value settings, above), or fetch them in Trade Finder (below).');
+        await setTrade(page, ['Bijan Robinson'], ["Ja'Marr Chase"]);
+        expect(asked).toEqual([]);
         // The choice is saved.
         await page.reload();
         await page.waitForLoadState('networkidle');

@@ -10319,3 +10319,22 @@ are. The four, each checked against the one it replaces:
   Guide's longer Trade Analyzer step (rounds 1 and 3).
 The size changes match what this container predicted (the Guide 46px and 138px taller, Scout about 357px shorter).
 If the mirrors fail like this again: re-run the failed job from the Actions tab when status.canonical.com is green.
+
+### S38, round 5: a second review as a user; three wording fixes (owner: "Yes")
+
+Every state again at 390 and 1280px, after rounds 3 and 4. Nothing misleading left; three small things fixed:
+1. With the switch off and a pick in the trade, the note said only "Fetch them in Trade Finder (below)" under the
+   switch the user had just turned off. Now: "Turn on Auto-fetch market values (Value settings, above), or fetch them
+   in Trade Finder (below)." (`js/mls/trade/verdict.js`).
+2. The switch's description, four lines on a phone, is shorter: "Analyze Trade and Find Trade Targets fetch
+   FantasyCalc's values for this league when they're missing or over 3 hours old. A market file you uploaded is never
+   replaced."
+3. Inside Trade Finder's opened Market source, the file chooser has a label: "Upload a market file (KTC or
+   FantasyCalc, .csv or .xlsx)".
+Left as they are, with the owner's agreement: the Market source summary wraps by one word on a phone for the longer
+formats ("… · Full / PPR"), and a valued pick's row shows the same number twice (its value by your rankings is the
+market's; the line under the rows says so). Seen, not from this card: the "Choose In-Season rankings" hint under every
+verdict in a dynasty league without an In-Season set pushes the rows down on phones.
+- Tests: the note's wording with the switch off, and the label, in `mls-trade-picks-market.spec.mjs` and
+  `mls-market.spec.mjs`. No screenshot shows these (the fold and Value settings are closed; no screenshot analyzes a
+  trade), so no baselines are re-taken.

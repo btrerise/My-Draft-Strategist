@@ -1376,7 +1376,7 @@
                 <div class="toggle-row">
                     <div class="toggle-info">
                         <label class="toggle-title" for="tradeAutoMarketToggle">Auto-fetch market values</label>
-                        <span class="toggle-desc">Analyze Trade and Find Trade Targets get FantasyCalc's values for this league's format when none are loaded or they're over 3 hours old. A market file you uploaded is never replaced.</span>
+                        <span class="toggle-desc">Analyze Trade and Find Trade Targets fetch FantasyCalc's values for this league when they're missing or over 3 hours old. A market file you uploaded is never replaced.</span>
                     </div>
                     <input type="checkbox" id="tradeAutoMarketToggle" class="toggle-switch" checked data-action="updateTradeSettingChecked" data-setting="autoMarket">
                 </div>
@@ -1416,8 +1416,11 @@
          want. The summary names the format (applyMarketSettingsToUI, js/mls/settings.js), as on the Roster tab. -->
     <details id="marketSourceSettings" class="mls-autofetch-settings mb-2">
         <summary class="chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg><span class="mls-autofetch-settings-label">Market source</span> <span id="marketSourceSummary" class="mls-autofetch-settings-values"></span></summary>
-    <!-- Option A: Upload -->
-    <input type="file" id="marketFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls" aria-label="Upload Market rankings from KTC or FantasyCalc">
+    <!-- Option A: Upload. Labeled since it sits inside the fold (S38, round 5: "Choose File" alone didn't say what for). -->
+    <div class="input-group">
+        <label for="marketFileInput">Upload a market file (KTC or FantasyCalc, .csv or .xlsx)</label>
+        <input type="file" id="marketFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls" aria-label="Upload Market rankings from KTC or FantasyCalc">
+    </div>
     
     <hr class="card-divider">
     <div class="divider-text">OR PULL LIVE MARKET VALUE</div>
