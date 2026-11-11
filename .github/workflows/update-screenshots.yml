@@ -3,16 +3,24 @@
 # visual change"). Cloud sessions can tell which PNGs a change touches but can't draw CI's pixels (their image has
 # other font rules), so before this the first CI run existed only to produce the new PNGs.
 #
-# Two ways to start it, on any branch but main:
-#   - Actions > Update screenshots > Run workflow, choosing the branch (once this file is on main), or
-#   - push a commit whose message contains "[update screenshots]" (works on any branch that has this file).
-# It never approves anything: whoever started it looks at the PNGs in the commit it adds and checks they're the ones
-# the change was meant to touch. A commit pushed with the workflow's own token starts no other workflow, so this
+# Two ways to start it, on any branch but main, each naming the PNGs the change is meant to touch (paths under
+# tests/baselines/linux/, separated by spaces):
+#   - push a commit whose message contains "[update screenshots: desktop/mls-league-scout.png phone/mls-league-scout.png]"
+#     (works on any branch that has this file), or
+#   - Actions > Update screenshots > Run workflow, choosing the branch and filling in the list (once this file is on main).
+# The list is the guard (owner, 2026-11-11): if any other screenshot changed, the job fails and commits nothing, so an
+# unintended visual change stops here instead of becoming a baseline. A listed PNG that didn't change is only noted.
+# It still approves nothing: whoever started it looks at the PNGs in the commit it adds. A commit pushed with the workflow's own token starts no other workflow, so this
 # can't loop, and `check` runs when the pull request is opened or next pushed to.
 name: Update screenshots
 
 on:
   workflow_dispatch:
+    inputs:
+      expected:
+        description: "The PNGs this change is meant to touch, under tests/baselines/linux/, separated by spaces"
+        required: true
+        type: string
   push:
     branches-ignore: [main]
 
@@ -27,7 +35,7 @@ jobs:
   update:
     if: >-
       github.ref_name != 'main' &&
-      (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[update screenshots]'))
+      (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[update screenshots:'))
     # The same runner as check.yml: the baselines depend on the OS's fonts.
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -54,6 +62,42 @@ jobs:
       # Rewrites only the PNGs whose comparison fails (more than 10 pixels, playwright.config.mjs).
       - name: Re-take the screenshots that changed
         run: npx playwright test visual.spec.mjs --update-snapshots=changed --trace off
+
+      # The guard: only the PNGs named when the workflow was started may change.
+      - name: Only the expected screenshots changed
+        env:
+          EXPECTED_INPUT: ${{ inputs.expected }}
+        run: |
+          if [ -n "$EXPECTED_INPUT" ]; then
+            expected="$EXPECTED_INPUT"
+          else
+            expected="$(git log -1 --format=%B | tr '\n' ' ' | sed -n 's/.*\[update screenshots:\([^]]*\)\].*/\1/p')"
+          fi
+          expected="$(echo "$expected" | tr ', ' '\n\n' | sed '/^$/d' | sort -u)"
+          if [ -z "$expected" ]; then
+            echo "::error::No screenshots were named. Use [update screenshots: desktop/a.png phone/a.png] in the commit message."
+            exit 1
+          fi
+          git add -A baselines
+          changed="$(git diff --cached --name-only -- baselines | sed 's#^tests/baselines/linux/##' | sort -u)"
+          unexpected="$(comm -23 <(echo "$changed" | sed '/^$/d') <(echo "$expected"))"
+          unchanged="$(comm -13 <(echo "$changed" | sed '/^$/d') <(echo "$expected"))"
+          if [ -n "$unchanged" ]; then
+            { echo "Named but not changed (10 pixels or fewer differ, or the name is wrong):"; echo "$unchanged" | sed 's/^/- /'; echo; } | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -n "$unexpected" ]; then
+            { echo "Screenshots that changed without being named. Nothing was committed:"; echo "$unexpected" | sed 's/^/- /'; } | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "::error::Unexpected screenshot changes: $(echo $unexpected). Find out why before accepting them (the PNGs are in this run's artifact)."
+            exit 1
+          fi
+
+      # What the run drew, when the guard stopped it: the PNGs to look at.
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: retaken-screenshots
+          path: tests/baselines/linux/
+          retention-days: 7
 
       - name: Commit the changed baselines
         run: |

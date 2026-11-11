@@ -10297,3 +10297,10 @@ but before the pull request rather than from a failed run: `.github/workflows/up
 Started by "[update screenshots]" in a commit message (any branch but main that has the file) or from the Actions tab.
 Steps in docs/TESTING.md ("Cloud sessions: let CI re-take them before the pull request") and a line in CLAUDE.md.
 Tooling and docs only; no `CACHE_NAME` bump.
+
+**The guard (owner, 2026-11-11: "CI will still do its actual job in catching problems?").** As first written the
+workflow re-took every PNG that differed, intended or not, and the screenshot check would then pass. Now the PNGs must
+be named when it's started (`[update screenshots: desktop/a.png phone/a.png]`, or the dispatch input): any other
+changed screenshot fails the job with nothing committed, and its renders are in the `retaken-screenshots` artifact. A
+named PNG that didn't change is only noted. `check` itself is unchanged. The first run of the workflow (43044251160,
+before the guard) failed at `playwright install`: the runner couldn't resolve Ubuntu's package mirror, nothing of ours.

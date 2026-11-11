@@ -50,8 +50,9 @@ If the image moves ahead again, the tests launch the preinstalled one by themsel
 still can't match in a cloud session: the image adds font rules CI doesn't have, and `visual.spec.mjs` fails with one
 message saying so. Compare main and your branch in the same container ("When your machine can't reproduce the
 baselines" in `docs/TESTING.md`), then have CI re-take the changed ones before the pull request: a commit message
-containing `[update screenshots]` starts `.github/workflows/update-screenshots.yml`, which commits them to your branch
-("Cloud sessions: let CI re-take them" in `docs/TESTING.md`). Check its commit holds only the PNGs you predicted. `cd tests && node render-env.mjs` shows the browser and fonts.
+containing `[update screenshots: desktop/x.png phone/x.png]` (the PNGs you predicted) starts
+`.github/workflows/update-screenshots.yml`, which commits them to your branch, or fails and commits nothing if any
+other screenshot changed ("Cloud sessions: let CI re-take them" in `docs/TESTING.md`). `cd tests && node render-env.mjs` shows the browser and fonts.
 Baselines are tied to Playwright 1.63.0 on Ubuntu 24.04 with CI's fonts (`tests/render-env.mjs`); upgrading either means
 re-taking all of them ("Upgrading Playwright or the CI runner" in `docs/TESTING.md`).
 

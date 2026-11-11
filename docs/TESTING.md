@@ -167,12 +167,18 @@ something looks:
 visual change cost a red CI run just to get CI's pixels). `.github/workflows/update-screenshots.yml` runs
 `visual.spec.mjs` on CI's renderer with `--update-snapshots=changed` and commits the PNGs that changed to your branch.
 1. Find the PNGs your change touches, as below (main and your branch rendered in the same container, `npm run pxdiff`).
-2. Start the workflow on your branch once the code is final: push a commit whose message contains
-   `[update screenshots]` (your last real commit, never an empty one), or run "Update screenshots" from the Actions
-   tab for the branch (needs the file on main).
-3. When it finishes, `git pull`, and check its commit: exactly the PNGs you predicted, each different only where your
-   change is (open them). Anything else it re-took is a finding to explain, not a baseline to keep. List them in LOG.
-4. Then open the pull request: `check` runs on the new baselines and should be green the first time.
+2. Start the workflow on your branch once the code is final, **naming those PNGs** (paths under
+   `tests/baselines/linux/`): push a commit whose message contains, on one line,
+   `[update screenshots: desktop/mls-league-scout.png phone/mls-league-scout.png]` (your last real commit, never an
+   empty one), or run "Update screenshots" from the Actions tab for the branch with the same list (needs the file on
+   main).
+3. **The list is the guard.** If any screenshot you didn't name changed, the job fails and commits nothing: that's an
+   unintended visual change (or a wrong prediction) to find and explain, not a baseline to accept. Its PNGs are in the
+   run's `retaken-screenshots` artifact. Never add a name to the list just to get past it.
+4. When it succeeds, `git pull` and open each PNG in its commit: different only where your change is. List them in LOG.
+5. Then open the pull request: `check` runs on the new baselines and should be green the first time. Do it in this
+   order: a commit the workflow pushes doesn't start `check`, so on a pull request that's already open, push one more
+   real commit afterwards.
 It never runs on main, and it doesn't replace looking at the images.
 
 **When your machine can't reproduce the baselines** (Claude Code cloud sessions since 2026-10-03, whose image adds
