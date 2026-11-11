@@ -33,8 +33,10 @@ While iterating, run only what you touched (a minute or two), and push:
 cd tests && node ../scripts/check-precache.mjs && node --test && npx playwright test <spec> …
 ```
 
-Run the full suite (about 20 minutes in a cloud session) once, before your card's last push; CI runs it again on the
-pull request. See "While iterating" in `docs/TESTING.md`.
+Run the full suite (about 20 minutes in a cloud session) **once per card: when the owner asks for the pull request**,
+before that push. Not at the end of a round, and not again after it has run: every other push, including rounds the
+owner adds after the pull request is open, gets only the checks above, and CI runs the full suite on the pull request.
+See "While iterating" in `docs/TESTING.md`.
 
 ```sh
 cd tests && npm ci && npm run check   # check-precache + node --test + Playwright (smoke, features, screenshots)

@@ -10231,3 +10231,10 @@ asked whether users would know what to do with old values that look like an uplo
 - Tests: a Find Trade Targets test in `mls-trade-picks-market.spec.mjs` (offline message, one fetch with the button
   busy, no second request from it or from Analyze, a failed refresh, the switch off); `mls-trade-impact.spec.mjs`'s
   three-day-old line updated. `CACHE_NAME` stays v2.9.18 (once per branch). No screenshot shows either change.
+
+### S38: rule 7 made exact (owner, 2026-11-11)
+
+This session ran the full suite at the end of round 1 and started it again after round 2 (stopped). The owner: the
+full check runs once, before the final push, which is when he asks for the pull request. Reworded in `CLAUDE.md`
+("Before pushing"), `docs/TESTING.md` ("The checks") and the runbook's rule 7: every push before that gets only the
+checks for what changed; after it has run, the same again, and CI covers the rest. Docs only, no `CACHE_NAME` bump.
