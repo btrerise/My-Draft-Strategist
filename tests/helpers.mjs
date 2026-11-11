@@ -259,3 +259,17 @@ export async function seedSimRandom(page) {
     });
     return workerUrls;
 }
+
+/**
+ * Trade Finder's market file, format controls and Fetch Market Value are folded under "Market source" (improvements
+ * S38, round 4). Opens it if it's closed; fetchMarketValue() then taps Fetch Market Value.
+ */
+export async function openMarketSource(page) {
+    const closed = page.locator('#marketSourceSettings:not([open]) > summary');
+    if (await closed.count()) await closed.click();
+}
+export async function fetchMarketValue(page) {
+    await openMarketSource(page);
+    await page.click('#scoutTab #fetchMarketValueBtn');
+}
+

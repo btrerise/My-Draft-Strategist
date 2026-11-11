@@ -77,12 +77,14 @@ export function applyMarketSettingsToUI() {
 
     // The folded Auto-Fetch settings' summary on the ROS card (improvements F10, round 2):
     // "FantasyCalc · Redraft · 1QB · Full PPR" (and "· TEP").
-    const summaryEl = document.getElementById('rosMarketSummary');
-    if (summaryEl) {
-        const ppr = { '1': 'Full PPR', '0.5': 'Half PPR', '0': 'Standard' }[String(s.ppr)] || 'PPR';
-        summaryEl.textContent = ['FantasyCalc', s.type === 'dynasty' ? 'Dynasty' : 'Redraft',
-            String(s.qbs) === '2' ? 'Superflex' : '1QB', ppr, ...(s.tep ? ['TEP'] : [])].join(' · ');
-    }
+    // ... and the same line on Trade Finder's folded Market source (improvements S38, round 4).
+    const ppr = { '1': 'Full PPR', '0.5': 'Half PPR', '0': 'Standard' }[String(s.ppr)] || 'PPR';
+    const summary = ['FantasyCalc', s.type === 'dynasty' ? 'Dynasty' : 'Redraft',
+        String(s.qbs) === '2' ? 'Superflex' : '1QB', ppr, ...(s.tep ? ['TEP'] : [])].join(' · ');
+    ['rosMarketSummary', 'marketSourceSummary'].forEach(id => {
+        const summaryEl = document.getElementById(id);
+        if (summaryEl) summaryEl.textContent = summary;
+    });
 
     const brandEl = document.getElementById('attributionBrand');
     const attrLink = document.getElementById('attributionLink');

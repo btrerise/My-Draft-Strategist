@@ -4,7 +4,7 @@
 // FantasyCalc is stubbed here: since improvements K8 the app asks the site's cached copy,
 // /api/fantasycalc (functions/api/fantasycalc.js, not run by serve.mjs), never api.fantasycalc.com.
 import { test, expect } from '@playwright/test';
-import { preparePage, expectClean, showTab } from './helpers.mjs';
+import { preparePage, expectClean, showTab, fetchMarketValue, openMarketSource } from './helpers.mjs';
 
 test('a saved LeagueLogs market source becomes FantasyCalc, and the fetch works', async ({ page }) => {
     const state = await preparePage(page);
@@ -31,11 +31,16 @@ test('a saved LeagueLogs market source becomes FantasyCalc, and the fetch works'
         await expect(page.locator(`${id} option`)).toHaveText(['FantasyCalc.com (Trade Value)']);
     }
     await showTab(page, 'scout');
+    // Folded under "Market source" (improvements S38, round 4), its summary naming the saved format.
+    await expect(page.locator('#fantasycalcSpecificControls')).toBeHidden();
+    await expect(page.locator('#marketSourceSummary')).toHaveText('FantasyCalc · Dynasty · Superflex · Half PPR · TEP');
+    await expect(page.locator('#attributionLink')).toBeVisible(); // the credit stays in view, by Find Trade Targets
+    await openMarketSource(page);
     await expect(page.locator('#fantasycalcSpecificControls')).toBeVisible();
     await expect(page.locator('#attributionLink')).toHaveAttribute('href', 'https://fantasycalc.com');
     await expect(page.locator('#attributionBrand')).toHaveText('FantasyCalc');
 
-    await page.click('#scoutTab #fetchMarketValueBtn');
+    await fetchMarketValue(page);
     await expect(page.locator('#marketSuccessMsg')).toContainText('Pulled Successfully');
     // The other saved settings were kept: dynasty, superflex, half PPR, TE premium.
     // TE premium goes as FantasyCalc's tep=te+ (it never read the isTEP the app used to send).

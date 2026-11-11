@@ -10266,3 +10266,23 @@ tap. Misleading or clunky, all four fixed here on the owner's yes:
 - Screenshots: none shows these states (Value settings is folded; no screenshot analyzes a trade). The two Guide PNGs
   from round 1 still change (the switch's new name is in that text).
 - **Noted for a follow-up** (docs/TESTING.md, Small polish): fold Trade Finder's market source controls.
+
+### S38, round 4: Trade Finder's market source folded (owner: "take care of it" after the other fixes)
+
+From my review as a user: with Find Trade Targets fetching by itself, the card still opened with the file chooser,
+Market Source, League Type, QB Format, PPR, TE Premium and Fetch Market Value before the button most people need.
+- `lineup/index.html`: those controls are inside `<details id="marketSourceSettings">` ("Market source", closed, with
+  the format on its summary line: "FantasyCalc · Redraft · 1QB · Full PPR"), the same pattern as the Roster tab's
+  Auto-Fetch settings (F10 round 2). The loaded-values line stays above it, the success message below it. **The
+  "Powered by FantasyCalc" mark moved** from under Fetch Market Value to under Find Trade Targets, so K8's credit
+  stays in view beside the report its values feed rather than inside the fold.
+- `js/mls/settings.js`: `applyMarketSettingsToUI` fills both summaries. `css/mls.css`: the label stays on one line.
+- Tests: `openMarketSource` and `fetchMarketValue` in `tests/helpers.mjs`, used by the four specs that tap the folded
+  controls; `mls-market.spec.mjs` checks the fold, its summary and that the credit is visible. The follow-up noted in
+  round 3 is removed from docs/TESTING.md. check-precache, 554 unit tests and the affected specs pass (150). The full
+  suite isn't re-run (rule 7).
+- **Screenshots**, main against this branch in this container (`RENDER_ENV=any`, `npm run pxdiff`): four PNGs change,
+  and CI will fail on exactly these on the pull request; its `-actual.png` files become the baselines.
+  - `desktop/mls-league-scout.png` (1280x1945 → 1280x1576 here) and `phone/mls-league-scout.png` (390x2214 → 390x1861):
+    Trade Finder is shorter, its market source folded and the mark under Find Trade Targets.
+  - `desktop/mls-league-guide.png` and `phone/mls-league-guide.png`: the Guide's longer Trade Analyzer step (round 1).

@@ -1411,6 +1411,11 @@
     
     <div id="marketMetaDisplay" class="status-badge-meta"></div>
     
+    <!-- Folded (improvements S38, round 4): Find Trade Targets and Analyze Trade fetch market values by themselves, so
+         the file, the format and Fetch Market Value are rarely needed and no longer come before the button most people
+         want. The summary names the format (applyMarketSettingsToUI, js/mls/settings.js), as on the Roster tab. -->
+    <details id="marketSourceSettings" class="mls-autofetch-settings mb-2">
+        <summary class="chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg><span class="mls-autofetch-settings-label">Market source</span> <span id="marketSourceSummary" class="mls-autofetch-settings-values"></span></summary>
     <!-- Option A: Upload -->
     <input type="file" id="marketFileInput" class="form-input file-input" accept=".csv, text/csv, .xlsx, .xls" aria-label="Upload Market rankings from KTC or FantasyCalc">
     
@@ -1467,13 +1472,7 @@
     
         <button id="fetchMarketValueBtn" class="btn btn-purple" data-action="fetchMarketValue">Fetch Market Value</button>
         
-        <div class="market-attribution">
-            <a href="https://fantasycalc.com" target="_blank" rel="noopener" id="attributionLink">
-                <span>Powered by</span>
-                <em id="attributionBrand">FantasyCalc</em>
-                <span class="dot-accent" aria-hidden="true"></span>
-            </a>
-        </div>
+    </details>
 
     <div id="marketSuccessMsg" class="success-feedback" role="status" style="display:none;">Market Data Loaded Successfully!</div>
 
@@ -1517,6 +1516,15 @@
     </div>
 
     <button id="findTradeTargetsBtn" class="btn btn-primary mt-2" data-action="runMarketDisconnectAnalysis">Find Trade Targets</button>
+
+        <!-- FantasyCalc's mark stays in view, by the button and the report its values feed (improvements K8's credit). -->
+        <div class="market-attribution">
+            <a href="https://fantasycalc.com" target="_blank" rel="noopener" id="attributionLink">
+                <span>Powered by</span>
+                <em id="attributionBrand">FantasyCalc</em>
+                <span class="dot-accent" aria-hidden="true"></span>
+            </a>
+        </div>
     
     <div id="marketDisconnectOutput" class="scout-output-container" aria-live="polite"></div>
 </section>

@@ -2690,6 +2690,7 @@ button.ir-slot-badge { font-family: inherit; line-height: inherit; cursor: point
     max-width: 100%;
 }
 .mls-autofetch-settings-label { font-weight: 600; color: var(--text-main); }
+#marketSourceSettings .mls-autofetch-settings-label { white-space: nowrap; } /* "Market source" stays on one line (S38) */
 .mls-autofetch-settings[open] > summary { padding-bottom: 0.75rem; }
 
 /* --- The Scoreboard's two halves and Who to root for (week/thisWeek.js, improvements S27) --- */
