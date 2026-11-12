@@ -11094,6 +11094,73 @@ in an invisible band above and below. In The Research's "The Data", a tap on the
 - Other T-Score specs call `showTScoreTab` and don't wait for the fade-in either. None checks opacity or visibility
   the way this one did, so none was affected.
 
+## S46 — When you last synced, on the Dashboard
+
+**User-visible effect.** Under **Sync All Leagues** and **Optimize All Lineups** on the Dashboard, a small centered line
+with a clock icon says when you last synced your Sleeper leagues: "Last synced 9:42 AM" (today), "Last synced yesterday
+8:15 PM", "Last synced Sun 8:15 PM" (within the last 6 days) or "Last synced Nov 9" (with the year when it isn't this
+year's), in the device's locale and time zone. Hovering shows the full date and time. It's muted grey normally and
+amber when it's old (below). A league whose last sync failed is named after it in red with an alert icon ("Second
+League's last sync failed"; two: "Last sync failed: A and B"; three or more: "Last sync failed in 3 leagues", all named
+in the hover text). On phones the failed part wraps under the time. With no Sleeper league synced yet (no leagues, or
+only manual / Draft Strategist hand-off leagues) there's no line. The Guide's legend line for the amber and red sync
+labels now also explains when this line turns amber.
+
+**Owner's choices (2026-11-12, from a sketch at 375 and 1280px; all four were the suggested options).**
+1. **Where:** under Sync All and Optimize All, not in the "need you" strip (which hides when nothing needs you).
+2. **Which time:** the most recent sync across your Sleeper leagues (manual and hand-off leagues don't count), naming
+   any league whose last sync failed.
+3. **Amber:** when a kickoff window starts within 3 hours and you haven't synced since 6 AM (local) that day; otherwise
+   once the newest sync is over 24 hours old. Kickoffs are the week's game times the app already loads
+   (`State.gameTimesByTeam`, grouped into windows by N2's `kickoffWindows`). With no game times (offline, ESPN down)
+   only the one-day rule applies.
+4. **Format:** today / yesterday / weekday within 6 days / date, as above.
+
+**What changed and where.**
+- `js/mls/leagues/lastSynced.js` (new, pure, in `PRECACHE_ASSETS`): `lastSyncedSummary(leagues, now, gameTimesByTeam)`
+  and its parts (`syncTimeText`, `staleReason`, `failedText`, `isSleeperLeague`), from each league's `lastSyncedAt` and
+  `lastSyncFailedAt`. No new storage key.
+- `js/mls/render/dashboard.js`: `renderLastSynced()` draws `#lastSyncedLine`. `js/mls/render/leagueCards.js`
+  (`renderLeagueCards`) calls it beside `renderLineupNeeds`, so it redraws with every Command Center render: Sync All,
+  Import All, the Draft Strategist hand-off, a single league's sync, and when the Dashboard is shown. No timer (the
+  card asked for none): the age is as of the last time the Dashboard drew.
+- `lineup/index.html`: the `<p id="lastSyncedLine" class="mls-last-synced" hidden>` after the two buttons.
+  `css/mls.css`: `.mls-last-synced` (centered flex row that wraps; colors from `.freshness-ok` / `.freshness-stale`
+  and `.sync-failed`).
+- `js/mls/legend.js`: the existing "Synced 3 days ago / Last sync failed" line's text says when the Dashboard's line
+  turns amber (same markup, so no new legend row). `tests/unit/badgeLegend.test.mjs`: `mls-last-synced-time` and
+  `mls-last-synced-failed` in ALLOWED beside `header-freshness` and `mls-ba-sync` ("where a freshness label sits").
+- `sw.js`: `CACHE_NAME` v2.10.3. CHANGELOG: a line under Lineup Strategist.
+
+**Tests.**
+- `tests/unit/lastSynced.test.mjs` (Chicago time zone, the Playwright clock): today, yesterday by the calendar, the
+  weekday, last week's date and another year's; a future time reads as today; manual / hand-off leagues ignored and
+  no line without a synced Sleeper league; the newest sync wins; the one-day rule; the kickoff rule (synced last night
+  or before 6 AM with noon's kickoff an hour away: amber; synced 6:30 AM: not; kickoff 3.5 hours away or already
+  started: the one-day rule); one, two and three failed leagues; a failed league that never synced.
+- `tests/mls-last-synced.spec.mjs` (fixed clock, Chicago): no leagues and a manual-only league give no line; after a
+  sync, "Last synced 11:00 AM" muted, its hover text and icon, right under the buttons; yesterday 8:15 PM (not amber);
+  last week ("Sep 8", amber) with "Second League's last sync failed" in red; Sync All brings both up to date and clears
+  the failure; at 375px the failed part wraps under the time, centered.
+
+**Screenshots.** Main and this branch rendered in this container (`RENDER_ENV=any`, `npm run pxdiff`): 4 of 44 PNGs
+change, re-taken by CI through the commit message:
+- `desktop/mls-league-setup.png`, `phone/mls-league-setup.png`: the Dashboard gains the line under the buttons
+  ("Last synced 4:00 PM": the fixed clock in CI's UTC), 24px taller.
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: the legend line's longer text (17px / 64px taller).
+
+CI's update-screenshots run committed exactly those four (11edd98); I opened them: the line sits centered under the
+buttons on the Dashboard, and only the legend text grew in the Guide.
+
+**Checks.** Full `npm run check` (once, before the last push): check-precache OK, 626 unit tests pass, 970 Playwright
+tests pass, 48 skipped. The 4 failures are `visual.spec.mjs`'s environment check (this container's fonts differ from
+CI's), as on main; the pxdiff comparison above stands in for it.
+
+**Left over.**
+- No timer, by the card: a Dashboard left open on a Sunday morning keeps its color until something redraws it (a tab
+  switch back, a sync, a lineup change).
+- If S45 (Settings page) merges, nothing here changes; the line stays beside Sync All.
+
 ## T1 follow-up — XFP/G and FPOE/G on the In-Season tab (owner, 2026-11-12)
 
 **Why they weren't there.** The owner asked why expected points weren't shown. They were cut in T1 because the first
@@ -11107,7 +11174,7 @@ tabs (columns F and G; Target share moves to H). The site reads columns by name,
 **What changed.** `parseInSeasonPlayers` reads optional `XFP/G` and `FPOE/G` (FPOE/G worked out as FP/G − XFP/G when
 only XFP/G is there); the In-Season table shows the two columns (header tooltips, FPOE/G signed with a real minus)
 only when the position's rows have XFP/G, so the page looks as before until the sheet has them, and a copy saved before
-them still draws. The Research's "Reading the In-Season Tab" gains a line for both. CHANGELOG line; CACHE_NAME v2.10.3.
+them still draws. The Research's "Reading the In-Season Tab" gains a line for both. CHANGELOG line; CACHE_NAME v2.10.4 (v2.10.3 was taken by S46 on main).
 
 **Tests.** The fixtures gain the two columns after FP/G with **made-up values** (FPOE/G from a fixed pattern, XFP/G =
 FP/G − FPOE/G): not real data, and never Late-Round's. Specs: the columns and their values; hidden when the sheet

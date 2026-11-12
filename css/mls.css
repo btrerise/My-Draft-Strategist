@@ -1818,6 +1818,12 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
    All is a one-line strip (the count, ✕, "Sync All again"), and each league's to-dos sit in its card: what to do, its
    first kickoff and the buttons that fix it, then its Sleeper changes, folded. Each item takes the Lineup tab's color
    for it (the injury warning's red, the IR badge's purple), so an activation reads the same in both places. */
+/* "Last synced 9:42 AM" under Sync All / Optimize All (improvements S46). Its colors are .freshness-ok / -stale and
+   .sync-failed (css/base.css); centered under the two buttons, the failed league after the time, wrapping on phones. */
+.mls-last-synced { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 0.9em; row-gap: 0.125rem; margin: -0.25rem 0 0.75rem; font-size: 0.85rem; text-align: center; }
+.mls-last-synced[hidden] { display: none; }
+.mls-last-synced > span { display: inline-flex; align-items: center; gap: 0.3em; }
+.mls-last-synced svg { flex: none; }
 .mls-needs-box { margin-bottom: 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); padding: 0.5rem 0.75rem; }
 .mls-needs-box[hidden] { display: none; }
 .mls-needs-head { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
