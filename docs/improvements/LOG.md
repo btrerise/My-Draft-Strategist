@@ -10583,3 +10583,21 @@ prompt; on asks once and alerts once inside the window, not before, not again af
 new Out; a 15-minute lead; Questionable alone and the stale line on and off; denied → toast, then title flash while
 hidden and back on `visibilitychange`; no API → toast; opened inside the window → checks at once; Playwright's fake
 timers: the timer fires at lead minutes before kickoff and then plans the next window).
+
+**Screenshots.** Found by rendering main and this branch in the same container (`RENDER_ENV=any`, `npm run pxdiff`):
+exactly four change, each because the Advanced Settings card is one row taller (the Starter Alerts switch, off; its
+options are hidden while off, so none of them shows): `desktop/mls-empty-setup.png`, `desktop/mls-league-setup.png`,
+`phone/mls-empty-setup.png`, `phone/mls-league-setup.png` (height +93px desktop, +168px phone). Nothing above the card
+moved (the first different row is the card's). Re-taken on CI by `update-screenshots.yml` from this card's commit.
+
+**Checked.** check-precache, `node --test` (584), `mls-starter-alert.spec.mjs` (16, both widths, 3 repeats), and the
+specs Sync All or the Settings card could touch (mls-best-available, mls-busy-spinner, mls-flex-choice,
+mls-league-cards, mls-lineup-needs, mls-top-available, touch-targets, focus-ring, backup, smoke, tooltips-onscreen).
+The full suite runs once, when the owner asks for the pull request.
+
+**Left over.**
+- For M10: one count for its nav badge and N2's title flash (`docs/TESTING.md`, Open follow-ups).
+- A `/lineup/` left open across weeks keeps last week's schedule until reloaded, so after Monday night there's no
+  window to check until the next visit (`docs/TESTING.md`, Open follow-ups; re-reading the week on a timer would go
+  beyond the owner's one refresh per window, so ask first).
+- Not tested on a real device: Safari's hidden-tab timers, and the notification's look on each OS.

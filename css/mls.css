@@ -2899,6 +2899,6 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
     gap: 0.5rem;
     font-size: 0.9rem;
 }
-.starter-alerts-lead select { width: auto; min-width: 9.5rem; }
+.starter-alerts-lead select { width: auto; min-width: 0; flex: 0 1 auto; }
 .starter-alerts-options .toggle-row-flush { margin: 0.25rem 0 0; }
 .starter-alerts-status { margin: 0; color: #f59e0b; } /* the stale-label amber (.freshness-stale) */
