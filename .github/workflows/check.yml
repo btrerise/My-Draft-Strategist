@@ -2,6 +2,11 @@
 # check-precache, the unit tests, and Playwright (smoke, feature specs, screenshots).
 # compare-css and pxdiff stay opt-in and don't run here. The tests stub every outside
 # request, so no secrets are needed.
+#
+# A pull request that changes only docs (improvements W1) skips everything after the first
+# step and passes in seconds; the list is in the `changes` step and in docs/TESTING.md, "The checks".
+# Never use `[skip ci]` or `paths-ignore` here: `check` is a required status on main, and a workflow
+# that doesn't run never reports it, so the pull request would wait forever.
 name: Checks
 
 on:
@@ -25,31 +30,96 @@ jobs:
       run:
         working-directory: tests
     steps:
+      # Depth 2: on a pull request this checks out GitHub's merge commit and its two parents, so the
+      # first parent (main's tip) against the merge commit is exactly what the pull request changes.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      # Docs-only pull requests (improvements W1, owner's list, 2026-11-12): every changed path is under
+      # docs/, or ends in .md and isn't under tests/, scripts/ or .github/. Anything else, a push to main
+      # (always the full suite, owner's choice), or anything this step can't tell runs everything.
+      # Renames and deletions count by both paths (--no-renames), so moving an app file into docs/ still
+      # runs the suite. A quoted path (unusual characters) matches nothing and runs the suite too.
+      - id: changes
+        name: Docs-only pull request?
+        working-directory: .
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          docs_only=false
+          files=""
+          if [ "$EVENT" != pull_request ]; then
+            reason="a $EVENT, not a pull request: pushes to main always run the full suite"
+          elif ! git rev-parse -q --verify HEAD^2 >/dev/null; then
+            reason="couldn't find the pull request's merge commit, so can't tell what changed"
+          elif ! files=$(git diff --name-only --no-renames HEAD^1 HEAD); then
+            reason="git diff failed, so can't tell what changed"
+          elif [ -z "$files" ]; then
+            reason="git diff listed no changed files"
+          else
+            others=""
+            while IFS= read -r f; do
+              case "$f" in
+                tests/*|scripts/*|.github/*) others="$others$f"$'\n' ;;
+                docs/*|*.md) ;;
+                *) others="$others$f"$'\n' ;;
+              esac
+            done <<< "$files"
+            if [ -z "$others" ]; then
+              docs_only=true
+              reason="every changed file is docs"
+            else
+              reason="these changed files aren't docs:"$'\n'"$(printf '%s' "$others" | sed -n '1,20p')"
+            fi
+          fi
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+          if [ "$docs_only" = true ]; then
+            title="Docs-only pull request: npm, Playwright and the checks are skipped"
+          else
+            title="Full suite runs"
+          fi
+          echo "$title ($reason)"
+          printf 'Changed files:\n%s\n' "${files:-(none listed)}"
+          {
+            echo "### $title"
+            echo
+            echo "Why: $reason" | sed '2,$s/^/- /'
+            echo
+            echo "<details><summary>Changed files</summary>"
+            echo
+            printf '%s\n' "${files:-(none listed)}" | sed -n '1,200s/^/    /p'
+            echo
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/setup-node@v7
+        if: steps.changes.outputs.docs_only != 'true'
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: tests/package-lock.json
 
       - run: npm ci
+        if: steps.changes.outputs.docs_only != 'true'
 
       # Cloud sessions have Chromium preinstalled in /opt/pw-browsers; CI doesn't.
       - id: browsers
+        if: steps.changes.outputs.docs_only != 'true'
         run: npx playwright install --with-deps chromium
 
       # Fails if Playwright's Chromium or the OS differs from what the screenshot baselines were made with
       # (tests/render-env.mjs), and prints both either way. The checks below still run.
       - name: Rendering environment matches the baselines
+        if: steps.changes.outputs.docs_only != 'true'
         run: node render-env.mjs
 
       - run: npm run check
-        if: ${{ !cancelled() && steps.browsers.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.browsers.outcome == 'success' && steps.changes.outputs.docs_only != 'true' }}
 
       # Screenshot diffs (expected, actual, diff PNGs) land in test-results/.
       - uses: actions/upload-artifact@v7
-        if: failure()
+        if: failure() && steps.changes.outputs.docs_only != 'true'
         with:
           name: playwright-results
           path: |

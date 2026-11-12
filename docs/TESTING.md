@@ -31,6 +31,16 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
   (ubuntu-24.04, Node 22, Playwright's own Chromium). When it fails, the run's `playwright-results` artifact has the
   HTML report and `test-results/`, which holds each failed screenshot's expected, actual and diff PNGs. No secrets
   are needed: the tests stub every outside request.
+- **CI, docs-only pull requests** (improvements W1, owner's list, 2026-11-12): `check`'s first step lists what the
+  pull request changes (`git diff --name-only --no-renames` between main's tip and GitHub's merge commit). When every
+  changed path is under `docs/`, or ends in `.md` and isn't under `tests/`, `scripts/` or `.github/`, it sets
+  `docs_only=true`, every later step is skipped, and `check` passes in seconds. Anything else runs the full suite as
+  before: an app file, `llms.txt`, `robots.txt` or `sitemap.xml` (the site serves them), a rename or deletion whose
+  old or new path isn't docs, or anything the step can't tell (no merge commit, a failed diff, a path with unusual
+  characters). **Pushes to `main` always run the full suite** (owner's choice). The run's summary says which way it
+  went and why, with the changed files. **Never use `[skip ci]` or `paths-ignore`** for this: branch protection
+  requires `check`, and a workflow that doesn't run never reports it, so the pull request would wait forever. A new
+  step in `check.yml` needs the same `if: steps.changes.outputs.docs_only != 'true'` as the others.
 - **CI, screenshots only:** `.github/workflows/update-screenshots.yml` (improvements S38) re-takes the baselines a
   change is meant to touch on CI's renderer and commits them to the branch, before the pull request. It must be told
   which PNGs to expect and fails, committing nothing, if any other screenshot changed. It doesn't replace `check`.
