@@ -10658,3 +10658,28 @@ screenshot changes.
 
 **Left over.** A notification center is in `docs/TESTING.md`'s Open follow-ups, for when there are several kinds of
 message worth keeping.
+
+### N2 round 4 — the owner's "user hat" review: six fixes (2026-11-12)
+
+The review (as a user, from renders at 390 and 1280px) found the card clear and the test button useful, and the Settings
+part clunky. The owner asked for all six fixes:
+1. **One box.** The options hung loose below the switch's box. Now `.toggle-group.starter-alerts` (css/mls.css) is the
+   box, and the options open inside it under a divider while on.
+2. **Less text.** The description is two lines ("Get an alert before kickoff when a starter in your Sleeper lineup
+   can't play or a slot is empty. Works while this page is open on a computer."); the hint under the drop-down is
+   shorter (inactives at 90 minutes, Questionable doesn't count, your leagues sync first, phones pause pages); the
+   status lines are shorter.
+3. **A small test button**, sized to its text (`btn-sm`), on the left.
+4. **A green bell** like the Headshots icon (`color: var(--primary-green)`, still `stroke="currentColor"`).
+5. **"1:00 PM" kept together** on the card (a no-break space in `kickoffLabel`; the test alert's title too).
+6. **The card alone when you're looking:** `notify()` skips the system notification when the tab is in view and its
+   window has focus (`document.hasFocus()`); elsewhere (another tab, or another app in front) it sends it, and the tab
+   name still flashes when the tab is hidden.
+
+**Tests.** `mls-starter-alert.spec.mjs` stubs `document.hasFocus` (`window.__focused`): the notification when you're in
+another app, the card alone when you're looking (and the kickoff time unbroken), the test alert after switching tabs.
+20 tests, both widths, 3 repeats; `node --test` (584); check-precache; touch-targets, focus-ring.
+
+**Screenshots.** The same four PNGs change again (the box, the shorter description, the green bell, all visible while
+off): `desktop/mls-empty-setup.png`, `desktop/mls-league-setup.png`, `phone/mls-empty-setup.png`,
+`phone/mls-league-setup.png`. Re-taken on CI from this round's commit.

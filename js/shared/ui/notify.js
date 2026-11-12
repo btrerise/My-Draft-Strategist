@@ -151,11 +151,15 @@ export function showPageAlert({ title, lines = [], action = null } = {}) {
 // title: plain text; lines: plain-text lines (the notification's body, one per line, and the card's list). tag: one
 // notification per tag (a newer one replaces it). url: the page a tap opens ('/lineup/', '/'). label: the flashing tab
 // name's short text. action: the card's button ({ label, run }). The card always shows. Resolves to how else it was
-// shown: 'notification' (the system's), 'page' (the card only, tab in view) or 'title' (the card, and the tab's name
-// flashing while it's hidden).
+// shown: 'notification' (the system's, when you're not looking at the page), 'page' (the card only: you're looking at
+// it) or 'title' (the card, and the tab's name flashing while it's hidden, with no notification permission).
 export async function notify({ title, lines = [], tag, url = '/', label = title, action = null } = {}) {
     if (typeof document !== 'undefined') showPageAlert({ title, lines, action });
     const hidden = typeof document !== 'undefined' && document.visibilityState !== 'visible';
+    // Already looking at the page (in view, its window in front): the card is enough (N2 round 4: both at once was
+    // redundant). Elsewhere: the system notification too.
+    const looking = !hidden && (typeof document.hasFocus !== 'function' || document.hasFocus());
+    if (looking) return 'page';
     if (notifyPermission() === 'granted') {
         try {
             const reg = await navigator.serviceWorker.ready;
@@ -167,7 +171,7 @@ export async function notify({ title, lines = [], tag, url = '/', label = title,
             console.warn('Notification failed; the alert is on the page instead.', e);
         }
     }
-    if (!hidden) return 'page';
+    if (!hidden) return 'page'; // in view, but another window in front: the card waits for you
     flashTitle(label);
     return 'title';
 }

@@ -34,7 +34,10 @@ async function stubNotifications(page, mode, answer = 'granted') {
         window.__asked = 0;
         // The tab's visibility, switched by setHidden() below.
         window.__hidden = false;
+        // Whether the browser window is in front (document.hasFocus): false = you're in another app, the page still in view.
+        window.__focused = true;
         Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (window.__hidden ? 'hidden' : 'visible') });
+        document.hasFocus = () => !window.__hidden && window.__focused;
         if (mode === 'missing') { delete window.Notification; return; }
         class FakeNotification { constructor() { throw new TypeError('Illegal constructor'); } }
         FakeNotification.permission = mode;
@@ -107,6 +110,8 @@ test.describe('Starter alerts', () => {
         // Chase is ruled Out on Sunday morning: the check's refresh (Sync All) picks it up.
         live.chase = 'Out';
         await page.clock.setFixedTime(at(KICK_1PM - 50 * MIN));
+        // You're in another app (the page in view behind it): the system notification, and the card waiting.
+        await page.evaluate(() => { window.__focused = false; });
         const result = await check(page);
         expect(result.how).toBe('notification');
         const sent = await notes(page);
@@ -117,6 +122,7 @@ test.describe('Starter alerts', () => {
         expect(sent[0].data).toEqual({ url: '/lineup/' });
         // The card on the page says the same, and its button opens the Dashboard's "lineups need you" box.
         const card = page.locator('#notifyPageAlert');
+        await page.evaluate(() => { window.__focused = true; });
         await expect(card).toBeVisible();
         await expect(card).toHaveAttribute('role', 'alert');
         await expect(card.locator('.notify-card-title')).toHaveText(sent[0].title);
@@ -210,18 +216,18 @@ test.describe('Starter alerts', () => {
     test('no Notification API (an iPhone tab): the toggle says so and the card stands in', async ({ page }) => {
         const { state } = await setup(page, { mode: 'missing', chase: 'Out', when: KICK_1PM - 2 * 60 * MIN });
         await toggle(page).check();
-        await expect(page.locator('#starterAlertsStatus')).toContainText("This browser can't show notifications here");
+        await expect(page.locator('#starterAlertsStatus')).toContainText("This browser can't show notifications.");
         await page.clock.setFixedTime(at(KICK_1PM - 45 * MIN));
         expect((await check(page, { refresh: false })).how).toBe('page');
         await expect(page.locator('#notifyPageAlert')).toContainText("Ja'Marr");
         await expectClean(page, state);
     });
 
-    test('opened inside the window: the check runs straight away', async ({ page }) => {
+    test('opened inside the window: the check runs straight away; you\'re looking, so the card alone', async ({ page }) => {
         const { state } = await setup(page, { mode: 'granted', chase: 'Out' });
         await toggle(page).check();
-        await expect.poll(() => notes(page)).toHaveLength(1);
-        expect((await notes(page))[0].title).toMatch(/^2 lineup problems/);
+        await expect(page.locator('#notifyPageAlert .notify-card-title')).toHaveText(/^2 lineup problems before Sun \d+:\d\d\u00a0[AP]M$/);
+        expect(await notes(page)).toEqual([]);
         await expectClean(page, state);
     });
 });
@@ -234,6 +240,7 @@ test.describe('Starter alerts: Send a test alert', () => {
         await page.clock.install();
         await page.getByRole('button', { name: 'Send a test alert' }).click();
         await expect(page.locator('#starterAlertTestStatus')).toContainText('arrives in 5 seconds');
+        await page.evaluate(() => { window.__hidden = true; }); // you switch to another tab, as the status line says
         await page.clock.runFor(4000);
         expect(await notes(page)).toEqual([]);
         await page.clock.runFor(1500);
@@ -241,6 +248,8 @@ test.describe('Starter alerts: Send a test alert', () => {
         const [note] = await notes(page);
         expect(note.title).toMatch(/^Test alert/);
         expect(note.tag).toBe('mls-starter-alert-test');
+        await expect.poll(() => page.title()).toMatch(/^\(1\) Starter alert/);
+        await setHidden(page, false);
         await expect(page.locator('#notifyPageAlert .notify-card-title')).toHaveText(note.title);
         await expect(page.locator('#starterAlertTestStatus')).toHaveText('');
         // A test isn't a real alert: nothing is remembered as named this week.
@@ -284,6 +293,7 @@ test.describe('Starter alerts: the timer', () => {
         // setup() fixed the time; let it run again from 10:00 (ET).
         await page.clock.setSystemTime(at(KICK_1PM - 3 * 60 * MIN));
         await toggle(page).check();
+        await page.evaluate(() => { window.__focused = false; }); // the page left open behind another app
         await page.clock.runFor(60 * MIN);
         expect(await notes(page)).toEqual([]);
         // To 12:00 (ET) exactly: the check fires, and its refresh (Sync All) runs in the clock's own time from there.

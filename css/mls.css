@@ -2884,12 +2884,21 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .rset-empty { padding: 1.25rem 0; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
 .rset-empty p { margin: 0 0 0.4rem; }
 
-/* --- STARTER ALERTS (improvements N2): Advanced Settings, under the Starter Alerts toggle while it's on --- */
+/* --- STARTER ALERTS (improvements N2): Advanced Settings. One box, like the .toggle-row beside it; while on, the options
+   open inside it under a divider (N2 round 4: they used to hang loose below the box). --- */
+.toggle-group {
+    background: rgba(0,0,0,0.15);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+.toggle-group > .toggle-row { margin: 0; border: 0; background: none; }
+.starter-alerts-bell { color: var(--primary-green); } /* stroke="currentColor": green like the Headshots icon */
 .starter-alerts-options {
     display: grid;
     gap: var(--space-2);
-    margin: -0.5rem 0 1rem;
-    padding: 0 1rem;
+    padding: 0.75rem 1rem 1rem;
+    border-top: 1px solid var(--border);
 }
 .starter-alerts-options[hidden] { display: none; }
 .starter-alerts-lead {
@@ -2903,4 +2912,5 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .starter-alerts-options .toggle-row-flush { margin: 0.25rem 0 0; }
 .starter-alerts-status { margin: 0; color: #f59e0b; } /* the stale-label amber (.freshness-stale) */
 .starter-alerts-test { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.75rem; }
+.starter-alerts-test .btn { width: auto; flex: none; }
 .starter-alerts-test .text-helper:empty { display: none; }

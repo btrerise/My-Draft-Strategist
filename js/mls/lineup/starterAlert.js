@@ -50,7 +50,9 @@ function saveSent(sent) {
 
 // --- THE CHECK ---
 const onBye = (p) => !!(p && p.team) && State.currentNflWeek != null && getByeWeek(p.team, State.currentNflSeason) === State.currentNflWeek;
-const kickoffLabel = (ms) => new Date(ms).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+// "Sun 1:00 PM", with no break inside the time (a phone wrapped "PM" onto its own line).
+const kickoffLabel = (ms) => new Date(ms).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+    .replace(/(\d) (?=[AaPp]\.?[Mm])/g, '$1\u00a0');
 
 function weeklyUpdatedAt(l) {
     const set = l.weeklyRankingSetId ? (State.rankingSets.weekly || []).find(s => s.id === l.weeklyRankingSetId) : null;
@@ -149,9 +151,9 @@ export function planStarterAlerts() {
 
 // --- SETTINGS UI (Advanced Settings) ---
 const STATUS_TEXT = {
-    unsupported: "This browser can't show notifications here (an iPhone or iPad tab, for one). Alerts show on this page instead, and the name on your browser tab flashes while you're in another tab.",
-    denied: "Notifications are blocked for this site. Allow them in your browser's site settings; until then alerts show on this page, and the name on your browser tab flashes while you're in another tab.",
-    default: "Notifications aren't allowed yet: turn this off and on again to be asked. Until then alerts show on this page, and the name on your browser tab flashes while you're in another tab.",
+    unsupported: "This browser can't show notifications. Alerts show on this page, and your browser tab's name flashes while you're elsewhere.",
+    denied: "Notifications are blocked for this site (allow them in your browser's site settings). Until then alerts show on this page, and your browser tab's name flashes while you're elsewhere.",
+    default: "Notifications aren't allowed yet: turn this off and on to be asked again. Until then alerts show on this page.",
     granted: '',
 };
 
@@ -205,7 +207,7 @@ export function sendTestStarterAlert() {
     return new Promise(resolve => {
         testTimer = setTimeout(async () => {
             const how = await notify({
-                title: 'Test alert: 2 lineup problems before Sun 1:00 PM',
+                title: 'Test alert: 2 lineup problems before Sun 1:00\u00a0PM',
                 lines: ["Example League: Ja'Marr Chase is Out: start Puka Nacua instead?", 'Example League: RB slot is empty',
                     'This is a test. Real alerts name your own leagues and players.'],
                 tag: 'mls-starter-alert-test', url: '/lineup/', label: 'Starter alert', action: DASHBOARD_ACTION,
