@@ -102,6 +102,9 @@ export function tradeEntries(moves, deps) {
     });
 }
 
+// Your trades only (owner, round 3: other teams' trades were clutter in a busy league; the full table compares them).
+export const yourTrades = (entries) => (entries || []).filter(e => e.mine && e.teams.length >= 2);
+
 // The trade the line opens on: the one you picked, else your newest, else the league's newest. null with no trades.
 export function defaultTradeId(entries, picked = null) {
     if (!entries || entries.length === 0) return null;

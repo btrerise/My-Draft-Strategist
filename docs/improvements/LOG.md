@@ -10479,8 +10479,8 @@ table (round 2; it was first under the strip): **"Since your trade with Rival on
 best first by the strip's rankings), then one line per team with only the ranks that moved, right before → right after
 the trade ("You: Start 2 → 1 · RB 2 → 1 · WR 1 → 2", green better, red worse; "no rank changes" when none moved).
 Columns: Start, Ovr, QB, RB, WR, TE, and Future in dynasty and keeper leagues. With more than one trade this season, a
-**Trade** drop-down ("Sep 12: You ↔ Rival") picks any trade in the league, yours or not; it opens on your newest (else
-the league's newest), and your pick lasts for the visit. A note under it: "Power Rankings right before → right after
+**Trade** drop-down ("Sep 12: with Rival") picks any of your trades this season (round 3: yours only); it opens on
+your newest, and your pick lasts for the visit. A note under it: "Power Rankings right before → right after
 this trade, out of N teams, by today's rankings. Moves since then are left out. 1 = strongest." Manual league, no
 trades this season, or Sleeper failing: no box, no toast.
 
@@ -10545,6 +10545,14 @@ confirmed by CI's `check` on the pull request.
 1. **Moved under the full Power Rankings table** (inside `#powerRankingsCard`, after `#powerRankingsOutput`): under the
    strip it pushed the start of the roster down on phones. `lineup/index.html`, `css/mls.css` (top margin instead of
    tucking under the strip); the spec checks the box follows the table.
-2. **Trades not involving you:** the owner is torn (interesting, or clutter, since users mostly care about their own).
-   Asked for my view; left as built until they decide.
+2. **Trades not involving you:** the owner was torn (interesting, or clutter, since users mostly care about their own).
+   My view: yours only (the box answers "what did my trade do?"; a busy league's list would bury yours, and the full
+   table already compares teams). Owner: **"Yours only"** (round 3).
 3. **Question 5 (each trade on its own):** confirmed.
+
+### S29, round 3: your trades only (owner)
+
+`yourTrades` (`js/mls/power/pastTrades.js`) keeps only trades you were in; the box's title is always "Since your trade
+with …", the drop-down's options read "Sep 12: with Rival", and a league where only others traded shows no box. The
+undo rule still reads every move (others' trades and pickups too) to rebuild rosters. Unit test for `yourTrades`; the
+spec adds "a trade you weren't in: no line".

@@ -1,10 +1,10 @@
 // --- ROSTER TAB: WHAT A PAST TRADE DID TO YOUR POWER RANKINGS (improvements S29) ---
 // The box under the Roster tab's Power Rankings table (#rosterTradeLine): a trade in the active Sleeper league, picked from the
-// season's trades (your newest first shown), and each team's ranks right before → right after it. The math is in
+// season's trades you made (newest first), and each team's ranks right before → right after it. The math is in
 // power/pastTrades.js; the scoring is computePositionalPower with the strip's own rankings, so the numbers are the
 // Roster tab's and, for a trade before it happened, the Trade Analyzer's.
 //
-// Owner's choices (LOG, S29): trades only; any trade this season, from a drop-down; under the full table (round 2); a line for the
+// Owner's choices (LOG, S29): trades only, yours only (round 3); any of them this season, from a drop-down; under the full table (round 2); a line for the
 // other team too; each trade on its own (later moves undone), not "before → today".
 //
 // Sleeper is asked only for the active Sleeper league, when the Roster tab is showing, once per visit (weeks 1 to the
@@ -16,7 +16,7 @@ import { fantasyPosition } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { computePositionalPower } from './shared.js';
-import { completedMoves, defaultTradeId, leaguesAroundMove, makeOwnerOf, moveTime, rankChanges, tradeEntries } from './pastTrades.js';
+import { completedMoves, defaultTradeId, leaguesAroundMove, makeOwnerOf, moveTime, rankChanges, tradeEntries, yourTrades } from './pastTrades.js';
 
 const loads = new Map();   // leagueId -> { status: 'loading' | 'done' | 'error', moves, rosterMap: the rosters it was read for }
 const picked = new Map();  // leagueId -> the trade picked in the drop-down, for this visit
@@ -81,7 +81,7 @@ export function renderPastTradeLine(ctx) {
     // Today's rosters are the last sync's: a move Sleeper made after it isn't in them, so it's neither undone nor listed.
     const synced = Number(league.lastSyncedAt) || 0;
     const moves = synced ? entry.moves.filter(tx => moveTime(tx) <= synced) : entry.moves;
-    const trades = tradeEntries(moves, deps).filter(t => t.teams.length >= 2);
+    const trades = yourTrades(tradeEntries(moves, deps));
     const id = defaultTradeId(trades, picked.get(league.leagueId));
     if (!id) { hide(); return; }
     const trade = trades.find(t => t.id === id);
@@ -113,10 +113,9 @@ const joinNames = (list) => list.length <= 2 ? list.join(' and ') : `${list.slic
 
 function tradeTitle(t) {
     const on = t.time ? ` on ${dateOf(t.time)}` : '';
-    if (t.mine) return `Since your trade with ${escapeHtml(joinNames(t.teams.filter(o => o !== 'You')))}${on}`;
-    return `${escapeHtml(joinNames(t.teams))} traded${on}`;
+    return `Since your trade with ${escapeHtml(joinNames(t.teams.filter(o => o !== 'You')))}${on}`;
 }
-const optionLabel = (t) => `${dateOf(t.time)}: ${t.teams.map(teamName).join(' ↔ ')}`;
+const optionLabel = (t) => `${dateOf(t.time)}: with ${joinNames(t.teams.filter(o => o !== 'You'))}`;
 
 function changesHTML(changes) {
     if (changes === null) return '<span class="mls-roster-trade-none">not scored</span>';
@@ -128,7 +127,7 @@ function changesHTML(changes) {
 function tradeLineHTML(trade, trades, changesFor, teams) {
     const choose = trades.length > 1 ? `
         <label class="mls-roster-trade-pick"><span>Trade</span>
-            <select class="form-input" data-action="selectPastTrade" aria-label="Pick a trade this season">
+            <select class="form-input" data-action="selectPastTrade" aria-label="Pick one of your trades this season">
                 ${trades.map(t => `<option value="${escapeHtml(t.id)}"${t.id === trade.id ? ' selected' : ''}>${escapeHtml(optionLabel(t))}</option>`).join('')}
             </select></label>` : '';
     const got = trade.teams.filter(o => (trade.gets[o] || []).length)

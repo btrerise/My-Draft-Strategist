@@ -4,7 +4,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPower } from './helpers/powerEnv.mjs';
 import {
-    completedMoves, defaultTradeId, leaguesAroundMove, makeOwnerOf, rankChanges, tradeEntries, undoMove, undoPicks
+    completedMoves, defaultTradeId, leaguesAroundMove, makeOwnerOf, rankChanges, tradeEntries, undoMove, undoPicks, yourTrades
 } from '../../js/mls/power/pastTrades.js';
 import { leagueAfterTrade } from '../../js/mls/trade/lineupImpact.js';
 
@@ -148,6 +148,10 @@ describe('tradeEntries, defaultTradeId, rankChanges, makeOwnerOf', () => {
         assert.deepEqual(m.gets, { You: ['RBR', '2027 1st'], Rival: ['WR1'] });
         assert.equal(m.mine, true);
         assert.equal(entries[0].mine, false);
+    });
+    test('yourTrades keeps only trades you were in (owner, round 3)', () => {
+        assert.deepEqual(yourTrades(entries).map(e => e.id), ['M']);
+        assert.deepEqual(yourTrades([]), []);
     });
     test('the line opens on your newest trade, else the league\'s newest, else what you picked', () => {
         assert.equal(defaultTradeId(entries), 'M');

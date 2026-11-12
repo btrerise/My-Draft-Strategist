@@ -79,7 +79,7 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
         await expectClean(page, state);
     });
 
-    test('several trades: a drop-down, your newest first; each trade on its own', async ({ page }) => {
+    test('several of your trades: a drop-down, newest first; each trade on its own', async ({ page }) => {
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
         await loadMlsRankings(page);
@@ -93,11 +93,11 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
         await showTab(page, 'roster');
         const select = line(page).locator('select');
         await expect(select).toBeVisible();
-        await expect(select.locator('option')).toHaveText(['Sep 12: You ↔ Rival', 'Sep 8: You ↔ Rival']);
+        await expect(select.locator('option')).toHaveText(['Sep 12: with Rival', 'Sep 8: with Rival']);
         await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Since your trade with Rival on Sep 12');
         await expect(line(page).locator('.mls-roster-trade-gets')).toContainText("You got De'Von Achane");
         // The first trade, picked: the same numbers as when it was the only one (the later trade is undone first).
-        await select.selectOption({ label: 'Sep 8: You ↔ Rival' });
+        await select.selectOption({ label: 'Sep 8: with Rival' });
         await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Since your trade with Rival on Sep 8');
         await expect(line(page).locator('dd').first()).toContainText('RB 2 → 1');
         await expect(line(page).locator('dd').first()).toContainText('WR 1 → 2');
@@ -124,6 +124,20 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
         await showTab(page, 'roster');
         await page.waitForLoadState('networkidle');
         expect(requests.length).toBe(2);
+        await expectClean(page, state);
+    });
+
+    test('a trade you weren\'t in: no line (yours only, owner round 3)', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        // Rival sends Malik Nabers to a third team (one this two-team fixture league doesn't name).
+        const other = { ...TRADE[0], transaction_id: '3000000000000000004', roster_ids: [2, 3], adds: { 11632: 3 }, drops: { 11632: 2 }, draft_picks: [] };
+        await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/transactions\/\d+$/, r => r.fulfill({ json: r.request().url().endsWith('/1') ? [other] : [] }));
+        await showTab(page, 'roster');
+        await page.waitForLoadState('networkidle');
+        await expect(page.locator('#rosterPowerStrip')).toBeVisible();
+        await expect(line(page)).toBeHidden();
         await expectClean(page, state);
     });
 
