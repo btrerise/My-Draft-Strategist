@@ -249,6 +249,34 @@ test.describe('Starter alerts: Send a test alert', () => {
     });
 });
 
+test.describe('Starter alerts: the card on the page', () => {
+    test('waits while the tab is hidden, goes 12 seconds after it\'s in view, and holds while the mouse is on it', async ({ page }) => {
+        const { state } = await setup(page, { mode: 'denied', when: KICK_1PM - 3 * 60 * MIN });
+        await toggle(page).check();
+        await page.clock.install();
+        const card = page.locator('#notifyPageAlert');
+        // Sent while you're in another tab: the card is still there a minute later.
+        await page.getByRole('button', { name: 'Send a test alert' }).click();
+        await page.evaluate(() => { window.__hidden = true; });
+        await page.clock.runFor(5500);
+        await expect(card).toBeVisible();
+        await page.clock.runFor(60_000);
+        await expect(card).toBeVisible();
+        // Back on the tab: 12 seconds from now.
+        await setHidden(page, false);
+        await page.clock.runFor(11_000);
+        await expect(card).toBeVisible();
+        // The mouse on it holds it; moving away lets the last second run out.
+        await card.hover();
+        await page.clock.runFor(5000);
+        await expect(card).toBeVisible();
+        await page.mouse.move(0, 0);
+        await page.clock.runFor(1500);
+        await expect(card).toHaveCount(0);
+        await expectClean(page, state);
+    });
+});
+
 test.describe('Starter alerts: the timer', () => {
     test('a page left open fires the check at lead minutes before kickoff, then plans the next window', async ({ page }) => {
         await page.clock.install({ time: at(KICK_1PM - 3 * 60 * MIN) });

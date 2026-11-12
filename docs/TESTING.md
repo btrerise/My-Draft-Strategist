@@ -388,6 +388,11 @@ The card named does the item in its own session; remove the line when it's done.
   ("(1) Starter alert", `flashTitle` in js/shared/ui/notify.js); M10's badges sit on the nav bar and rail, seen while
   the tab is in view. Count both from the same rule (`leagueNeeds` in js/mls/lineup/issues.js), so the title and the
   Dashboard's badge never disagree; the flash keeps its job for hidden tabs.
+- A notification center (a bell in the header with an unread badge and a history; owner's idea in N2 round 3), once
+  there are several kinds of message worth keeping: sync results (today the Sync Logs accordion), the closed-site
+  alerts (N5–N7). Research first: what goes in it, where the bell sits on phones (the header row is full), how its
+  badge relates to M10's nav badges, and its storage (`keys.js`). Until then alerts use notify.js's card, which goes
+  12 seconds after you're back on the page.
 - A `/lineup/` left open across weeks keeps last week's NFL week and kickoffs until it's reloaded, so after Monday night
   the alert has no window to check until the next visit or reload. Re-reading the week while open would mean calling
   `refreshCurrentNflWeek` (js/mls/state.js) on a timer, which also clears locks and redraws: the owner limited the alert

@@ -10638,3 +10638,23 @@ some kind needs to be on the site itself": a flashing browser tab says nothing a
 **Checked.** check-precache, `node --test` (584), `mls-starter-alert.spec.mjs` (18, both widths, 3 repeats: the card's
 text and Dashboard button, ✕, the card waiting after a hidden alert, the test alert at 5 seconds with Playwright's fake
 timers), touch-targets, focus-ring, smoke.
+
+### N2 round 3 — the card goes 12 seconds after you're back; a notification center later (owner, 2026-11-12)
+
+**Owner's question.** Should there be a notification center under a bell in the header (an unread badge, a history),
+with the alert back to a 12-second pop-up? **Recommended against for now, and the owner agreed (option 1):** today there
+is one alert, a few times a week, so the bell would mostly be empty; the starter alert's lasting home is the Dashboard's
+"lineups need you" box, which updates as you fix things (an inbox entry would stay "unread" after the fix); M10 already
+plans the "something's waiting" badge, on the Dashboard tab, pointing where you fix it; and the phone header has no room
+(K2 kept its cup icon to computers for that reason). N4's "on the clock" needs to be in front of you, not in a list.
+
+**What changed.** `js/shared/ui/notify.js`: the card waits while the tab is hidden and goes 12 seconds
+(`PAGE_ALERT_MS`) after the tab is in view, paused while the mouse is over it or focus is in it (the toasts' rule);
+✕ and its button still close it at once. CHANGELOG reworded. Test: `mls-starter-alert.spec.mjs`, "the card on the page"
+(fake timers: still there after a minute hidden, still there at 11 seconds in view, held while hovered, gone after).
+
+**Checked.** check-precache, `node --test` (584), `mls-starter-alert.spec.mjs` (20, both widths, 3 repeats). No
+screenshot changes.
+
+**Left over.** A notification center is in `docs/TESTING.md`'s Open follow-ups, for when there are several kinds of
+message worth keeping.

@@ -6,9 +6,9 @@
 // - A notification always goes through the service worker (registration.showNotification): Android Chrome throws
 //   "Illegal constructor" on `new Notification()`. A tap on it is handled by sw.js's notificationclick listener, which
 //   focuses (or opens) the page named in `url`.
-// - Every alert also stays on the page as a card (showPageAlert: bottom right on computers, above the tab bar on phones)
-//   until it's dismissed or its button is used, so whoever comes back to the tab sees what to do (owner's request, N2
-//   round 2: a flashing tab name alone doesn't say it). It doesn't take focus; screen readers announce it (role=alert).
+// - Every alert also shows on the page as a card (showPageAlert: bottom right on computers, above the tab bar on phones).
+//   It waits while the tab is hidden and goes 12 seconds after you're looking (PAGE_ALERT_MS), so whoever comes back to
+//   the tab sees what to do (owner's request, N2 round 2: a flashing tab name alone doesn't say it). It doesn't take focus; screen readers announce it (role=alert).
 // - Without permission, or with no Notification API at all (an iPhone or iPad Safari tab), the card is the alert. While
 //   the tab is hidden, the browser tab's name also flashes ("(1) Starter alert" / "(1) Lineup Strategist") until the
 //   tab is shown again. Both names carry the count, so the tab bar shows it even when a hidden tab's timers are slowed
@@ -72,9 +72,48 @@ export const titleFlashing = () => !!flash;
 const CARD_ID = 'notifyPageAlert';
 const BELL = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>';
 
+// How long the card stays once you're looking at the page (owner's choice, N2 round 3): it waits while the tab is hidden,
+// then goes 12 seconds after the tab is in view, pausing while the mouse is over it or focus is in it, as toasts do.
+// ✕ and its button close it at once. (A notification center under a bell was considered and left for later: LOG, N2.)
+export const PAGE_ALERT_MS = 12000;
+let cardClock = null; // { timer, remaining, startedAt, held, onVisibility }
+
+function stopCardClock() {
+    if (!cardClock) return;
+    clearTimeout(cardClock.timer);
+    document.removeEventListener('visibilitychange', cardClock.onVisibility);
+    cardClock = null;
+}
+
 export function dismissPageAlert() {
+    stopCardClock();
     const card = document.getElementById(CARD_ID);
     if (card) card.remove();
+}
+
+function startCardClock(card) {
+    const c = { timer: null, remaining: PAGE_ALERT_MS, startedAt: 0, held: false, running: false };
+    const pause = () => {
+        if (!c.running) return;
+        clearTimeout(c.timer);
+        c.remaining = Math.max(0, c.remaining - (Date.now() - c.startedAt));
+        c.running = false;
+    };
+    const resume = () => {
+        if (c.running || c.held || document.visibilityState !== 'visible') return;
+        c.startedAt = Date.now();
+        c.running = true;
+        c.timer = setTimeout(dismissPageAlert, c.remaining);
+    };
+    c.onVisibility = () => (document.visibilityState === 'visible' ? resume() : pause());
+    const hold = (on) => { c.held = on || card.matches(':hover') || card.contains(document.activeElement); if (c.held) pause(); else resume(); };
+    card.addEventListener('mouseenter', () => hold(true));
+    card.addEventListener('mouseleave', () => hold(false));
+    card.addEventListener('focusin', () => hold(true));
+    card.addEventListener('focusout', () => setTimeout(() => hold(false), 0));
+    document.addEventListener('visibilitychange', c.onVisibility);
+    cardClock = c;
+    resume();
 }
 
 // title and lines: plain text (league and player names come from Sleeper, so never HTML). action: { label, run } for
@@ -104,6 +143,7 @@ export function showPageAlert({ title, lines = [], action = null } = {}) {
         actions.appendChild(btn);
     } else actions.remove();
     document.body.appendChild(card);
+    startCardClock(card);
     return card;
 }
 
