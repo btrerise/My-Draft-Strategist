@@ -54,7 +54,7 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
         await tradeGoesThrough(page);
         await showTab(page, 'roster');
         await expect(line(page)).toBeVisible();
-        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Since your trade with Rival on Sep 8');
+        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Your trade with Rival · Sep 8');
         // One trade: no drop-down. The failed waiver claim in the same week is skipped.
         await expect(line(page).locator('select')).toHaveCount(0);
         await expect(line(page).locator('.mls-roster-trade-gets')).toContainText('You got Bijan Robinson, Jahmyr Gibbs, Saquon Barkley');
@@ -70,7 +70,12 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
         // Today's strip agrees with "after" (no move since).
         await expect(page.locator('#rosterPowerStrip .mls-roster-power-stat').filter({ hasText: 'RB' }).locator('.mls-roster-power-stat-rank')).toHaveText('1');
         // Round 4: the answer first (a sentence, then the ranks), the players after, a one-line note with the details in (i).
-        await expect(line(page).locator('.mls-roster-trade-verdict')).toHaveText('Your starting lineup stayed 1st of 2; overall roster weaker (1st → 2nd).');
+        // Round 5: the sentence says what the ranks hide (how much, as a percent of the league average), not the ranks again.
+        await expect(line(page).locator('.mls-roster-trade-verdict')).toHaveText(/^Your starting lineup stayed 1st of 2( and got (stronger|weaker) \(\d+% → \d+% of league average\)| \(\d+% of league average\))\.$/);
+        await expect(line(page).locator('.mls-roster-trade-verdict .mls-roster-trade-nowrap')).toHaveCount(1);
+        // Yours in full; the other team's muted.
+        await expect(line(page).locator('.mls-roster-trade-lines > div')).toHaveClass([/mls-roster-trade-you/, /mls-roster-trade-other/]);
+        await expect(line(page).locator('.mls-roster-trade-other dd')).toHaveCSS('opacity', '0.7');
         expect(await line(page).evaluate(el => [...el.children].map(c => c.className.replace(/^mls-roster-trade-/, '')))).toEqual(['head', 'verdict', 'lines', 'gets', 'note']);
         await expect(line(page).locator('.mls-roster-trade-note')).toContainText("Right before → right after, by today's rankings.");
         await expect(line(page).locator('.mls-roster-trade-note .tooltip-text')).toContainText('out of 2 teams');
@@ -106,17 +111,17 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
         const select = line(page).locator('select');
         await expect(select).toBeVisible();
         await expect(select.locator('option')).toHaveText(['Sep 12: with Rival', 'Sep 8: with Rival']);
-        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Since your trade with Rival on Sep 12');
+        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Your trade with Rival · Sep 12');
         await expect(line(page).locator('.mls-roster-trade-gets')).toContainText("You got De'Von Achane");
         // The first trade, picked: the same numbers as when it was the only one (the later trade is undone first).
         await select.selectOption({ label: 'Sep 8: with Rival' });
-        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Since your trade with Rival on Sep 8');
+        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Your trade with Rival · Sep 8');
         await expect(line(page).locator('dd').first()).toContainText('RB 2 → 1');
         await expect(line(page).locator('dd').first()).toContainText('WR 1 → 2');
         // The pick lasts while you stay on the tab.
         await showTab(page, 'lineup');
         await showTab(page, 'roster');
-        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Since your trade with Rival on Sep 8');
+        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Your trade with Rival · Sep 8');
         await expectClean(page, state);
     });
 

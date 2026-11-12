@@ -2395,6 +2395,10 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .mls-roster-trade-verdict { margin: 0.4rem 0 0; color: var(--text-main); line-height: 1.4; }
 .mls-roster-trade-lines { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0.45rem 0 0; }
 .mls-roster-trade-lines > div { display: contents; }
+/* The other team's line, muted (round 5): grey label, softer colors, a little smaller. */
+.mls-roster-trade-lines .mls-roster-trade-other dt { color: var(--text-muted); font-weight: 500; font-size: 0.74rem; }
+.mls-roster-trade-lines .mls-roster-trade-other dd { font-size: 0.74rem; opacity: 0.7; }
+.mls-roster-trade-nowrap { white-space: nowrap; }
 .mls-roster-trade-lines dt { font-weight: 600; color: var(--text-main); overflow-wrap: anywhere; max-width: 9rem; }
 /* Each change its own item, spaced apart, at normal weight (round 4: the bold run was louder than the table). */
 .mls-roster-trade-lines dd { margin: 0; display: flex; flex-wrap: wrap; gap: 2px 14px; font-variant-numeric: tabular-nums; }

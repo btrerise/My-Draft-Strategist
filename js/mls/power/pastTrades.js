@@ -144,19 +144,20 @@ export function makeOwnerOf(league) {
 // "1st", "2nd", "11th".
 const ord = (n) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
 
-// The box's verdict in one sentence (owner, round 4: the rank list made you add it up yourself). Starting lineup first
-// (what a trade is mostly for), then the whole roster and future value when they moved:
-//   "Your starting lineup got stronger (6th → 3rd of 12); overall roster weaker (4th → 6th)."
-//   "Your starting lineup stayed 3rd of 12; future value stronger (5th → 2nd)."
-// Lower is better. null when either side wasn't scored.
+// The box's verdict in one sentence (owner, round 4: the rank list made you add it up yourself). Round 5: the ranks are
+// in the lines under it, so the sentence says what they hide: how much your starting lineup changed, as a percent of the
+// league average (computePositionalPower's starterScore, 1 = average; the Trade Analyzer's headline uses the same).
+//   "Your starting lineup went 6th → 3rd of 12 and got stronger (96% → 108% of league average)."
+//   "Your starting lineup stayed 1st of 2 and got weaker (118% → 112% of league average)."
+//   "Your starting lineup stayed 3rd of 12 (104% of league average)."
+// Lower ranks are better. null when either side wasn't scored.
+export const startPercent = (team) => Math.round(((team && team.starterScore) || 0) * 100);
 export function tradeVerdictText(before, after, teams) {
     if (!before || !after) return null;
-    const moved = (k) => Number.isFinite(before[k]) && Number.isFinite(after[k]) && before[k] !== after[k];
-    const how = (k) => `${after[k] < before[k] ? 'stronger' : 'weaker'} (${ord(before[k])} → ${ord(after[k])})`;
-    const parts = [moved('starterRank')
-        ? `Your starting lineup got ${how('starterRank').replace(')', ` of ${teams})`)}`
-        : `Your starting lineup stayed ${ord(after.starterRank)} of ${teams}`];
-    if (moved('overallRank')) parts.push(`overall roster ${how('overallRank')}`);
-    if (moved('futureRank')) parts.push(`future value ${how('futureRank')}`);
-    return parts.join('; ') + '.';
+    const rank = before.starterRank !== after.starterRank
+        ? `went ${ord(before.starterRank)} \u2192 ${ord(after.starterRank)} of ${teams}`
+        : `stayed ${ord(after.starterRank)} of ${teams}`;
+    const pb = startPercent(before), pa = startPercent(after);
+    if (pa === pb) return `Your starting lineup ${rank} (${pa}% of league average).`;
+    return `Your starting lineup ${rank} and got ${pa > pb ? 'stronger' : 'weaker'} (${pb}% \u2192 ${pa}% of league average).`;
 }

@@ -123,9 +123,11 @@ const dateOf = (ms) => ms ? new Date(ms).toLocaleDateString('en-US', { month: 's
 const teamName = (o) => o === 'You' ? 'You' : o;
 const joinNames = (list) => list.length <= 2 ? list.join(' and ') : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
 
+// "Your trade with Rival · Sep 8" (round 5: "Since your trade…" read as "from then until now", but the ranks are right
+// before → right after, later moves left out).
 function tradeTitle(t) {
-    const on = t.time ? ` on ${dateOf(t.time)}` : '';
-    return `Since your trade with ${escapeHtml(joinNames(t.teams.filter(o => o !== 'You')))}${on}`;
+    const on = t.time ? ` \u00b7 ${dateOf(t.time)}` : '';
+    return `Your trade with ${escapeHtml(joinNames(t.teams.filter(o => o !== 'You')))}${on}`;
 }
 const optionLabel = (t) => `${dateOf(t.time)}: with ${joinNames(t.teams.filter(o => o !== 'You'))}`;
 
@@ -146,15 +148,18 @@ function tradeLineHTML(trade, trades, changesFor, verdict, teams) {
             </select></label>` : '';
     const got = trade.teams.filter(o => (trade.gets[o] || []).length)
         .map(o => `<span class="mls-roster-trade-got"><strong>${escapeHtml(teamName(o))}</strong> got ${escapeHtml(trade.gets[o].join(', '))}</span>`).join('');
+    // Yours first and in full color; the other team's muted (round 5: two equal lines made the eye bounce between them).
     const rows = trade.teams.map(o => `
-            <div><dt>${escapeHtml(teamName(o))}</dt><dd>${changesHTML(changesFor(o))}</dd></div>`).join('');
+            <div class="${o === 'You' ? 'mls-roster-trade-you' : 'mls-roster-trade-other'}"><dt>${escapeHtml(teamName(o))}</dt><dd>${changesHTML(changesFor(o))}</dd></div>`).join('');
+    // A parenthesis never breaks inside (round 5: "(1st →" ended a line on phones).
+    const keepTogether = (text) => escapeHtml(text).replace(/\([^)]*\)/g, m => `<span class="mls-roster-trade-nowrap">${m}</span>`);
     const about = `Your team as it was right before and right after this trade, rebuilt from Sleeper's list of moves, and both ranked by today's rankings (the table's), out of ${teams} teams. Moves since the trade are left out, so "after" can differ from the table above. 1 = strongest.`;
     return `
         <div class="mls-roster-trade-head">
             <span class="mls-roster-trade-title">${tradeTitle(trade)}</span>
             ${choose}
         </div>
-        ${verdict ? `<p class="mls-roster-trade-verdict">${escapeHtml(verdict)}</p>` : ''}
+        ${verdict ? `<p class="mls-roster-trade-verdict">${keepTogether(verdict)}</p>` : ''}
         <dl class="mls-roster-trade-lines">${rows}
         </dl>
         ${got ? `<div class="mls-roster-trade-gets">${got}</div>` : ''}

@@ -177,17 +177,18 @@ describe('tradeEntries, defaultTradeId, rankChanges, makeOwnerOf', () => {
     });
 });
 
-describe('tradeVerdictText (owner, round 4)', () => {
-    const b = { starterRank: 6, overallRank: 4, futureRank: 5 };
-    test('starting lineup first, then overall and future when they moved', () => {
-        assert.equal(tradeVerdictText(b, { starterRank: 3, overallRank: 6, futureRank: 5 }, 12),
-            'Your starting lineup got stronger (6th → 3rd of 12); overall roster weaker (4th → 6th).');
-        assert.equal(tradeVerdictText(b, { starterRank: 6, overallRank: 4, futureRank: 2 }, 12),
-            'Your starting lineup stayed 6th of 12; future value stronger (5th → 2nd).');
-        assert.equal(tradeVerdictText({ starterRank: 11, overallRank: 1 }, { starterRank: 12, overallRank: 1 }, 12),
-            'Your starting lineup got weaker (11th → 12th of 12).');
+describe('tradeVerdictText (owner, rounds 4 and 5)', () => {
+    test('the rank, then how much stronger or weaker as a percent of the league average', () => {
+        assert.equal(tradeVerdictText({ starterRank: 6, starterScore: 0.96 }, { starterRank: 3, starterScore: 1.08 }, 12),
+            'Your starting lineup went 6th \u2192 3rd of 12 and got stronger (96% \u2192 108% of league average).');
+        assert.equal(tradeVerdictText({ starterRank: 1, starterScore: 1.18 }, { starterRank: 1, starterScore: 1.12 }, 2),
+            'Your starting lineup stayed 1st of 2 and got weaker (118% \u2192 112% of league average).');
+        assert.equal(tradeVerdictText({ starterRank: 3, starterScore: 1.041 }, { starterRank: 3, starterScore: 1.039 }, 12),
+            'Your starting lineup stayed 3rd of 12 (104% of league average).');
+        assert.equal(tradeVerdictText({ starterRank: 11, starterScore: 0.9 }, { starterRank: 12, starterScore: 0.85 }, 12),
+            'Your starting lineup went 11th \u2192 12th of 12 and got weaker (90% \u2192 85% of league average).');
     });
     test('null when a side is missing', () => {
-        assert.equal(tradeVerdictText(null, b, 12), null);
+        assert.equal(tradeVerdictText(null, { starterRank: 1 }, 12), null);
     });
 });

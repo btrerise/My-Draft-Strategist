@@ -168,8 +168,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **What a trade did to your Power Rankings.** On the Roster tab of a Sleeper league, a box under the Positional
-  Power Rankings table now shows a trade made this season: a one-line verdict ("Your starting lineup got stronger (6th → 3rd of
-  12)"), each team's ranks (Start, Ovr, QB, RB, WR, TE and, in
+  Power Rankings table now shows a trade made this season: a one-line verdict ("Your starting lineup went 6th → 3rd of 12 and got
+  stronger (96% → 108% of league average)"), each team's ranks (yours in full, the other team's muted) (Start, Ovr, QB, RB, WR, TE and, in
   dynasty and keeper leagues, Future) right before → right after it, green when better and red when worse, then who got whom. When you have a trade, the
   strip's link says so ("See the full breakdown and your last trade below"). It opens on
   your newest trade; with more than one, a drop-down picks any of your trades this season. It uses the strip's rankings as they

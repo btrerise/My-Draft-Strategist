@@ -10574,3 +10574,21 @@ the bold rank run was louder than the table, (5) a three-line footnote on phones
 
 Unit tests for `tradeVerdictText`; the spec checks the order, the sentence, the note, the weight and the strip's link
 (and its usual text with no trade). Screenshots: still none (no trades in the fixtures, so the link and box don't show).
+
+### S29, round 5: a second review as a user (owner: "Do 2-5")
+
+Tried on a dynasty league (Future, a pick in the trade). Fixed:
+- **Title:** "Your trade with Rival · Sep 8" (was "Since your trade…", which read as "from then until now" against the
+  right before → right after numbers).
+- **Verdict says what the ranks hide:** the ranks are in the lines under it, so the sentence now gives your starting
+  lineup's change as a percent of the league average, as the Trade Analyzer's headline does (`tradeVerdictText`,
+  `startPercent`: "Your starting lineup stayed 1st of 2 and got stronger (100% → 107% of league average)."). Ovr and
+  Future are no longer repeated in it.
+- **The other team's line muted** (`.mls-roster-trade-other`: grey label, smaller, 70% opacity); yours stays in full.
+- **No break inside a parenthesis** on phones (`.mls-roster-trade-nowrap`).
+
+**Question 1 of the review (a trade made since the last sync).** The owner asked how the site could know a trade exists
+without knowing what it is. It does know what it is (Sleeper's list has the players and picks); what it lacks is today's
+rosters, which are the last sync's, and the box starts from those and undoes moves. Proposed instead of a Sync button:
+apply moves made after the last sync forward onto the saved rosters, so a new trade shows at once. Waiting for the
+owner's answer.
