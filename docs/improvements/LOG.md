@@ -10687,8 +10687,11 @@ compared on main and the branch here instead (identical, above). Nothing re-take
 
 ## F17 — 2-QB leagues: the two QBs follow kickoff order
 
-**Status: built, waiting for the owner's answer to the card's "Asks you"** (the rule, and anything else wrong in the
-league). The entry is finished once the owner answers.
+**Owner's decisions** (asked after reproducing, with a 375px before/after picture of the Lineup tab, 2026-11-12):
+1. **The same top-to-bottom rule as RB and WR**: earliest kickoff in QB1.
+2. Where the owner saw it: **League of Ordinary Gentlemen** (Keeper 2QB Half-PPR: QB 2, RB 2, WR 2, TE 1, FLEX 2,
+   DEF 1), **week 10**: Jayden Daniels (WAS, Thursday night) in the lower QB slot below Brock Purdy (SF, Sunday 4:25).
+   Nothing else looked wrong there (below).
 
 **The bug, reproduced on main.** `optimizeFlexKickoffOrder` (`js/mls/lineup/kickoffOrder.js`) took QBs out of the
 relabel unless the lineup had an open SFLEX slot (F1 kept a 2-QB league "as on main"). So a 2-QB league's QB1/QB2 kept
@@ -10723,5 +10726,19 @@ way.
   - A Sleeper lineup with the QBs the other way round shows no change to set.
   - With the toggle off, the QBs keep the rank order.
 
-**Asked the owner** (with a 375px before/after picture of the Lineup tab): (1) the same top-to-bottom rule as RB and
-WR; (2) nothing else looked wrong in the fixture league; no real league was available to check.
+**Checked against the owner's backup** (`my-lineup-strategist-backup-2026-11-12.json`, uploaded to the session, not
+committed; week 10 kickoffs from ESPN's scoreboard). Each league's saved lineup was run through main's function and
+this branch's:
+- League of Ordinary Gentlemen: main keeps QB1 Purdy (Sun 21:25 UTC), QB2 Daniels (Thu 01:15 UTC). This branch: QB1
+  Daniels, QB2 Purdy. The rest was already in kickoff order and stays the same: RB Gibbs (Sunday 9:30 am ET) then Tuten; WR Nabers
+  (Thursday) then Lamb; FLEX Corum, then Chase (Sunday night). Sleeper already has Daniels first, so the Lineup tab now
+  matches it; there was never a change to set (set-based comparison).
+- The other 19 leagues (15 superflex with one QB slot, plus 1-QB and Best Ball): identical slot for slot.
+- Nothing else wrong in the league: the unranked bench players are four on bye in week 10 (Irving TB, Coleman and
+  Waddle DEN, Monangai CHI) and Mike Evans, who isn't in the weekly file at all. Waddle and Monangai are in the IR
+  slot, as Sleeper has them.
+
+**Screenshots:** none changed. No screenshot fixture has two QB slots. Main and this branch rendered in this container
+(`npm run pxdiff`): 44 PNGs, all pixel-identical.
+
+**Left over:** nothing.
