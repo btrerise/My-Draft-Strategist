@@ -37,6 +37,7 @@ const ALLOWED = new Set([
     'mls-rank-parts', 'mls-rank-part', 'mls-rank-bar', 'is-stacked', // a split rank badge's halves
     'sos-badge-label', 'sos-badge-icon',                 // parts of the SoS badge (in the legend anyway)
     'header-freshness', 'mls-ba-sync',                   // where a freshness label sits
+    'mls-last-synced-time', 'mls-last-synced-failed',    // the Dashboard's Last synced line (S46; its colors are in the legend)
     'roster-label-text',
     'mls-verdict-nums',                                  // the numbers after a Waiver Wire verdict (text)
     'sos-status-warn',                                   // the SoS card's warning sentence

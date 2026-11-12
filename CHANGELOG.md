@@ -171,6 +171,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **When you last synced, on the Dashboard.** Under Sync All Leagues and Optimize All Lineups, a line now says when
+  you last synced your Sleeper leagues: "Last synced 9:42 AM", "yesterday 8:15 PM", "Sun 8:15 PM" or "Nov 9". It turns
+  amber once that's over a day ago, or when a kickoff is less than 3 hours away and you haven't synced since 6 AM that
+  day, so before Optimize All you can tell whether the injury news is fresh. A league whose last sync failed is named
+  after it in red. Manual and Draft Strategist hand-off leagues don't count; with no synced Sleeper league there's no
+  line.
 - **A link in a sentence opens only from its own words.** Links inside running text (the Scoreboard's and the Guide's
   Sleepy credit, "Don't count this device" in the Guide) no longer take taps a little above and below them, so one
   can't take a tap meant for a link on the line above. Buttons and links that stand on their own keep their larger tap
