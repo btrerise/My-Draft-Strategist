@@ -14,7 +14,7 @@ import { initTradePicker } from './trade/picker.js';
 import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
 import { applySimSettingsToUI, applyTradeSettingsToUI, applyMarketSettingsToUI } from './settings.js';
 import { applyRecapLinesToUI } from './week/recapLines.js';
-import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDisplay, renderSyncLogs, showTab, lookupSimPlayer } from './main.js';
+import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDisplay, renderSyncLogs, showTab, lookupSimPlayer, initStarterAlerts } from './main.js';
 import { KEYS, RETIRED_KEYS } from '../shared/storage/keys.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/ui/setupChecklist.js';
@@ -200,6 +200,8 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
         applySimSettingsToUI();
         applyRecapLinesToUI();
         applyWaiverScanSettingsToUI();
+        // Starter alerts (improvements N2): the Settings controls, and the first check's timer if they're on.
+        initStarterAlerts();
         updatePulsePrompts();
         // The NFL week from Sleeper, then the week's kickoff times from ESPN (refreshCurrentNflWeek chains them),
         // only once the page has painted (owner's choice, improvements S17): on a first visit their ~22 KB and two new

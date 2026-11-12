@@ -167,6 +167,16 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Starter alerts before kickoff (off until you turn them on).** Under Advanced Settings, **Starter Alerts** sends an
+  alert before each kickoff window (Thursday, Sunday 1:00, the late games, Sunday and Monday night) when a starter in
+  the lineup you set on Sleeper is Out, Doubtful or on IR, is on bye or has no game, or when a starting slot is empty.
+  Questionable doesn't count, and a player you locked in here is left out. Choose how long before kickoff, from 15
+  minutes to 2 hours (1 hour to start; inactives come out 90 minutes before kickoff). Just before each check the app
+  runs Sync All by itself, for the latest injury news and your Sleeper lineups. Each problem is named once a week. The
+  alert can also name leagues whose Weekly rankings are over 6 days old (a second switch, on to start). It works while
+  /lineup/ is open on a computer, even in a background tab; tapping the alert brings that tab forward. If
+  notifications are blocked, or the browser has none (an iPhone or iPad tab), the alert shows in the page, and the tab's
+  title flashes "(1) Starter alert" while you're in another tab.
 - **Trade Analyzer: the same draft pick twice, and market values by themselves.** A draft pick can now be on a side
   more than once: add "2027 1st" again and it shows as "2027 1st (2)", with its own token, its own row and its own
   value in the verdict; each row says whether that team holds that many. Players still can't repeat. **Analyze Trade

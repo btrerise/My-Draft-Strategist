@@ -10516,3 +10516,70 @@ check-precache and `node --test` pass (the full Playwright suite isn't affected 
 - The throwaway branches `w1-proof-docs` and `w1-proof-app` are still on GitHub: this session's git couldn't delete a
   remote branch. Delete them from the repo's Branches page (Cloudflare Pages also made a preview of each; harmless).
 - W1's own pull request changes `.github/`, so it runs the full suite, as it should.
+
+## N2 — Starter alerts before kickoff (site open), and the shared notification module
+
+**Owner's answers (2026-11-12).**
+1. **Which lineup:** the starters set in Sleeper (what scores), not Lineup Strategist's recommendation.
+2. **How long before kickoff:** a drop-down in Settings, 15 to 120 minutes in steps of 15, 60 by default. (The help
+   text says inactives come out 90 minutes before kickoff, so 75 or less catches them.)
+3. **Questionable:** doesn't count (only `SIM_EXCLUDE_STATUSES`: Doubtful, Out, IR, PUP, SUS, NFI, DNR).
+4. **Refresh before each window:** yes, "as long as it makes sense with Sleeper's API and how sync is set up". It does:
+   Sync All already re-downloads the player file every tap (`forceRefresh`) and each league's roster (which carries
+   your Sleeper starters), so the refresh *is* Sync All, run quietly through the same code. About 3 a Sunday (4:05 and
+   4:25 share one window), plus Thursday and Monday.
+5. **Stale rankings:** kept, as its own switch under the alert ("Also name old Weekly rankings", on by default, only
+   used while alerts are on). It rides along in an alert that fires anyway, and on its own at most once a week.
+6. **Survive a reload:** yes, a storage key is fine if it's small: `mls_starter_alerts_sent` is
+   `{ week, sent: ['leagueId:playerId', …] }`, under 1 KB, started over each NFL week.
+7. **Title flash and M10:** keep the title flash (it's in the browser's tab strip, for a hidden tab; M10's badges are on
+   the app's own nav bar, seen only while the tab is in view). M10 should count both from the same "needs you" rule:
+   noted in `docs/TESTING.md`'s Open follow-ups.
+
+**What changed.**
+- `js/shared/ui/notify.js` (new, both apps; N4 reuses it): `notifyPermission()`, `requestNotifyPermission()` (from a
+  tap only), `notify({ title, body, tag, url, label })` (always `registration.showNotification()` with `data.url`; with no
+  permission or no API: a toast if the tab is in view, else the title flash), `flashTitle()` ("(N) label" / "(N) page
+  title" every second, both carrying the count so a hidden tab's once-a-minute timers still show it; put back on
+  `visibilitychange`), `notifyNow()` and `notifyAt(ms, fn)` (a timer re-planned at most every 6 hours, for a laptop that
+  slept). In `PRECACHE_ASSETS`.
+- `sw.js`: a `notificationclick` listener: closes the notification, focuses a window already on `data.url`
+  (`/lineup/`; `'/'` matches only Draft Strategist's `/` or `/index.html`), else opens it. `CACHE_NAME` v2.9.19 →
+  **v2.10.0** (middle number: the service worker's own behavior changed).
+- `js/mls/lineup/starterAlertRules.js` (new, pure): settings, kickoff windows from `State.gameTimesByTeam` (kickoffs
+  within 30 minutes of a window's first share it), `dueWindow` / `nextCheck`, `sleeperLineup(league)` (Sleeper's starters
+  in `starterSlots` order, slot names mapped to the app's: `SUPER_FLEX` → SFLEX, `REC_FLEX` → WRTE, `WRRB_FLEX` → WRRB),
+  `noGameStarters`, `leagueFindings` (what to name, worded by S11's `lineupIssueItems`, so "Ja'Marr Chase is Out: start
+  Puka Nacua instead?" reads as on the Lineup tab), `staleLeagues`, `alertMessage`.
+- `js/mls/lineup/starterAlert.js` (new): the settings (`mls_starter_alerts`: `{ on, leadMinutes, staleRankings }`),
+  the timer (`planStarterAlerts`: the next window's check time; at once if the page opens inside a window's lead time;
+  then, after that window kicks off, the next), the check (`runStarterAlertCheck`: quiet Sync All, then S11's
+  `getLineupIssues` on each non-Best-Ball league's Sleeper lineup, plus "has no game" and the stale line), and the
+  Settings controls. Injured starters are named in their own game's window; a bye, no game or empty slot (no kickoff
+  of its own) at the first check that sees it. A player locked in the app is left out (your call, as on the Lineup tab).
+- `js/mls/render/dashboard.js`: `syncAllLeagues(btn, { quiet })` returns a promise that settles when the sync is done;
+  quiet means no button, no summary toast and the Sync Logs left folded. A Sync All already running is awaited, not
+  started twice. The button's behavior is unchanged.
+- `lineup/index.html`: the Starter Alerts row under Show Player Headshots in Advanced Settings (a Feather bell,
+  `currentColor`), and, while on, the lead-time drop-down, its hint, the stale-rankings switch and a status line
+  (blocked, not allowed yet, or no notifications in this browser). `css/mls.css`: their layout.
+- `js/shared/storage/keys.js`: `KEYS.mls.starterAlerts`, `KEYS.mls.starterAlertsSent` (both `mls_`, so Backup carries
+  them and Factory Reset clears them). `js/mls/main.js` and `init.js`: the three change actions (`data-action`), and
+  `initStarterAlerts()` at start-up.
+
+**User-visible effect.** A **Starter Alerts** switch in Lineup Strategist's Advanced Settings, off until you turn it on.
+Turned on, the browser asks for notification permission, and while `/lineup/` stays open on a computer (a background
+tab is fine) an alert arrives the chosen time before each kickoff window naming starters in your Sleeper lineup who are
+Out, Doubtful, on IR or bye, without a game, and empty slots, plus (optionally) leagues with Weekly rankings over 6 days
+old. Tapping it brings the Lineup Strategist tab forward. Blocked or unsupported: a toast in view, "(1) Starter alert"
+flashing in the tab title while hidden. The Dashboard also gets fresh injury news and Sleeper lineups from the
+pre-window Sync All.
+
+**Tests.** `tests/unit/starterAlertRules.test.mjs` (settings, windows, due and next check, the Sleeper lineup, who is
+named and once a week, the words), `tests/unit/swNotificationClick.test.mjs` (sw.js in a vm with stubbed `clients`:
+focus an open /lineup/, open one, `/` never matches /lineup/, a bad url opens the root), `tests/mls-starter-alert.spec.mjs`
+(fixed clock, stubbed Notification and service worker, the fixture league's Sleeper lineup stubbed: off by default with no
+prompt; on asks once and alerts once inside the window, not before, not again after a reload, and the refresh picks up a
+new Out; a 15-minute lead; Questionable alone and the stale line on and off; denied → toast, then title flash while
+hidden and back on `visibilitychange`; no API → toast; opened inside the window → checks at once; Playwright's fake
+timers: the timer fires at lead minutes before kickoff and then plans the next window).

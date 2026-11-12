@@ -383,6 +383,16 @@ The card named does the item in its own session; remove the line when it's done.
   the Team tab's Undo buttons, a dynasty Roster row's badge above its gap chip. S32 already takes the Lineup row's swap
   and lock (and the Roster rows).
 
+**From the starter alert (improvements N2)**
+- **M10 (nav badges): one count for the badge and the title.** N2's alerts flash the tab title while it's hidden
+  ("(1) Starter alert", `flashTitle` in js/shared/ui/notify.js); M10's badges sit on the nav bar and rail, seen while
+  the tab is in view. Count both from the same rule (`leagueNeeds` in js/mls/lineup/issues.js), so the title and the
+  Dashboard's badge never disagree; the flash keeps its job for hidden tabs.
+- A `/lineup/` left open across weeks keeps last week's NFL week and kickoffs until it's reloaded, so after Monday night
+  the alert has no window to check until the next visit or reload. Re-reading the week while open would mean calling
+  `refreshCurrentNflWeek` (js/mls/state.js) on a timer, which also clears locks and redraws: the owner limited the alert
+  to one refresh per window, so ask first.
+
 **Speed (improvements S17, details in docs/improvements/performance.md)**
 - T-Score blocks the main thread for about 1.1 s on every load (Total Blocking Time 1,102 ms on a 4x-slowed CPU, cached
   or not), which caps its PageSpeed score near 77. Worth a profile of `js/tscore/main.js`'s start-up.

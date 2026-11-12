@@ -1,0 +1,198 @@
+// The starter alert (improvements N2): while /lineup/ is open (a background tab is fine), a check before each kickoff
+// window: a starter in your Sleeper lineup who is Doubtful, Out, on IR (SIM_EXCLUDE_STATUSES; Questionable doesn't
+// count), on bye or without a game, or an empty slot, and optionally the leagues whose Weekly rankings are over 6 days
+// old. Off until you turn it on in Advanced Settings. The rules and words are starterAlertRules.js; the notification,
+// fallbacks and timer are js/shared/ui/notify.js.
+//
+// The check, at leadMinutes before a window's first kickoff: Sync All, quietly (the player file re-downloaded for
+// today's injury news, each league's roster for your Sleeper lineup; owner's choice), then getLineupIssues on each
+// league's Sleeper lineup. A starter you locked in the app is left out (your call, as on the Lineup tab). Each problem
+// is named once a week (KEYS.mls.starterAlertsSent), so a reload doesn't repeat it.
+import { KEYS } from '../../shared/storage/keys.js';
+import { getFreshness } from '../../shared/freshness.js';
+import { getByeWeek } from '../../shared/data/byes.js';
+import { notify, notifyAt, notifyNow, notifyPermission, requestNotifyPermission } from '../../shared/ui/notify.js';
+import { refreshGameTimes, State } from '../state.js';
+import { isBestBallLeague } from '../helpers.js';
+import { getLineupIssues, hasKickedOff } from './gameInfo.js';
+import { syncAllLeagues } from '../render/dashboard.js';
+import { STALE_WEEKLY_DAYS, alertMessage, dueWindow, kickoffWindows, leagueFindings, nextCheck, noGameStarters,
+    normalizeSettings, sleeperLineup, staleLeagues } from './starterAlertRules.js';
+
+// --- SETTINGS ---
+export function starterAlertSettings() {
+    try { return normalizeSettings(JSON.parse(localStorage.getItem(KEYS.mls.starterAlerts) || 'null')); }
+    catch (e) { return normalizeSettings(null); }
+}
+
+// What this visit uses (also when storage is blocked); initStarterAlerts drops it, after a restore or a reset.
+let sessionSettings = null;
+const settingsNow = () => sessionSettings || starterAlertSettings();
+function saveSettings(s) {
+    sessionSettings = normalizeSettings(s);
+    try { localStorage.setItem(KEYS.mls.starterAlerts, JSON.stringify(sessionSettings)); }
+    catch (e) { /* storage blocked: it works for this visit */ }
+}
+
+// --- ALREADY NAMED THIS WEEK ---
+const weekKey = () => `${State.currentNflSeason}-${State.currentNflWeek}`;
+function loadSent() {
+    try {
+        const raw = JSON.parse(localStorage.getItem(KEYS.mls.starterAlertsSent) || 'null');
+        if (raw && raw.week === weekKey() && Array.isArray(raw.sent)) return new Set(raw.sent);
+    } catch (e) { /* unreadable: start the week over */ }
+    return new Set();
+}
+function saveSent(sent) {
+    try { localStorage.setItem(KEYS.mls.starterAlertsSent, JSON.stringify({ week: weekKey(), sent: [...sent] })); }
+    catch (e) { /* storage blocked: this visit only */ }
+}
+
+// --- THE CHECK ---
+const onBye = (p) => !!(p && p.team) && State.currentNflWeek != null && getByeWeek(p.team, State.currentNflSeason) === State.currentNflWeek;
+const kickoffLabel = (ms) => new Date(ms).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+
+function weeklyUpdatedAt(l) {
+    const set = l.weeklyRankingSetId ? (State.rankingSets.weekly || []).find(s => s.id === l.weeklyRankingSetId) : null;
+    return set ? set.updatedAt : (l.weeklyRankingsUpdatedAt || null);
+}
+
+let checking = false;
+
+// Runs the check if a window is due now (its check time has come, its kickoff hasn't). refresh: Sync All first (tests
+// turn it off to check the last sync). Resolves to { title, body, how } when it alerted, else null.
+export async function runStarterAlertCheck({ refresh = true } = {}) {
+    const settings = settingsNow();
+    if (!settings.on || checking) return null;
+    checking = true;
+    try {
+        const leadMs = settings.leadMinutes * 60 * 1000;
+        if (!dueWindow(kickoffWindows(State.gameTimesByTeam), notifyNow(), leadMs)) return null;
+        if (refresh) {
+            try { await syncAllLeagues(null, { quiet: true }); }
+            catch (e) { console.warn('Starter alert: the refresh failed; checking the last sync.', e); }
+        }
+        const gameTimesByTeam = State.gameTimesByTeam;
+        const due = dueWindow(kickoffWindows(gameTimesByTeam), notifyNow(), leadMs);
+        if (!due) return null;
+
+        const sent = loadSent();
+        const perLeague = [];
+        (State.leagues || []).forEach(league => {
+            if (isBestBallLeague(league)) return;
+            const lineup = sleeperLineup(league);
+            if (!lineup) return;
+            const issues = getLineupIssues(lineup.starters, league, lineup.bench);
+            const noGame = noGameStarters(lineup.starters, { gameTimesByTeam, onBye, kickedOff: hasKickedOff });
+            perLeague.push({ name: league.name || 'Unnamed league', findings: leagueFindings(league, issues, { window: due, noGame, sent }) });
+        });
+        const stale = settings.staleRankings
+            ? staleLeagues((State.leagues || []).filter(l => !isBestBallLeague(l)).map(league => ({ league, updatedAt: weeklyUpdatedAt(league) })),
+                at => { const f = getFreshness(at, STALE_WEEKLY_DAYS); return !!(f && f.isStale); }, sent)
+            : [];
+        const message = alertMessage(perLeague, stale, kickoffLabel(due.startMs));
+        if (!message) return null;
+
+        perLeague.forEach(l => l.findings.forEach(f => f.key.split('|').forEach(k => sent.add(k))));
+        stale.forEach(s => sent.add(`${s.leagueId}:stale`));
+        saveSent(sent);
+        const how = await notify({ title: message.title, body: message.body, tag: 'mls-starter-alert', url: '/lineup/', label: 'Starter alert' });
+        return { title: message.title, body: message.body, how };
+    } finally {
+        checking = false;
+    }
+}
+
+// --- THE TIMER ---
+let cancelTimer = null;
+
+// The next check: at leadMinutes before the next window's kickoff, or now if a window is already due. With no schedule
+// yet (the NFL week or ESPN's scoreboard not loaded), it asks for it and tries again later; with no window left
+// this week, every 6 hours (a later scoreboard can add one). Returns the planned time in ms, or null when off.
+export function planStarterAlerts() {
+    if (cancelTimer) { cancelTimer(); cancelTimer = null; }
+    const settings = settingsNow();
+    if (!settings.on) return null;
+    const leadMs = settings.leadMinutes * 60 * 1000;
+    const windows = kickoffWindows(State.gameTimesByTeam);
+    const now = notifyNow();
+    let atMs;
+    if (windows.length === 0) {
+        // The page is still loading the week (a minute), or ESPN had no schedule for it (half an hour: not a poll).
+        refreshGameTimes();
+        atMs = now + (State.currentNflWeek == null ? 60 * 1000 : 30 * 60 * 1000);
+        cancelTimer = notifyAt(atMs, planStarterAlerts);
+        return atMs;
+    }
+    // The window to check: one already due (the page opened inside its lead time), else the next one.
+    const due = dueWindow(windows, now, leadMs);
+    const next = due ? null : nextCheck(windows, now, leadMs);
+    if (!due && !next) {
+        atMs = now + 6 * 60 * 60 * 1000;
+        cancelTimer = notifyAt(atMs, planStarterAlerts);
+        return atMs;
+    }
+    const kickoffMs = due ? due.startMs : next.window.startMs;
+    atMs = due ? now : next.atMs;
+    const fire = () => {
+        cancelTimer = notifyAt(kickoffMs + 1000, planStarterAlerts); // then the window after it, once this one kicks off
+        runStarterAlertCheck().catch(e => console.warn('Starter alert check failed.', e));
+    };
+    if (due) fire();
+    else cancelTimer = notifyAt(atMs, fire);
+    return atMs;
+}
+
+// --- SETTINGS UI (Advanced Settings) ---
+const STATUS_TEXT = {
+    unsupported: "This browser can't show notifications here (an iPhone or iPad tab, for one). Alerts show in the page instead, and the tab's title flashes while it's in the background.",
+    denied: "Notifications are blocked for this site. Allow them in your browser's site settings; until then alerts show in the page, and the tab's title flashes while it's in the background.",
+    default: "Notifications aren't allowed yet: turn this off and on again to be asked. Until then alerts show in the page, and the tab's title flashes while it's in the background.",
+    granted: '',
+};
+
+export function renderStarterAlertSettings() {
+    const s = settingsNow();
+    const toggle = document.getElementById('starterAlertsToggle');
+    if (!toggle) return;
+    toggle.checked = s.on;
+    const opts = document.getElementById('starterAlertsOptions');
+    if (opts) opts.hidden = !s.on;
+    const lead = document.getElementById('starterAlertLead');
+    if (lead) lead.value = String(s.leadMinutes);
+    const stale = document.getElementById('starterAlertsStale');
+    if (stale) stale.checked = s.staleRankings;
+    const status = document.getElementById('starterAlertsStatus');
+    if (status) {
+        const text = s.on ? STATUS_TEXT[notifyPermission()] || '' : '';
+        status.textContent = text;
+        status.hidden = !text;
+    }
+}
+
+// The toggle. Turning it on asks for permission (this is the tap Safari and Chrome want); the alert works either way,
+// with the in-page fallbacks when it's refused.
+export async function toggleStarterAlerts(checked) {
+    saveSettings({ ...settingsNow(), on: !!checked });
+    if (checked) await requestNotifyPermission();
+    renderStarterAlertSettings();
+    planStarterAlerts();
+}
+
+export function setStarterAlertLead(value) {
+    saveSettings({ ...settingsNow(), leadMinutes: Number(value) });
+    renderStarterAlertSettings();
+    planStarterAlerts();
+}
+
+export function toggleStaleRankingsAlert(checked) {
+    saveSettings({ ...settingsNow(), staleRankings: !!checked });
+    renderStarterAlertSettings();
+}
+
+// On load (js/mls/init.js), after a backup is restored, and after a Factory Reset.
+export function initStarterAlerts() {
+    sessionSettings = null;
+    renderStarterAlertSettings();
+    planStarterAlerts();
+}

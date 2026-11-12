@@ -34,7 +34,7 @@
 //   * Middle number (v2.8.x -> v2.9.0): when this file's own behavior changes -- the caching
 //     strategy, what works offline, how old caches are cleared -- as v2.8.0 marked the strategy
 //     change above. App features don't move it; they go in CHANGELOG.md and the apps' footer versions.
-const CACHE_NAME = 'draft-strategist-v2.9.19';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.10.0';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -121,6 +121,7 @@ const PRECACHE_ASSETS = [
     '/js/shared/ui/viewTransition.js', // S16: tab and league transitions, both apps
     '/js/shared/ui/navMenu.js', // S26: Back closes the menu, arrow keys between tab-bar and menu items, both apps
     '/js/shared/ui/sheet.js',   // M11: the shared side / bottom sheet (the badge legend opens in it), both apps
+    '/js/shared/ui/notify.js',  // N2: notifications through the service worker, toast and title-flash fallbacks
     '/js/shared/ui/share.js',   // K2: "Share this site" (Web Share, else copy the link), all three pages
     '/js/shared/storage/keys.js',
     '/js/shared/storage/keyMigration.js', // 6B: old -> new key names, on load and in Restore
@@ -207,6 +208,8 @@ const PRECACHE_ASSETS = [
     '/js/mls/lineup/issues.js',
     '/js/mls/lineup/flexChoice.js',
     '/js/mls/lineup/kickoffOrder.js',
+    '/js/mls/lineup/starterAlert.js',      // N2: the starter alert before each kickoff window
+    '/js/mls/lineup/starterAlertRules.js', // N2: its pure rules (windows, who to name, the text)
     '/js/mls/scout/waiverInsights.js',
     '/js/mls/sim/matchup.js',
     '/js/mls/sim/ui.js',              // -> sim/stats.js, spawns sim/worker.js
@@ -340,5 +343,27 @@ self.addEventListener('fetch', (event) => {
                     return cachedResponse || htmlFallback(event.request);
                 });
             })
+    );
+});
+// A tap on a notification (js/shared/ui/notify.js, improvements N2): focus the page it names (data.url: '/lineup/' for
+// Lineup Strategist's starter alerts, '/' for Draft Strategist's later) if a window has it open, else open it. '/' only
+// matches Draft Strategist itself, never /lineup/ or /t-score/. Added in v2.10.0 (a middle-number bump: this file's own
+// behavior changed). tests/unit/swNotificationClick.test.mjs runs it with a stubbed `self` and `clients`.
+function samePage(clientUrl, target) {
+    const path = new URL(clientUrl).pathname;
+    if (target === '/') return path === '/' || path === '/index.html';
+    return path === target || path.startsWith(target);
+}
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const data = event.notification.data || {};
+    const target = typeof data.url === 'string' && data.url.startsWith('/') ? data.url : '/';
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+            const open = list.find((c) => samePage(c.url, target));
+            if (open && 'focus' in open) return open.focus();
+            return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
+        })
     );
 });
