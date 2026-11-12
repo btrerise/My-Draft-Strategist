@@ -10712,3 +10712,7 @@ showing while folded after a reload. 20 tests, both widths; touch-targets and fo
 
 **Screenshots.** The same four change again (the fold, closed, in place of the switch's box): re-taken on CI from this
 round's commit.
+Re-taken on CI ([commit 1d094c6](https://github.com/btrerise/My-Draft-Strategist/commit/1d094c6); no other PNG changed).
+Opened each: the folded Notifications section with "Off" at the right, between Headshots and Add Player Manually, like
+its neighbours; the pages 6px (desktop) and 34px (phone) shorter than round 4's. Every difference above the Advanced
+Settings card is a 1-step colour change (the fixed header and tab bar blending over a page of another height).
