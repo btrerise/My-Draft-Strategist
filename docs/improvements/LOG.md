@@ -11026,3 +11026,67 @@ tests pass, 48 skipped. The 4 failures are `visual.spec.mjs`'s environment check
 CI's), as on main; the screenshot comparison above stands in for it.
 
 **Left over:** nothing.
+
+## F20 — T-Score: the touch-target test that failed now and then (two links in The Research)
+
+Found during F17 (PR #241): `touch-targets.spec.mjs`, "T-Score: every control has a 48px target" (phone), failed about
+1 run in 30, on main too, with `a "CC BY 4.0"` losing its bottom edge to `a "ffopportunity"`'s hit area.
+
+**Why it was intermittent (the cause).** The layout never changed; what changed was whether the tab was measured at
+all. T-Score switches tabs without a View Transition (`switchTab` in `js/tscore/main.js` only moves the `active`
+class), and `.tab-content.active` plays `fadeIn` (css/base.css), cut to 1ms where View Transitions exist, but it still
+**starts at opacity 0**. `showTScoreTab` waits only for the class, so `measure` usually ran before the animation's
+first frame: `checkVisibility({ checkOpacity: true })` saw opacity 0 and dropped **every control in the tab** (logged:
+Research 0 of its 10 controls measured, and the same on Top-50, Values, Avoids, Sleepers and 2024; only In-Season, the
+tab the page opens on, was measured). When a frame happened to pass between the class change and the evaluate, the tab
+was measured, and the overlap (there every time: a probe found `ffopportunity` at the test point 40 of 40) was
+reported. Not `scrollIntoView`, not the In-Season data load, not fonts (they're aborted in tests). Draft Strategist and
+Lineup Strategist weren't affected: `showTab` waits for `data-vt-busy`, which outlasts the 1ms fade.
+
+**The spec, now deterministic** (tests/touch-targets.spec.mjs, `check`): before measuring, it waits for every running
+animation that ends (`getAnimations()`, finite end time; a spinner is left alone). On main with only this change, the
+T-Score test **fails 100 of 100** (`--repeat-each 100`, phone), every time on Research's `CC BY 4.0`. Nothing else in
+the three apps' tabs turned up (the other T-Score tabs, now measured for the first time, are clean).
+
+**Owner's decision** (asked with the cause and the list of sentence links on every page): **(a) links inside a
+sentence get no 48px area**, on all three pages (not T-Score only; not (b) the spec ignoring the overlap; not (c) more
+line height, which would have needed about 48px from line to line instead of 29).
+
+**Pages with the pattern** (every link at 375px, Guide folds opened), all directly in a `<p>` or `<li>`:
+- Draft Strategist: the Guide's "Don't count this device".
+- Lineup Strategist: the Guide's "Don't count this device" and Sleepy link, the Scoreboard's Sleepy credit.
+- T-Score: In-Season's "How it differs from the preseason T-Score" and its credit (nflverse, CC BY 4.0, ffopportunity,
+  CC BY-SA 4.0; T1 had already turned those areas off in css/tscore.css); The Research's "The Data" (the same five),
+  "random article" and "Don't count this device".
+- Only "The Data" had two links on neighbouring lines whose areas met (In-Season's credit would have, without T1's rule).
+- Standalone links keep their area, none of them directly in a `p` or `li`: Ko-fi, "Powered by FantasyCalc", "ADP by
+  Fantasy Football Calculator", "Read Methodology", the cross-app banners, the header's logo and "Back to Draft", the
+  menu's links.
+
+**What changed and where.**
+- `css/base.css`, TOUCH TARGETS, right after the shared rule: `:where(p, li) > :where(a[href])::after { inset: 0; }`.
+  Zero specificity, so a component's own `::after` still wins. **`inset: 0`, not `content: none`:** removing the
+  pseudo-element made Chromium anti-alias the `)` right after the two "CC BY" links differently (85 pixels in each
+  Research screenshot); dropping their `position: relative` as well didn't help. An `::after` at the link's own size
+  leaves all 44 screenshots pixel-identical.
+- `css/tscore.css`: T1's `.tscore-credit a::after { content: none; }` folded into that rule (a comment points to it).
+- tests/touch-targets.spec.mjs: the animation wait above. `ALLOW` is unchanged (M16's): the sentence links fall under
+  its existing `[data-inline-link]` entry, and a link that isn't in a sentence is still checked for 48px, so a
+  standalone link put directly in a `<p>` or `<li>` would show up as short.
+- docs/TESTING.md, Conventions, touch targets: the sentence-link rule and the animation wait. CHANGELOG: a line under
+  each app. `sw.js`: `CACHE_NAME` v2.10.2.
+
+**User-visible effect.** Nothing changes on screen. Links inside a sentence now take taps on their own words only, not
+in an invisible band above and below. In The Research's "The Data", a tap on the lower half of "CC BY 4.0" used to open
+"ffopportunity" on the line below; now it opens the link tapped. Standalone links and every button keep 48px.
+
+**Checks.**
+- On this branch: the T-Score test passes 100 of 100 (`--repeat-each 100`, phone), and the whole spec passes.
+- Main with the new spec fails 100 of 100 (above).
+- Screenshots: main and this branch rendered in this container, `npm run pxdiff`: 44 PNGs, all pixel-identical.
+
+**Left over.**
+- For M16 (not changed here, it's that card's list): `ALLOW`'s `.mls-scoreboard-credit a, .tscore-credit a` look
+  redundant with `[data-inline-link]` now; check before removing.
+- Other T-Score specs call `showTScoreTab` and don't wait for the fade-in either. None checks opacity or visibility
+  the way this one did, so none was affected.
