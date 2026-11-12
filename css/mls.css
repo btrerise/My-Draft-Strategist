@@ -2898,6 +2898,8 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
     border-top: 1px solid var(--border);
 }
 .starter-alerts-options[hidden] { display: none; }
+.starter-alerts-next { margin: 0; font-size: 0.85rem; font-weight: 600; color: var(--primary-green); }
+.starter-alerts-next[hidden] { display: none; }
 .starter-alerts-lead {
     display: flex;
     align-items: center;

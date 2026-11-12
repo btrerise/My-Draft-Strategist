@@ -168,7 +168,7 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **Starter alerts before kickoff (off until you turn them on).** Under Advanced Settings, a new **Notifications** section (its title says On or
-  Off) holds **Starter Alerts**, which sends an
+  Off) holds **Starter Alerts**; once on, it shows when the next check is. It sends an
   alert before each kickoff window (Thursday, Sunday 1:00, the late games, Sunday and Monday night) when a starter in
   the lineup you set on Sleeper is Out, Doubtful or on IR, is on bye or has no game, or when a starting slot is empty.
   Questionable doesn't count, and a player you locked in here is left out. Choose how long before kickoff, from 15
@@ -177,7 +177,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   alert can also name leagues whose Weekly rankings are over 6 days old (a second switch, on to start). It works while
   /lineup/ is open on a computer, even in a background tab; tapping the alert brings that tab forward. If you're already
   looking at the page, you get only the card below, not a system notification too. Every alert shows on the page as a card, with what to fix and a button to the Dashboard. It waits while you're in another tab and
-  goes 12 seconds after you're back (longer while your mouse is on it), so it's there when you return. If notifications are blocked, or the browser has none (an iPhone or iPad tab), the card is
+  goes 12 seconds after you're back in the browser (longer while your mouse is on it), so it's there when you return;
+  its problems are listed under each league's name. The Guide (Lineups that need you) explains it. If notifications are blocked, or the browser has none (an iPhone or iPad tab), the card is
   the alert, and the name on your browser tab flashes "(1) Starter alert" while you're in another tab. **Send a test
   alert** shows a sample in 5 seconds, so you can check that alerts reach you before game day.
 - **Trade Analyzer: the same draft pick twice, and market values by themselves.** A draft pick can now be on a side

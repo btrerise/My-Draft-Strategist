@@ -2814,7 +2814,9 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
     flex: none; margin: -6px -8px 0 0; padding: 4px 8px; border: 0; background: none; cursor: pointer;
     color: var(--text-muted); font-size: 1rem; line-height: 1;
 }
-.notify-card-lines { margin: 8px 0 0; padding-left: 1.1rem; display: grid; gap: 4px; color: var(--text-muted); }
+.notify-card-group { margin: 10px 0 0; font-size: 0.85rem; font-weight: 600; color: var(--text-main, #f3f4f6); }
+.notify-card-lines { margin: 4px 0 0; padding-left: 1.1rem; display: grid; gap: 4px; color: var(--text-muted); }
+.notify-card-body > .notify-card-lines:first-child { margin-top: 8px; }
 .notify-card-actions { margin-top: 12px; display: flex; justify-content: flex-end; }
 @media (max-width: 767px) {
     .notify-card { left: 8px; right: 8px; width: auto; bottom: calc(90px + env(safe-area-inset-bottom)); }

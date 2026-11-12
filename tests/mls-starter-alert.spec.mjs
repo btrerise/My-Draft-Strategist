@@ -107,8 +107,10 @@ test.describe('Starter alerts', () => {
         expect(await page.evaluate(() => window.__asked)).toBe(1);
         await expect(page.locator('#starterAlertsStatus')).toBeHidden();
 
-        // Two hours before: the next check is planned for 12:00 (ET), and nothing is due yet.
+        // Two hours before: the next check is planned for 12:00 (ET), and nothing is due yet; the line under the switch
+        // says when.
         expect(await callApp(page, 'planStarterAlerts')).toBe(KICK_1PM - 60 * MIN);
+        await expect(page.locator('#starterAlertsNext')).toHaveText(/^Next check: Sun \d+:00\u00a0[AP]M, before the \d+:00\u00a0[AP]M games\.$/);
         expect(await check(page)).toBeNull();
 
         // Chase is ruled Out on Sunday morning: the check's refresh (Sync All) picks it up.
@@ -121,7 +123,7 @@ test.describe('Starter alerts', () => {
         const sent = await notes(page);
         expect(sent).toHaveLength(1);
         expect(sent[0].title).toMatch(/^2 lineup problems before Sun /);
-        expect(sent[0].body.replace(/ /g, ' ')).toBe("Fixture League: Ja'Marr Chase is Out: start Puka Nacua instead?\nFixture League: RB slot is empty");
+        expect(sent[0].body.replace(/ /g, ' ')).toBe("Fixture League · Ja'Marr Chase is Out: start Puka Nacua instead?\nFixture League · RB slot is empty");
         expect(sent[0].tag).toBe('mls-starter-alert');
         expect(sent[0].data).toEqual({ url: '/lineup/' });
         // The card on the page says the same, and its button opens the Dashboard's "lineups need you" box.
@@ -130,7 +132,9 @@ test.describe('Starter alerts', () => {
         await expect(card).toBeVisible();
         await expect(card).toHaveAttribute('role', 'alert');
         await expect(card.locator('.notify-card-title')).toHaveText(sent[0].title);
+        await expect(card.locator('.notify-card-group')).toHaveText(['Fixture League']);
         await expect(card.locator('.notify-card-lines li')).toHaveCount(2);
+        await expect(card.locator('.notify-card-lines li').first()).toHaveText(/^Ja'Marr\u00a0Chase is Out/);
         await showTab(page, 'roster');
         await card.getByRole('button', { name: 'Show on the Dashboard' }).click();
         await expect(card).toHaveCount(0);
@@ -155,8 +159,10 @@ test.describe('Starter alerts', () => {
     test('a shorter lead time: 15 minutes before, the 45-minute mark is outside the window', async ({ page }) => {
         const { state } = await setup(page, { chase: 'D', when: KICK_1PM - 2 * 60 * MIN });
         await toggle(page).check();
+        const before = await page.locator('#starterAlertsNext').textContent();
         await page.locator('#starterAlertLead').selectOption('15');
         expect(await callApp(page, 'planStarterAlerts')).toBe(KICK_1PM - 15 * MIN);
+        await expect(page.locator('#starterAlertsNext')).not.toHaveText(before); // the check moved 45 minutes later
         await page.clock.setFixedTime(at(KICK_1PM - 45 * MIN));
         expect(await check(page, { refresh: false })).toBeNull();
         await page.clock.setFixedTime(at(KICK_1PM - 10 * MIN));
@@ -266,6 +272,25 @@ test.describe('Starter alerts: Send a test alert', () => {
 });
 
 test.describe('Starter alerts: the card on the page', () => {
+    test('a window behind another app doesn\'t count as looking: the card waits for you to come back', async ({ page }) => {
+        const { state } = await setup(page, { mode: 'denied', when: KICK_1PM - 3 * 60 * MIN });
+        await toggle(page).check();
+        await page.clock.install();
+        const card = page.locator('#notifyPageAlert');
+        await page.getByRole('button', { name: 'Send a test alert' }).click();
+        // Another app in front: the page is "visible", but nobody is looking.
+        await page.evaluate(() => { window.__focused = false; window.dispatchEvent(new Event('blur')); });
+        await page.clock.runFor(5500 + 60_000);
+        await expect(card).toBeVisible();
+        // Back to the browser: 12 seconds from now.
+        await page.evaluate(() => { window.__focused = true; window.dispatchEvent(new Event('focus')); });
+        await page.clock.runFor(11_000);
+        await expect(card).toBeVisible();
+        await page.clock.runFor(1500);
+        await expect(card).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
     test('waits while the tab is hidden, goes 12 seconds after it\'s in view, and holds while the mouse is on it', async ({ page }) => {
         const { state } = await setup(page, { mode: 'denied', when: KICK_1PM - 3 * 60 * MIN });
         await toggle(page).check();

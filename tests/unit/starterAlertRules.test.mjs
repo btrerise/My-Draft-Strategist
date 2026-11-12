@@ -117,11 +117,14 @@ describe('who it names', () => {
 });
 
 describe('the words', () => {
-    test('a count in the title, one line per problem, the stale line last', () => {
+    test('a count in the title, one line per problem (league · problem), the stale line last', () => {
         const m = alertMessage([{ name: 'A', findings: [{ text: 'X is Out' }, { text: 'TE slot is empty' }] }, { name: 'B', findings: [] }],
             [{ name: 'B' }, { name: 'C' }], 'Sun 1:00 PM');
         assert.equal(m.title, '2 lineup problems before Sun 1:00 PM');
-        assert.equal(m.body, 'A: X is Out\nA: TE slot is empty\nWeekly rankings over 6 days old: B and C');
+        assert.equal(m.body, 'A · X is Out\nA · TE slot is empty\nWeekly rankings over 6 days old: B and C');
+        // The card: under each league's name, the stale line on its own.
+        assert.deepEqual(m.groups, [{ heading: 'A', lines: ['X is Out', 'TE slot is empty'] },
+            { heading: null, lines: ['Weekly rankings over 6 days old: B and C'] }]);
     });
     test('only stale rankings', () => {
         assert.equal(alertMessage([], [{ name: 'B' }], 'Sun 1:00 PM').title, 'Old Weekly rankings before Sun 1:00 PM');

@@ -10716,3 +10716,29 @@ Re-taken on CI ([commit 1d094c6](https://github.com/btrerise/My-Draft-Strategist
 Opened each: the folded Notifications section with "Off" at the right, between Headshots and Add Player Manually, like
 its neighbours; the pages 6px (desktop) and 34px (phone) shorter than round 4's. Every difference above the Advanced
 Settings card is a 1-step colour change (the fixed header and tab bar blending over a page of another height).
+
+### N2 round 6 — the overall user-hat pass: four fixes (owner, 2026-11-12)
+
+An end-to-end pass (turning it on, an alert arriving, coming back, Show on the Dashboard) at 390 and 1280px with the
+fixture league (Chase Out, an empty RB slot): the alert and the Dashboard agree (the league card: "2 to fix", RB slot
+empty, "Set on Sleeper: Start Puka Nacua · Bench Ja'Marr Chase (Out)"). The owner asked for all four findings:
+1. **The card waited only for a hidden tab.** A window behind another app is still "visible", so the 12 seconds ran out
+   before a notification's tap brought the page forward. `notify.js`: the card counts down only while the tab is in view
+   *and* its window has focus (`document.hasFocus()`, window `focus`/`blur`).
+2. **The Guide** (step 7, Lineups that need you) has a Starter Alerts paragraph: where it is, what it watches, the
+   minutes, Send a test alert, the card, and that phones only work with the page in front.
+3. **Lines grouped by league.** The card lists each league's problems under its name (`showPageAlert({ groups })`); the
+   system notification, plain text, reads "Fixture League · Ja'Marr Chase is Out: start Puka Nacua instead?" (it read
+   "Fixture League: Ja'Marr Chase is Out: start…", two colons).
+4. **"Next check" under the switch** (green, `#starterAlertsNext`): "Next check: Sun 12:00 PM, before the 1:00 PM games."
+   (or "Checking now…", "Waiting for this week's schedule.", "No games left this week: reload this page after the last
+   one to watch next week's."); it moves on after each check and follows the minutes you pick.
+
+Not changed (noted to the owner): the quiet Sync All before each window redraws the page, as tapping Sync All does.
+
+**Tests.** Unit: `alertMessage`'s lines and groups. Spec: the card's league heading and lines, the next-check line and
+its move when the minutes change, and "a window behind another app doesn't count as looking". 22 tests, both widths,
+3 repeats; `node --test` (584); check-precache.
+
+**Screenshots.** Rendered the last commit and this round in the same container: exactly `desktop/mls-league-guide.png`
+and `phone/mls-league-guide.png` change (the new Guide paragraph). Re-taken on CI from this round's commit.

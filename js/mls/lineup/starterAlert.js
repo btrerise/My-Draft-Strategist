@@ -101,7 +101,7 @@ export async function runStarterAlertCheck({ refresh = true } = {}) {
         perLeague.forEach(l => l.findings.forEach(f => f.key.split('|').forEach(k => sent.add(k))));
         stale.forEach(s => sent.add(`${s.leagueId}:stale`));
         saveSent(sent);
-        const how = await notify({ title: message.title, lines: message.lines, tag: 'mls-starter-alert', url: '/lineup/',
+        const how = await notify({ title: message.title, lines: message.lines, groups: message.groups, tag: 'mls-starter-alert', url: '/lineup/',
             label: 'Starter alert', action: DASHBOARD_ACTION });
         return { title: message.title, body: message.body, how };
     } finally {
@@ -115,8 +115,19 @@ let cancelTimer = null;
 // The next check: at leadMinutes before the next window's kickoff, or now if a window is already due. With no schedule
 // yet (the NFL week or ESPN's scoreboard not loaded), it asks for it and tries again later; with no window left
 // this week, every 6 hours (a later scoreboard can add one). Returns the planned time in ms, or null when off.
+// What the Settings line says about the next check (N2 round 6): { kind: 'next' | 'due' | 'waiting' | 'none', atMs,
+// kickoffMs }, or null while off.
+let planned = null;
+
 export function planStarterAlerts() {
+    const atMs = planNextCheck();
+    renderNextCheck();
+    return atMs;
+}
+
+function planNextCheck() {
     if (cancelTimer) { cancelTimer(); cancelTimer = null; }
+    planned = null;
     const settings = settingsNow();
     if (!settings.on) return null;
     const leadMs = settings.leadMinutes * 60 * 1000;
@@ -127,6 +138,7 @@ export function planStarterAlerts() {
         // The page is still loading the week (a minute), or ESPN had no schedule for it (half an hour: not a poll).
         refreshGameTimes();
         atMs = now + (State.currentNflWeek == null ? 60 * 1000 : 30 * 60 * 1000);
+        planned = { kind: 'waiting' };
         cancelTimer = notifyAt(atMs, planStarterAlerts);
         return atMs;
     }
@@ -135,14 +147,21 @@ export function planStarterAlerts() {
     const next = due ? null : nextCheck(windows, now, leadMs);
     if (!due && !next) {
         atMs = now + 6 * 60 * 60 * 1000;
+        planned = { kind: 'none' };
         cancelTimer = notifyAt(atMs, planStarterAlerts);
         return atMs;
     }
     const kickoffMs = due ? due.startMs : next.window.startMs;
     atMs = due ? now : next.atMs;
+    planned = { kind: due ? 'due' : 'next', atMs, kickoffMs };
     const fire = () => {
         cancelTimer = notifyAt(kickoffMs + 1000, planStarterAlerts); // then the window after it, once this one kicks off
-        runStarterAlertCheck().catch(e => console.warn('Starter alert check failed.', e));
+        runStarterAlertCheck().catch(e => console.warn('Starter alert check failed.', e)).finally(() => {
+            // The line under the switch moves on to the window after this one (its timer is set at this kickoff).
+            const after = nextCheck(kickoffWindows(State.gameTimesByTeam), kickoffMs, leadMs);
+            planned = after ? { kind: 'next', atMs: after.atMs, kickoffMs: after.window.startMs } : { kind: 'none' };
+            renderNextCheck();
+        });
     };
     if (due) fire();
     else cancelTimer = notifyAt(atMs, fire);
@@ -150,6 +169,24 @@ export function planStarterAlerts() {
 }
 
 // --- SETTINGS UI (Advanced Settings) ---
+const timeLabel = (ms) => new Date(ms).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    .replace(/(\d) (?=[AaPp]\.?[Mm])/g, '$1\u00a0');
+
+// "Next check: Sun 12:00 PM, before the 1:00 PM games." under the switch, so you can see it's set up and what the
+// minutes you chose mean (N2 round 6).
+function renderNextCheck() {
+    const el = document.getElementById('starterAlertsNext');
+    if (!el) return;
+    const p = planned;
+    let text = '';
+    if (p && p.kind === 'next') text = `Next check: ${kickoffLabel(p.atMs)}, before the ${timeLabel(p.kickoffMs)} games.`;
+    else if (p && p.kind === 'due') text = `Checking now, before the ${timeLabel(p.kickoffMs)} games.`;
+    else if (p && p.kind === 'waiting') text = "Waiting for this week's schedule.";
+    else if (p && p.kind === 'none') text = "No games left this week: reload this page after the last one to watch next week's.";
+    el.textContent = text;
+    el.hidden = !text;
+}
+
 const STATUS_TEXT = {
     unsupported: "This browser can't show notifications. Alerts show on this page, and your browser tab's name flashes while you're elsewhere.",
     denied: "Notifications are blocked for this site (allow them in your browser's site settings). Until then alerts show on this page, and your browser tab's name flashes while you're elsewhere.",
@@ -177,6 +214,7 @@ export function renderStarterAlertSettings() {
         status.textContent = text;
         status.hidden = !text;
     }
+    renderNextCheck();
 }
 
 // The toggle. Turning it on asks for permission (this is the tap Safari and Chrome want); the alert works either way,
@@ -211,8 +249,10 @@ export function sendTestStarterAlert() {
         testTimer = setTimeout(async () => {
             const how = await notify({
                 title: 'Test alert: 2 lineup problems before Sun 1:00\u00a0PM',
-                lines: ["Example League: Ja'Marr Chase is Out: start Puka Nacua instead?", 'Example League: RB slot is empty',
+                lines: ["Example League · Ja'Marr Chase is Out: start Puka Nacua instead?", 'Example League · RB slot is empty',
                     'This is a test. Real alerts name your own leagues and players.'],
+                groups: [{ heading: 'Example League', lines: ["Ja'Marr Chase is Out: start Puka Nacua instead?", 'RB slot is empty'] },
+                    { heading: null, lines: ['This is a test. Real alerts name your own leagues and players.'] }],
                 tag: 'mls-starter-alert-test', url: '/lineup/', label: 'Starter alert', action: DASHBOARD_ACTION,
             });
             if (status) status.textContent = '';

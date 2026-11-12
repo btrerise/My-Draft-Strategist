@@ -82,6 +82,8 @@ function stopCardClock() {
     if (!cardClock) return;
     clearTimeout(cardClock.timer);
     document.removeEventListener('visibilitychange', cardClock.onVisibility);
+    window.removeEventListener('focus', cardClock.onVisibility);
+    window.removeEventListener('blur', cardClock.onVisibility);
     cardClock = null;
 }
 
@@ -99,26 +101,33 @@ function startCardClock(card) {
         c.remaining = Math.max(0, c.remaining - (Date.now() - c.startedAt));
         c.running = false;
     };
+    // Counts down only while you're looking: the tab in view and its window in front (N2 round 6: a window behind another
+    // app is still "visible", and the card was gone by the time a notification's tap brought the page forward).
+    const looking = () => document.visibilityState === 'visible' && (typeof document.hasFocus !== 'function' || document.hasFocus());
     const resume = () => {
-        if (c.running || c.held || document.visibilityState !== 'visible') return;
+        if (c.running || c.held || !looking()) return;
         c.startedAt = Date.now();
         c.running = true;
         c.timer = setTimeout(dismissPageAlert, c.remaining);
     };
-    c.onVisibility = () => (document.visibilityState === 'visible' ? resume() : pause());
+    c.onVisibility = () => (looking() ? resume() : pause());
     const hold = (on) => { c.held = on || card.matches(':hover') || card.contains(document.activeElement); if (c.held) pause(); else resume(); };
     card.addEventListener('mouseenter', () => hold(true));
     card.addEventListener('mouseleave', () => hold(false));
     card.addEventListener('focusin', () => hold(true));
     card.addEventListener('focusout', () => setTimeout(() => hold(false), 0));
     document.addEventListener('visibilitychange', c.onVisibility);
+    window.addEventListener('focus', c.onVisibility);
+    window.addEventListener('blur', c.onVisibility);
     cardClock = c;
     resume();
 }
 
 // title and lines: plain text (league and player names come from Sleeper, so never HTML). action: { label, run } for
 // the card's button (it dismisses the card first), or none. A newer alert replaces the card. Returns the card.
-export function showPageAlert({ title, lines = [], action = null } = {}) {
+// groups: [{ heading, lines }] in place of lines, for a list under headings (a league's name, then its problems); a
+// group with no heading lists its lines on their own.
+export function showPageAlert({ title, lines = [], groups = null, action = null } = {}) {
     dismissPageAlert();
     const card = document.createElement('section');
     card.id = CARD_ID;
@@ -127,11 +136,23 @@ export function showPageAlert({ title, lines = [], action = null } = {}) {
     card.setAttribute('aria-labelledby', `${CARD_ID}Title`);
     card.innerHTML = `<div class="notify-card-head">${BELL}<h2 class="notify-card-title" id="${CARD_ID}Title"></h2>
         <button type="button" class="notify-card-close" aria-label="Dismiss alert">✕</button></div>
-        <ul class="notify-card-lines"></ul><div class="notify-card-actions"></div>`;
+        <div class="notify-card-body"></div><div class="notify-card-actions"></div>`;
     card.querySelector('.notify-card-title').textContent = title;
-    const list = card.querySelector('.notify-card-lines');
-    lines.forEach(line => { const li = document.createElement('li'); li.textContent = line; list.appendChild(li); });
-    if (!lines.length) list.remove();
+    const body = card.querySelector('.notify-card-body');
+    (groups || [{ heading: null, lines }]).forEach(g => {
+        if (!g.lines || !g.lines.length) return;
+        if (g.heading) {
+            const h = document.createElement('h3');
+            h.className = 'notify-card-group';
+            h.textContent = g.heading;
+            body.appendChild(h);
+        }
+        const list = document.createElement('ul');
+        list.className = 'notify-card-lines';
+        g.lines.forEach(line => { const li = document.createElement('li'); li.textContent = line; list.appendChild(li); });
+        body.appendChild(list);
+    });
+    if (!body.children.length) body.remove();
     card.querySelector('.notify-card-close').addEventListener('click', dismissPageAlert);
     const actions = card.querySelector('.notify-card-actions');
     if (action && action.label) {
@@ -153,8 +174,8 @@ export function showPageAlert({ title, lines = [], action = null } = {}) {
 // name's short text. action: the card's button ({ label, run }). The card always shows. Resolves to how else it was
 // shown: 'notification' (the system's, when you're not looking at the page), 'page' (the card only: you're looking at
 // it) or 'title' (the card, and the tab's name flashing while it's hidden, with no notification permission).
-export async function notify({ title, lines = [], tag, url = '/', label = title, action = null } = {}) {
-    if (typeof document !== 'undefined') showPageAlert({ title, lines, action });
+export async function notify({ title, lines = [], groups = null, tag, url = '/', label = title, action = null } = {}) {
+    if (typeof document !== 'undefined') showPageAlert({ title, lines, groups, action });
     const hidden = typeof document !== 'undefined' && document.visibilityState !== 'visible';
     // Already looking at the page (in view, its window in front): the card is enough (N2 round 4: both at once was
     // redundant). Elsewhere: the system notification too.

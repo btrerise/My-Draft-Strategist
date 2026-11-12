@@ -128,18 +128,25 @@ export function staleLeagues(entries, isStale, sent = new Set()) {
 }
 
 // The notification. perLeague: [{ name, findings }] with findings; stale: staleLeagues; when: "Sun 1:00 PM".
-// { title, lines, body } or null when there's nothing to say.
+// Returns null when there's nothing to say, else { title, lines, groups, body, count }:
+//   lines   the system notification's lines: "Fixture League · Ja'Marr Chase is Out: start Puka Nacua instead?"
+//   groups  the card's list under each league's name ([{ heading, lines }]), the stale line last with no heading
+//           (N2 round 6: "League: Player is Out: start…" read as two colons in a row).
 export function alertMessage(perLeague, stale, when) {
     const leagues = perLeague.filter(l => l.findings.length > 0);
     const count = leagues.reduce((n, l) => n + l.findings.length, 0);
     const lines = [];
-    leagues.forEach(l => l.findings.forEach(f => lines.push(`${l.name}: ${f.text}`)));
+    const groups = [];
+    leagues.forEach(l => {
+        l.findings.forEach(f => lines.push(`${l.name} · ${f.text}`));
+        groups.push({ heading: l.name, lines: l.findings.map(f => f.text) });
+    });
     const staleLine = stale.length
         ? `Weekly rankings over ${STALE_WEEKLY_DAYS} days old: ${joinAnd(stale.map(s => s.name))}` : '';
-    if (staleLine) lines.push(staleLine);
+    if (staleLine) { lines.push(staleLine); groups.push({ heading: null, lines: [staleLine] }); }
     if (lines.length === 0) return null;
     const title = count > 0
         ? `${count} lineup ${count === 1 ? 'problem' : 'problems'} before ${when}`
         : `Old Weekly rankings before ${when}`;
-    return { title, lines, body: lines.join('\n'), count: count || 1 };
+    return { title, lines, groups, body: lines.join('\n'), count: count || 1 };
 }
