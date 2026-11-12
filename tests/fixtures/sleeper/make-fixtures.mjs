@@ -155,6 +155,28 @@ const week2Half = {
 };
 const week2Stats = (extra = {}) => Object.fromEntries(Object.entries({ ...week2Half, ...extra }).map(([id, half]) => [id, statsLine(half)]));
 
+// A trade in week 1 (league/<id>/transactions/<week>, improvements S29, tests/mls-past-trade.spec.mjs): you sent Rival
+// your three best WRs (Chase, Jefferson, Lamb) for Rival's three best RBs (Bijan, Gibbs, Saquon). league-transactions.json
+// (served by default) has no moves; league-rosters-traded.json is the rosters after the trade, which the spec serves
+// with league-transactions-trade.json, so undoing the trade gives back league-rosters.json.
+const TRADE_YOU_GET = ['9509', '9221', '4892'], TRADE_YOU_GIVE = ['4866', '6794', '6786'];
+const rostersTraded = rosters.map(r => ({
+    ...r,
+    players: r.roster_id === 1
+        ? r.players.filter(id => !TRADE_YOU_GIVE.includes(id)).concat(TRADE_YOU_GET)
+        : r.players.filter(id => !TRADE_YOU_GET.includes(id)).concat(TRADE_YOU_GIVE),
+}));
+const tradeTx = {
+    transaction_id: '3000000000000000001', type: 'trade', status: 'complete', leg: 1, roster_ids: [1, 2],
+    adds: Object.fromEntries([...TRADE_YOU_GET.map(id => [id, 1]), ...TRADE_YOU_GIVE.map(id => [id, 2])]),
+    drops: Object.fromEntries([...TRADE_YOU_GET.map(id => [id, 2]), ...TRADE_YOU_GIVE.map(id => [id, 1])]),
+    draft_picks: [], waiver_budget: [], consenter_ids: [1, 2], creator: '900001',
+    created: Date.parse('2026-09-08T18:00:00Z'), status_updated: Date.parse('2026-09-08T19:30:00Z'),
+};
+// A waiver claim that failed (moves nobody) in the same week, which the Roster tab must skip.
+const failedClaim = { transaction_id: '3000000000000000002', type: 'waiver', status: 'failed', leg: 1, roster_ids: [1],
+    adds: { 8138: 1 }, drops: { 17: 1 }, draft_picks: [], created: Date.parse('2026-09-09T10:00:00Z'), status_updated: Date.parse('2026-09-10T10:00:00Z') };
+
 const out = {
     'players-nfl.json': players,
     'league.json': league,
@@ -162,6 +184,9 @@ const out = {
     'league-rosters.json': rosters,
     'league-matchups.json': matchups,
     'league-traded-picks.json': tradedPicks,
+    'league-transactions.json': [],
+    'league-transactions-trade.json': [tradeTx, failedClaim],
+    'league-rosters-traded.json': rostersTraded,
     'league-matchups-live.json': withPoints(live1),
     'league-matchups-final.json': withPoints({ ...live1, 6794: 20 }),
     'league2.json': league2,

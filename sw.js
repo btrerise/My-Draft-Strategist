@@ -205,6 +205,8 @@ const PRECACHE_ASSETS = [
     '/js/mls/power/directionLabels.js',
     '/js/mls/power/rosterCard.js',
     '/js/mls/power/snapshot.js',
+    '/js/mls/power/pastTrades.js',
+    '/js/mls/power/tradeLine.js',
     '/js/mls/lineup/issues.js',
     '/js/mls/lineup/flexChoice.js',
     '/js/mls/lineup/kickoffOrder.js',

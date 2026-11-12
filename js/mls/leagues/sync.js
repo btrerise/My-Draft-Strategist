@@ -550,7 +550,7 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
         return `${names.slice(0, 4).join(', ')} +${names.length - 4} more`;
     }
 
-    export async function processSleeperData(username, leagueId, btn, isRefresh = false, preloaded = {}, suppressErrorToast = false, showChangeSummary = false, skipSave = false) {
+    export async function processSleeperData(username, leagueId, btn, isRefresh = false, preloaded = {}, suppressErrorToast = false, showChangeSummary = false, skipSave = false, { toastPrefix = '' } = {}) {
         // Flipped once the fresh leagueObj is in State.leagues. The catch below covers steps
         // that run after that (optimizeLineup, loadRosterTab...), and a throw there doesn't mean
         // the stored roster is behind -- so it mustn't earn the "Last sync failed" flag.
@@ -776,6 +776,21 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
             else State.leagues.push(leagueObj);
             rosterSaved = true;
 
+            // A single league's refresh that finishes after you've switched to another league (the Roster tab's Sync
+            // button, or S29's automatic sync after a new trade; improvements S29, round 7): save it and leave you where
+            // you are. Making it active again here put its data under the other league's name in the header, and its
+            // rankings, lineup and redraw would land on the league you're looking at. Bulk syncs (skipSave) step
+            // through the leagues on purpose and aren't affected.
+            const background = isRefresh && !skipSave && !!existingLeague && !!State.activeLeagueId && State.activeLeagueId !== leagueId;
+            if (background) {
+                localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
+                if (btn) { btn.innerText = 'Sync Sleeper Waivers & Trades'; btn.disabled = false; }
+                if (rosterDiff && (rosterDiff.added.length || rosterDiff.dropped.length || rosterDiff.newlyOut.length)) {
+                    showToast(`${leagueName}: ${toastPrefix}${rosterChangeText(rosterDiff)}`);
+                }
+                return rosterDiff || true;
+            }
+
             State.activeLeagueId = leagueId;
             // Load this league's own rankings before optimizeLineup below reads State: a league
             // synced for the first time has none, and keeping the previous league's meant its
@@ -808,11 +823,7 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
             if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? 'Sync Sleeper Waivers & Trades' : "Sync Sleeper");
 
             if (rosterDiff && (rosterDiff.added.length || rosterDiff.dropped.length || rosterDiff.newlyOut.length)) {
-                const parts = [];
-                if (rosterDiff.added.length) parts.push(`Added: ${formatNameList(rosterDiff.added)}`);
-                if (rosterDiff.dropped.length) parts.push(`Dropped: ${formatNameList(rosterDiff.dropped)}`);
-                if (rosterDiff.newlyOut.length) parts.push(`Now OUT: ${formatNameList(rosterDiff.newlyOut)}`);
-                showToast(parts.join(' · '));
+                showToast(toastPrefix + rosterChangeText(rosterDiff));
             }
 
             if (typeof updatePulsePrompts === 'function') updatePulsePrompts();
@@ -871,13 +882,34 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
         processSleeperData(username, leagueId, btn, false);
     };
 
+    // "Added: A, B · Dropped: C · Now OUT: D", the single-league sync's summary.
+    function rosterChangeText(diff) {
+        const parts = [];
+        if (diff.added.length) parts.push(`Added: ${formatNameList(diff.added)}`);
+        if (diff.dropped.length) parts.push(`Dropped: ${formatNameList(diff.dropped)}`);
+        if (diff.newlyOut.length) parts.push(`Now OUT: ${formatNameList(diff.newlyOut)}`);
+        return parts.join(' \u00b7 ');
+    }
+
+    // The Roster tab's Sync button while a sync runs (its own, or S29's automatic one).
+    const ROSTER_SYNC_BUSY_HTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing\u2026</span>`;
+
+    // S29's automatic sync after a trade made since the last sync (improvements S29, rounds 6 and 7): the Sync button's
+    // own sync, with its spinner and summary, the summary saying why ("Synced for your trade on Sep 8: Added: …"), and
+    // no error toast (the past-trade box falls back to what it showed). Resolves to processSleeperData's result.
+    export function syncLeagueForTrade(league, reason) {
+        const btn = document.getElementById('rosterSyncBtn');
+        if (btn) btn.innerHTML = ROSTER_SYNC_BUSY_HTML;
+        return processSleeperData(league.username, league.leagueId, btn, true, {}, true, true, false, { toastPrefix: reason ? `${reason}: ` : '' });
+    }
+
     export const syncActiveLeague = function() {
         let league = getActiveLeague();
         if (!league || !league.leagueId || league.leagueId.startsWith('manual_') || !league.username) {
             showToast("Only Sleeper-synced leagues can be refreshed via this button.", { isError: true }); return;
         }
         const btn = document.getElementById('rosterSyncBtn');
-        if (btn) btn.innerHTML = `<span style="display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> Syncing…</span>`;
+        if (btn) btn.innerHTML = ROSTER_SYNC_BUSY_HTML;
         // showChangeSummary=true: this is a single, user-initiated re-sync, so a roster diff
         // toast is useful signal. The bulk "import all leagues" path deliberately leaves this
         // off (see importAllSleeperLeagues) since a diff per league would be noisy there.

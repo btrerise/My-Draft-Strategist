@@ -10517,6 +10517,174 @@ check-precache and `node --test` pass (the full Playwright suite isn't affected 
   remote branch. Delete them from the repo's Branches page (Cloudflare Pages also made a preview of each; harmless).
 - W1's own pull request changes `.github/`, so it runs the full suite, as it should.
 
+## S29 — Power Rankings: what your last trade did
+
+**User-visible effect.** On the Roster tab of a Sleeper league, a new box sits under the Positional Power Rankings
+table (round 2; it was first under the strip): **"Since your trade with Rival on Sep 8"**, who got whom ("You got Bijan Robinson, Jahmyr Gibbs, Saquon Barkley",
+best first by the strip's rankings), then one line per team with only the ranks that moved, right before → right after
+the trade ("You: Start 2 → 1 · RB 2 → 1 · WR 1 → 2", green better, red worse; "no rank changes" when none moved).
+Columns: Start, Ovr, QB, RB, WR, TE, and Future in dynasty and keeper leagues. With more than one trade this season, a
+**Trade** drop-down ("Sep 12: with Rival") picks any of your trades this season (round 3: yours only); it opens on
+your newest, and your pick lasts for the visit. A note under it: "Power Rankings right before → right after
+this trade, out of N teams, by today's rankings. Moves since then are left out. 1 = strongest." Manual league, no
+trades this season, or Sleeper failing: no box, no toast.
+
+**The owner's decisions (Asks you, 2026-11-12).**
+1. **Which moves: trades** ("what I mainly care about"). Waiver and free-agent moves are read only to rebuild rosters.
+2. **How far back: the whole season, as a log to pick from** (owner asked for a list of all the league's trades rather
+   than two weeks, since dynasty rankings change about monthly). Weeks 1 to the current week, every trade in the league.
+3. **Where: under the Roster tab's Power Rankings strip** at first; moved under the full table in round 2. Not on the
+   Dashboard.
+4. **The other team: one line** ("could be interesting to see how much a trade helped/hurt after some time").
+5. **Each trade on its own:** "after" is the league right after the trade (every later move undone), "before" the same
+   with the trade undone too, both scored with today's rankings. So a trade's numbers are what the Trade Analyzer showed
+   for it beforehand (with today's rankings), and two lines don't count the same move twice. The catch: the "after"
+   can differ from today's strip when moves came later. The owner asked to check this once built, and confirmed it in
+   round 2.
+
+**What changed and where.**
+- `js/shared/api/sleeper.js`: `getSleeperTransactions(leagueId, week)` (throws on a non-ok response). S34 can reuse it.
+- `js/mls/power/pastTrades.js` (new, pure): `completedMoves` (complete only, deduped, newest first by
+  `status_updated`), `undoMove` (each player in a move's adds or drops goes back to the team that dropped him, else off
+  every roster; one rule for trades, waiver claims, free-agent adds and drops and commissioner moves), `undoPicks`
+  (each traded pick back to `previous_owner_id`, matched by season, round and original team; picks league.picks
+  doesn't list are skipped), `leaguesAroundMove`, `tradeEntries`, `defaultTradeId`, `rankChanges`, `makeOwnerOf`
+  (roster id → owner as the sync names teams: "You", else `league.teamNames`; a name no roster uses becomes "Unknown
+  Team" when that exists, else nobody, so an undone move never adds a team to the rankings).
+- `js/mls/power/tradeLine.js` (new): fetches weeks 1..current in parallel (plus the cached player map) for the active
+  league only, when the Roster tab is showing, once per visit; a re-sync (new `globalRosterMap`) asks again. Moves after
+  the league's `lastSyncedAt` are ignored (today's rosters don't have them yet). Scores with
+  `computePositionalPower` and the strip's own source (`resolvePowerRankingsSource`: In-Season and dynasty sets per
+  S23, Market Consensus fallback) and future values (picks count in Future, as in S24).
+- `js/mls/power/rosterCard.js`: `refreshPowerRankings` calls `renderPastTradeLine` (and hides it with the strip).
+- `js/mls/main.js`: the `selectPastTrade` change action. `lineup/index.html`: `#rosterTradeLine` (hidden). `css/mls.css`:
+  `.mls-roster-trade*` (reuses `.mls-trade-rank-up/down` for the colors). No new badge or chip, so no legend line.
+- `sw.js`: the two new files in `PRECACHE_ASSETS`; `CACHE_NAME` v2.9.19 → v2.9.20. No storage key.
+- Fixtures: `league-transactions.json` (no moves, served by default for every league and week),
+  `league-transactions-trade.json` (the week-1 trade: your Chase, Jefferson, Lamb for Rival's Bijan, Gibbs, Saquon, plus
+  a failed waiver claim) and `league-rosters-traded.json` (rosters after it), from `make-fixtures.mjs`;
+  `tests/helpers.mjs` routes `transactions/<week>`.
+
+**Tests.** Unit (`tests/unit/pastTrades.test.mjs`, 16): the undo rule for a trade, a waiver claim with a drop, a
+free-agent add alone and a drop alone, a commissioner move, unknown players and teams, picks (back one step, passed on
+twice, a draft already held, with a trade's players), failed and duplicate moves, several moves undone newest first with
+a player since dropped again, and a scored check that "before" and "after" equal the Trade Analyzer's
+(`leagueAfterTrade`) for the same trade. Spec (`tests/mls-past-trade.spec.mjs`, both widths, phone at 375px): the
+Trade Analyzer's "after the trade" ranks for the fixture trade, then the trade goes through on Sleeper and the line
+shows exactly those changes (and Rival's the other way); two trades (drop-down, newest of yours first, the older one
+alone after the later is undone, the pick kept across tab switches); no trades (two requests on opening the Roster tab,
+none before it, none again later); Sleeper failing (no box, no toast); a manual league (no box, no request).
+
+**Screenshots.** None change: the box is hidden in every screenshot (no fixture league has a trade). All 44 PNGs,
+rendered in this container on main and on the final branch, are pixel-identical (`npm run pxdiff`, 2026-11-12).
+
+**Left over.**
+- A trade made after the last sync isn't listed until the league is synced again (its players aren't on today's
+  rosters yet). A note saying so would need a comparison with Sleeper's list; not built.
+- Trades from last season (a dynasty league's previous season, `previous_league_id`) aren't read; neither are picks
+  for drafts already held. Offseason trades in Sleeper's current-season league are (week 1).
+- The Guide's Roster tab text doesn't mention the box (a sentence there re-takes `mls-league-guide` at both widths).
+
+### S29, round 2 (owner, after trying it)
+
+1. **Moved under the full Power Rankings table** (inside `#powerRankingsCard`, after `#powerRankingsOutput`): under the
+   strip it pushed the start of the roster down on phones. `lineup/index.html`, `css/mls.css` (top margin instead of
+   tucking under the strip); the spec checks the box follows the table.
+2. **Trades not involving you:** the owner was torn (interesting, or clutter, since users mostly care about their own).
+   My view: yours only (the box answers "what did my trade do?"; a busy league's list would bury yours, and the full
+   table already compares teams). Owner: **"Yours only"** (round 3).
+3. **Question 5 (each trade on its own):** confirmed.
+
+### S29, round 3: your trades only (owner)
+
+`yourTrades` (`js/mls/power/pastTrades.js`) keeps only trades you were in; the box's title is always "Since your trade
+with …", the drop-down's options read "Sep 12: with Rival", and a league where only others traded shows no box. The
+undo rule still reads every move (others' trades and pickups too) to rebuild rosters. Unit test for `yourTrades`; the
+spec adds "a trade you weren't in: no line".
+
+### S29, round 4: a review as a user (owner: "All four")
+
+My review, wearing the user's hat: helpful (nothing else says what a trade did) and in the app's style, but (1) easy to
+miss under the table, (2) the answer came after the player list, (3) no verdict, so you add up the ranks yourself, (4)
+the bold rank run was louder than the table, (5) a three-line footnote on phones. The owner took all four fixes:
+- **A. Found from the strip:** when the box shows a trade, the strip's link reads "See the full breakdown and your last
+  trade below ↓" (`stripLink` in `tradeLine.js`, after `renderRosterPowerStrip` draws its own text; back to the old
+  text with no trade).
+- **B. The answer first:** title, then a verdict sentence (`tradeVerdictText` in `pastTrades.js`: "Your starting lineup
+  got stronger (6th → 3rd of 12); overall roster weaker (4th → 6th)." Start first, then Ovr and Future when they moved),
+  then each team's ranks, then who got whom in smaller text.
+- **C. Calmer ranks:** each change is its own item (weight 500, 14px apart, never split across lines), no dot separators.
+- **D. Short note:** "Right before → right after, by today's rankings." with the rest (rebuilt from Sleeper's moves, out
+  of N teams, later moves left out, 1 = strongest) behind an (i). The spec checks the tooltip opens on screen at 375px.
+
+Unit tests for `tradeVerdictText`; the spec checks the order, the sentence, the note, the weight and the strip's link
+(and its usual text with no trade). Screenshots: still none (no trades in the fixtures, so the link and box don't show).
+
+### S29, round 5: a second review as a user (owner: "Do 2-5")
+
+Tried on a dynasty league (Future, a pick in the trade). Fixed:
+- **Title:** "Your trade with Rival · Sep 8" (was "Since your trade…", which read as "from then until now" against the
+  right before → right after numbers).
+- **Verdict says what the ranks hide:** the ranks are in the lines under it, so the sentence now gives your starting
+  lineup's change as a percent of the league average, as the Trade Analyzer's headline does (`tradeVerdictText`,
+  `startPercent`: "Your starting lineup stayed 1st of 2 and got stronger (100% → 107% of league average)."). Ovr and
+  Future are no longer repeated in it.
+- **The other team's line muted** (`.mls-roster-trade-other`: grey label, smaller, 70% opacity); yours stays in full.
+- **No break inside a parenthesis** on phones (`.mls-roster-trade-nowrap`).
+
+**Question 1 of the review (a trade made since the last sync).** The owner asked how the site could know a trade exists
+without knowing what it is. It does know what it is (Sleeper's list has the players and picks); what it lacks is today's
+rosters, which are the last sync's, and the box starts from those and undoes moves. Proposed instead of a Sync button:
+apply moves made after the last sync forward onto the saved rosters. The owner chose an automatic sync instead (round 6).
+
+### S29, round 6: a trade since the last sync syncs the league by itself (owner)
+
+The owner asked for a trigger: when the box finds a trade of yours completed after the league's last sync, sync the
+roster automatically. `renderPastTradeLine` (`tradeLine.js`): once per league per visit, while the Roster tab shows, it
+calls `processSleeperData` as the Roster tab's Sync button does (`isRefresh`, the Added / Dropped / Now OUT toast), with
+its error toast off. Meanwhile the box shows the new trade's title and "New since your last sync: updating this league
+from Sleeper…". The moves just read are kept for the redraw (`keepAfterSync`), so Sleeper isn't asked for them again.
+On a failed sync the box falls back to what it showed before (no toast; the sync logs to the console and flags the
+league "Last sync failed" on the Dashboard, as any failed sync does).
+
+What else the sync does, the same as the button: it **re-optimizes this league's lineup** (`optimizeLineup(true)`,
+manual swaps reset), refreshes the roster, records and the Power Rankings, and clears the Dashboard's stale-sync age.
+Only a trade of yours triggers it, not a waiver claim or another team's trade.
+
+Spec: "a trade since the last sync" (the league syncs once, the box shows the trade with the Trade Analyzer's numbers,
+the Added toast, the moves aren't read again, no second sync on the next visit to the tab). Also fixed: the "Sleeper
+fails" test's toast check used a selector that matched nothing (`.toast-message` now).
+
+Not tested: a failed automatic sync (the sync's own `console.error` fails `expectClean`); the code path falls back to
+the box as it was.
+
+### S29, round 7: a third review as a user (owner: "Go ahead")
+
+Walked through the automatic sync as a user and tried to break it. Found and fixed:
+1. **Bug: a league sync that finished after you switched leagues took you back to it.** `processSleeperData` always set
+   `State.activeLeagueId` to the league it synced, while the header kept the league you'd switched to, so the Lineup and
+   Roster tabs showed one league's data under the other's name. The Roster tab's Sync button had this on main too;
+   round 6's automatic sync made it likely on a slow connection. Test first (`tests/mls-sync-league-switch.spec.mjs`:
+   the Sync button and the automatic sync, each with the rosters request held until after the switch; both failed
+   before the fix). Fix in `js/mls/leagues/sync.js`: a single-league refresh (`isRefresh`, not `skipSave`) whose league
+   is no longer active saves the league and stops there: no `activeLeagueId`, rankings, lineup re-optimize or redraw,
+   the button put back, and its summary prefixed with the league's name. Sync All and Import All (`skipSave`) are
+   unchanged.
+2. **The sync is visible where you're looking:** the automatic sync now runs through `syncLeagueForTrade` (sync.js),
+   which puts the Roster tab's Sync button in its spinner state, as a tap does (`ROSTER_SYNC_BUSY_HTML`, shared with
+   `syncActiveLeague`).
+3. **The summary says why:** "Synced for your trade on Sep 8: Added: … · Dropped: …" (`toastPrefix`, a new last
+   option of `processSleeperData`; `rosterChangeText` builds the summary for both paths).
+
+The new spec ran 12 times at both widths with no failure (its first version read the stored roster before the sync had
+saved it; it now polls). CHANGELOG: a line for the fix under Lineup Strategist.
+
+### S29: the full suite before the pull request (2026-11-12)
+
+`npm run check` in this container: precache OK, 583 unit tests, 936 Playwright tests passed (48 skipped). The 4 failures
+are `visual.spec.mjs` stopping at its environment check (the cloud image's fonts), as on main; the screenshots were
+compared on main and the branch here instead (identical, above). Nothing re-taken.
+
 ## N2 — Starter alerts before kickoff (site open), and the shared notification module
 
 **Owner's answers (2026-11-12).**
