@@ -167,6 +167,21 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A league sync no longer takes you back to that league.** If you tapped "Sync Sleeper Waivers & Trades" and switched
+  to another league before it finished, the app went back to the synced league while the header still named the one
+  you'd picked, so the Lineup and Roster tabs could show one league's players under the other's name. Now the synced
+  league is saved and you stay where you are; its summary names the league.
+- **What a trade did to your Power Rankings.** On the Roster tab of a Sleeper league, a box under the Positional Power
+  Rankings table shows your newest trade this season (a drop-down picks an earlier one): a sentence on your starting
+  lineup ("Your starting lineup went 6th → 3rd of 12 and got stronger (96% → 108% of league average)"), then each
+  team's ranks that moved, right before → right after the trade (Start, Ovr, QB, RB, WR, TE and, in dynasty and keeper
+  leagues, Future; green better, red worse; the other team's line muted), then who got whom. It uses today's rankings
+  and leaves out moves made after the trade, so the numbers are what the Trade Analyzer showed for it beforehand. The
+  strip's link mentions the box ("See the full breakdown and your last trade below"). If you've traded since the
+  league's last sync, opening the Roster tab syncs the league by itself, once, as the "Sync Sleeper Waivers & Trades"
+  button does (its spinner, the lineup re-optimized, and a summary saying why: "Synced for your trade on Sep 8: Added:
+  …"). Nothing shows in a manual league, in a league where you
+  haven't traded, or when Sleeper doesn't answer.
 - **Trade Analyzer: the same draft pick twice, and market values by themselves.** A draft pick can now be on a side
   more than once: add "2027 1st" again and it shows as "2027 1st (2)", with its own token, its own row and its own
   value in the verdict; each row says whether that team holds that many. Players still can't repeat. **Analyze Trade

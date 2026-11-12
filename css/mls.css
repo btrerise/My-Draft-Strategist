@@ -2379,6 +2379,34 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
     .mls-roster-power-stat-name { font-size: 0.55rem; letter-spacing: 0; }
     .mls-roster-power-stat-rank { font-size: 0.95rem; }
 }
+/* What a past trade did (improvements S29; js/mls/power/tradeLine.js): under the Power Rankings table, in the strip's kind of box. */
+.mls-roster-trade {
+    margin: 0.9rem 0 0;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 0.8rem;
+}
+.mls-roster-trade-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.mls-roster-trade-title { font-weight: 700; color: var(--text-main); flex: 1 1 auto; min-width: 0; }
+.mls-roster-trade-pick { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-muted); max-width: 100%; }
+.mls-roster-trade-pick select { width: auto; max-width: 220px; min-width: 0; padding-top: 0.3rem; padding-bottom: 0.3rem; font-size: 0.78rem; }
+.mls-roster-trade-verdict { margin: 0.4rem 0 0; color: var(--text-main); line-height: 1.4; }
+.mls-roster-trade-lines { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0.45rem 0 0; }
+.mls-roster-trade-lines > div { display: contents; }
+/* The other team's line, muted (round 5): grey label, softer colors, a little smaller. */
+.mls-roster-trade-lines .mls-roster-trade-other dt { color: var(--text-muted); font-weight: 500; font-size: 0.74rem; }
+.mls-roster-trade-lines .mls-roster-trade-other dd { font-size: 0.74rem; opacity: 0.7; }
+.mls-roster-trade-nowrap { white-space: nowrap; }
+.mls-roster-trade-lines dt { font-weight: 600; color: var(--text-main); overflow-wrap: anywhere; max-width: 9rem; }
+/* Each change its own item, spaced apart, at normal weight (round 4: the bold run was louder than the table). */
+.mls-roster-trade-lines dd { margin: 0; display: flex; flex-wrap: wrap; gap: 2px 14px; font-variant-numeric: tabular-nums; }
+.mls-roster-trade-change { white-space: nowrap; font-weight: 500; }
+.mls-roster-trade-none { color: var(--text-muted); }
+.mls-roster-trade-gets { display: flex; flex-direction: column; gap: 1px; margin-top: 0.5rem; font-size: 0.72rem; color: var(--text-muted); overflow-wrap: anywhere; }
+.mls-roster-trade-gets strong { color: var(--text-main); font-weight: 600; }
+.mls-roster-trade-note { display: flex; align-items: center; gap: 6px; margin-top: 0.45rem; font-size: 0.7rem; color: var(--text-muted); }
 
 /* Roster tab's position counts (js/mls/render/roster.js, improvements S9): one chip per position above the
    list, colored and lit like the Waiver Wire Assistant's position chips (.pos-filter in css/base.css). Each

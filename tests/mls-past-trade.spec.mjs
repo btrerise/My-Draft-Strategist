@@ -1,0 +1,232 @@
+// The Roster tab's past trade (improvements S29): under the Power Rankings strip, a trade this season and each team's
+// ranks right before → right after it, rebuilt from Sleeper's transactions. The fixture trade (tests/fixtures/sleeper/
+// make-fixtures.mjs): in week 1 you sent Rival Chase, Jefferson and Lamb for Bijan, Gibbs and Saquon.
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { test, expect } from '@playwright/test';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp } from './helpers.mjs';
+
+test.use({ timezoneId: 'UTC', locale: 'en-US' });
+
+const fixture = (name) => JSON.parse(readFileSync(fileURLToPath(new URL(`./fixtures/sleeper/${name}`, import.meta.url)), 'utf8'));
+const TRADE = fixture('league-transactions-trade.json');
+const TRADED_ROSTERS = fixture('league-rosters-traded.json');
+
+const GET = ['Bijan Robinson', 'Jahmyr Gibbs', 'Saquon Barkley'];
+const GIVE = ["Ja'Marr Chase", 'Justin Jefferson', 'CeeDee Lamb'];
+
+// Serves the rosters after the trade and the trade in week 1 (week 2: `week2`, default none), then syncs again.
+async function tradeGoesThrough(page, { week2 = [], rosters = TRADED_ROSTERS } = {}) {
+    await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/rosters$/, r => r.fulfill({ json: rosters }));
+    await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/transactions\/\d+$/, r =>
+        r.fulfill({ json: r.request().url().endsWith('/1') ? TRADE : week2 }));
+    await showTab(page, 'setup');
+    await seedMls(page);
+}
+
+const line = (page) => page.locator('#rosterTradeLine');
+const noSideScroll = (page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+
+test.describe('Roster tab: what a past trade did to your Power Rankings', () => {
+    test('the line equals the Trade Analyzer\'s ranks for the same trade before it happened', async ({ page }) => {
+        if (test.info().project.name === 'phone') await page.setViewportSize({ width: 375, height: 844 });
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+
+        // Before the trade: the Trade Analyzer's "Power Rankings after the trade", your row.
+        await showTab(page, 'scout');
+        await callApp(page, 'setTradePlayers', 'get', GET);
+        await callApp(page, 'setTradePlayers', 'give', GIVE);
+        await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
+        const you = page.locator('#tradeOutput [data-trade-impact] table').first().locator('tr.mls-power-you');
+        await expect(you).toHaveCount(1);
+        const heads = await page.locator('#tradeOutput [data-trade-impact] table').first().locator('thead th').allTextContents();
+        const cells = await you.locator('td').evaluateAll(tds => tds.map(td => (td.querySelector('.mls-dotted-underline') || td).textContent.trim()));
+        const analyzer = [];
+        heads.forEach((h, i) => {
+            const m = /^(\d+)→(\d+)$/.exec(cells[i] || '');
+            if (m) analyzer.push(`${h.trim()} ${m[1]} → ${m[2]}`);
+        });
+        expect(analyzer.length).toBeGreaterThan(0);
+
+        // The trade goes through on Sleeper, and the league is synced again.
+        await tradeGoesThrough(page);
+        await showTab(page, 'roster');
+        await expect(line(page)).toBeVisible();
+        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Your trade with Rival · Sep 8');
+        // One trade: no drop-down. The failed waiver claim in the same week is skipped.
+        await expect(line(page).locator('select')).toHaveCount(0);
+        await expect(line(page).locator('.mls-roster-trade-gets')).toContainText('You got Bijan Robinson, Jahmyr Gibbs, Saquon Barkley');
+        await expect(line(page).locator('.mls-roster-trade-gets')).toContainText("Rival got Ja'Marr Chase, Justin Jefferson, CeeDee Lamb");
+        await expect(line(page).locator('dt')).toHaveText(['You', 'Rival']);
+        const yours = (await line(page).locator('dd').first().locator('.mls-trade-rank-up, .mls-trade-rank-down').allTextContents());
+        expect(yours).toEqual(analyzer);
+        await expect(line(page).locator('dd').first().locator('.mls-trade-rank-up')).toContainText(['RB 2 → 1']);
+        await expect(line(page).locator('dd').first().locator('.mls-trade-rank-down')).toContainText(['WR 1 → 2']);
+        // Rival, the other way round.
+        await expect(line(page).locator('dd').nth(1)).toContainText('RB 1 → 2');
+        await expect(line(page).locator('dd').nth(1)).toContainText('WR 2 → 1');
+        // Today's strip agrees with "after" (no move since).
+        await expect(page.locator('#rosterPowerStrip .mls-roster-power-stat').filter({ hasText: 'RB' }).locator('.mls-roster-power-stat-rank')).toHaveText('1');
+        // Round 4: the answer first (a sentence, then the ranks), the players after, a one-line note with the details in (i).
+        // Round 5: the sentence says what the ranks hide (how much, as a percent of the league average), not the ranks again.
+        await expect(line(page).locator('.mls-roster-trade-verdict')).toHaveText(/^Your starting lineup stayed 1st of 2( and got (stronger|weaker) \(\d+% → \d+% of league average\)| \(\d+% of league average\))\.$/);
+        await expect(line(page).locator('.mls-roster-trade-verdict .mls-roster-trade-nowrap')).toHaveCount(1);
+        // Yours in full; the other team's muted.
+        await expect(line(page).locator('.mls-roster-trade-lines > div')).toHaveClass([/mls-roster-trade-you/, /mls-roster-trade-other/]);
+        await expect(line(page).locator('.mls-roster-trade-other dd')).toHaveCSS('opacity', '0.7');
+        expect(await line(page).evaluate(el => [...el.children].map(c => c.className.replace(/^mls-roster-trade-/, '')))).toEqual(['head', 'verdict', 'lines', 'gets', 'note']);
+        await expect(line(page).locator('.mls-roster-trade-note')).toContainText("Right before → right after, by today's rankings.");
+        await expect(line(page).locator('.mls-roster-trade-note .tooltip-text')).toContainText('out of 2 teams');
+        await expect(line(page).locator('.mls-roster-trade-change').first()).toHaveCSS('font-weight', '500');
+        // The strip's link names the box, so it can be found from the top of the tab.
+        await expect(page.locator('#rosterPowerStrip .mls-roster-power-link')).toHaveText('See the full breakdown and your last trade below ↓');
+        // Under the full Power Rankings table, not under the strip (owner, round 2: it pushed the roster down on phones).
+        expect(await page.evaluate(() => {
+            const box = document.getElementById('rosterTradeLine'), table = document.querySelector('#powerRankingsOutput table');
+            return box.closest('#powerRankingsCard') !== null && !!table && !!(table.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING);
+        })).toBe(true);
+        expect(await noSideScroll(page)).toBe(true);
+        // The (i) opens on screen at 375px too (it sits near the left edge, and the site's tooltips open leftward).
+        await line(page).locator('.mls-roster-trade-note .tooltip-icon').click();
+        const tip = await line(page).locator('.mls-roster-trade-note .tooltip-text').boundingBox();
+        expect(tip.x).toBeGreaterThanOrEqual(0);
+        expect(tip.x + tip.width).toBeLessThanOrEqual(page.viewportSize().width);
+        await expectClean(page, state);
+    });
+
+    test('several of your trades: a drop-down, newest first; each trade on its own', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        // A second trade in week 2: your Derrick Henry for Rival's De'Von Achane, on today's rosters too.
+        const rosters = TRADED_ROSTERS.map(r => ({
+            ...r, players: r.roster_id === 1 ? r.players.map(id => id === '3198' ? '9226' : id) : r.players.map(id => id === '9226' ? '3198' : id),
+        }));
+        const second = { ...TRADE[0], transaction_id: '3000000000000000003', leg: 2, adds: { 9226: 1, 3198: 2 }, drops: { 9226: 2, 3198: 1 },
+            created: Date.parse('2026-09-12T18:00:00Z'), status_updated: Date.parse('2026-09-12T18:00:00Z') };
+        await tradeGoesThrough(page, { week2: [second], rosters });
+        await showTab(page, 'roster');
+        const select = line(page).locator('select');
+        await expect(select).toBeVisible();
+        await expect(select.locator('option')).toHaveText(['Sep 12: with Rival', 'Sep 8: with Rival']);
+        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Your trade with Rival · Sep 12');
+        await expect(line(page).locator('.mls-roster-trade-gets')).toContainText("You got De'Von Achane");
+        // The first trade, picked: the same numbers as when it was the only one (the later trade is undone first).
+        await select.selectOption({ label: 'Sep 8: with Rival' });
+        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Your trade with Rival · Sep 8');
+        await expect(line(page).locator('dd').first()).toContainText('RB 2 → 1');
+        await expect(line(page).locator('dd').first()).toContainText('WR 1 → 2');
+        // The pick lasts while you stay on the tab.
+        await showTab(page, 'lineup');
+        await showTab(page, 'roster');
+        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Your trade with Rival · Sep 8');
+        await expectClean(page, state);
+    });
+
+    test('a trade since the last sync: the league syncs by itself, once, and the box shows the trade (round 6)', async ({ page }) => {
+        const requests = { rosters: 0, transactions: 0 };
+        page.on('request', r => {
+            if (/\/rosters$/.test(r.url())) requests.rosters++;
+            if (/\/transactions\/\d+$/.test(r.url())) requests.transactions++;
+        });
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        // The last sync was before the trade (Sep 1; the trade went through Sep 8). Sleeper now has the new rosters.
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.leagues.find(l => l.leagueId === State.activeLeagueId).lastSyncedAt = Date.parse('2026-09-01T12:00:00Z');
+        });
+        await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/rosters$/, r => r.fulfill({ json: TRADED_ROSTERS }));
+        await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/transactions\/\d+$/, r =>
+            r.fulfill({ json: r.request().url().endsWith('/1') ? TRADE : [] }));
+        const before = { ...requests };
+        await showTab(page, 'roster');
+        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Your trade with Rival · Sep 8');
+        await expect(line(page).locator('.mls-roster-trade-lines dd').first()).toContainText('RB 2 → 1');
+        await expect(line(page).locator('.mls-roster-trade-lines dd').first()).toContainText('WR 1 → 2');
+        // The sync's own summary, as the Sync button gives it; the roster below has the new players.
+        // It says why it synced (round 7).
+        await expect(page.locator('.toast-message').filter({ hasText: 'Synced for your trade on Sep 8: Added: ' })).toBeVisible();
+        await expect(page.locator('#rosterSyncBtn')).toHaveText('Sync Sleeper Waivers & Trades');
+        await expect(page.locator('#rosterTab')).toContainText('Bijan Robinson');
+        await page.waitForLoadState('networkidle');
+        // One sync (the rosters once more), and the moves weren't read again after it.
+        expect(requests.rosters - before.rosters).toBe(1);
+        expect(requests.transactions - before.transactions).toBe(2);
+        // Not again on the next visit to the tab.
+        await showTab(page, 'lineup');
+        await showTab(page, 'roster');
+        await page.waitForLoadState('networkidle');
+        expect(requests.rosters - before.rosters).toBe(1);
+        await expectClean(page, state);
+    });
+
+    test('no trades this season: no line; Sleeper asked once per visit, only on the Roster tab', async ({ page }) => {
+        const requests = [];
+        page.on('request', r => { if (/\/transactions\/\d+$/.test(r.url())) requests.push(r.url()); });
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        expect(requests).toEqual([]);
+        await showTab(page, 'roster');
+        await expect(page.locator('#rosterPowerStrip')).toBeVisible();
+        await expect.poll(() => requests.length).toBe(2); // weeks 1 and 2
+        await page.waitForLoadState('networkidle');
+        await expect(line(page)).toBeHidden();
+        await expect(page.locator('#rosterPowerStrip .mls-roster-power-link')).toHaveText('See the full league breakdown and explanations below ↓');
+        await showTab(page, 'lineup');
+        await showTab(page, 'roster');
+        await page.waitForLoadState('networkidle');
+        expect(requests.length).toBe(2);
+        await expectClean(page, state);
+    });
+
+    test('a trade you weren\'t in: no line (yours only, owner round 3)', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        // Rival sends Malik Nabers to a third team (one this two-team fixture league doesn't name).
+        const other = { ...TRADE[0], transaction_id: '3000000000000000004', roster_ids: [2, 3], adds: { 11632: 3 }, drops: { 11632: 2 }, draft_picks: [] };
+        await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/transactions\/\d+$/, r => r.fulfill({ json: r.request().url().endsWith('/1') ? [other] : [] }));
+        await showTab(page, 'roster');
+        await page.waitForLoadState('networkidle');
+        await expect(page.locator('#rosterPowerStrip')).toBeVisible();
+        await expect(line(page)).toBeHidden();
+        await expectClean(page, state);
+    });
+
+    test('Sleeper fails: no line and no toast', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/transactions\/\d+$/, r => r.fulfill({ status: 500, body: 'oops' }));
+        await showTab(page, 'roster');
+        await page.waitForLoadState('networkidle');
+        await expect(page.locator('#rosterPowerStrip')).toBeVisible();
+        await expect(line(page)).toBeHidden();
+        await expect(page.locator('.toast-message').filter({ hasText: /error|couldn|sleeper|trade/i })).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
+    test('a manual league: no line, and Sleeper isn\'t asked', async ({ page }) => {
+        const requests = [];
+        page.on('request', r => { if (/\/transactions\/\d+$/.test(r.url())) requests.push(r.url()); });
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            const league = State.leagues.find(l => l.leagueId === State.activeLeagueId);
+            league.username = 'Manual';
+            league.globalRosterMap = Object.fromEntries(Object.entries(league.globalRosterMap).filter(([, o]) => o === 'You'));
+        });
+        await showTab(page, 'roster');
+        await page.waitForLoadState('networkidle');
+        await expect(line(page)).toBeHidden();
+        expect(requests).toEqual([]);
+        await expectClean(page, state);
+    });
+});
