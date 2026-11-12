@@ -175,7 +175,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   minutes to 2 hours (1 hour to start; inactives come out 90 minutes before kickoff). Just before each check the app
   runs Sync All by itself, for the latest injury news and your Sleeper lineups. Each problem is named once a week. The
   alert can also name leagues whose Weekly rankings are over 6 days old (a second switch, on to start). It works while
-  /lineup/ is open on a computer, even in a background tab; tapping the alert brings that tab forward. If you're already
+  /lineup/ is open on a computer, even in a background tab; the notification carries Lineup Strategist's icon, and
+  tapping it brings that tab forward. If you're already
   looking at the page, you get only the card below, not a system notification too. Every alert shows on the page as a card, with what to fix and a button to the Dashboard. It waits while you're in another tab and
   goes 12 seconds after you're back in the browser (longer while your mouse is on it), so it's there when you return;
   its problems are listed under each league's name. The Guide (Lineups that need you) explains it. If notifications are blocked, or the browser has none (an iPhone or iPad tab), the card is

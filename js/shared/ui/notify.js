@@ -171,10 +171,10 @@ export function showPageAlert({ title, lines = [], groups = null, action = null 
 // --- THE ALERT ---
 // title: plain text; lines: plain-text lines (the notification's body, one per line, and the card's list). tag: one
 // notification per tag (a newer one replaces it). url: the page a tap opens ('/lineup/', '/'). label: the flashing tab
-// name's short text. action: the card's button ({ label, run }). The card always shows. Resolves to how else it was
+// name's short text. action: the card's button ({ label, run }). icon: the app icon's URL for the system notification. The card always shows. Resolves to how else it was
 // shown: 'notification' (the system's, when you're not looking at the page), 'page' (the card only: you're looking at
 // it) or 'title' (the card, and the tab's name flashing while it's hidden, with no notification permission).
-export async function notify({ title, lines = [], groups = null, tag, url = '/', label = title, action = null } = {}) {
+export async function notify({ title, lines = [], groups = null, tag, url = '/', label = title, action = null, icon } = {}) {
     if (typeof document !== 'undefined') showPageAlert({ title, lines, groups, action });
     const hidden = typeof document !== 'undefined' && document.visibilityState !== 'visible';
     // Already looking at the page (in view, its window in front): the card is enough (N2 round 4: both at once was
@@ -184,7 +184,8 @@ export async function notify({ title, lines = [], groups = null, tag, url = '/',
     if (notifyPermission() === 'granted') {
         try {
             const reg = await navigator.serviceWorker.ready;
-            await reg.showNotification(title, { body: lines.join('\n'), tag, renotify: !!tag, data: { url } });
+            // icon: the app's icon beside the text (Windows, macOS and Android show it; without one Chrome shows its own logo).
+            await reg.showNotification(title, { body: lines.join('\n'), tag, renotify: !!tag, data: { url }, ...(icon ? { icon } : {}) });
             // The tab bar says so too, in case the notification is missed (it goes to the system tray).
             if (hidden) flashTitle(label);
             return 'notification';

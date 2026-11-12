@@ -10781,3 +10781,18 @@ Raised by the owner during N2 round 6; recommended by this session and agreed, n
   (empty and league, desktop and phone) and a new Settings pair per app; follow "Accepting an intended visual change".
   CHANGELOG lines under both apps. No storage keys change.
 - **Size.** About a 15k-token session (two apps, nav and tests); it changes what users see.
+
+### N2 round 7 — the owner's test on Windows (Chrome, the branch preview): two fixes (2026-11-12)
+
+1. **The card showed a horizontal scrollbar** with nothing to scroll. The ✕'s 48px tap area (the shared `::after` from
+   M2's touch targets) reaches past the card's right edge, and with `overflow-y: auto` the browser makes the other axis
+   scrollable too. `css/base.css`: `.notify-card { overflow-x: hidden; }`. Test: the spec checks the card has nothing
+   to scroll sideways or doesn't allow it (headless Chromium hides scrollbars, so it checks the cause); it fails with the
+   old CSS and passes with the fix.
+2. **The system notification showed Chrome's logo.** `notify()` takes an `icon` (shared, for N4); the starter alert and
+   the test alert pass Lineup Strategist's app icon, `/images/mls-app-icon.png` (512px, lineup/manifest.json's). The spec
+   checks it. Android's small status-bar `badge` (a white silhouette) isn't set: the alert is for computers, and the
+   site has no monochrome icon.
+
+**Checked.** `mls-starter-alert.spec.mjs` (22, both widths, 2 repeats), `node --test` (584), check-precache. No screenshot
+changes (the card isn't in any baseline).

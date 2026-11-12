@@ -2798,6 +2798,9 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
     width: min(400px, calc(100vw - 32px));
     max-height: min(60vh, 420px);
     overflow-y: auto;
+    /* The ✕'s 48px tap area (the shared ::after, TOUCH TARGETS) reaches past the right edge, which gave the card a
+       needless horizontal scrollbar (owner's report on Windows, N2 round 7). */
+    overflow-x: hidden;
     padding: 14px 16px;
     background: var(--card-bg, #131b2c);
     color: var(--text-main, #f3f4f6);

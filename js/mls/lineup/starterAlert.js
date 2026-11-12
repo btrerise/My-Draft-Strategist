@@ -63,6 +63,8 @@ let checking = false;
 // The card's button: the Dashboard's "lineups need you" box (the League Command Center), which lists the same problems
 // with their fixes.
 const DASHBOARD_ACTION = { label: 'Show on the Dashboard', run: () => goToLineupNeeds() };
+// The system notification's icon: Lineup Strategist's app icon (lineup/manifest.json's, 512px).
+const APP_ICON = '/images/mls-app-icon.png';
 
 // Runs the check if a window is due now (its check time has come, its kickoff hasn't). refresh: Sync All first (tests
 // turn it off to check the last sync). Resolves to { title, body, how } when it alerted, else null.
@@ -102,7 +104,7 @@ export async function runStarterAlertCheck({ refresh = true } = {}) {
         stale.forEach(s => sent.add(`${s.leagueId}:stale`));
         saveSent(sent);
         const how = await notify({ title: message.title, lines: message.lines, groups: message.groups, tag: 'mls-starter-alert', url: '/lineup/',
-            label: 'Starter alert', action: DASHBOARD_ACTION });
+            label: 'Starter alert', action: DASHBOARD_ACTION, icon: APP_ICON });
         return { title: message.title, body: message.body, how };
     } finally {
         checking = false;
@@ -253,7 +255,7 @@ export function sendTestStarterAlert() {
                     'This is a test. Real alerts name your own leagues and players.'],
                 groups: [{ heading: 'Example League', lines: ["Ja'Marr Chase is Out: start Puka Nacua instead?", 'RB slot is empty'] },
                     { heading: null, lines: ['This is a test. Real alerts name your own leagues and players.'] }],
-                tag: 'mls-starter-alert-test', url: '/lineup/', label: 'Starter alert', action: DASHBOARD_ACTION,
+                tag: 'mls-starter-alert-test', url: '/lineup/', label: 'Starter alert', action: DASHBOARD_ACTION, icon: APP_ICON,
             });
             if (status) status.textContent = '';
             resolve(how);

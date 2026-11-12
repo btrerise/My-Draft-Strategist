@@ -126,6 +126,7 @@ test.describe('Starter alerts', () => {
         expect(sent[0].body.replace(/ /g, ' ')).toBe("Fixture League · Ja'Marr Chase is Out: start Puka Nacua instead?\nFixture League · RB slot is empty");
         expect(sent[0].tag).toBe('mls-starter-alert');
         expect(sent[0].data).toEqual({ url: '/lineup/' });
+        expect(sent[0].icon).toBe('/images/mls-app-icon.png'); // the app's icon, not Chrome's logo (N2 round 7)
         // The card on the page says the same, and its button opens the Dashboard's "lineups need you" box.
         const card = page.locator('#notifyPageAlert');
         await page.evaluate(() => { window.__focused = true; });
@@ -133,6 +134,10 @@ test.describe('Starter alerts', () => {
         await expect(card).toHaveAttribute('role', 'alert');
         await expect(card.locator('.notify-card-title')).toHaveText(sent[0].title);
         await expect(card.locator('.notify-card-group')).toHaveText(['Fixture League']);
+        // Nothing to scroll sideways (the ✕'s tap area gave it a needless scrollbar on Windows, N2 round 7).
+        // (Headless Chromium hides scrollbars, so the test asks the cause: content wider than the card, and the card
+        // allowing a sideways scroll.)
+        expect(await card.evaluate(el => el.scrollWidth <= el.clientWidth || getComputedStyle(el).overflowX === 'hidden')).toBe(true);
         await expect(card.locator('.notify-card-lines li')).toHaveCount(2);
         await expect(card.locator('.notify-card-lines li').first()).toHaveText(/^Ja'Marr\u00a0Chase is Out/);
         await showTab(page, 'roster');
