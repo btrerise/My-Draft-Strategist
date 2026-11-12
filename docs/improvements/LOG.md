@@ -10572,7 +10572,7 @@ Turned on, the browser asks for notification permission, and while `/lineup/` st
 tab is fine) an alert arrives the chosen time before each kickoff window naming starters in your Sleeper lineup who are
 Out, Doubtful, on IR or bye, without a game, and empty slots, plus (optionally) leagues with Weekly rankings over 6 days
 old. Tapping it brings the Lineup Strategist tab forward. Blocked or unsupported: a toast in view, "(1) Starter alert"
-flashing in the tab title while hidden. The Dashboard also gets fresh injury news and Sleeper lineups from the
+flashing in the browser tab's name while hidden. The Dashboard also gets fresh injury news and Sleeper lineups from the
 pre-window Sync All.
 
 **Tests.** `tests/unit/starterAlertRules.test.mjs` (settings, windows, due and next check, the Sleeper lineup, who is
@@ -10608,3 +10608,33 @@ commit 2bbedba; it changed no other PNG). Opened each against the previous basel
   switch off) under Show Player Headshots; everything below it 90px lower; nothing above it changed.
 - `phone/mls-empty-setup.png`, `phone/mls-league-setup.png`: the same row (160px taller pages). Above the card, the empty
   page also has 37 header pixels off by one colour step (anti-aliasing in a taller full-page render); nothing visible.
+
+### N2 round 2 — the alert stays on the page, a test button, clearer words (owner, 2026-11-12)
+
+**Owner's notes.** (1) "Title" read as one of the app's tabs, not the browser tab's name: the help text now says "the
+name on your browser tab". (2) "Is there a way to force a notification?" A **Send a test alert** button (the owner
+chose it over a console snippet; useful to anyone checking alerts reach them before game day). (3) "A notification of
+some kind needs to be on the site itself": a flashing browser tab says nothing about what to do once you're back.
+
+**What changed.**
+- `js/shared/ui/notify.js`: `showPageAlert({ title, lines, action })` / `dismissPageAlert()`: a card that stays until
+  closed (✕) or its button is used, bottom right on computers and above the tab bar on phones (the toasts' places; z-index
+  1500: over the content and bar, under sheets and toasts), amber border and a bell like the "needs you" box,
+  `role="alert"`, never takes focus, plain text only (Sleeper names). `notify()` now takes `lines` and `action`, always
+  shows the card, and no longer uses a toast (a 12-second toast was gone before you got back). It returns
+  'notification', 'page' (card only, in view) or 'title' (card, plus the flashing tab name while hidden). The card's
+  two buttons use their own listeners (notify.js builds them; no inline handlers). CSS in `css/base.css` (shared, for N4).
+- `js/mls/lineup/starterAlert.js`: the card's button is **Show on the Dashboard** (`goToLineupNeeds`: the League Command
+  Center, which lists the same problems with their fixes). `sendTestStarterAlert()`: a sample alert after 5 seconds
+  ("Test alert: 2 lineup problems before Sun 1:00 PM", Example League lines, "This is a test…"), the same path as a
+  real one, a status line meanwhile ("…Switch to another tab to see it as you would on game day."); it records nothing
+  as named this week. `starterAlertRules.js`: `alertMessage` also returns `lines`.
+- `lineup/index.html`: the button under the options (shown only while Starter Alerts is on), `data-action`.
+- Status texts and CHANGELOG reworded ("alerts show on this page, and the name on your browser tab flashes while you're
+  in another tab").
+
+**Screenshots.** None change: the card isn't in any baseline and the button sits in the options, hidden while off.
+
+**Checked.** check-precache, `node --test` (584), `mls-starter-alert.spec.mjs` (18, both widths, 3 repeats: the card's
+text and Dashboard button, ✕, the card waiting after a hidden alert, the test alert at 5 seconds with Playwright's fake
+timers), touch-targets, focus-ring, smoke.

@@ -15,7 +15,7 @@ import { notify, notifyAt, notifyNow, notifyPermission, requestNotifyPermission 
 import { refreshGameTimes, State } from '../state.js';
 import { isBestBallLeague } from '../helpers.js';
 import { getLineupIssues, hasKickedOff } from './gameInfo.js';
-import { syncAllLeagues } from '../render/dashboard.js';
+import { goToLineupNeeds, syncAllLeagues } from '../render/dashboard.js';
 import { STALE_WEEKLY_DAYS, alertMessage, dueWindow, kickoffWindows, leagueFindings, nextCheck, noGameStarters,
     normalizeSettings, sleeperLineup, staleLeagues } from './starterAlertRules.js';
 
@@ -58,6 +58,9 @@ function weeklyUpdatedAt(l) {
 }
 
 let checking = false;
+// The card's button: the Dashboard's "lineups need you" box (the League Command Center), which lists the same problems
+// with their fixes.
+const DASHBOARD_ACTION = { label: 'Show on the Dashboard', run: () => goToLineupNeeds() };
 
 // Runs the check if a window is due now (its check time has come, its kickoff hasn't). refresh: Sync All first (tests
 // turn it off to check the last sync). Resolves to { title, body, how } when it alerted, else null.
@@ -96,7 +99,8 @@ export async function runStarterAlertCheck({ refresh = true } = {}) {
         perLeague.forEach(l => l.findings.forEach(f => f.key.split('|').forEach(k => sent.add(k))));
         stale.forEach(s => sent.add(`${s.leagueId}:stale`));
         saveSent(sent);
-        const how = await notify({ title: message.title, body: message.body, tag: 'mls-starter-alert', url: '/lineup/', label: 'Starter alert' });
+        const how = await notify({ title: message.title, lines: message.lines, tag: 'mls-starter-alert', url: '/lineup/',
+            label: 'Starter alert', action: DASHBOARD_ACTION });
         return { title: message.title, body: message.body, how };
     } finally {
         checking = false;
@@ -145,9 +149,9 @@ export function planStarterAlerts() {
 
 // --- SETTINGS UI (Advanced Settings) ---
 const STATUS_TEXT = {
-    unsupported: "This browser can't show notifications here (an iPhone or iPad tab, for one). Alerts show in the page instead, and the tab's title flashes while it's in the background.",
-    denied: "Notifications are blocked for this site. Allow them in your browser's site settings; until then alerts show in the page, and the tab's title flashes while it's in the background.",
-    default: "Notifications aren't allowed yet: turn this off and on again to be asked. Until then alerts show in the page, and the tab's title flashes while it's in the background.",
+    unsupported: "This browser can't show notifications here (an iPhone or iPad tab, for one). Alerts show on this page instead, and the name on your browser tab flashes while you're in another tab.",
+    denied: "Notifications are blocked for this site. Allow them in your browser's site settings; until then alerts show on this page, and the name on your browser tab flashes while you're in another tab.",
+    default: "Notifications aren't allowed yet: turn this off and on again to be asked. Until then alerts show on this page, and the name on your browser tab flashes while you're in another tab.",
     granted: '',
 };
 
@@ -188,6 +192,28 @@ export function setStarterAlertLead(value) {
 export function toggleStaleRankingsAlert(checked) {
     saveSettings({ ...settingsNow(), staleRankings: !!checked });
     renderStarterAlertSettings();
+}
+
+// "Send a test alert": a sample alert in 5 seconds, by the same path as a real one (notification, the card, the flashing
+// tab name), so you can switch tabs and see it as on game day. Returns the timer's promise (the tests await it).
+export const TEST_ALERT_DELAY_MS = 5000;
+let testTimer = null;
+export function sendTestStarterAlert() {
+    const status = document.getElementById('starterAlertTestStatus');
+    if (status) status.textContent = 'A test alert arrives in 5 seconds. Switch to another tab to see it as you would on game day.';
+    clearTimeout(testTimer);
+    return new Promise(resolve => {
+        testTimer = setTimeout(async () => {
+            const how = await notify({
+                title: 'Test alert: 2 lineup problems before Sun 1:00 PM',
+                lines: ["Example League: Ja'Marr Chase is Out: start Puka Nacua instead?", 'Example League: RB slot is empty',
+                    'This is a test. Real alerts name your own leagues and players.'],
+                tag: 'mls-starter-alert-test', url: '/lineup/', label: 'Starter alert', action: DASHBOARD_ACTION,
+            });
+            if (status) status.textContent = '';
+            resolve(how);
+        }, TEST_ALERT_DELAY_MS);
+    });
 }
 
 // On load (js/mls/init.js), after a backup is restored, and after a Factory Reset.

@@ -1,7 +1,8 @@
 // Starter alerts (improvements N2: js/mls/lineup/starterAlert.js, starterAlertRules.js, js/shared/ui/notify.js): the
 // Advanced Settings toggle (off by default; turning it on asks for notification permission), the check before a kickoff
 // window on the lineup set in Sleeper, its refresh (a quiet Sync All), once a week, and the fallbacks when notifications
-// are blocked or missing (a toast in view, the tab title flashing while hidden). sw.js's notificationclick (a tap
+// are blocked or missing (the card on the page; the browser tab's name flashing while hidden). Every alert also stays on
+// the page as a card until dismissed, with a button to the Dashboard. "Send a test alert" sends a sample. sw.js's notificationclick (a tap
 // focuses /lineup/) is tests/unit/swNotificationClick.test.mjs; the rules are tests/unit/starterAlertRules.test.mjs.
 //
 // Week 2 of the fixture season. The fixture league's own Sleeper lineup (mds_test, user 900001) is set by a stubbed
@@ -114,6 +115,16 @@ test.describe('Starter alerts', () => {
         expect(sent[0].body.replace(/ /g, ' ')).toBe("Fixture League: Ja'Marr Chase is Out: start Puka Nacua instead?\nFixture League: RB slot is empty");
         expect(sent[0].tag).toBe('mls-starter-alert');
         expect(sent[0].data).toEqual({ url: '/lineup/' });
+        // The card on the page says the same, and its button opens the Dashboard's "lineups need you" box.
+        const card = page.locator('#notifyPageAlert');
+        await expect(card).toBeVisible();
+        await expect(card).toHaveAttribute('role', 'alert');
+        await expect(card.locator('.notify-card-title')).toHaveText(sent[0].title);
+        await expect(card.locator('.notify-card-lines li')).toHaveCount(2);
+        await showTab(page, 'roster');
+        await card.getByRole('button', { name: 'Show on the Dashboard' }).click();
+        await expect(card).toHaveCount(0);
+        await expect(page.locator('#setupTab')).toHaveClass(/\bactive\b/);
         // The refresh reached the page: the Lineup tab and Dashboard read the same statuses.
         expect(await page.evaluate(async () => (await import('/js/mls/state.js')).State.leagues[0].roster.find(p => p.id === '4866').inj)).toBe('OUT');
 
@@ -164,15 +175,17 @@ test.describe('Starter alerts', () => {
         await expectClean(page, state);
     });
 
-    test('blocked: the toggle says so; a toast while in view, the title flashing while hidden', async ({ page }) => {
+    test('blocked: the toggle says so; the card in view; hidden, the tab name flashes and the card is there on return', async ({ page }) => {
         const { state } = await setup(page, { mode: 'default', answer: 'denied', chase: 'Out', when: KICK_1PM - 2 * 60 * MIN });
         await toggle(page).check();
         await expect(page.locator('#starterAlertsStatus')).toContainText('Notifications are blocked for this site');
         await page.clock.setFixedTime(at(KICK_1PM - 45 * MIN));
         const shown = await check(page, { refresh: false });
-        expect(shown.how).toBe('toast');
-        await expect(page.locator('.toast-message')).toContainText('2 lineup problems before Sun');
+        expect(shown.how).toBe('page');
+        await expect(page.locator('#notifyPageAlert .notify-card-title')).toContainText('2 lineup problems before Sun');
         expect(await notes(page)).toEqual([]);
+        await page.getByRole('button', { name: 'Dismiss alert' }).click();
+        await expect(page.locator('#notifyPageAlert')).toHaveCount(0);
 
         // Hidden: the title flashes with the count until the tab is shown again.
         const title = await page.title();
@@ -188,16 +201,19 @@ test.describe('Starter alerts', () => {
         await expect.poll(() => page.title()).toMatch(/^\(1\) /);
         await setHidden(page, false);
         await expect.poll(() => page.title()).toBe(title);
+        // Back on the tab: what to do is on the page.
+        await expect(page.locator('#notifyPageAlert')).toBeVisible();
+        await expect(page.locator('#notifyPageAlert .notify-card-lines')).toContainText('CeeDee Lamb is Doubtful');
         await expectClean(page, state);
     });
 
-    test('no Notification API (an iPhone tab): the toggle says so and the toast stands in', async ({ page }) => {
+    test('no Notification API (an iPhone tab): the toggle says so and the card stands in', async ({ page }) => {
         const { state } = await setup(page, { mode: 'missing', chase: 'Out', when: KICK_1PM - 2 * 60 * MIN });
         await toggle(page).check();
         await expect(page.locator('#starterAlertsStatus')).toContainText("This browser can't show notifications here");
         await page.clock.setFixedTime(at(KICK_1PM - 45 * MIN));
-        expect((await check(page, { refresh: false })).how).toBe('toast');
-        await expect(page.locator('.toast-message')).toContainText("Ja'Marr");
+        expect((await check(page, { refresh: false })).how).toBe('page');
+        await expect(page.locator('#notifyPageAlert')).toContainText("Ja'Marr");
         await expectClean(page, state);
     });
 
@@ -206,6 +222,29 @@ test.describe('Starter alerts', () => {
         await toggle(page).check();
         await expect.poll(() => notes(page)).toHaveLength(1);
         expect((await notes(page))[0].title).toMatch(/^2 lineup problems/);
+        await expectClean(page, state);
+    });
+});
+
+test.describe('Starter alerts: Send a test alert', () => {
+    test('a sample in 5 seconds, any time, by the same path: notification and card', async ({ page }) => {
+        const { state } = await setup(page, { mode: 'granted', when: KICK_1PM - 3 * 60 * MIN });
+        await toggle(page).check();
+        await expect(page.getByRole('button', { name: 'Send a test alert' })).toBeVisible();
+        await page.clock.install();
+        await page.getByRole('button', { name: 'Send a test alert' }).click();
+        await expect(page.locator('#starterAlertTestStatus')).toContainText('arrives in 5 seconds');
+        await page.clock.runFor(4000);
+        expect(await notes(page)).toEqual([]);
+        await page.clock.runFor(1500);
+        await expect.poll(() => notes(page)).toHaveLength(1);
+        const [note] = await notes(page);
+        expect(note.title).toMatch(/^Test alert/);
+        expect(note.tag).toBe('mls-starter-alert-test');
+        await expect(page.locator('#notifyPageAlert .notify-card-title')).toHaveText(note.title);
+        await expect(page.locator('#starterAlertTestStatus')).toHaveText('');
+        // A test isn't a real alert: nothing is remembered as named this week.
+        expect(await page.evaluate(() => localStorage.getItem('mls_starter_alerts_sent'))).toBeNull();
         await expectClean(page, state);
     });
 });

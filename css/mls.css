@@ -2902,3 +2902,5 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .starter-alerts-lead select { width: auto; min-width: 0; flex: 0 1 auto; }
 .starter-alerts-options .toggle-row-flush { margin: 0.25rem 0 0; }
 .starter-alerts-status { margin: 0; color: #f59e0b; } /* the stale-label amber (.freshness-stale) */
+.starter-alerts-test { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.75rem; }
+.starter-alerts-test .text-helper:empty { display: none; }

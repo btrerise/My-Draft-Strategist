@@ -128,7 +128,7 @@ export function staleLeagues(entries, isStale, sent = new Set()) {
 }
 
 // The notification. perLeague: [{ name, findings }] with findings; stale: staleLeagues; when: "Sun 1:00 PM".
-// { title, body } or null when there's nothing to say.
+// { title, lines, body } or null when there's nothing to say.
 export function alertMessage(perLeague, stale, when) {
     const leagues = perLeague.filter(l => l.findings.length > 0);
     const count = leagues.reduce((n, l) => n + l.findings.length, 0);
@@ -141,5 +141,5 @@ export function alertMessage(perLeague, stale, when) {
     const title = count > 0
         ? `${count} lineup ${count === 1 ? 'problem' : 'problems'} before ${when}`
         : `Old Weekly rankings before ${when}`;
-    return { title, body: lines.join('\n'), count: count || 1 };
+    return { title, lines, body: lines.join('\n'), count: count || 1 };
 }
