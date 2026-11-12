@@ -10684,3 +10684,283 @@ saved it; it now polls). CHANGELOG: a line for the fix under Lineup Strategist.
 `npm run check` in this container: precache OK, 583 unit tests, 936 Playwright tests passed (48 skipped). The 4 failures
 are `visual.spec.mjs` stopping at its environment check (the cloud image's fonts), as on main; the screenshots were
 compared on main and the branch here instead (identical, above). Nothing re-taken.
+
+## N2 — Starter alerts before kickoff (site open), and the shared notification module
+
+**Owner's answers (2026-11-12).**
+1. **Which lineup:** the starters set in Sleeper (what scores), not Lineup Strategist's recommendation.
+2. **How long before kickoff:** a drop-down in Settings, 15 to 120 minutes in steps of 15, 60 by default. (The help
+   text says inactives come out 90 minutes before kickoff, so 75 or less catches them.)
+3. **Questionable:** doesn't count (only `SIM_EXCLUDE_STATUSES`: Doubtful, Out, IR, PUP, SUS, NFI, DNR).
+4. **Refresh before each window:** yes, "as long as it makes sense with Sleeper's API and how sync is set up". It does:
+   Sync All already re-downloads the player file every tap (`forceRefresh`) and each league's roster (which carries
+   your Sleeper starters), so the refresh *is* Sync All, run quietly through the same code. About 3 a Sunday (4:05 and
+   4:25 share one window), plus Thursday and Monday.
+5. **Stale rankings:** kept, as its own switch under the alert ("Also name old Weekly rankings", on by default, only
+   used while alerts are on). It rides along in an alert that fires anyway, and on its own at most once a week.
+6. **Survive a reload:** yes, a storage key is fine if it's small: `mls_starter_alerts_sent` is
+   `{ week, sent: ['leagueId:playerId', …] }`, under 1 KB, started over each NFL week.
+7. **Title flash and M10:** keep the title flash (it's in the browser's tab strip, for a hidden tab; M10's badges are on
+   the app's own nav bar, seen only while the tab is in view). M10 should count both from the same "needs you" rule:
+   noted in `docs/TESTING.md`'s Open follow-ups.
+
+**What changed.**
+- `js/shared/ui/notify.js` (new, both apps; N4 reuses it): `notifyPermission()`, `requestNotifyPermission()` (from a
+  tap only), `notify({ title, body, tag, url, label })` (always `registration.showNotification()` with `data.url`; with no
+  permission or no API: a toast if the tab is in view, else the title flash), `flashTitle()` ("(N) label" / "(N) page
+  title" every second, both carrying the count so a hidden tab's once-a-minute timers still show it; put back on
+  `visibilitychange`), `notifyNow()` and `notifyAt(ms, fn)` (a timer re-planned at most every 6 hours, for a laptop that
+  slept). In `PRECACHE_ASSETS`.
+- `sw.js`: a `notificationclick` listener: closes the notification, focuses a window already on `data.url`
+  (`/lineup/`; `'/'` matches only Draft Strategist's `/` or `/index.html`), else opens it. `CACHE_NAME` v2.9.19 →
+  **v2.10.0** (middle number: the service worker's own behavior changed).
+- `js/mls/lineup/starterAlertRules.js` (new, pure): settings, kickoff windows from `State.gameTimesByTeam` (kickoffs
+  within 30 minutes of a window's first share it), `dueWindow` / `nextCheck`, `sleeperLineup(league)` (Sleeper's starters
+  in `starterSlots` order, slot names mapped to the app's: `SUPER_FLEX` → SFLEX, `REC_FLEX` → WRTE, `WRRB_FLEX` → WRRB),
+  `noGameStarters`, `leagueFindings` (what to name, worded by S11's `lineupIssueItems`, so "Ja'Marr Chase is Out: start
+  Puka Nacua instead?" reads as on the Lineup tab), `staleLeagues`, `alertMessage`.
+- `js/mls/lineup/starterAlert.js` (new): the settings (`mls_starter_alerts`: `{ on, leadMinutes, staleRankings }`),
+  the timer (`planStarterAlerts`: the next window's check time; at once if the page opens inside a window's lead time;
+  then, after that window kicks off, the next), the check (`runStarterAlertCheck`: quiet Sync All, then S11's
+  `getLineupIssues` on each non-Best-Ball league's Sleeper lineup, plus "has no game" and the stale line), and the
+  Settings controls. Injured starters are named in their own game's window; a bye, no game or empty slot (no kickoff
+  of its own) at the first check that sees it. A player locked in the app is left out (your call, as on the Lineup tab).
+- `js/mls/render/dashboard.js`: `syncAllLeagues(btn, { quiet })` returns a promise that settles when the sync is done;
+  quiet means no button, no summary toast and the Sync Logs left folded. A Sync All already running is awaited, not
+  started twice. The button's behavior is unchanged.
+- `lineup/index.html`: the Starter Alerts row under Show Player Headshots in Advanced Settings (a Feather bell,
+  `currentColor`), and, while on, the lead-time drop-down, its hint, the stale-rankings switch and a status line
+  (blocked, not allowed yet, or no notifications in this browser). `css/mls.css`: their layout.
+- `js/shared/storage/keys.js`: `KEYS.mls.starterAlerts`, `KEYS.mls.starterAlertsSent` (both `mls_`, so Backup carries
+  them and Factory Reset clears them). `js/mls/main.js` and `init.js`: the three change actions (`data-action`), and
+  `initStarterAlerts()` at start-up.
+
+**User-visible effect.** A **Starter Alerts** switch in Lineup Strategist's Advanced Settings, off until you turn it on.
+Turned on, the browser asks for notification permission, and while `/lineup/` stays open on a computer (a background
+tab is fine) an alert arrives the chosen time before each kickoff window naming starters in your Sleeper lineup who are
+Out, Doubtful, on IR or bye, without a game, and empty slots, plus (optionally) leagues with Weekly rankings over 6 days
+old. Tapping it brings the Lineup Strategist tab forward. Blocked or unsupported: a toast in view, "(1) Starter alert"
+flashing in the browser tab's name while hidden. The Dashboard also gets fresh injury news and Sleeper lineups from the
+pre-window Sync All.
+
+**Tests.** `tests/unit/starterAlertRules.test.mjs` (settings, windows, due and next check, the Sleeper lineup, who is
+named and once a week, the words), `tests/unit/swNotificationClick.test.mjs` (sw.js in a vm with stubbed `clients`:
+focus an open /lineup/, open one, `/` never matches /lineup/, a bad url opens the root), `tests/mls-starter-alert.spec.mjs`
+(fixed clock, stubbed Notification and service worker, the fixture league's Sleeper lineup stubbed: off by default with no
+prompt; on asks once and alerts once inside the window, not before, not again after a reload, and the refresh picks up a
+new Out; a 15-minute lead; Questionable alone and the stale line on and off; denied → toast, then title flash while
+hidden and back on `visibilitychange`; no API → toast; opened inside the window → checks at once; Playwright's fake
+timers: the timer fires at lead minutes before kickoff and then plans the next window).
+
+**Screenshots.** Found by rendering main and this branch in the same container (`RENDER_ENV=any`, `npm run pxdiff`):
+exactly four change, each because the Advanced Settings card is one row taller (the Starter Alerts switch, off; its
+options are hidden while off, so none of them shows): `desktop/mls-empty-setup.png`, `desktop/mls-league-setup.png`,
+`phone/mls-empty-setup.png`, `phone/mls-league-setup.png` (height +93px desktop, +168px phone). Nothing above the card
+moved (the first different row is the card's). Re-taken on CI by `update-screenshots.yml` from this card's commit.
+
+**Checked.** check-precache, `node --test` (584), `mls-starter-alert.spec.mjs` (16, both widths, 3 repeats), and the
+specs Sync All or the Settings card could touch (mls-best-available, mls-busy-spinner, mls-flex-choice,
+mls-league-cards, mls-lineup-needs, mls-top-available, touch-targets, focus-ring, backup, smoke, tooltips-onscreen).
+The full suite runs once, when the owner asks for the pull request.
+
+**Left over.**
+- For M10: one count for its nav badge and N2's title flash (`docs/TESTING.md`, Open follow-ups).
+- A `/lineup/` left open across weeks keeps last week's schedule until reloaded, so after Monday night there's no
+  window to check until the next visit (`docs/TESTING.md`, Open follow-ups; re-reading the week on a timer would go
+  beyond the owner's one refresh per window, so ask first).
+- Not tested on a real device: Safari's hidden-tab timers, and the notification's look on each OS.
+
+**Screenshots re-taken on CI** ([run 43238611092](https://github.com/btrerise/My-Draft-Strategist/actions/runs/43238611092),
+commit 2bbedba; it changed no other PNG). Opened each against the previous baseline:
+- `desktop/mls-empty-setup.png`, `desktop/mls-league-setup.png`: the Starter Alerts row (bell, title, help text, the
+  switch off) under Show Player Headshots; everything below it 90px lower; nothing above it changed.
+- `phone/mls-empty-setup.png`, `phone/mls-league-setup.png`: the same row (160px taller pages). Above the card, the empty
+  page also has 37 header pixels off by one colour step (anti-aliasing in a taller full-page render); nothing visible.
+
+### N2 round 2 — the alert stays on the page, a test button, clearer words (owner, 2026-11-12)
+
+**Owner's notes.** (1) "Title" read as one of the app's tabs, not the browser tab's name: the help text now says "the
+name on your browser tab". (2) "Is there a way to force a notification?" A **Send a test alert** button (the owner
+chose it over a console snippet; useful to anyone checking alerts reach them before game day). (3) "A notification of
+some kind needs to be on the site itself": a flashing browser tab says nothing about what to do once you're back.
+
+**What changed.**
+- `js/shared/ui/notify.js`: `showPageAlert({ title, lines, action })` / `dismissPageAlert()`: a card that stays until
+  closed (✕) or its button is used, bottom right on computers and above the tab bar on phones (the toasts' places; z-index
+  1500: over the content and bar, under sheets and toasts), amber border and a bell like the "needs you" box,
+  `role="alert"`, never takes focus, plain text only (Sleeper names). `notify()` now takes `lines` and `action`, always
+  shows the card, and no longer uses a toast (a 12-second toast was gone before you got back). It returns
+  'notification', 'page' (card only, in view) or 'title' (card, plus the flashing tab name while hidden). The card's
+  two buttons use their own listeners (notify.js builds them; no inline handlers). CSS in `css/base.css` (shared, for N4).
+- `js/mls/lineup/starterAlert.js`: the card's button is **Show on the Dashboard** (`goToLineupNeeds`: the League Command
+  Center, which lists the same problems with their fixes). `sendTestStarterAlert()`: a sample alert after 5 seconds
+  ("Test alert: 2 lineup problems before Sun 1:00 PM", Example League lines, "This is a test…"), the same path as a
+  real one, a status line meanwhile ("…Switch to another tab to see it as you would on game day."); it records nothing
+  as named this week. `starterAlertRules.js`: `alertMessage` also returns `lines`.
+- `lineup/index.html`: the button under the options (shown only while Starter Alerts is on), `data-action`.
+- Status texts and CHANGELOG reworded ("alerts show on this page, and the name on your browser tab flashes while you're
+  in another tab").
+
+**Screenshots.** None change: the card isn't in any baseline and the button sits in the options, hidden while off.
+
+**Checked.** check-precache, `node --test` (584), `mls-starter-alert.spec.mjs` (18, both widths, 3 repeats: the card's
+text and Dashboard button, ✕, the card waiting after a hidden alert, the test alert at 5 seconds with Playwright's fake
+timers), touch-targets, focus-ring, smoke.
+
+### N2 round 3 — the card goes 12 seconds after you're back; a notification center later (owner, 2026-11-12)
+
+**Owner's question.** Should there be a notification center under a bell in the header (an unread badge, a history),
+with the alert back to a 12-second pop-up? **Recommended against for now, and the owner agreed (option 1):** today there
+is one alert, a few times a week, so the bell would mostly be empty; the starter alert's lasting home is the Dashboard's
+"lineups need you" box, which updates as you fix things (an inbox entry would stay "unread" after the fix); M10 already
+plans the "something's waiting" badge, on the Dashboard tab, pointing where you fix it; and the phone header has no room
+(K2 kept its cup icon to computers for that reason). N4's "on the clock" needs to be in front of you, not in a list.
+
+**What changed.** `js/shared/ui/notify.js`: the card waits while the tab is hidden and goes 12 seconds
+(`PAGE_ALERT_MS`) after the tab is in view, paused while the mouse is over it or focus is in it (the toasts' rule);
+✕ and its button still close it at once. CHANGELOG reworded. Test: `mls-starter-alert.spec.mjs`, "the card on the page"
+(fake timers: still there after a minute hidden, still there at 11 seconds in view, held while hovered, gone after).
+
+**Checked.** check-precache, `node --test` (584), `mls-starter-alert.spec.mjs` (20, both widths, 3 repeats). No
+screenshot changes.
+
+**Left over.** A notification center is in `docs/TESTING.md`'s Open follow-ups, for when there are several kinds of
+message worth keeping.
+
+### N2 round 4 — the owner's "user hat" review: six fixes (2026-11-12)
+
+The review (as a user, from renders at 390 and 1280px) found the card clear and the test button useful, and the Settings
+part clunky. The owner asked for all six fixes:
+1. **One box.** The options hung loose below the switch's box. Now `.toggle-group.starter-alerts` (css/mls.css) is the
+   box, and the options open inside it under a divider while on.
+2. **Less text.** The description is two lines ("Get an alert before kickoff when a starter in your Sleeper lineup
+   can't play or a slot is empty. Works while this page is open on a computer."); the hint under the drop-down is
+   shorter (inactives at 90 minutes, Questionable doesn't count, your leagues sync first, phones pause pages); the
+   status lines are shorter.
+3. **A small test button**, sized to its text (`btn-sm`), on the left.
+4. **A green bell** like the Headshots icon (`color: var(--primary-green)`, still `stroke="currentColor"`).
+5. **"1:00 PM" kept together** on the card (a no-break space in `kickoffLabel`; the test alert's title too).
+6. **The card alone when you're looking:** `notify()` skips the system notification when the tab is in view and its
+   window has focus (`document.hasFocus()`); elsewhere (another tab, or another app in front) it sends it, and the tab
+   name still flashes when the tab is hidden.
+
+**Tests.** `mls-starter-alert.spec.mjs` stubs `document.hasFocus` (`window.__focused`): the notification when you're in
+another app, the card alone when you're looking (and the kickoff time unbroken), the test alert after switching tabs.
+20 tests, both widths, 3 repeats; `node --test` (584); check-precache; touch-targets, focus-ring.
+
+**Screenshots.** The same four PNGs change again (the box, the shorter description, the green bell, all visible while
+off): `desktop/mls-empty-setup.png`, `desktop/mls-league-setup.png`, `phone/mls-empty-setup.png`,
+`phone/mls-league-setup.png`. Re-taken on CI from this round's commit.
+Re-taken on CI ([commit 2bbb493](https://github.com/btrerise/My-Draft-Strategist/commit/2bbb493); no other PNG changed).
+Opened each against round 1's: the Starter Alerts box now matches Headshots' (green bell, two-line description, switch
+off), and the pages are shorter (desktop 14px, phone 56px). On the two phone PNGs, the only other differences are
+1-step colour changes within the first screen (rows 32–843: the header and tab bar, which are fixed, blending over a page
+of another height); nothing visible.
+
+### N2 round 5 — a Notifications fold (owner, 2026-11-12)
+
+**Owner's idea:** put it all in a collapsible "Notifications" card. Agreed: Advanced Settings already folds everything
+but Headshots (Add Player Manually, MVP / LVP Lines, Backup & Restore, Danger Zone), it keeps the card short, leaves room
+for more alerts, and the runbook card asked for "a Notifications section". Added: the fold's title row says **On** (green)
+or **Off**, so you can tell without opening it.
+
+**What changed.** `lineup/index.html`: `<details class="sos-details-accordion notify-settings">` ("Notifications",
+`#notifySettingsState`), first of the folds, holding the Starter Alerts switch and its options; the fold is the box now
+(round 4's `.toggle-group` is gone), the switch row flush and the options under a divider. `starterAlert.js` sets the
+On/Off label. `css/mls.css`: the label, the flush row, a little space above the test button. CHANGELOG reworded.
+
+**User-hat pass (renders at 390 and 1280px: folded, open and off, open and on, folded and on).** Folded, it reads like its
+neighbours and "On" is visible at a glance; open, the hierarchy (Notifications, then Starter Alerts and its options) is
+clear and nothing hangs outside a box. The test button had no breathing room above it: fixed. What's left is taste: the
+hint under the drop-down is 4 lines on a phone, and a folded section hides that the feature exists (the CHANGELOG and
+the On/Off label have to carry that).
+
+**Tests.** `mls-starter-alert.spec.mjs` opens the fold first, checks Off by default, On after the switch, and On still
+showing while folded after a reload. 20 tests, both widths; touch-targets and focus-ring pass.
+
+**Screenshots.** The same four change again (the fold, closed, in place of the switch's box): re-taken on CI from this
+round's commit.
+Re-taken on CI ([commit 1d094c6](https://github.com/btrerise/My-Draft-Strategist/commit/1d094c6); no other PNG changed).
+Opened each: the folded Notifications section with "Off" at the right, between Headshots and Add Player Manually, like
+its neighbours; the pages 6px (desktop) and 34px (phone) shorter than round 4's. Every difference above the Advanced
+Settings card is a 1-step colour change (the fixed header and tab bar blending over a page of another height).
+
+### N2 round 6 — the overall user-hat pass: four fixes (owner, 2026-11-12)
+
+An end-to-end pass (turning it on, an alert arriving, coming back, Show on the Dashboard) at 390 and 1280px with the
+fixture league (Chase Out, an empty RB slot): the alert and the Dashboard agree (the league card: "2 to fix", RB slot
+empty, "Set on Sleeper: Start Puka Nacua · Bench Ja'Marr Chase (Out)"). The owner asked for all four findings:
+1. **The card waited only for a hidden tab.** A window behind another app is still "visible", so the 12 seconds ran out
+   before a notification's tap brought the page forward. `notify.js`: the card counts down only while the tab is in view
+   *and* its window has focus (`document.hasFocus()`, window `focus`/`blur`).
+2. **The Guide** (step 7, Lineups that need you) has a Starter Alerts paragraph: where it is, what it watches, the
+   minutes, Send a test alert, the card, and that phones only work with the page in front.
+3. **Lines grouped by league.** The card lists each league's problems under its name (`showPageAlert({ groups })`); the
+   system notification, plain text, reads "Fixture League · Ja'Marr Chase is Out: start Puka Nacua instead?" (it read
+   "Fixture League: Ja'Marr Chase is Out: start…", two colons).
+4. **"Next check" under the switch** (green, `#starterAlertsNext`): "Next check: Sun 12:00 PM, before the 1:00 PM games."
+   (or "Checking now…", "Waiting for this week's schedule.", "No games left this week: reload this page after the last
+   one to watch next week's."); it moves on after each check and follows the minutes you pick.
+
+Not changed (noted to the owner): the quiet Sync All before each window redraws the page, as tapping Sync All does.
+
+**Tests.** Unit: `alertMessage`'s lines and groups. Spec: the card's league heading and lines, the next-check line and
+its move when the minutes change, and "a window behind another app doesn't count as looking". 22 tests, both widths,
+3 repeats; `node --test` (584); check-precache.
+
+**Screenshots.** Rendered the last commit and this round in the same container: exactly `desktop/mls-league-guide.png`
+and `phone/mls-league-guide.png` change (the new Guide paragraph). Re-taken on CI from this round's commit.
+
+Re-taken on CI ([commit b44ed2f](https://github.com/btrerise/My-Draft-Strategist/commit/b44ed2f), only those two).
+Opened both: the paragraph is there, but ran straight on from the one above with no gap (the only step with two
+paragraphs in a row, I thought). A first fix, `.step-desc + .step-desc { margin-top: 0.6rem; }` in `css/base.css`, was
+wrong: the Guide already spaces paragraphs with `class="step-desc mt-2"` (0.5rem), and the new rule outranked `.mt-2`,
+widening every such gap (CI's re-take, b0b2546: the Guide 67px taller, changes from step 3 on). Undone; the Starter Alerts
+paragraph uses `mt-2` like the others, and the two PNGs re-taken again from the next commit.
+Re-taken on CI ([commit d2a47c2](https://github.com/btrerise/My-Draft-Strategist/commit/d2a47c2)): byte-identical to
+b44ed2f's (the first re-take), because `.mt-2` has no effect on a Guide paragraph: `.step-desc` (css/base.css, after
+`.mt-2`, same specificity) sets `margin: 0 0 0 2.2rem`. So on main every Guide step with a second paragraph (steps 3, 4,
+6, 9 and others, `step-desc mt-2`) shows it with no gap, and the Starter Alerts paragraph now matches them. A real gap
+is a Guide-wide visual change, left as a follow-up in `docs/TESTING.md` (owner to decide).
+
+### Proposed card: a Settings page in both apps (owner agreed, 2026-11-12; for the runbook)
+
+Raised by the owner during N2 round 6; recommended by this session and agreed, named **Settings**. Not built in N2.
+
+- **Goal.** Each app's Dashboard is for what you do every week (Lineup Strategist: the League Command Center, Sync All,
+  "lineups need you", the Week Recap, league cards; Draft Strategist: its draft setup). The set-once settings (Lineup
+  Strategist's Advanced Settings card: Show Player Headshots, Notifications, MVP / LVP Lines, Backup & Restore, Danger
+  Zone; Draft Strategist's equivalents) move to a **Settings** page in each app, reached from the menu like the Guide
+  (drawer, rail and phone menu). Visible effect: a shorter Dashboard, and a Settings entry beside the Guide.
+- **Stays where it is.** Settings that belong to one tool stay beside it: Lineup settings (Lineup tab), Value settings
+  (Trade Analyzer), Power Rankings and Simulator settings, Active League Requirements.
+- **Add Player Manually** stays on the Dashboard, shown only while the open league is a manual one (beside Active League
+  Requirements); Sleeper leagues get their players from Sleeper. (Check first whether anyone uses it on Sleeper leagues.)
+- **Order.** After N2 merges and **before N4**, so Draft Strategist's "on the clock" switch goes straight into its
+  Settings page (N4's Notifications section). Not alongside M10 (badges on the same menu and rail) or another card that
+  edits the nav (`js/shared/ui/navMenu.js`, `js/mls/nav.js`, `js/mds/ui.js`) or the Guide.
+- **Asks the owner.** A sketch at 375 and 1280px of the menu entry and the page; the page's order of sections; whether
+  Draft Strategist's settings all move; the URL hash (`#settings`) and the tab name in the nav.
+- **Scope notes.** A new tab in each app (tab ids in `tests/helpers.mjs` `MLS_TABS` / `MDS_TABS`, tab hash, drawer,
+  rail, phone menu); the Guide's text that says "Advanced Settings on the Dashboard" (Lineup Strategist steps 1, 12 and
+  N2's Starter Alerts paragraph in step 7, the MVP / LVP line, Draft Strategist's equivalents); specs that open those
+  sections on the Dashboard (backup, factory reset, headshots, recap lines, mls-starter-alert, touch-targets,
+  focus-ring, tooltips-onscreen); `goToLineupNeeds` and other jumps unaffected. Screenshots: both apps' Dashboards
+  (empty and league, desktop and phone) and a new Settings pair per app; follow "Accepting an intended visual change".
+  CHANGELOG lines under both apps. No storage keys change.
+- **Size.** About a 15k-token session (two apps, nav and tests); it changes what users see.
+
+### N2 round 7 — the owner's test on Windows (Chrome, the branch preview): two fixes (2026-11-12)
+
+1. **The card showed a horizontal scrollbar** with nothing to scroll. The ✕'s 48px tap area (the shared `::after` from
+   M2's touch targets) reaches past the card's right edge, and with `overflow-y: auto` the browser makes the other axis
+   scrollable too. `css/base.css`: `.notify-card { overflow-x: hidden; }`. Test: the spec checks the card has nothing
+   to scroll sideways or doesn't allow it (headless Chromium hides scrollbars, so it checks the cause); it fails with the
+   old CSS and passes with the fix.
+2. **The system notification showed Chrome's logo.** `notify()` takes an `icon` (shared, for N4); the starter alert and
+   the test alert pass Lineup Strategist's app icon, `/images/mls-app-icon.png` (512px, lineup/manifest.json's). The spec
+   checks it. Android's small status-bar `badge` (a white silhouette) isn't set: the alert is for computers, and the
+   site has no monochrome icon.
+
+**Checked.** `mls-starter-alert.spec.mjs` (22, both widths, 2 repeats), `node --test` (584), check-precache. No screenshot
+changes (the card isn't in any baseline).

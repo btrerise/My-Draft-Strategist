@@ -53,6 +53,7 @@ import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter, setRosterSort } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
+import { initStarterAlerts, planStarterAlerts, runStarterAlertCheck, sendTestStarterAlert, setStarterAlertLead, toggleStaleRankingsAlert, toggleStarterAlerts } from './lineup/starterAlert.js';
 import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeaguePaid, toggleLeagueReorder, withCardsTransition } from './render/leagueCards.js';
 import { dismissPaidHint, exportScoreboard, leaveScoreboardWeek, clearRootFind, refreshThisWeek, renderThisWeek, scoreboardThisWeek, showAllRecap, showAllRoot, showAllSwings, stepScoreboardWeek, toggleRootFinished, toggleRootPlayer, toggleRootWindow, toggleWeekFold } from './week/thisWeek.js';
 import { resetRecapLines, saveRecapLines } from './week/recapLines.js';
@@ -82,6 +83,7 @@ export { applyDefaultFolds, applyWaiverScanSettingsToUI, checkForDraftStrategist
 export { confirmRankingsPreview, createManualLeague, leaveScoreboardWeek, clearRootFind, refreshThisWeek, renderThisWeek, stepScoreboardWeek, openRankingSetLeagues, setWaiverCompare, setWaiverMode, setWaiverPos, setWaiverScope, toggleDrawer };
 // The Trade Analyzer's picker, for tests (callApp) to set a whole trade at once.
 export { setTradePlayers };
+export { initStarterAlerts, planStarterAlerts, runStarterAlertCheck, sendTestStarterAlert }; // init.js, and the tests (mls-starter-alert.spec.mjs)
 export { fitRankBadges } from './render/lineup.js'; // the Roster tab's two-set badge (render/roster.js, S24)
 export { ensureMarketValues, marketBusyButton, leagueMarketFormat, marketFetchFailed, marketFormatWarning, useLeagueMarketSet };
 
@@ -110,6 +112,7 @@ const clickActions = {
     shareSite() { shareSite(this.dataset.share); },
     navigateFromDrawer() { navigateFromDrawer(this.dataset.tab); },
     showTab() { showTab(this.dataset.tab); },
+    sendTestStarterAlert() { sendTestStarterAlert(); }, // Advanced Settings, Starter Alerts (improvements N2)
     // "What do these mean?" on the Waiver Wire Assistant and the Lineup and Roster tabs (improvements S10): the
     // legend in the shared sheet over the tab (M11); its foot opens the Guide tab, scrolled to the legend.
     openBadgeLegend() { openBadgeLegendSheet(this, () => { updateDrawerActiveState('guide'); showTab('guide').then(focusBadgeLegend); }); },
@@ -289,6 +292,10 @@ const changeActions = {
     addEarlyTeam() { addEarlyTeam(this.value); },
     // 5C: Advanced Settings, Power Rankings, Monte Carlo and Scout tab controls
     toggleMlsHeadshots() { toggleMlsHeadshots(this.checked); },
+    // Starter alerts (improvements N2, js/mls/lineup/starterAlert.js).
+    toggleStarterAlerts() { toggleStarterAlerts(this.checked); },
+    setStarterAlertLead() { setStarterAlertLead(this.value); },
+    toggleStaleRankingsAlert() { toggleStaleRankingsAlert(this.checked); },
     importMlsSettings() { importMlsSettings(this); },
     updatePowerSetting() { updatePowerSetting(this.dataset.setting, this.value); },
     setPowerCompeting() { setPowerCompeting(this.checked); },
