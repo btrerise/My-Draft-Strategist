@@ -125,3 +125,5 @@ change what Cloudflare counts.
   attribute on the button, no code. Free on the Hobby plan, but each counts against the 100K events a month.
 - If the site ever outgrows 100K events a month, Umami's Pro is $20/month; or drop to Cloudflare Web Analytics (free,
   visits only).
+
+<!-- W1 proof run: a docs-only change. This branch is thrown away. -->
