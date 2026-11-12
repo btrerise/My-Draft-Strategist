@@ -122,6 +122,14 @@ function measure([discover, scope]) {
 }
 
 async function check(page, where, scope = null) {
+    // Let every animation that ends (a tab's fade-in, a toast sliding in) finish first. T-Score's tabs switch without a
+    // View Transition, so nothing else waits for their fade-in (css/base.css, .tab-content.active): measured on its first
+    // frame, the tab is at opacity 0, checkVisibility() drops all of its controls, and the tab is measured only when a
+    // frame happens to pass first (improvements F20: why the Research links' overlap failed about 1 run in 30).
+    // Endless ones (a spinner) are left running.
+    await page.evaluate(() => Promise.all(document.getAnimations()
+        .filter(a => a.playState === 'running' && Number.isFinite(a.effect?.getComputedTiming().endTime))
+        .map(a => a.finished.catch(() => {}))));
     // Toasts come and go with timing; their close button is measured on its own (scope '#mds-toast').
     const hide = await page.addStyleTag({ content: scope ? '/* measuring the toast */' : '#mds-toast { display: none !important; }' });
     const { short, covered } = await page.evaluate(measure, [!!process.env.DISCOVER, scope]);

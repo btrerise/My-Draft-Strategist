@@ -312,7 +312,12 @@ shot and S10 took four runs for 14.)
   covers part of a neighbour, or on a page that scrolls sideways; `focus-ring.spec.mjs` tabs through every tab and
   fails on a focused control without a 2px outline. A hit area that reaches up out of the Lineup tab's matchup strip, or
   past a switch drawn with `transform: scale()`, changed a few anti-aliased pixels in the screenshots: if a new area
-  moves pixels, aim it elsewhere.
+  moves pixels, aim it elsewhere. **Links inside a sentence** (directly in a `<p>` or `<li>`) keep their text's size
+  (`inset: 0`, improvements F20: WCAG 2.5.8's inline exception; on wrapped lines one link's area covered the link
+  above). So a link meant to stand alone goes in a `div` or `span`, not directly in a `<p>` or `<li>`, or it loses its
+  area (the spec then reports it as short). The spec waits for every animation that ends before it measures: a tab
+  measured on the first frame of its fade-in is at opacity 0, and `checkVisibility()` drops all of its controls (that
+  was why T-Score's tabs were measured only now and then).
 - **Image exports** (improvements S19, round 12): html2canvas draws text without the page's `tabular-nums`, so a new
   export calls `useProportionalDigits(clonedRoot)` (`js/shared/ui/exportImage.js`) in its `onclone`;
   `export-numerals.spec.mjs` checks three exports' clones; the Scoreboard's Export (improvements S22) is checked in

@@ -15,6 +15,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A link in a sentence opens only from its own words.** Links inside running text (the T-Score page's The Research
+  and In-Season notes, "Don't count this device" in the Guide) no longer take taps a little above and below them. In
+  The Research's "The Data", a tap on the lower half of "CC BY 4.0" opened "ffopportunity" on the line below; now it
+  opens the link you tapped. Buttons and links that stand on their own keep their larger tap area.
 - **T-Score: in-season rankings.** The T-Score page now opens on a new **In-Season** tab: rest-of-season points per
   game for WRs, RBs and (new) TEs, with team, points per game so far, target share, how far each player is projected
   to move from his rank so far, Buy and Sell calls and the preseason tabs' labels (Elite, High-End Starter, Strong
@@ -167,6 +171,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A link in a sentence opens only from its own words.** Links inside running text (the Scoreboard's and the Guide's
+  Sleepy credit, "Don't count this device" in the Guide) no longer take taps a little above and below them, so one
+  can't take a tap meant for a link on the line above. Buttons and links that stand on their own keep their larger tap
+  area.
 - **2-QB leagues: the QBs follow kickoff order.** With FLEX Kickoff Optimization on, a league with two QB slots
   (no superflex) now shows the QB whose game kicks off first in the top QB slot, as the RB and WR slots already do.
   Who starts doesn't change, and it never shows as a change to set on Sleeper. Superflex and 1-QB lineups are as
