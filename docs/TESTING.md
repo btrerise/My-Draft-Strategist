@@ -383,6 +383,21 @@ The card named does the item in its own session; remove the line when it's done.
   the Team tab's Undo buttons, a dynasty Roster row's badge above its gap chip. S32 already takes the Lineup row's swap
   and lock (and the Roster rows).
 
+**From the starter alert (improvements N2)**
+- **M10 (nav badges): one count for the badge and the title.** N2's alerts flash the tab title while it's hidden
+  ("(1) Starter alert", `flashTitle` in js/shared/ui/notify.js); M10's badges sit on the nav bar and rail, seen while
+  the tab is in view. Count both from the same rule (`leagueNeeds` in js/mls/lineup/issues.js), so the title and the
+  Dashboard's badge never disagree; the flash keeps its job for hidden tabs.
+- A notification center (a bell in the header with an unread badge and a history; owner's idea in N2 round 3), once
+  there are several kinds of message worth keeping: sync results (today the Sync Logs accordion), the closed-site
+  alerts (N5–N7). Research first: what goes in it, where the bell sits on phones (the header row is full), how its
+  badge relates to M10's nav badges, and its storage (`keys.js`). Until then alerts use notify.js's card, which goes
+  12 seconds after you're back on the page.
+- A `/lineup/` left open across weeks keeps last week's NFL week and kickoffs until it's reloaded, so after Monday night
+  the alert has no window to check until the next visit or reload. Re-reading the week while open would mean calling
+  `refreshCurrentNflWeek` (js/mls/state.js) on a timer, which also clears locks and redraws: the owner limited the alert
+  to one refresh per window, so ask first.
+
 **Speed (improvements S17, details in docs/improvements/performance.md)**
 - T-Score blocks the main thread for about 1.1 s on every load (Total Blocking Time 1,102 ms on a 4x-slowed CPU, cached
   or not), which caps its PageSpeed score near 77. Worth a profile of `js/tscore/main.js`'s start-up.
@@ -402,6 +417,9 @@ The card named does the item in its own session; remove the line when it's done.
   time-to-interactive by about 0.7 s on slow 4G, if a build step is ever wanted.
 
 **Wanted by the owner, not scheduled yet** (improvements S21)
+- A **Settings** page in both apps, reached from the menu like the Guide, holding the Dashboards' set-once settings
+  (owner agreed in improvements N2, round 6). The proposed card, with its order (after N2, before N4) and scope, is in
+  docs/improvements/LOG.md under N2, "Proposed card: a Settings page in both apps".
 - An Export for the Roster tab: the roster as an image (and maybe as text), like the Lineup tab's.
 - A standard expanded navigation rail on very wide windows (improvements S26): from about 1600px the page (1200px at most)
   has room beside a 280px rail, so the expanded rail could sit beside the page and stay open (Material 3's "standard"
@@ -413,6 +431,9 @@ The card named does the item in its own session; remove the line when it's done.
   Lineup tab show a past week's lineup and points (read-only) would let those tiles open it again.
 
 **Small polish, one session each**
+- The Guide's second paragraphs have no gap (improvements N2, round 6): `class="step-desc mt-2"` in both apps' Guides
+  meant a 0.5rem gap, but `.step-desc` (css/base.css) comes after `.mt-2` and sets all four margins, so it never
+  applies. A fix (e.g. `.step-desc.mt-2 { margin-top: var(--space-2); }`) re-takes both apps' Guide screenshots.
 - One naming pattern for exported files (owner, improvements S22 round 4). The Scoreboard's is
   `Week_7_Recap_My_Lineup_Strategist.png` (what, when, then the app's full name); the others predate it:
   `My_Draft_Strategist_Team.png` (js/mds/export.js), `My_Lineup_Strategist.png` (Export Lineup) and

@@ -421,8 +421,13 @@ export function reoptimizeProjectionlessLeagues() {
     }
 }
 
-export const syncAllLeagues = async function(btn) {
-        if (!State.leagues || State.leagues.length === 0) return;
+// Sync All. quiet (the starter alert's refresh before a kickoff window, improvements N2: js/mls/lineup/starterAlert.js):
+// no button and no summary toast, the same sync otherwise. Resolves when it has finished; a Sync All already running is
+// awaited rather than started again.
+let syncAllRunning = null;
+export const syncAllLeagues = function(btn, { quiet = false } = {}) {
+        if (syncAllRunning) return syncAllRunning;
+        if (!State.leagues || State.leagues.length === 0) return Promise.resolve();
         
         // Sleeper connections are re-synced. Manual and hand-off leagues have nothing to sync, but their
         // players' injury statuses are looked up by name and their lineups re-optimized (improvements S11,
@@ -431,21 +436,26 @@ export const syncAllLeagues = async function(btn) {
         const manualLeagues = State.leagues.filter(l => isManualLeague(l) && !isBestBallLeague(l) && (l.roster || []).length > 0);
 
         if (sleeperLeagues.length === 0 && manualLeagues.length === 0) {
-            showToast("No Sleeper-synced leagues to refresh.", { isError: true });
-            return;
+            if (!quiet) showToast("No Sleeper-synced leagues to refresh.", { isError: true });
+            return Promise.resolve();
         }
 
-        const origText = btn.innerHTML;
+        btn = quiet ? null : btn;
+        const origText = btn ? btn.innerHTML : '';
         // The spinner and the text beside it are built once. The loop below changes only the span's
         // text for "Syncing 2/5…": rewriting the button's whole innerHTML made a new spinner element
         // each time, which restarted its animation from the top for every league.
-        btn.innerHTML = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> <span class="sync-progress-label">Syncing All…</span>`;
-        const progressLabel = btn.querySelector('.sync-progress-label');
-        btn.disabled = true;
-        btn.style.opacity = '0.8';
+        if (btn) {
+            btn.innerHTML = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sync-spinner"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg> <span class="sync-progress-label">Syncing All…</span>`;
+            btn.disabled = true;
+            btn.style.opacity = '0.8';
+        }
+        const progressLabel = btn ? btn.querySelector('.sync-progress-label') : null;
 
+        let finished;
+        syncAllRunning = new Promise(resolve => { finished = resolve; });
         // Brief timeout ensures UI button state updates before locking the main thread
-        setTimeout(async () => {
+        setTimeout(() => (async () => {
             // processSleeperData makes each league active in turn (it's shared with the
             // single-league sync, where that's the point), so without this the loop ended on
             // whichever league synced last: the header still named yours, but the Lineup and
@@ -484,7 +494,7 @@ export const syncAllLeagues = async function(btn) {
                     // Mirrors importAllSleeperLeagues' per-league progress text below, instead
                     // of a static "Syncing All..." for the whole loop regardless of how many
                     // leagues or how long it takes. Text only: the spinner element stays as it is.
-                    progressLabel.textContent = `Syncing ${i + 1}/${sleeperLeagues.length}…`;
+                    if (progressLabel) progressLabel.textContent = `Syncing ${i + 1}/${sleeperLeagues.length}…`;
                     // processSleeperData re-optimizes the league it just synced, and the optimizer
                     // reads whatever rankings are in State -- so load THIS league's first, or every
                     // league gets a lineup built from the originally active league's rankings.
@@ -566,7 +576,7 @@ export const syncAllLeagues = async function(btn) {
                 // A partial sync is shown as an error so it doesn't read like an all-clear --
                 // that also gets it the dismiss button and a longer window, which it needs:
                 // there are league names in there the person has to read and act on.
-                showToast(summaryMsg, {
+                if (!quiet) showToast(summaryMsg, {
                     isError: failedCount > 0,
                     force: true,
                     duration: failedCount > 0 ? 9000 : undefined
@@ -577,7 +587,7 @@ export const syncAllLeagues = async function(btn) {
                 
                 // UX: Automatically open the accordion if there were changes so they don't have to hunt for them
                 const accordion = document.getElementById('syncLogAccordion');
-                if (accordion) accordion.open = newLogs.length > 0;
+                if (accordion && !quiet) accordion.open = newLogs.length > 0;
             } catch (err) {
                 console.error("Sync All Error:", err);
                 // A storage-quota failure on the writes above is the common case and has a
@@ -586,13 +596,15 @@ export const syncAllLeagues = async function(btn) {
                 const msg = isQuota
                     ? "Synced your leagues, but there wasn't enough browser storage to save them. Remove a league you no longer use, then try again."
                     : "An error occurred while syncing leagues.";
-                showToast(msg, { isError: true, force: true });
+                if (!quiet) showToast(msg, { isError: true, force: true });
             } finally {
                 setToastsSuppressed(false);
 
-                btn.innerHTML = origText;
-                btn.disabled = false;
-                btn.style.opacity = '1';
+                if (btn) {
+                    btn.innerHTML = origText;
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                }
 
                 // Restore your league even if the loop threw partway: switchActiveLeague puts
                 // back its id AND its rankings (the loop left State holding the last synced
@@ -611,5 +623,6 @@ export const syncAllLeagues = async function(btn) {
                 State.lineupNeedsDismissed = null;
                 renderLeagueManager();
             }
-        }, 50);
+        })().catch(err => console.error('Sync All: could not finish.', err)).finally(() => { syncAllRunning = null; finished(); }), 50);
+        return syncAllRunning;
     };

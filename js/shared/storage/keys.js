@@ -98,6 +98,10 @@ export const KEYS = {
         rankingSetsRos: 'mls_ranking_sets_ros',
         rankingSetsWeekly: 'mls_ranking_sets_weekly',
         showHeadshots: 'mls_show_headshots',
+        // Starter alerts (improvements N2, js/mls/notify/starterAlert.js): { on, leadMinutes, staleRankings }, and what
+        // they already alerted this NFL week, { week: '2026-5', sent: ['leagueId:playerId', ...] } (under 1 KB, reset weekly).
+        starterAlerts: 'mls_starter_alerts',
+        starterAlertsSent: 'mls_starter_alerts_sent',
         simSettings: 'mls_sim_settings',
         syncLogs: 'mls_sync_logs',
         tradeSettings: 'mls_trade_settings',
