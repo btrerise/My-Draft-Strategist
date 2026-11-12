@@ -12,6 +12,7 @@ import { POWER_POSITIONS, computePositionalPower, POWER_STARTER_CARRY_CAP, power
 import { ensurePowerAgeIndex, futureRankText, futureMoreHTML, powerPicksNote, resolvePowerFuture } from './futureValue.js';
 import { getPowerLeagueKind, assignPowerLabels, competingSuggestion, powerLabelAdvice } from './directionLabels.js';
 import { renderRosterPowerStrip, scrollToPowerRankings } from './snapshot.js';
+import { renderPastTradeLine } from './tradeLine.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { roomsUseSeason, seasonSetFor } from '../rankings/season.js';
 import { showTab } from '../nav.js';
@@ -219,6 +220,7 @@ export function refreshPowerRankings() {
         out.innerHTML = `<div class="mls-power-empty">${msg}</div>`;
         out.style.display = 'block';
         renderRosterPowerStrip(null); // nothing to summarize up top either
+        renderPastTradeLine(null);
     };
 
     const league = getActiveLeague();
@@ -260,6 +262,8 @@ export function refreshPowerRankings() {
     const stripTag = [seasonStripTag(league, src), suggestion && suggestion.moved ? `with your record: ${COMPETING_SHORT[suggestion.verdict]}` : '']
         .filter(Boolean).join(' · ');
     renderRosterPowerStrip(teams, { source: src, tag: stripTag });
+    // What a past trade did, under the strip (improvements S29): the same rankings, on the league as it was.
+    renderPastTradeLine({ league, src, future: futureInfo.future });
 }
 
 // Scout tab's one-line "moved to the Roster tab" pointer (see #powerRankingsScoutPointer in

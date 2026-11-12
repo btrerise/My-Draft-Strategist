@@ -10471,3 +10471,70 @@ prior; it offered a fix and a weekly scheduled refresh: both the owner's call, o
 - T2 (T-Score's start-up) now also has the In-Season fetch at load; it's async and draws the saved copy first.
 - Each week the owner updates the public sheet; the site picks it up on the next page open. The tab's title says
   "2026"; next season it needs the year (or the sheet could carry it).
+
+## S29 — Power Rankings: what your last trade did
+
+**User-visible effect.** On the Roster tab of a Sleeper league, a new box sits under the Positional Power Rankings
+strip: **"Since your trade with Rival on Sep 8"**, who got whom ("You got Bijan Robinson, Jahmyr Gibbs, Saquon Barkley",
+best first by the strip's rankings), then one line per team with only the ranks that moved, right before → right after
+the trade ("You: Start 2 → 1 · RB 2 → 1 · WR 1 → 2", green better, red worse; "no rank changes" when none moved).
+Columns: Start, Ovr, QB, RB, WR, TE, and Future in dynasty and keeper leagues. With more than one trade this season, a
+**Trade** drop-down ("Sep 12: You ↔ Rival") picks any trade in the league, yours or not; it opens on your newest (else
+the league's newest), and your pick lasts for the visit. A note under it: "Power Rankings right before → right after
+this trade, out of N teams, by today's rankings. Moves since then are left out. 1 = strongest." Manual league, no
+trades this season, or Sleeper failing: no box, no toast.
+
+**The owner's decisions (Asks you, 2026-11-12).**
+1. **Which moves: trades** ("what I mainly care about"). Waiver and free-agent moves are read only to rebuild rosters.
+2. **How far back: the whole season, as a log to pick from** (owner asked for a list of all the league's trades rather
+   than two weeks, since dynasty rankings change about monthly). Weeks 1 to the current week, every trade in the league.
+3. **Where: under the Roster tab's Power Rankings strip.** Not on the Dashboard.
+4. **The other team: one line** ("could be interesting to see how much a trade helped/hurt after some time").
+5. **Each trade on its own:** "after" is the league right after the trade (every later move undone), "before" the same
+   with the trade undone too, both scored with today's rankings. So a trade's numbers are what the Trade Analyzer showed
+   for it beforehand (with today's rankings), and two lines don't count the same move twice. The catch: the "after"
+   can differ from today's strip when moves came later. **The owner asked to check this once built.**
+
+**What changed and where.**
+- `js/shared/api/sleeper.js`: `getSleeperTransactions(leagueId, week)` (throws on a non-ok response). S34 can reuse it.
+- `js/mls/power/pastTrades.js` (new, pure): `completedMoves` (complete only, deduped, newest first by
+  `status_updated`), `undoMove` (each player in a move's adds or drops goes back to the team that dropped him, else off
+  every roster; one rule for trades, waiver claims, free-agent adds and drops and commissioner moves), `undoPicks`
+  (each traded pick back to `previous_owner_id`, matched by season, round and original team; picks league.picks
+  doesn't list are skipped), `leaguesAroundMove`, `tradeEntries`, `defaultTradeId`, `rankChanges`, `makeOwnerOf`
+  (roster id → owner as the sync names teams: "You", else `league.teamNames`; a name no roster uses becomes "Unknown
+  Team" when that exists, else nobody, so an undone move never adds a team to the rankings).
+- `js/mls/power/tradeLine.js` (new): fetches weeks 1..current in parallel (plus the cached player map) for the active
+  league only, when the Roster tab is showing, once per visit; a re-sync (new `globalRosterMap`) asks again. Moves after
+  the league's `lastSyncedAt` are ignored (today's rosters don't have them yet). Scores with
+  `computePositionalPower` and the strip's own source (`resolvePowerRankingsSource`: In-Season and dynasty sets per
+  S23, Market Consensus fallback) and future values (picks count in Future, as in S24).
+- `js/mls/power/rosterCard.js`: `refreshPowerRankings` calls `renderPastTradeLine` (and hides it with the strip).
+- `js/mls/main.js`: the `selectPastTrade` change action. `lineup/index.html`: `#rosterTradeLine` (hidden). `css/mls.css`:
+  `.mls-roster-trade*` (reuses `.mls-trade-rank-up/down` for the colors). No new badge or chip, so no legend line.
+- `sw.js`: the two new files in `PRECACHE_ASSETS`; `CACHE_NAME` v2.9.19 → v2.9.20. No storage key.
+- Fixtures: `league-transactions.json` (no moves, served by default for every league and week),
+  `league-transactions-trade.json` (the week-1 trade: your Chase, Jefferson, Lamb for Rival's Bijan, Gibbs, Saquon, plus
+  a failed waiver claim) and `league-rosters-traded.json` (rosters after it), from `make-fixtures.mjs`;
+  `tests/helpers.mjs` routes `transactions/<week>`.
+
+**Tests.** Unit (`tests/unit/pastTrades.test.mjs`, 16): the undo rule for a trade, a waiver claim with a drop, a
+free-agent add alone and a drop alone, a commissioner move, unknown players and teams, picks (back one step, passed on
+twice, a draft already held, with a trade's players), failed and duplicate moves, several moves undone newest first with
+a player since dropped again, and a scored check that "before" and "after" equal the Trade Analyzer's
+(`leagueAfterTrade`) for the same trade. Spec (`tests/mls-past-trade.spec.mjs`, both widths, phone at 375px): the
+Trade Analyzer's "after the trade" ranks for the fixture trade, then the trade goes through on Sleeper and the line
+shows exactly those changes (and Rival's the other way); two trades (drop-down, newest of yours first, the older one
+alone after the later is undone, the pick kept across tab switches); no trades (two requests on opening the Roster tab,
+none before it, none again later); Sleeper failing (no box, no toast); a manual league (no box, no request).
+
+**Screenshots.** None should change: the box is hidden in every screenshot (the fixture league has no trades). To be
+confirmed by CI's `check` on the pull request.
+
+**Left over.**
+- The owner's check of question 5 (each trade on its own vs before → today).
+- A trade made after the last sync isn't listed until the league is synced again (its players aren't on today's
+  rosters yet). A note saying so would need a comparison with Sleeper's list; not built.
+- Trades from last season (a dynasty league's previous season, `previous_league_id`) aren't read; neither are picks
+  for drafts already held. Offseason trades in Sleeper's current-season league are (week 1).
+- The Guide's Roster tab text doesn't mention the box (a sentence there re-takes `mls-league-guide` at both widths).

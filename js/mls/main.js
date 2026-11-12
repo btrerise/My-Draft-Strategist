@@ -62,6 +62,7 @@ import './power/futureValue.js';
 import { getPowerLeagueKind } from './power/directionLabels.js';
 import { goToLeagueStyle, goToPowerRankings, goToSeasonPicker, refreshPowerRankings, setPowerCompeting, updatePowerSetting } from './power/rosterCard.js';
 import { scrollToPowerRankings } from './power/snapshot.js';
+import { selectPastTrade } from './power/tradeLine.js';
 import './scout/waiverInsights.js';
 import { lookupSimPlayer, runMatchupSim } from './sim/matchup.js';
 import { delegate } from '../shared/ui/delegate.js';
@@ -291,6 +292,8 @@ const changeActions = {
     importMlsSettings() { importMlsSettings(this); },
     updatePowerSetting() { updatePowerSetting(this.dataset.setting, this.value); },
     setPowerCompeting() { setPowerCompeting(this.checked); },
+    // The Roster tab's past-trade drop-down, under the Power Rankings strip (improvements S29).
+    selectPastTrade() { selectPastTrade(this.value); },
     updateSimSetting() { updateSimSetting(this.dataset.setting, this.checked); },
     // Rank By is shared with Top Available, which redraws if it's on screen.
     updateWaiverScanSetting() { updateWaiverScanSetting(this.dataset.setting, this.value); if (this.dataset.setting === 'basis') refreshTopAvailable(); },

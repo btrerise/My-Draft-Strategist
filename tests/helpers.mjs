@@ -37,6 +37,8 @@ const SLEEPER_FIXTURES = [
     [/^\/v1\/league\/\d+\/rosters$/, 'league-rosters.json'],
     [/^\/v1\/league\/\d+\/matchups\/\d+$/, 'league-matchups.json'],
     [/^\/v1\/league\/\d+\/traded_picks$/, 'league-traded-picks.json'],
+    // Each week's moves (improvements S29: the Roster tab's past trade). None by default; mls-past-trade.spec.mjs serves a trade.
+    [/^\/v1\/league\/\d+\/transactions\/\d+$/, 'league-transactions.json'],
     [/^\/v1\/user\/\d+\/leagues\/nfl\/\d+$/, 'user-leagues.json'],
     [/^\/v1\/user\/[^/]+$/, 'user.json'],
     [/^\/v1\/projections\/nfl\/regular\/2026\/2$/, 'projections-2026-2.json'],

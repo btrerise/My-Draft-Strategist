@@ -167,6 +167,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **What a trade did to your Power Rankings.** On the Roster tab of a Sleeper league, a box under the Power Rankings
+  strip now shows a trade made this season: who got whom, and each team's ranks (Start, Ovr, QB, RB, WR, TE and, in
+  dynasty and keeper leagues, Future) right before → right after it, green when better and red when worse. It opens on
+  your newest trade; a drop-down picks any other trade in the league this season. It uses the strip's rankings as they
+  are today, and leaves out moves made after the trade, so the numbers are what the Trade Analyzer would have shown for
+  it. Nothing shows in a manual league, in a league with no trades, or when Sleeper doesn't answer.
 - **Trade Analyzer: the same draft pick twice, and market values by themselves.** A draft pick can now be on a side
   more than once: add "2027 1st" again and it shows as "2027 1st (2)", with its own token, its own row and its own
   value in the verdict; each row says whether that team holds that many. Players still can't repeat. **Analyze Trade

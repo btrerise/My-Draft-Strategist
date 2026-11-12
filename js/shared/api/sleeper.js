@@ -111,6 +111,19 @@ export async function getSleeperMatchups(leagueId, week) {
     return res.json();
 }
 
+/**
+ * One league's moves in one week (Sleeper calls it a round, `leg`): trades, waiver claims, free-agent adds and drops,
+ * commissioner moves. Each: { transaction_id, type, status ('complete' | 'failed' | ...), roster_ids, adds
+ * ({ player_id: roster_id } or null), drops (the same), draft_picks ([{ season, round, roster_id, previous_owner_id,
+ * owner_id }]), created, status_updated, leg }. Lineup Strategist's Roster tab reads it to show what a past trade did
+ * to your Power Rankings (improvements S29). Throws on a non-ok response; that caller shows nothing then.
+ */
+export async function getSleeperTransactions(leagueId, week) {
+    const res = await mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/transactions/${week}`);
+    if (!res.ok) throw new Error("Could not fetch transactions for this league/week.");
+    return res.json();
+}
+
 // --- DRAFTS ---
 // Added in refactor chunk 2C for Draft Strategist's Sleeper draft sync, which used to call
 // these endpoints directly. The error messages are the ones that sync has always shown.
