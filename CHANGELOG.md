@@ -167,7 +167,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **Starter alerts before kickoff (off until you turn them on).** Under Advanced Settings, **Starter Alerts** sends an
+- **Starter alerts before kickoff (off until you turn them on).** Under Advanced Settings, a new **Notifications** section (its title says On or
+  Off) holds **Starter Alerts**, which sends an
   alert before each kickoff window (Thursday, Sunday 1:00, the late games, Sunday and Monday night) when a starter in
   the lineup you set on Sleeper is Out, Doubtful or on IR, is on bye or has no game, or when a starting slot is empty.
   Questionable doesn't count, and a player you locked in here is left out. Choose how long before kickoff, from 15

@@ -162,6 +162,9 @@ export function renderStarterAlertSettings() {
     const toggle = document.getElementById('starterAlertsToggle');
     if (!toggle) return;
     toggle.checked = s.on;
+    // The Notifications fold's title row: whether the alerts are on, seen while it's folded.
+    const state = document.getElementById('notifySettingsState');
+    if (state) { state.textContent = s.on ? 'On' : 'Off'; state.classList.toggle('is-on', s.on); }
     const opts = document.getElementById('starterAlertsOptions');
     if (opts) opts.hidden = !s.on;
     const lead = document.getElementById('starterAlertLead');

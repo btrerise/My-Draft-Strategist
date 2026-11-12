@@ -443,9 +443,12 @@
             <input type="checkbox" id="mlsHeadshotsToggle" class="toggle-switch" checked data-action="toggleMlsHeadshots">
         </div>
 
-        <!-- Starter alerts (improvements N2, js/mls/lineup/starterAlert.js): one box, off until turned on; its options open
-             inside it, under a divider, while it's on. -->
-        <div class="toggle-group starter-alerts">
+        <!-- Notifications (improvements N2, js/mls/lineup/starterAlert.js): a fold like the others below; its title row says
+             whether Starter Alerts are on. The switch is off until turned on; its options open under it while on. -->
+        <details class="sos-details-accordion notify-settings">
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Notifications<span id="notifySettingsState" class="notify-settings-state">Off</span></summary>
+            <div class="accordion-body">
+        <div class="starter-alerts">
             <div class="toggle-row">
                 <div class="toggle-info">
                     <label class="toggle-title" for="starterAlertsToggle">
@@ -485,6 +488,8 @@
                 </div>
             </div>
         </div>
+            </div>
+        </details>
 
         <details class="sos-details-accordion">
             <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Add Player Manually</summary>

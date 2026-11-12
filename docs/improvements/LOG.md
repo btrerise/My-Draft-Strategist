@@ -10688,3 +10688,27 @@ Opened each against round 1's: the Starter Alerts box now matches Headshots' (gr
 off), and the pages are shorter (desktop 14px, phone 56px). On the two phone PNGs, the only other differences are
 1-step colour changes within the first screen (rows 32–843: the header and tab bar, which are fixed, blending over a page
 of another height); nothing visible.
+
+### N2 round 5 — a Notifications fold (owner, 2026-11-12)
+
+**Owner's idea:** put it all in a collapsible "Notifications" card. Agreed: Advanced Settings already folds everything
+but Headshots (Add Player Manually, MVP / LVP Lines, Backup & Restore, Danger Zone), it keeps the card short, leaves room
+for more alerts, and the runbook card asked for "a Notifications section". Added: the fold's title row says **On** (green)
+or **Off**, so you can tell without opening it.
+
+**What changed.** `lineup/index.html`: `<details class="sos-details-accordion notify-settings">` ("Notifications",
+`#notifySettingsState`), first of the folds, holding the Starter Alerts switch and its options; the fold is the box now
+(round 4's `.toggle-group` is gone), the switch row flush and the options under a divider. `starterAlert.js` sets the
+On/Off label. `css/mls.css`: the label, the flush row, a little space above the test button. CHANGELOG reworded.
+
+**User-hat pass (renders at 390 and 1280px: folded, open and off, open and on, folded and on).** Folded, it reads like its
+neighbours and "On" is visible at a glance; open, the hierarchy (Notifications, then Starter Alerts and its options) is
+clear and nothing hangs outside a box. The test button had no breathing room above it: fixed. What's left is taste: the
+hint under the drop-down is 4 lines on a phone, and a folded section hides that the feature exists (the CHANGELOG and
+the On/Off label have to carry that).
+
+**Tests.** `mls-starter-alert.spec.mjs` opens the fold first, checks Off by default, On after the switch, and On still
+showing while folded after a reload. 20 tests, both widths; touch-targets and focus-ring pass.
+
+**Screenshots.** The same four change again (the fold, closed, in place of the switch's box): re-taken on CI from this
+round's commit.

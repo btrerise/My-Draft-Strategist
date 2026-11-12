@@ -75,6 +75,8 @@ async function setup(page, { mode = 'default', answer = 'granted', when = KICK_1
     // The week's kickoffs (ESPN's scoreboard, stubbed above), as the page loads them after its first paint.
     await expect.poll(() => page.evaluate(async () => Object.keys((await import('/js/mls/state.js')).State.gameTimesByTeam).length)).toBe(6);
     await showTab(page, 'setup');
+    // Advanced Settings' Notifications fold (N2 round 5), where the switch lives.
+    await page.locator('details.notify-settings > summary').click();
     return { state, live };
 }
 
@@ -86,6 +88,7 @@ test.describe('Starter alerts', () => {
     test('off by default: no alert inside the window, no permission asked', async ({ page }) => {
         const { state } = await setup(page, { chase: 'Out' });
         await expect(toggle(page)).not.toBeChecked();
+        await expect(page.locator('#notifySettingsState')).toHaveText('Off');
         await expect(page.locator('#starterAlertsOptions')).toBeHidden();
         expect(await check(page)).toBeNull();
         expect(await notes(page)).toEqual([]);
@@ -98,6 +101,7 @@ test.describe('Starter alerts', () => {
         const { state, live } = await setup(page, { when: KICK_1PM - 2 * 60 * MIN });
         await toggle(page).check();
         await expect(page.locator('#starterAlertsOptions')).toBeVisible();
+        await expect(page.locator('#notifySettingsState')).toHaveText('On');
         await expect(page.locator('#starterAlertLead')).toHaveValue('60');
         await expect(page.locator('#starterAlertsStale')).toBeChecked();
         expect(await page.evaluate(() => window.__asked)).toBe(1);
@@ -140,6 +144,9 @@ test.describe('Starter alerts', () => {
         await page.reload();
         await page.waitForLoadState('networkidle');
         await expect(toggle(page)).toBeChecked();
+        // Folded, the fold's title row still says the alerts are on.
+        await expect(page.locator('details.notify-settings')).not.toHaveAttribute('open', '');
+        await expect(page.locator('#notifySettingsState')).toHaveText('On');
         expect(await check(page, { refresh: false })).toBeNull();
         expect(await notes(page)).toEqual([]); // window.__notes starts over with the page
         await expectClean(page, state);
