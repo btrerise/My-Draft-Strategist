@@ -10503,4 +10503,16 @@ changed files. A header comment in the workflow says never to use `[skip ci]` or
 a 3,000-file diff with one `.js` → false with no SIGPIPE under `pipefail` (`sed -n` instead of `head`).
 check-precache and `node --test` pass (the full Playwright suite isn't affected and wasn't run: no app file changed).
 
-**Proof runs on CI.** Pending (see below).
+**Proof runs on CI** (two throwaway draft pull requests into this card's branch, with the owner's OK; both closed).
+- Docs-only: #236 changed only `docs/improvements/analytics.md`. [Run 43160610607](https://github.com/btrerise/My-Draft-Strategist/actions/runs/43160610607)
+  passed in 8 seconds; its log says "Docs-only pull request: npm, Playwright and the checks are skipped (every changed
+  file is docs)", and setup-node, `npm ci`, the Playwright install, render-env, `npm run check` and the artifact upload
+  are all marked skipped.
+- App file: #237 changed only a comment in `js/shared/names.js`. [Run 43160615884](https://github.com/btrerise/My-Draft-Strategist/actions/runs/43160615884)
+  ran everything and passed (`npm run check` 20 min 25 s, the job about 21 minutes).
+- Note: GitHub runs a step without its own `shell:` as `bash -e {0}`, without `pipefail`; the script works under both.
+
+**Left over.**
+- The throwaway branches `w1-proof-docs` and `w1-proof-app` are still on GitHub: this session's git couldn't delete a
+  remote branch. Delete them from the repo's Branches page (Cloudflare Pages also made a preview of each; harmless).
+- W1's own pull request changes `.github/`, so it runs the full suite, as it should.
