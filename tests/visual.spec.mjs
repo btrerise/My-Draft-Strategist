@@ -3,7 +3,7 @@
 // visual change: `npm run test:update`, then review the changed PNGs in the diff.
 import { test, expect } from '@playwright/test';
 import {
-    openApp, showTab, showTScoreTab, seedMds, seedMls, transitionsDone,
+    openApp, showTab, showTScoreTab, seedMds, seedMls, transitionsDone, stubInSeasonSheets,
     MDS_TABS, MLS_TABS, TSCORE_TABS,
 } from './helpers.mjs';
 import { renderEnvProblems, renderEnvError } from './render-env.mjs';
@@ -71,7 +71,8 @@ test('MLS synced league tabs', async ({ page }) => {
 });
 
 test('T-Score tabs', async ({ page }) => {
-    await openApp(page, '/t-score/');
+    // The In-Season tab draws tests/fixtures/tscore-inseason/ (improvements T1); the preseason tables are the page's own.
+    await openApp(page, '/t-score/', { beforeGoto: (p) => stubInSeasonSheets(p) });
     for (const tab of TSCORE_TABS) {
         await showTScoreTab(page, tab);
         await shot(page, `tscore-${tab}`);

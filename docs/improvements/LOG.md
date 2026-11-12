@@ -10338,3 +10338,136 @@ verdict in a dynasty league without an In-Season set pushes the rows down on pho
 - Tests: the note's wording with the switch off, and the label, in `mls-trade-picks-market.spec.mjs` and
   `mls-market.spec.mjs`. No screenshot shows these (the fold and Value settings are closed; no screenshot analyzes a
   trade), so no baselines are re-taken.
+
+## T1 — T-Score: in-season data from your new Google Sheet
+
+**User-visible effect.** The T-Score page opens on a new **In-Season** tab (first in the tab bar; the preseason tabs
+are one tap away, and a `#tab` link still opens its tab). It shows rest-of-season projections for **WR, RB and TE**
+(TE is new to the page): ROS rank, Player, Team, ROS PPG, FP/G, Tgt % (target share), **Move** (an up or down arrow
+and the places from YTD rank to ROS rank, "–" for none) and a green **Buy** or red **Sell** chip, with WR / RB / TE
+pills and a **Buy & Sell only** switch. A line above the table says when the rankings were loaded ("Updated today at
+4:00 PM"), the description says which week they were projected after, and **How it's projected** (closed by default)
+shows the formula, the Model Weights table (intercept, weights, no-prior adjustment, R², Buy/Sell line per position),
+what each term means and the Buy/Sell rule. Under the table, the data credit and licenses (nflverse CC BY 4.0,
+ffopportunity CC BY-SA 4.0, the projections shared under CC BY-SA 4.0). The tab fetches the sheet every time the page
+opens, draws the copy saved by the last visit first, and offline (or when Google doesn't answer) keeps that copy with
+"Couldn't reach the sheet, so these are the last rankings that loaded (…)". A first visit offline says the rankings
+couldn't load. A tab missing a column the table needs says so in a plain message ("The WR sheet is missing a column
+this table needs: Target share.") and keeps that position's last good rankings if it has them. **Sync with most recent
+data** fetches the In-Season sheet too. Draft Strategist is unchanged.
+
+**What changed and where.**
+- `js/tscore/inSeasonParse.js` (new, pure): reads each position tab and Model Weights by header name (case, spacing
+  and column order don't matter; extra columns are ignored; Move falls back to YTD rank − ROS rank when "Rank move" is
+  gone); a missing column throws `InSeasonColumnError` naming each one.
+- `js/tscore/inSeason.js` (new): the four published-CSV URLs (`IN_SEASON_URLS`, gid 0 WR, 1 RB, 2 TE, 3 Model
+  Weights of "T-Score In-Season (public)"), fetching through `mdsFetch`, the saved copy, drawing, the WR / RB / TE
+  pills and the Buy & Sell filter. Fails quietly (no `console.error`): what went wrong is drawn on the tab.
+- `js/tscore/main.js`: the default tab is `inSeasonTab` (`DEFAULT_TAB`; was `researchTab`), `initInSeason()` on
+  DOMContentLoaded, Refresh also calls `refreshInSeason()`, two `data-action`s. `t-score/index.html`: the tab and its
+  nav button; the Refresh button's title. `css/tscore.css`: the tab's styles (`.tscore-move`, `.tscore-chip-buy` /
+  `-sell`, the message, the credit; the credit's inline links keep their text size: WCAG's inline exception).
+- New key `tscore_inseason_cache` (`KEYS.tscore.inSeasonCache`): `{ wr, rb, te, weights, fetchedAt }`, read only by
+  the T-Score page; in neither app's backup, like the other `tscore_` keys. The preseason `tscore_cache` that Draft
+  Strategist reads is never written by the In-Season tab.
+- `sw.js`: the two modules in `PRECACHE_ASSETS`; `CACHE_NAME` v2.9.19. The service worker still lets the sheet's
+  cross-origin requests through; offline works from the saved copy, as the preseason tables do.
+- Tests: `tests/tscore-inseason.spec.mjs` (draws the fixture, the filter and positions, the panel, saved copy and
+  offline, first visit offline, reordered columns and escaping, missing columns with and without a saved copy, Sync,
+  deep links); `tests/unit/tscoreInSeason.test.mjs`; fixtures `tests/fixtures/tscore-inseason/{wr,rb,te,weights}.csv`
+  (rows from the public sheet of 2026-11-11, after week 9). `helpers.mjs`: `openApp(page, path, { beforeGoto })`,
+  `stubInSeasonSheets`, `inSeasonFixture`, `IN_SEASON_SHEET_RE`; `inSeasonTab` first in `TSCORE_TABS` (so smoke,
+  touch-targets, focus-ring and visual cover it). `tscore-refresh.spec.mjs`'s route skips the In-Season sheet;
+  `chevrons` and `support` open `/t-score/#researchTab`; `touch-targets` allows `.tscore-credit a`.
+
+**Owner's decisions (2026-11-11).**
+- Option A: an **In-Season** tab beside the preseason ones, first and the default view.
+- Columns: ROS rank, Player, Team, ROS PPG, FP/G, Target share, Move and Buy/Sell (as sketched, without XFP/G and
+  FPOE/G).
+- Fetch on every page open, saved copy first, last data offline. Draft Strategist: no change.
+- **Licensing.** The first version of the sheet was built from the owner's Late-Round Fantasy Football data dump, whose
+  terms allow personal use only and forbid sharing it or anything derived from it, modified or not; its ROS PPG, ranks
+  and Buy/Sell were computed from Late-Round's XFP/G and FPOE/G, and a published CSV carries every column whatever the
+  page shows. The owner stopped publishing that sheet, had the model re-run on open data (nflverse player stats and
+  ffopportunity's expected points; the weights were already fit on nflverse) and published a separate sheet, "T-Score In-Season
+  (public)", holding only the site's columns plus YTD rank and Model Weights. The credit line is the one that session
+  suggested. Preseason data came from other sources and is fine. The first links (2PACX-1vRM3t…) must never be used.
+- The "How it's projected" panel: yes, once the weights were open-data based.
+
+**Screenshots.** Compared main and this branch in the same container (`RENDER_ENV=any`, pxdiff): every existing
+T-Score PNG differs only in the tab-bar row (the new In-Season button, y 268–300 desktop, 348–380 phone), and
+`tscore-inSeasonTab.png` is new (the fixture). Re-taken on CI with `[update screenshots: …]`: desktop and phone
+`tscore-inSeasonTab`, `tscore-researchTab`, `tscore-top50Tab`, `tscore-valuesTab`, `tscore-avoidsTab`,
+`tscore-sleepersTab`, `tscore-tab-2024` (14). No other app's PNGs changed. The Update screenshots run (#8, commit
+"Screenshots re-taken on CI (14 PNGs)") passed the guard on its first try; I opened the PNGs it committed: the
+In-Season tab as in the fixture, and only the tab bar's new pill elsewhere.
+
+**Round 2 (owner, 2026-11-11): labels and a write-up.**
+- **Labels.** The owner asked for the preseason tabs' labels back. Options: (A) percentiles of ROS PPG, as preseason;
+  (B) fixed rank tiers per position; (C) natural breaks. Owner's pick: **A**, open to adjusting the thresholds, with
+  **Flex Play** in place of Boom/Bust, worked out by the site. The adjustment: the percentiles are taken over a fixed
+  pool per position, **twice the Buy/Sell line** (WR 96, RB 72, TE 36), not over every row in the sheet, whose size
+  moves with its games-and-XFP filter (about 136 / 86 / 64 rows after week 9) and would relabel players whose
+  projection didn't move. The preseason cutoffs (top 5 / 10 / 20 / 35 / 50%) give WR 1–5 Elite, 6–10 High-End
+  Starter, 11–19 Strong Starter, 20–34 Quality Contributor, 35–48 Flex Play; RB 1–4, 5–7, 8–14, 15–25, 26–36; TE 1–2,
+  3–4, 5–7, 8–13, 14–18; past the line, Depth Player. So Flex Play ends where Buy and Sell are measured. The lines come
+  from Model Weights (defaults 48 / 36 / 18). A `Label` column in the sheet, if ever added, overrides the computed one
+  (known names only). The Label column sits after Player, with the preseason badges (`label-*`; Flex Play uses
+  `label-boom`'s red). How it's projected gains a Labels line and a Label × WR / RB / TE table of rank ranges. Code:
+  `labelCutoffs`, `inSeasonLabel`, `LABEL_BANDS` in `js/tscore/inSeasonParse.js`.
+- **Write-up.** "The In-Season Model: Rest-of-Season Points per Game" opens The Research (`#inSeasonModel`), above the
+  preseason article and a rule: why a second model (the owner's words, lightly edited and expanded), a What Changed
+  table (preseason vs in-season), the three ingredients, how it's fit (2016–2025, refit weekly; week-9 weights and R²
+  in prose), reading the In-Season tab, what it doesn't know, and the data credit. The In-Season tab's description
+  links to it ("How it differs from the preseason T-Score", `data-action="readInSeasonModel"`). It doesn't mention
+  that an AI assistant helped build the model (asked, no answer: left out, easy to add). The week-9 numbers in "How
+  It's Fit" will drift as the weights are refit; the paragraph points to the live panel.
+- **A fix to round 1:** on phones the In-Season tab's page scrolled sideways (612px wide): the Move column's `.sr-only`
+  words are absolutely placed and were held by the page, outside the table's scroll box. `.tscore-move { position:
+  relative }` fixes it; a spec checks the page's scroll width, another that What Changed fits a phone.
+- **Screenshots:** this branch before and after, rendered in the same container: only `tscore-inSeasonTab.png` and
+  `tscore-researchTab.png` change (desktop and phone); re-taken on CI. The tagged push's run was cancelled by the
+  next push (the LOG commit, seconds later: the workflow keeps one run per branch), so I started it by hand with the
+  same four names (workflow_dispatch, `expected`); it committed exactly those. Lesson: push the tagged commit last.
+
+**Round 3 (owner, 2026-11-11): labels by points, not rank (pending the sheet).** The owner pointed out that round 2's
+"A over a fixed pool" is B's method (fixed rank cutoffs) with A's percentages; a percentile within a list is only a
+rank over the list's size, so A, B and round 2 all ignore the projections themselves. Options given: keep it; A over
+every row; or (3) ROS PPG cutoffs per position, set from history at the preseason percentiles, as the preseason T-Score
+labelled by score cutoffs (65.5, 57.4, …). Owner's pick: **3**, because a tier's size can then change from week to
+week and season to season (the owner's example: an elite group of WRs, then a big drop, "the death of the WR2").
+The owner's sheet session computed the cutoffs and added them to Model Weights (rows 7–14): a block headed
+`Label cutoffs (ROS PPG),WR,RB,TE`, one row per label down to Flex Play, then `Cutoffs from,2016–2025 projections
+after week 9`. In tenths, at the owner's request. They're the 95th / 90th / 80th / 65th / 50th percentiles of this
+week's model applied to 2016–2025 players at the same week (2,886 player-seasons, the public sheet's filter); that
+session recomputes them weekly with the weights (`ros_model_open.py`, run by hand for now). After week 9: WR 15.9 /
+14.3 / 12.2 / 9.9 / 8.2, RB 17.1 / 15.3 / 13.1 / 10.6 / 8.8, TE 12.6 / 11.0 / 9.3 / 7.6 / 6.3.
+
+**Built.** `parseInSeasonWeights` finds the block by its header row wherever it sits (columns by name, `Boom/Bust`
+accepted for Flex Play) and keeps a position only with all five numbers; `inSeasonLabelByPoints` labels by ROS PPG ≥
+cutoff; `labelFor` takes the sheet's own Label, then points, then the round-2 rank labels (the fallback when the block
+is missing). The panel's Labels line and table show the cutoffs ("15.9+", "under 8.2") and "Cutoffs from"; the Label
+tooltip, The Research's What Changed row and its Label paragraph say how they're set (with one week-9 observation:
+seven Elite WRs, fewer than usual in the WR2 tiers, from the sheet session's report). The fixture's Model Weights
+has the block, and WR gains Dontayvion Wicks (8.01, Depth). Specs: labels by points (seven Elite WRs, Watson 15.79
+High-End, Wicks Depth, the TE list), the panel's cutoffs, the fallback without the block; unit tests for the block and
+the labels. Screenshots: `tscore-inSeasonTab.png` and `tscore-researchTab.png` (desktop, phone) change, compared
+before and after in this container; re-taken on CI with this commit.
+
+**From the sheet session's report, for the owner** (not on the site): the 2026 top is unusually strong (top-6 WRs
+average 18.99 projected PPG vs 17.95 for 2016–23) and WRs 13–24 are about 0.6 points lower in 2024–26, but there's
+no new cliff right below the elite group, and 2022–23 had gaps as wide. Players near a cutoff (Watson 15.79 vs 15.9)
+can change label from week to week. That session also found that its training skipped 2015, so 2016 players had no
+prior; it offered a fix and a weekly scheduled refresh: both the owner's call, outside this repo.
+
+**Left over.**
+- On phones the table scrolls sideways (Player stays put), as the preseason tables do; ROS PPG and Buy/Sell sit past
+  the first screen. M6 and M7 (T-Score's look) could fold columns on phones.
+- The hero still says "Wide Receiver and Running Back" and the page's description, link preview and Share text are
+  preseason-only (`SHARE_DATA.tscore`, `og-tscore-1.png`); worth a word about in-season and TE when the look changes.
+- On a phone the tab bar now holds seven pills, so the active one from "Values at ADP" on starts past the right edge
+  (the bar scrolls; `tscore-valuesTab.png` phone shows it). Scrolling the active pill into view on a switch is small;
+  left for M6 (T-Score's tabs), which re-takes these PNGs anyway.
+- T2 (T-Score's start-up) now also has the In-Season fetch at load; it's async and draws the saved copy first.
+- Each week the owner updates the public sheet; the site picks it up on the next page open. The tab's title says
+  "2026"; next season it needs the year (or the sheet could carry it).

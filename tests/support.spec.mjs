@@ -166,7 +166,7 @@ test.describe('Ko-fi and Share', () => {
 
     test('T-Score: The Research ends with the support line, before Visitor counts', async ({ page }) => {
         await stubShare(page, 'share');
-        await openApp(page, '/t-score/');
+        await openApp(page, '/t-score/#researchTab'); // In-Season opens first without the hash (improvements T1)
         const line = page.locator('#researchTab .tscore-support');
         await expect(line).toContainText('I build the T-Score model and both apps on my own, for fun, with no ads.');
         await expect(line.getByRole('link', { name: 'Support on Ko-fi' })).toHaveAttribute('data-umami-event-where', 'guide');

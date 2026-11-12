@@ -25,7 +25,9 @@ const RB_CSV = [
     '2,"Robinson, Jr. Brian",40.05,Boom/Bust,90,50.5,-10.45,Avoid,60.2,2.2',
 ].join('\n');
 
-const SHEET_RE = /^https:\/\/docs\.google\.com\/spreadsheets\//;
+// The preseason sheets only: the In-Season tab's sheet (2PACX-1vRr7BzWe…, improvements T1) is left to preparePage's
+// abort, so it shows its own "couldn't load" and these tests see only what Refresh does to the preseason tables.
+const SHEET_RE = /^https:\/\/docs\.google\.com\/spreadsheets\/(?!d\/e\/2PACX-1vRr7BzWe)/;
 
 // Which sheet a URL is (the page's TSCORE_SHEET_URLS, matched by their distinct ids).
 const sheetOf = (url) => (url.includes('2PACX-1vT9ckcq') ? 'wr' : url.includes('2PACX-1vQD7lel') ? 'rb' : null);

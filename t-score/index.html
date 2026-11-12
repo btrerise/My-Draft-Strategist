@@ -136,7 +136,8 @@
 </div>
 
 <div class="tscore-nav-wrapper">
-    <button class="tscore-nav-btn active" data-action="switchTab" data-tab="researchTab">The Research</button>
+    <button class="tscore-nav-btn active" data-action="switchTab" data-tab="inSeasonTab">In-Season</button>
+    <button class="tscore-nav-btn" data-action="switchTab" data-tab="researchTab">The Research</button>
     <button class="tscore-nav-btn" data-action="switchTab" data-tab="top50Tab">2026 Top-50</button>
     <button class="tscore-nav-btn" data-action="switchTab" data-tab="valuesTab">Values at ADP</button>
     <button class="tscore-nav-btn" data-action="switchTab" data-tab="avoidsTab">Avoids at ADP</button>
@@ -146,7 +147,7 @@
 
 <div style="max-width: 1100px; margin: 0.75rem auto 0; padding: 0 1rem; display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
     <span id="tscoreFreshness" aria-live="polite" style="font-size: 0.8rem; color: var(--text-muted, #9ca3af);"></span>
-    <button id="tscoreRefreshBtn" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" data-action="refreshTScoreData" title="Pulls the latest data from the WR and RB Google Sheets and updates every table on this page, plus the T-Score badges in My Draft Strategist.">
+    <button id="tscoreRefreshBtn" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" data-action="refreshTScoreData" title="Pulls the latest in-season rankings and the preseason WR and RB sheets, and updates every table on this page, plus the T-Score badges in My Draft Strategist.">
         <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
         Sync with most recent data
     </button>
@@ -154,9 +155,143 @@
 
 <main id="main" class="container" style="padding-top: 1rem;">
     
+    <!-- TAB: IN-SEASON (improvements T1): js/tscore/inSeason.js fills it from the "T-Score In-Season (public)" sheet -->
+<div id="inSeasonTab" class="tab-content active">
+    <div class="settings-card highlight-card">
+        <h2>2026 In-Season Rankings</h2>
+        <p class="card-desc">Projected fantasy points per game for the rest of the season (full PPR), from each player's expected points, his points over expected and last season's scoring. <span id="inSeasonWeek"></span> <a href="#researchTab" data-action="readInSeasonModel">How it differs from the preseason T-Score</a></p>
+
+        <div class="pos-toggle-wrapper">
+            <button class="pos-toggle-btn active" data-pos="wr" data-action="switchInSeasonPos" aria-pressed="true">WR</button>
+            <button class="pos-toggle-btn" data-pos="rb" data-action="switchInSeasonPos" aria-pressed="false">RB</button>
+            <button class="pos-toggle-btn" data-pos="te" data-action="switchInSeasonPos" aria-pressed="false">TE</button>
+        </div>
+
+        <div class="tscore-inseason-tools">
+            <span id="inSeasonStatus" class="tscore-inseason-status" aria-live="polite"></span>
+            <button type="button" class="pos-toggle-btn tscore-buysell-btn" data-action="toggleBuySellOnly" aria-pressed="false">Buy &amp; Sell only</button>
+        </div>
+
+        <details class="sos-details-accordion" style="margin-top: 0; margin-bottom: 1.25rem;">
+            <summary class="sos-summary" style="display: flex; align-items: center; gap: 0.5rem; color: var(--primary-green);">
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                How it's projected
+            </summary>
+            <div id="inSeasonWeights" style="margin-top: 1rem;"></div>
+        </details>
+
+        <p id="inSeasonMessage" class="tscore-inseason-message" role="status" hidden></p>
+
+        <div class="data-table-wrapper" id="inSeasonTableWrap" hidden>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ROS</th>
+                        <th>Player</th>
+                        <th>
+                            <div class="table-header-tooltip">
+                                Label
+                                <span class="tooltip-text">His tier, as on the preseason tabs, by projected points: each label has a ROS PPG cutoff (see How it's projected).</span>
+                            </div>
+                        </th>
+                        <th>Team</th>
+                        <th>
+                            <div class="table-header-tooltip">
+                                ROS PPG
+                                <span class="tooltip-text">Projected fantasy points per game for the rest of the season (full PPR)</span>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="table-header-tooltip">
+                                FP/G
+                                <span class="tooltip-text">Fantasy points per game so far this season (full PPR)</span>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="table-header-tooltip">
+                                Tgt %
+                                <span class="tooltip-text">Share of his team's targets</span>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="table-header-tooltip">
+                                Move
+                                <span class="tooltip-text">ROS rank against his rank so far this season. Up means projected to finish higher.</span>
+                            </div>
+                        </th>
+                        <th>
+                            <div class="table-header-tooltip align-right">
+                                Buy/Sell
+                                <span class="tooltip-text">Buy: projected to move inside the startable line. Sell: projected to drop outside it.</span>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="inSeasonBody"></tbody>
+            </table>
+        </div>
+
+        <p class="tscore-credit">Data: <a href="https://github.com/nflverse/nflverse-data" target="_blank" rel="noopener noreferrer">nflverse</a> player stats, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>; expected fantasy points from <a href="https://github.com/ffverse/ffopportunity" target="_blank" rel="noopener noreferrer">ffopportunity</a> by Joe Sydlowski and Tan Ho, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>. T-Score projections are derived from this data and shared under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>
+    </div>
+</div>
+
     <!-- TAB: THE RESEARCH -->
-<div id="researchTab" class="tab-content active">
+<div id="researchTab" class="tab-content">
     <div class="article-content">
+
+        <!-- The In-Season model (improvements T1): what changed from the preseason T-Score below -->
+        <h2 id="inSeasonModel">The In-Season Model: Rest-of-Season Points per Game</h2>
+        <p class="tscore-article-note">Added in November 2026, for the In-Season tab. The preseason T-Score write-up follows below.</p>
+
+        <h3>Why a Second Model</h3>
+        <p>Looking back at the preseason T-Score, I realized that, in practice, every version of it was yards per game plus a small amount of noise. The regression analysis I was doing was finding the best options inside a box I had already framed. The preseason model will be reworked in the offseason.</p>
+        <p>For the rest of this season, I built something different: a model that predicts a player's <strong>rest-of-season fantasy points per game</strong> from how he is being used this year and what he did last year. Historical data shows which trends hold up. Elite players, for example, beat their expected fantasy points year after year. So the model leans on opportunity, gives credit for efficiency, and anchors both to last season. The rest is finding the right mix for each position, since each one works differently.</p>
+
+        <h3>What Changed</h3>
+        <div class="data-table-wrapper">
+            <table class="data-table tscore-compare-table">
+                <thead>
+                    <tr><th></th><th>Preseason T-Score</th><th>In-Season Model</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Predicts</td><td>Next season's points per game, as a 0–100 score</td><td>Rest-of-season points per game (full PPR), in fantasy points</td></tr>
+                    <tr><td>WR inputs</td><td>Receiving yards, first downs and red zone targets</td><td>Expected points, points over expected and last season's points (per game)</td></tr>
+                    <tr><td>RB inputs</td><td>Scrimmage yards and high-value touches</td><td>The same three, with their own weights</td></tr>
+                    <tr><td>Tight ends</td><td>Not covered</td><td>Covered, with their own weights</td></tr>
+                    <tr><td>Rookies</td><td>Left out (no NFL data yet)</td><td>Included, with an adjustment in place of last season</td></tr>
+                    <tr><td>Labels</td><td>Score cutoffs, at percentiles of the T-Score</td><td>Points cutoffs, at the same percentiles of past projections</td></tr>
+                    <tr><td>Updated</td><td>Once, before drafts</td><td>Every week, refit on the season so far</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>The Three Ingredients</h3>
+        <ul>
+            <li><strong>Expected fantasy points per game (XFP/G):</strong> what an average player would score with the same targets and carries, in the same spots on the field. It measures opportunity, the most stable thing in fantasy football.</li>
+            <li><strong>Fantasy points over expected per game (FPOE/G):</strong> how much more (or less) a player has scored than his opportunity predicts. Efficiency counts, though it holds up less from week to week than opportunity does.</li>
+            <li><strong>Last-season points per game:</strong> the anchor. If a player did it before, he is more likely to do it again. A player with no qualifying last season (a rookie, or fewer than 4 games) gets a fixed adjustment instead.</li>
+        </ul>
+
+        <h3>How It's Fit</h3>
+        <p>For each position, a linear regression on every season from 2016 to 2025 asks one question: given a player's numbers through week N, what did he average over the rest of that season? It uses players with at least 2 games by week N and 4 after it. The fit is redone every week, with N set to the latest completed week, so the weights move as the season goes on and this season's numbers become more reliable.</p>
+        <p>After week 9, the positions agreed on one thing and differed on the rest. At every position, each expected point per game so far is worth about two-thirds of a point per game the rest of the way: regression to the mean, built in. Points over expected count for more at RB (0.48) and WR (0.42) than at TE (0.23), and last season counts for the most at TE (0.26). The model explains a little over half of the differences in rest-of-season scoring (an R² of 0.54 to 0.57); injuries, role changes and luck account for much of the rest. The current weights are under <em>How it's projected</em> on the In-Season tab.</p>
+
+        <h3>Reading the In-Season Tab</h3>
+        <ul>
+            <li><strong>ROS rank and ROS PPG:</strong> the projection, and where it ranks at the position.</li>
+            <li><strong>Label:</strong> the same tiers as the preseason tabs, and set the same way: by cutoffs. The preseason T-Score's were scores (65.5 for Elite, and so on); these are projected points. For each position, I took what this model would have projected for every 2016–2025 player at the same point of the season, and set the cutoffs at the same percentiles as before: the 95th for Elite, then the 90th (High-End Starter), 80th (Strong Starter), 65th (Quality Contributor) and 50th (Flex Play). Below that is a Depth Player. A player earns a label by reaching its number, so how many players reach a tier changes with the season. After week 9, that's seven Elite WRs, the decade's average, but fewer than usual in the WR2 tiers below them.</li>
+            <li><strong>Move:</strong> ROS rank against his rank so far this season. An up arrow means the model expects him to finish higher than he has scored.</li>
+            <li><strong>Buy and Sell:</strong> players projected to cross the line (WR 48, RB 36, TE 18). A Buy is outside it by points so far but projected inside it; a Sell is the reverse.</li>
+            <li><strong>FP/G and target share:</strong> what he has done so far, for context.</li>
+        </ul>
+
+        <h3>What It Doesn't Know</h3>
+        <p>It only sees the data through the latest completed week: not an injury since then, a new role after a trade or a coaching change, the schedule ahead or bye weeks. Players out for the season are removed by hand. Use it as a starting point next to your own read on a player, not as the last word.</p>
+
+        <h3>The Data</h3>
+        <p>Player stats from <a href="https://github.com/nflverse/nflverse-data" target="_blank" rel="noopener noreferrer">nflverse</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>) and expected fantasy points from <a href="https://github.com/ffverse/ffopportunity" target="_blank" rel="noopener noreferrer">ffopportunity</a> by Joe Sydlowski and Tan Ho (<a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>). The projections are derived from this data and shared under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a>.</p>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 3rem 0;">
 
         <!-- 2026 WR Section -->
         <h2>The 2026 T-Score: Predicting WR Breakouts</h2>

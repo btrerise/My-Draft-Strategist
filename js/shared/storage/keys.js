@@ -120,6 +120,9 @@ export const KEYS = {
         cache: 'tscore_cache',
         cacheUpdated: 'tscore_cache_updated',
         pageCache: 'tscore_page_cache',
+        // The In-Season tab's last loaded sheet (improvements T1): { wr, rb, te, weights, fetchedAt }, drawn at once on
+        // the next visit and kept when the sheet can't be reached. Only the T-Score page reads it.
+        inSeasonCache: 'tscore_inseason_cache',
         keyNamesVersion: 'tscore_key_names_version', // keyMigration.js sets '1' once the old names are copied (6B), '2' once deleted (6C)
     },
 };

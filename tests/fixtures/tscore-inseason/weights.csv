@@ -1,0 +1,14 @@
+Position,Intercept,XFP/G,FPOE/G,Last-season PPG,No-prior adjustment,R² (fit),Buy/Sell line (rank)
+WR,0.8756,0.6627,0.4165,0.2121,1.9888,0.54,48
+RB,1.4927,0.6655,0.4805,0.1668,1.7096,0.55,36
+TE,0.5920,0.6646,0.2328,0.2646,1.4903,0.57,18
+,,,,,,,
+Fit after week,9,,,,,,
+,,,,,,,
+Label cutoffs (ROS PPG),WR,RB,TE,,,,
+Elite,15.9,17.1,12.6,,,,
+High-End Starter,14.3,15.3,11.0,,,,
+Strong Starter,12.2,13.1,9.3,,,,
+Quality Contributor,9.9,10.6,7.6,,,,
+Flex Play,8.2,8.8,6.3,,,,
+Cutoffs from,2016–2025 projections after week 9,,,,,,
