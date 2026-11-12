@@ -10964,3 +10964,37 @@ Raised by the owner during N2 round 6; recommended by this session and agreed, n
 
 **Checked.** `mls-starter-alert.spec.mjs` (22, both widths, 2 repeats), `node --test` (584), check-precache. No screenshot
 changes (the card isn't in any baseline).
+
+## F18 — Scoreboard: count Sleeper's auto-subs (in progress: findings, waiting on the owner)
+
+**How Sleeper reports auto-subs (checked 2026-11-12).**
+- **The setting** is `settings.max_subs` on each league (`GET /v1/league/<id>`): 0 = off, 1–3 = AutoSubs allowed per team
+  per week. Two related keys: `sub_start_time_eligibility` (1 = "Require AutoSub To Not Play Before Starter": the sub's
+  game must start at the same time as the starter's or later) and `sub_lock_if_starter_active`. In the owner's 21 leagues
+  (2026): 16 have `max_subs` 1–3 (LOOG - Chop Shop also has `sub_start_time_eligibility` 1), five have 0 (LRD Cucks,
+  2026 Late Round Charity League, Legacy Best Ball, Slow Mock Draft, and none other); `sub_lock_if_starter_active` is 0
+  everywhere.
+- **What it is** ([Sleeper help: How does Player AutoSubs work?](https://support.sleeper.com/en/articles/9731991-how-does-player-autosubs-work),
+  read through search results; support.sleeper.com isn't reachable from the cloud session): the commissioner turns it on
+  in General League Settings → Player Auto-Subs and picks the weekly number; each manager names a bench sub per starter
+  (mobile app only), who must fit the starter's slot and whose game hasn't started; if the starter is inactive for his
+  game, the sub moves into the lineup. Sleeper added the start-time option later
+  ([SleeperHQ on X](https://x.com/SleeperHQ/status/1824543398432223396)).
+- **The public API** ([docs.sleeper.com](https://docs.sleeper.com/)) has no auto-sub endpoint or field. A matchup entry
+  has exactly `roster_id`, `matchup_id`, `points`, `custom_points`, `starters`, `starters_points`, `players`,
+  `players_points` (every entry of the owner's 21 leagues, weeks 1–10). Rosters carry no sub assignments either (their
+  keys: `starters`, `players`, `reserve`, `taxi`, `settings`, `metadata` with notification switches, `player_map` null).
+  So nothing names a swap, and nothing says which bench player is a starter's sub before it happens.
+- **`points` is always the sum of `starters_points`**, in the same order as `starters`: 2,196 of 2,196 finished entries
+  (weeks 1–9, all 21 leagues, Best Ball included). Sleeper's app counts the sub in the team score, so once Sleeper makes the
+  swap, `starters` must already list the sub and `points` include him; the starter he replaced is a bench player.
+  Not yet confirmed on a known swap (asked the owner for one).
+- **Sleeper's own weekly recap:** not in the public API (confirmed on docs.sleeper.com: users, avatars, leagues,
+  rosters, users in a league, matchups, playoff brackets, transactions, traded picks, NFL state, drafts, picks, players,
+  trending). The runbook's answer stands.
+
+**What the app does today.** Every Scoreboard view reads Sleeper's `starters` and the tile's score is Sleeper's `points`
+(`custom_points` when a commissioner set it), fetched again when older than 2 minutes or on Refresh. No view adds up
+starters itself, except Best Ball by design (`bestBallLineup`). So after Sleeper's swap the tiles, record, Still in play,
+Root for / Against you and MVPs / LVPs / Started already count the sub. Before the swap (starter ruled out, his game not
+started) the starter is left out as Out and the sub is a bench player.
