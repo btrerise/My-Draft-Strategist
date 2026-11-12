@@ -11149,6 +11149,13 @@ change, re-taken by CI through the commit message:
   ("Last synced 4:00 PM": the fixed clock in CI's UTC), 24px taller.
 - `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: the legend line's longer text (17px / 64px taller).
 
+CI's update-screenshots run committed exactly those four (11edd98); I opened them: the line sits centered under the
+buttons on the Dashboard, and only the legend text grew in the Guide.
+
+**Checks.** Full `npm run check` (once, before the last push): check-precache OK, 626 unit tests pass, 970 Playwright
+tests pass, 48 skipped. The 4 failures are `visual.spec.mjs`'s environment check (this container's fonts differ from
+CI's), as on main; the pxdiff comparison above stands in for it.
+
 **Left over.**
 - No timer, by the card: a Dashboard left open on a Sunday morning keeps its color until something redraws it (a tab
   switch back, a sync, a lineup change).
