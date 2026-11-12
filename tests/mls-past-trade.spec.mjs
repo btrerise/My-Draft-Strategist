@@ -125,6 +125,43 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
         await expectClean(page, state);
     });
 
+    test('a trade since the last sync: the league syncs by itself, once, and the box shows the trade (round 6)', async ({ page }) => {
+        const requests = { rosters: 0, transactions: 0 };
+        page.on('request', r => {
+            if (/\/rosters$/.test(r.url())) requests.rosters++;
+            if (/\/transactions\/\d+$/.test(r.url())) requests.transactions++;
+        });
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        // The last sync was before the trade (Sep 1; the trade went through Sep 8). Sleeper now has the new rosters.
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            State.leagues.find(l => l.leagueId === State.activeLeagueId).lastSyncedAt = Date.parse('2026-09-01T12:00:00Z');
+        });
+        await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/rosters$/, r => r.fulfill({ json: TRADED_ROSTERS }));
+        await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/transactions\/\d+$/, r =>
+            r.fulfill({ json: r.request().url().endsWith('/1') ? TRADE : [] }));
+        const before = { ...requests };
+        await showTab(page, 'roster');
+        await expect(line(page).locator('.mls-roster-trade-title')).toHaveText('Your trade with Rival · Sep 8');
+        await expect(line(page).locator('.mls-roster-trade-lines dd').first()).toContainText('RB 2 → 1');
+        await expect(line(page).locator('.mls-roster-trade-lines dd').first()).toContainText('WR 1 → 2');
+        // The sync's own summary, as the Sync button gives it; the roster below has the new players.
+        await expect(page.locator('.toast-message').filter({ hasText: 'Added:' })).toBeVisible();
+        await expect(page.locator('#rosterTab')).toContainText('Bijan Robinson');
+        await page.waitForLoadState('networkidle');
+        // One sync (the rosters once more), and the moves weren't read again after it.
+        expect(requests.rosters - before.rosters).toBe(1);
+        expect(requests.transactions - before.transactions).toBe(2);
+        // Not again on the next visit to the tab.
+        await showTab(page, 'lineup');
+        await showTab(page, 'roster');
+        await page.waitForLoadState('networkidle');
+        expect(requests.rosters - before.rosters).toBe(1);
+        await expectClean(page, state);
+    });
+
     test('no trades this season: no line; Sleeper asked once per visit, only on the Roster tab', async ({ page }) => {
         const requests = [];
         page.on('request', r => { if (/\/transactions\/\d+$/.test(r.url())) requests.push(r.url()); });
@@ -168,7 +205,7 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
         await page.waitForLoadState('networkidle');
         await expect(page.locator('#rosterPowerStrip')).toBeVisible();
         await expect(line(page)).toBeHidden();
-        await expect(page.locator('.toast, #toast-container > *')).toHaveCount(0);
+        await expect(page.locator('.toast-message').filter({ hasText: /error|couldn|sleeper|trade/i })).toHaveCount(0);
         await expectClean(page, state);
     });
 

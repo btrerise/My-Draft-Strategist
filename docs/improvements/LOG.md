@@ -10590,5 +10590,25 @@ Tried on a dynasty league (Future, a pick in the trade). Fixed:
 **Question 1 of the review (a trade made since the last sync).** The owner asked how the site could know a trade exists
 without knowing what it is. It does know what it is (Sleeper's list has the players and picks); what it lacks is today's
 rosters, which are the last sync's, and the box starts from those and undoes moves. Proposed instead of a Sync button:
-apply moves made after the last sync forward onto the saved rosters, so a new trade shows at once. Waiting for the
-owner's answer.
+apply moves made after the last sync forward onto the saved rosters. The owner chose an automatic sync instead (round 6).
+
+### S29, round 6: a trade since the last sync syncs the league by itself (owner)
+
+The owner asked for a trigger: when the box finds a trade of yours completed after the league's last sync, sync the
+roster automatically. `renderPastTradeLine` (`tradeLine.js`): once per league per visit, while the Roster tab shows, it
+calls `processSleeperData` as the Roster tab's Sync button does (`isRefresh`, the Added / Dropped / Now OUT toast), with
+its error toast off. Meanwhile the box shows the new trade's title and "New since your last sync: updating this league
+from Sleeper…". The moves just read are kept for the redraw (`keepAfterSync`), so Sleeper isn't asked for them again.
+On a failed sync the box falls back to what it showed before (no toast; the sync logs to the console and flags the
+league "Last sync failed" on the Dashboard, as any failed sync does).
+
+What else the sync does, the same as the button: it **re-optimizes this league's lineup** (`optimizeLineup(true)`,
+manual swaps reset), refreshes the roster, records and the Power Rankings, and clears the Dashboard's stale-sync age.
+Only a trade of yours triggers it, not a waiver claim or another team's trade.
+
+Spec: "a trade since the last sync" (the league syncs once, the box shows the trade with the Trade Analyzer's numbers,
+the Added toast, the moves aren't read again, no second sync on the next visit to the tab). Also fixed: the "Sleeper
+fails" test's toast check used a selector that matched nothing (`.toast-message` now).
+
+Not tested: a failed automatic sync (the sync's own `console.error` fails `expectClean`); the code path falls back to
+the box as it was.

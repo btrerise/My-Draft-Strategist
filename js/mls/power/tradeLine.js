@@ -16,10 +16,12 @@ import { fantasyPosition } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { computePositionalPower } from './shared.js';
+import { processSleeperData } from '../leagues/sync.js';
 import { completedMoves, defaultTradeId, leaguesAroundMove, makeOwnerOf, moveTime, rankChanges, tradeEntries, tradeVerdictText, yourTrades } from './pastTrades.js';
 
 const loads = new Map();   // leagueId -> { status: 'loading' | 'done' | 'error', moves, rosterMap: the rosters it was read for }
 const picked = new Map();  // leagueId -> the trade picked in the drop-down, for this visit
+const autoSynced = new Set(); // leagues this box has synced by itself this visit (round 6), at most once each
 let lastCtx = null;        // what refreshPowerRankings last passed, to draw again when a load lands
 let playerMap = null;
 
@@ -71,7 +73,11 @@ export function renderPastTradeLine(ctx) {
     if (!league || !ctx.src || !league.leagueId || !league.teamNames || league.rosterId == null) { hide(); return; }
     let entry = loads.get(league.leagueId);
     // A re-sync replaces the league's rosters, and may bring moves this visit's list hasn't seen: ask again.
-    if (entry && entry.rosterMap !== league.globalRosterMap && entry.status !== 'loading') { loads.delete(league.leagueId); entry = null; }
+    // After this box's own sync (round 6) the moves are the ones just read, so they're kept.
+    if (entry && entry.rosterMap !== league.globalRosterMap && entry.status !== 'loading') {
+        if (entry.keepAfterSync) { entry.rosterMap = league.globalRosterMap; entry.keepAfterSync = false; }
+        else { loads.delete(league.leagueId); entry = null; }
+    }
     if (!entry) {
         const week = Number(State.currentNflWeek);
         // Only once the Roster tab is open and the week is known (it arrives at start-up and redraws this tab).
@@ -91,6 +97,23 @@ export function renderPastTradeLine(ctx) {
     // Today's rosters are the last sync's: a move Sleeper made after it isn't in them, so it's neither undone nor listed.
     const synced = Number(league.lastSyncedAt) || 0;
     const moves = synced ? entry.moves.filter(tx => moveTime(tx) <= synced) : entry.moves;
+    // A trade of yours since the last sync (round 6, owner): sync this league by itself, once per visit, as the Roster tab's
+    // Sync button does (quietly on an error), so the trade is on the rosters and the box can show it. The sync redraws the
+    // tab, which lands back here with the new rosters.
+    if (synced && !autoSynced.has(league.leagueId) && league.username && !String(league.leagueId).startsWith('manual_')) {
+        const fresh = yourTrades(tradeEntries(entry.moves.filter(tx => moveTime(tx) > synced), deps))[0];
+        if (fresh) {
+            autoSynced.add(league.leagueId);
+            entry.keepAfterSync = true;
+            showSyncing(fresh);
+            processSleeperData(league.username, league.leagueId, null, true, {}, true, true).then(ok => {
+                if (ok) return;
+                entry.keepAfterSync = false;
+                if (lastCtx && rosterTabShowing()) renderPastTradeLine(lastCtx);
+            });
+            return;
+        }
+    }
     const trades = yourTrades(tradeEntries(moves, deps));
     const id = defaultTradeId(trades, picked.get(league.leagueId));
     if (!id) { hide(); return; }
@@ -167,6 +190,17 @@ function tradeLineHTML(trade, trades, changesFor, verdict, teams) {
             <div class="tooltip-container"><div class="tooltip-icon" aria-label="How this is worked out">i</div>
                 <span class="tooltip-text">${escapeHtml(about)}</span></div>
         </div>`;
+}
+
+// While the box's own sync runs: the new trade's title and one line.
+function showSyncing(trade) {
+    const el = box();
+    if (!el) return;
+    el.innerHTML = `
+        <div class="mls-roster-trade-head"><span class="mls-roster-trade-title">${tradeTitle(trade)}</span></div>
+        <div class="mls-roster-trade-note" data-trade-syncing>New since your last sync: updating this league from Sleeper\u2026</div>`;
+    el.hidden = false;
+    stripLink(true);
 }
 
 // The drop-down (data-action="selectPastTrade", a change action in js/mls/main.js).
