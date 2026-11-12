@@ -10742,3 +10742,8 @@ its move when the minutes change, and "a window behind another app doesn't count
 
 **Screenshots.** Rendered the last commit and this round in the same container: exactly `desktop/mls-league-guide.png`
 and `phone/mls-league-guide.png` change (the new Guide paragraph). Re-taken on CI from this round's commit.
+
+Re-taken on CI ([commit b44ed2f](https://github.com/btrerise/My-Draft-Strategist/commit/b44ed2f), only those two).
+Opened both: the paragraph is there, but ran straight on from the one above with no gap (the only step with two
+paragraphs in a row). `css/base.css`: `.step-desc + .step-desc { margin-top: 0.6rem; }` (no other step has adjacent
+paragraphs, in either app), and the same two PNGs re-taken again from the next commit.
