@@ -10684,3 +10684,44 @@ saved it; it now polls). CHANGELOG: a line for the fix under Lineup Strategist.
 `npm run check` in this container: precache OK, 583 unit tests, 936 Playwright tests passed (48 skipped). The 4 failures
 are `visual.spec.mjs` stopping at its environment check (the cloud image's fonts), as on main; the screenshots were
 compared on main and the branch here instead (identical, above). Nothing re-taken.
+
+## F17 — 2-QB leagues: the two QBs follow kickoff order
+
+**Status: built, waiting for the owner's answer to the card's "Asks you"** (the rule, and anything else wrong in the
+league). The entry is finished once the owner answers.
+
+**The bug, reproduced on main.** `optimizeFlexKickoffOrder` (`js/mls/lineup/kickoffOrder.js`) took QBs out of the
+relabel unless the lineup had an open SFLEX slot (F1 kept a 2-QB league "as on main"). So a 2-QB league's QB1/QB2 kept
+the rank-based fill's order, while RB1/RB2 and WR1/WR2 read earliest kickoff on top. Fixture league with a second QB
+slot (QB 2, RB 2, WR 2, TE 1, FLEX 1): Allen (ranked ahead, Sunday night) stayed in QB1 above Hurts (1 pm).
+
+**What changed and where.**
+- `js/mls/lineup/kickoffOrder.js`: the QB-removal block is gone, so the QB slots take part like the RB, WR and TE
+  slots: earliest kickoff first, ties and unknown kickoffs keep the fill order. Players whose game has started stay
+  put; a manual lock moves (F13). The header comment says so.
+- `sw.js`: `CACHE_NAME` v2.9.20 → v2.9.21. CHANGELOG line under Lineup Strategist.
+
+**User-visible effect.** With FLEX Kickoff Optimization on, a 2-QB league shows the earlier-kickoff QB in the top QB
+slot. Who starts doesn't change. Superflex with an open SFLEX slot and 1-QB lineups are unchanged slot for slot. The one
+other lineup that changes: two QB slots plus a SFLEX slot whose player has kicked off now orders its QB slots the same
+way.
+
+**Sleeper comparison.** `sleeperLineupChanges` compares sets of ids, so swapping QB1 and QB2 is never a change to set
+(checked in the spec, with a control that a real difference does show).
+
+**Tests.**
+- `tests/unit/kickoffOrder.test.mjs`, new "2-QB leagues (F17)":
+  - 2 QB with no SFLEX: Hurts moves to QB1. RB, WR and TE come out the same as main.
+  - Ties and no kickoff data keep the fill order.
+  - A QB whose game has started stays put. A manual lock moves.
+  - 2 QB plus SFLEX, and SFLEX already played: as on main.
+  - 500 random 2-QB lineups: main slot for slot, except the QB slots in kickoff order.
+  - The old random test against main's function is now 1-QB only.
+  - Three of these fail on main.
+- `tests/mls-2qb-kickoff.spec.mjs` (new, both widths):
+  - The QB order (fails on main).
+  - A Sleeper lineup with the QBs the other way round shows no change to set.
+  - With the toggle off, the QBs keep the rank order.
+
+**Asked the owner** (with a 375px before/after picture of the Lineup tab): (1) the same top-to-bottom rule as RB and
+WR; (2) nothing else looked wrong in the fixture league; no real league was available to check.

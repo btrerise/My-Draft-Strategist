@@ -252,13 +252,93 @@ describe('without SFLEX, W/T or W/R: identical to main', () => {
         ]);
     });
 
-    test('random lineups (1-2 QBs, ties, unknown kickoffs, locks, 0-3 FLEX) match main slot for slot', () => {
+    test('random 1-QB lineups (ties, unknown kickoffs, locks, 0-3 FLEX) match main slot for slot', () => {
         const r = rng(17);
         for (let c = 0; c < 500; c++) {
-            const ours = randomLineup(r, { lockRate: 0.15, qbs: 1 + Math.floor(r() * 2) });
+            const ours = randomLineup(r, { lockRate: 0.15, qbs: 1 });
             const theirs = { starters: ours.starters.map(s => ({ ...s })), times: ours.times };
             const input = ours.starters.map(s => `${s.slot} ${s.player.pos}${s.player.isLocked ? ' locked' : ''} ${ours.times[s.player.team] || '?'}`).join(', ');
             mainOptimizeFlexKickoffOrder(theirs.starters, theirs.times);
+            assert.deepEqual(slots(relabel(ours)), slots(theirs.starters), `case ${c}: ${input}`);
+        }
+    });
+});
+
+// Improvements F17: a 2-QB league (two QB slots, no SFLEX). Before, QBs only took part in the relabel through an open
+// SFLEX slot, so QB1 and QB2 kept the rank-based fill's order while RB1/RB2, WR1/WR2 read earliest to latest. Now
+// every strict type with several slots reads earliest kickoff on top. Who starts never changes.
+describe('2-QB leagues: the QB slots read earliest kickoff first (F17)', () => {
+    // QB 2, RB 2, WR 2, TE 1, FLEX 1, K, DEF. The fill put the better-ranked QB (Allen, Sunday night) in QB1.
+    const TWO_QB = [
+        ['QB1', 'Allen', 'QB', SNF], ['QB2', 'Hurts', 'QB', ONE_PM], ['RB1', 'Henry', 'RB', MNF], ['RB2', 'Gibbs', 'RB', ONE_PM],
+        ['WR1', 'Chase', 'WR', FOUR_25], ['WR2', 'Jefferson', 'WR', ONE_PM], ['TE1', 'Bowers', 'TE', ONE_PM],
+        ['FLEX1', 'Lamb', 'WR', ONE_PM], ['K1', 'Tucker', 'K', ONE_PM], ['DEF1', 'BAL', 'DEF', ONE_PM],
+    ];
+    const withLock = (name, lock) => TWO_QB.map(r => (r[1] === name ? [...r.slice(0, 4), lock] : r));
+
+    test('without SFLEX, the earlier QB moves to QB1, as RB1/RB2 and WR1/WR2 already do', () => {
+        // Main: QB1 Allen (Sunday night), QB2 Hurts (1 pm). RB, WR and FLEX as main had them.
+        assert.deepEqual(slots(relabel(lineup(TWO_QB))), [
+            'QB1 Hurts', 'QB2 Allen', 'RB1 Gibbs', 'RB2 Henry', 'WR1 Jefferson', 'WR2 Lamb', 'TE1 Bowers', 'FLEX1 Chase',
+            'K1 Tucker', 'DEF1 BAL',
+        ]);
+    });
+
+    test('the RB, WR and TE slots are the same as main', () => {
+        const ours = lineup(TWO_QB), theirs = lineup(TWO_QB);
+        mainOptimizeFlexKickoffOrder(theirs.starters, theirs.times);
+        const notQb = (list) => list.filter(s => !s.startsWith('QB'));
+        assert.deepEqual(notQb(slots(relabel(ours))), notQb(slots(theirs.starters)));
+    });
+
+    test('QBs kicking off together, or with no kickoff data, keep the fill order', () => {
+        const tie = TWO_QB.map(r => (r[2] === 'QB' ? [...r.slice(0, 3), FOUR_25] : r));
+        assert.deepEqual(slots(relabel(lineup(tie))).slice(0, 2), ['QB1 Allen', 'QB2 Hurts']);
+        const unknown = TWO_QB.map(r => r.slice(0, 3));
+        assert.deepEqual(slots(relabel(lineup(unknown))), slots(lineup(unknown).starters));
+    });
+
+    test('a QB whose game has started stays put, and so does the other', () => {
+        // Hurts (QB2) is locked by kickoff: QB1 is the only QB slot left, so Allen keeps it.
+        assert.deepEqual(slots(relabel(lineup(withLock('Hurts', 'auto')))).slice(0, 2), ['QB1 Allen', 'QB2 Hurts']);
+        // A manual lock whose game has since started (gameStarted) stays put too.
+        assert.deepEqual(slots(relabel(lineup(withLock('Allen', 'manual')), p => p.name === 'Allen')).slice(0, 2), ['QB1 Allen', 'QB2 Hurts']);
+    });
+
+    test('a manual lock on a QB still to play moves like anyone else (F13)', () => {
+        assert.deepEqual(slots(relabel(lineup(withLock('Allen', 'manual')))).slice(0, 2), ['QB1 Hurts', 'QB2 Allen']);
+    });
+
+    test('2 QB slots plus SFLEX: unchanged (SFLEX already brought QBs in)', () => {
+        const rows = [
+            ['QB1', 'Allen', 'QB', SNF], ['QB2', 'Hurts', 'QB', ONE_PM], ['RB1', 'Gibbs', 'RB', ONE_PM],
+            ['WR1', 'Chase', 'WR', ONE_PM], ['FLEX1', 'Lamb', 'WR', ONE_PM], ['SFLEX1', 'Burrow', 'QB', FOUR_25],
+        ];
+        // The same result main gave: SFLEX takes the latest QB, the QB slots the other two, earliest on top.
+        assert.deepEqual(slots(relabel(lineup(rows))), ['QB1 Hurts', 'QB2 Burrow', 'RB1 Gibbs', 'WR1 Chase', 'FLEX1 Lamb', 'SFLEX1 Allen']);
+    });
+
+    test('a superflex lineup whose SFLEX player has kicked off: one QB slot, nothing to reorder', () => {
+        const rows = [
+            ['QB1', 'Allen', 'QB', SNF], ['RB1', 'Gibbs', 'RB', ONE_PM], ['WR1', 'Chase', 'WR', MNF],
+            ['FLEX1', 'Lamb', 'WR', ONE_PM], ['SFLEX1', 'Hurts', 'QB', ONE_PM, 'auto'],
+        ];
+        assert.deepEqual(slots(relabel(lineup(rows))), ['QB1 Allen', 'RB1 Gibbs', 'WR1 Lamb', 'FLEX1 Chase', 'SFLEX1 Hurts']);
+    });
+
+    test('random 2-QB lineups: main slot for slot, except the QB slots read earliest kickoff first', () => {
+        const r = rng(1117);
+        const ms = (times, p) => (times[p.team] ? Date.parse(times[p.team]) : Infinity);
+        for (let c = 0; c < 500; c++) {
+            const ours = randomLineup(r, { lockRate: 0.15, qbs: 2 });
+            const theirs = { starters: ours.starters.map(s => ({ ...s })), times: ours.times };
+            const input = ours.starters.map(s => `${s.slot} ${s.player.pos}${s.player.isLocked ? ' locked' : ''} ${ours.times[s.player.team] || '?'}`).join(', ');
+            mainOptimizeFlexKickoffOrder(theirs.starters, theirs.times);
+            // Main never moved QBs. Expected: the unlocked QB slots, earliest first; ties keep the fill order.
+            const qbIdx = theirs.starters.map((s, i) => i).filter(i => theirs.starters[i].slot.startsWith('QB') && !theirs.starters[i].player.autoLocked);
+            const qbs = qbIdx.map(i => theirs.starters[i].player);
+            const sorted = qbs.map((p, k) => ({ p, k })).sort((a, b) => (ms(ours.times, a.p) === ms(ours.times, b.p) ? a.k - b.k : ms(ours.times, a.p) < ms(ours.times, b.p) ? -1 : 1));
+            qbIdx.forEach((i, k) => { theirs.starters[i] = { ...theirs.starters[i], player: sorted[k].p }; });
             assert.deepEqual(slots(relabel(ours)), slots(theirs.starters), `case ${c}: ${input}`);
         }
     });
