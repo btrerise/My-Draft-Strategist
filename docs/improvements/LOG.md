@@ -10745,5 +10745,7 @@ and `phone/mls-league-guide.png` change (the new Guide paragraph). Re-taken on C
 
 Re-taken on CI ([commit b44ed2f](https://github.com/btrerise/My-Draft-Strategist/commit/b44ed2f), only those two).
 Opened both: the paragraph is there, but ran straight on from the one above with no gap (the only step with two
-paragraphs in a row). `css/base.css`: `.step-desc + .step-desc { margin-top: 0.6rem; }` (no other step has adjacent
-paragraphs, in either app), and the same two PNGs re-taken again from the next commit.
+paragraphs in a row, I thought). A first fix, `.step-desc + .step-desc { margin-top: 0.6rem; }` in `css/base.css`, was
+wrong: the Guide already spaces paragraphs with `class="step-desc mt-2"` (0.5rem), and the new rule outranked `.mt-2`,
+widening every such gap (CI's re-take, b0b2546: the Guide 67px taller, changes from step 3 on). Undone; the Starter Alerts
+paragraph uses `mt-2` like the others, and the two PNGs re-taken again from the next commit.

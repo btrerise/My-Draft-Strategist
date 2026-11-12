@@ -1610,8 +1610,6 @@ label.toggle-title,
     margin: 0 0 0 2.2rem; /* Indents the text to align perfectly past the circle number */
     text-wrap: pretty;
 }
-/* Two paragraphs in a row in one step (Lineup Strategist's step 7, Starter Alerts, improvements N2) get a gap. */
-.step-desc + .step-desc { margin-top: 0.6rem; }
 
 .guide-list {
     margin: 0.75rem 0 0 2.2rem;
