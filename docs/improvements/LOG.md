@@ -11084,6 +11084,9 @@ in an invisible band above and below. In The Research's "The Data", a tap on the
 - On this branch: the T-Score test passes 100 of 100 (`--repeat-each 100`, phone), and the whole spec passes.
 - Main with the new spec fails 100 of 100 (above).
 - Screenshots: main and this branch rendered in this container, `npm run pxdiff`: 44 PNGs, all pixel-identical.
+- Full `npm run check` (once, before the last push): check-precache OK, 611 unit tests pass, 964 Playwright tests pass,
+  48 skipped. The 4 failures are `visual.spec.mjs`'s environment check (this container's fonts differ from CI's), as
+  on main. The pxdiff comparison above stands in for it.
 
 **Left over.**
 - For M16 (not changed here, it's that card's list): `ALLOW`'s `.mls-scoreboard-credit a, .tscore-credit a` look
