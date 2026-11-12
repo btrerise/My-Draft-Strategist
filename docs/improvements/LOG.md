@@ -10964,3 +10964,65 @@ Raised by the owner during N2 round 6; recommended by this session and agreed, n
 
 **Checked.** `mls-starter-alert.spec.mjs` (22, both widths, 2 repeats), `node --test` (584), check-precache. No screenshot
 changes (the card isn't in any baseline).
+
+## F17 — 2-QB leagues: the two QBs follow kickoff order
+
+**Owner's decisions** (asked after reproducing, with a 375px before/after picture of the Lineup tab, 2026-11-12):
+1. **The same top-to-bottom rule as RB and WR**: earliest kickoff in QB1.
+2. Where the owner saw it: **League of Ordinary Gentlemen** (Keeper 2QB Half-PPR: QB 2, RB 2, WR 2, TE 1, FLEX 2,
+   DEF 1), **week 10**: Jayden Daniels (WAS, Thursday night) in the lower QB slot below Brock Purdy (SF, Sunday 4:25).
+   Nothing else looked wrong there (below).
+
+**The bug, reproduced on main.** `optimizeFlexKickoffOrder` (`js/mls/lineup/kickoffOrder.js`) took QBs out of the
+relabel unless the lineup had an open SFLEX slot (F1 kept a 2-QB league "as on main"). So a 2-QB league's QB1/QB2 kept
+the rank-based fill's order, while RB1/RB2 and WR1/WR2 read earliest kickoff on top. Fixture league with a second QB
+slot (QB 2, RB 2, WR 2, TE 1, FLEX 1): Allen (ranked ahead, Sunday night) stayed in QB1 above Hurts (1 pm).
+
+**What changed and where.**
+- `js/mls/lineup/kickoffOrder.js`: the QB-removal block is gone, so the QB slots take part like the RB, WR and TE
+  slots: earliest kickoff first, ties and unknown kickoffs keep the fill order. Players whose game has started stay
+  put; a manual lock moves (F13). The header comment says so.
+- `sw.js`: `CACHE_NAME` v2.10.0 → v2.10.1 (after N2 merged; v2.9.21 before). CHANGELOG line under Lineup Strategist.
+
+**User-visible effect.** With FLEX Kickoff Optimization on, a 2-QB league shows the earlier-kickoff QB in the top QB
+slot. Who starts doesn't change. Superflex with an open SFLEX slot and 1-QB lineups are unchanged slot for slot. The one
+other lineup that changes: two QB slots plus a SFLEX slot whose player has kicked off now orders its QB slots the same
+way.
+
+**Sleeper comparison.** `sleeperLineupChanges` compares sets of ids, so swapping QB1 and QB2 is never a change to set
+(checked in the spec, with a control that a real difference does show).
+
+**Tests.**
+- `tests/unit/kickoffOrder.test.mjs`, new "2-QB leagues (F17)":
+  - 2 QB with no SFLEX: Hurts moves to QB1. RB, WR and TE come out the same as main.
+  - Ties and no kickoff data keep the fill order.
+  - A QB whose game has started stays put. A manual lock moves.
+  - 2 QB plus SFLEX, and SFLEX already played: as on main.
+  - 500 random 2-QB lineups: main slot for slot, except the QB slots in kickoff order.
+  - The old random test against main's function is now 1-QB only.
+  - Three of these fail on main.
+- `tests/mls-2qb-kickoff.spec.mjs` (new, both widths):
+  - The QB order (fails on main).
+  - A Sleeper lineup with the QBs the other way round shows no change to set.
+  - With the toggle off, the QBs keep the rank order.
+
+**Checked against the owner's backup** (`my-lineup-strategist-backup-2026-11-12.json`, uploaded to the session, not
+committed; week 10 kickoffs from ESPN's scoreboard). Each league's saved lineup was run through main's function and
+this branch's:
+- League of Ordinary Gentlemen: main keeps QB1 Purdy (Sun 21:25 UTC), QB2 Daniels (Thu 01:15 UTC). This branch: QB1
+  Daniels, QB2 Purdy. The rest was already in kickoff order and stays the same: RB Gibbs (Sunday 9:30 am ET) then Tuten; WR Nabers
+  (Thursday) then Lamb; FLEX Corum, then Chase (Sunday night). Sleeper already has Daniels first, so the Lineup tab now
+  matches it; there was never a change to set (set-based comparison).
+- The other 19 leagues (15 superflex with one QB slot, plus 1-QB and Best Ball): identical slot for slot.
+- Nothing else wrong in the league: the unranked bench players are four on bye in week 10 (Irving TB, Coleman and
+  Waddle DEN, Monangai CHI) and Mike Evans, who isn't in the weekly file at all. Waddle and Monangai are in the IR
+  slot, as Sleeper has them.
+
+**Screenshots:** none changed. No screenshot fixture has two QB slots. Main and this branch rendered in this container
+(`npm run pxdiff`): 44 PNGs, all pixel-identical.
+
+**Checks** (full `npm run check`, once, before the last push): check-precache OK, 591 unit tests pass, 942 Playwright
+tests pass, 48 skipped. The 4 failures are `visual.spec.mjs`'s environment check (this container's fonts differ from
+CI's), as on main; the screenshot comparison above stands in for it.
+
+**Left over:** nothing.

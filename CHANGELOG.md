@@ -167,6 +167,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **2-QB leagues: the QBs follow kickoff order.** With FLEX Kickoff Optimization on, a league with two QB slots
+  (no superflex) now shows the QB whose game kicks off first in the top QB slot, as the RB and WR slots already do.
+  Who starts doesn't change, and it never shows as a change to set on Sleeper. Superflex and 1-QB lineups are as
+  before.
 - **A league sync no longer takes you back to that league.** If you tapped "Sync Sleeper Waivers & Trades" and switched
   to another league before it finished, the app went back to the synced league while the header still named the one
   you'd picked, so the Lineup and Roster tabs could show one league's players under the other's name. Now the synced

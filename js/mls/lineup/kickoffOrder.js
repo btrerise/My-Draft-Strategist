@@ -52,8 +52,10 @@ function canFill(slotTypes, players) {
 //   so we never assume a game is early without evidence.
 // - Ties keep the rank-based fill: of two players kicking off together, the one the fill
 //   placed lower in the lineup is treated as later.
-// - Where a type has several slots (FLEX1, FLEX2), they read earliest to latest top to bottom.
-//   Which of them a player lands in doesn't change late-swap room; it's display order.
+// - Where a type has several slots (FLEX1, FLEX2, or a 2-QB league's QB1, QB2), they read earliest
+//   to latest top to bottom. Which of them a player lands in doesn't change late-swap room; it's
+//   display order. QBs take part with or without SFLEX (improvements F17; from F1 until then a
+//   2-QB league without SFLEX kept QB1/QB2 in the fill's order).
 export function optimizeFlexKickoffOrder(starters, kickoffMs, gameStarted = () => false) {
     const movable = [];
     starters.forEach((s, idx) => {
@@ -63,11 +65,6 @@ export function optimizeFlexKickoffOrder(starters, kickoffMs, gameStarted = () =
         const ms = kickoffMs(s.player);
         movable.push({ idx, slotType, player: s.player, pos: s.player.pos, ms: Number.isFinite(ms) ? ms : Infinity });
     });
-    // QBs can only trade places through SFLEX. Without an open SFLEX slot, a 2-QB league's QB1/QB2
-    // keep the fill's order, as before F1.
-    if (!movable.some(m => m.slotType === 'SFLEX')) {
-        for (let i = movable.length - 1; i >= 0; i--) if (movable[i].slotType === 'QB') movable.splice(i, 1);
-    }
 
     const latestFirst = (a, b) => cmpMs(b.ms, a.ms) || b.idx - a.idx;
     const earliestFirst = (a, b) => cmpMs(a.ms, b.ms) || POS_ORDER[a.pos] - POS_ORDER[b.pos] || a.idx - b.idx;
