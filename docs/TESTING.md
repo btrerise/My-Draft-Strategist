@@ -417,6 +417,9 @@ The card named does the item in its own session; remove the line when it's done.
   time-to-interactive by about 0.7 s on slow 4G, if a build step is ever wanted.
 
 **Wanted by the owner, not scheduled yet** (improvements S21)
+- A **Settings** page in both apps, reached from the menu like the Guide, holding the Dashboards' set-once settings
+  (owner agreed in improvements N2, round 6). The proposed card, with its order (after N2, before N4) and scope, is in
+  docs/improvements/LOG.md under N2, "Proposed card: a Settings page in both apps".
 - An Export for the Roster tab: the roster as an image (and maybe as text), like the Lineup tab's.
 - A standard expanded navigation rail on very wide windows (improvements S26): from about 1600px the page (1200px at most)
   has room beside a 280px rail, so the expanded rail could sit beside the page and stay open (Material 3's "standard"

@@ -10754,3 +10754,30 @@ b44ed2f's (the first re-take), because `.mt-2` has no effect on a Guide paragrap
 `.mt-2`, same specificity) sets `margin: 0 0 0 2.2rem`. So on main every Guide step with a second paragraph (steps 3, 4,
 6, 9 and others, `step-desc mt-2`) shows it with no gap, and the Starter Alerts paragraph now matches them. A real gap
 is a Guide-wide visual change, left as a follow-up in `docs/TESTING.md` (owner to decide).
+
+### Proposed card: a Settings page in both apps (owner agreed, 2026-11-12; for the runbook)
+
+Raised by the owner during N2 round 6; recommended by this session and agreed, named **Settings**. Not built in N2.
+
+- **Goal.** Each app's Dashboard is for what you do every week (Lineup Strategist: the League Command Center, Sync All,
+  "lineups need you", the Week Recap, league cards; Draft Strategist: its draft setup). The set-once settings (Lineup
+  Strategist's Advanced Settings card: Show Player Headshots, Notifications, MVP / LVP Lines, Backup & Restore, Danger
+  Zone; Draft Strategist's equivalents) move to a **Settings** page in each app, reached from the menu like the Guide
+  (drawer, rail and phone menu). Visible effect: a shorter Dashboard, and a Settings entry beside the Guide.
+- **Stays where it is.** Settings that belong to one tool stay beside it: Lineup settings (Lineup tab), Value settings
+  (Trade Analyzer), Power Rankings and Simulator settings, Active League Requirements.
+- **Add Player Manually** stays on the Dashboard, shown only while the open league is a manual one (beside Active League
+  Requirements); Sleeper leagues get their players from Sleeper. (Check first whether anyone uses it on Sleeper leagues.)
+- **Order.** After N2 merges and **before N4**, so Draft Strategist's "on the clock" switch goes straight into its
+  Settings page (N4's Notifications section). Not alongside M10 (badges on the same menu and rail) or another card that
+  edits the nav (`js/shared/ui/navMenu.js`, `js/mls/nav.js`, `js/mds/ui.js`) or the Guide.
+- **Asks the owner.** A sketch at 375 and 1280px of the menu entry and the page; the page's order of sections; whether
+  Draft Strategist's settings all move; the URL hash (`#settings`) and the tab name in the nav.
+- **Scope notes.** A new tab in each app (tab ids in `tests/helpers.mjs` `MLS_TABS` / `MDS_TABS`, tab hash, drawer,
+  rail, phone menu); the Guide's text that says "Advanced Settings on the Dashboard" (Lineup Strategist steps 1, 12 and
+  N2's Starter Alerts paragraph in step 7, the MVP / LVP line, Draft Strategist's equivalents); specs that open those
+  sections on the Dashboard (backup, factory reset, headshots, recap lines, mls-starter-alert, touch-targets,
+  focus-ring, tooltips-onscreen); `goToLineupNeeds` and other jumps unaffected. Screenshots: both apps' Dashboards
+  (empty and league, desktop and phone) and a new Settings pair per app; follow "Accepting an intended visual change".
+  CHANGELOG lines under both apps. No storage keys change.
+- **Size.** About a 15k-token session (two apps, nav and tests); it changes what users see.
