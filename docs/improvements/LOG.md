@@ -10683,3 +10683,8 @@ another app, the card alone when you're looking (and the kickoff time unbroken),
 **Screenshots.** The same four PNGs change again (the box, the shorter description, the green bell, all visible while
 off): `desktop/mls-empty-setup.png`, `desktop/mls-league-setup.png`, `phone/mls-empty-setup.png`,
 `phone/mls-league-setup.png`. Re-taken on CI from this round's commit.
+Re-taken on CI ([commit 2bbb493](https://github.com/btrerise/My-Draft-Strategist/commit/2bbb493); no other PNG changed).
+Opened each against round 1's: the Starter Alerts box now matches Headshots' (green bell, two-line description, switch
+off), and the pages are shorter (desktop 14px, phone 56px). On the two phone PNGs, the only other differences are
+1-step colour changes within the first screen (rows 32–843: the header and tab bar, which are fixed, blending over a page
+of another height); nothing visible.
