@@ -11,8 +11,8 @@ const csv = (text) => Papa.parse(text.trim(), { skipEmptyLines: true }).data;
 test('the fixture (the real sheet\'s format) reads into players sorted by ROS rank', () => {
     const wr = parseInSeasonPlayers(fixture('wr'), 'wr');
     assert.equal(wr.length, 22);
-    assert.deepEqual(wr[0], { rank: 1, name: 'Puka Nacua', team: 'LA', rosPpg: 22.14, fpg: 24.8, targetShare: '36.1%', move: 1, buySell: '' });
-    assert.deepEqual(wr.find(p => p.name === 'A.J. Brown'), { rank: 43, name: 'A.J. Brown', team: 'NE', rosPpg: 9.44, fpg: 6.37, targetShare: '22.0%', move: 38, buySell: 'Buy' });
+    assert.deepEqual(wr[0], { rank: 1, name: 'Puka Nacua', team: 'LA', rosPpg: 22.14, fpg: 24.8, xfp: 23.3, fpoe: 1.5, targetShare: '36.1%', move: 1, buySell: '' });
+    assert.deepEqual(wr.find(p => p.name === 'A.J. Brown'), { rank: 43, name: 'A.J. Brown', team: 'NE', rosPpg: 9.44, fpg: 6.37, xfp: 5.87, fpoe: 0.5, targetShare: '22.0%', move: 38, buySell: 'Buy' });
     assert.equal(wr.filter(p => p.buySell === 'Sell').length, 4);
     assert.equal(parseInSeasonPlayers(fixture('te'), 'te')[3].move, -1);
 });
@@ -103,4 +103,13 @@ test('labels by points: at or above a cutoff earns it; under the last is Depth P
     assert.equal(labelFor({ rank: 1, rosPpg: 9, label: { label: 'Elite', cls: 'label-elite' } }, { cutoffs: c }).label, 'Elite');
     assert.equal(labelFor({ rank: 1, rosPpg: 9 }, { cutoffs: c, line: 48 }).label, 'Flex Play');
     assert.equal(labelFor({ rank: 1, rosPpg: 9 }, { line: 48 }).label, 'Elite');
+});
+
+test('XFP/G and FPOE/G are optional: read by name, FPOE/G worked out from FP/G − XFP/G, null when absent', () => {
+    const [both] = parseInSeasonPlayers(csv('ROS rank,Player,Team,ROS PPG,FP/G,XFP/G,FPOE/G,Target share,Rank move,Buy/Sell\n1,A,X,20,19.5,17.25,2.25,30%,0,'), 'wr');
+    assert.deepEqual([both.xfp, both.fpoe], [17.25, 2.25]);
+    const [xOnly] = parseInSeasonPlayers(csv('ROS rank,Player,Team,ROS PPG,FP/G,XFP/G,Target share,Rank move,Buy/Sell\n1,A,X,20,9.1,9.88,30%,0,'), 'wr');
+    assert.equal(xOnly.fpoe, -0.78);
+    const [neither] = parseInSeasonPlayers(csv('ROS rank,Player,Team,ROS PPG,FP/G,Target share,Rank move,Buy/Sell\n1,A,X,20,9.1,30%,0,'), 'wr');
+    assert.deepEqual([neither.xfp, neither.fpoe], [null, null]);
 });
