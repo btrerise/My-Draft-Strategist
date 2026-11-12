@@ -85,9 +85,16 @@ const PLAYER_COLUMNS = [
     ['buySell', 'Buy/Sell'],
 ];
 
+// XFP/G and FPOE/G for one row: the sheet's numbers, FPOE/G from FP/G − XFP/G when its column is missing.
+function optionalExpected(fpg, xfp, fpoe) {
+    if (fpoe === null && xfp !== null && fpg !== null) fpoe = Math.round((fpg - xfp) * 100) / 100;
+    return { xfp, fpoe };
+}
+
 /**
  * One position's tab → players sorted by ROS rank:
- * { rank, name, team, rosPpg (number|null), fpg (number|null), targetShare (text as written), move (number|null),
+ * { rank, name, team, rosPpg (number|null), fpg (number|null), xfp / fpoe (number|null, optional columns),
+ *   targetShare (text as written), move (number|null),
  *   buySell ('Buy' | 'Sell' | '') }.
  * Rows without a player or a ROS rank (blank rows, notes) are skipped. Throws InSeasonColumnError.
  */
@@ -97,6 +104,10 @@ export function parseInSeasonPlayers(rows, pos) {
     const col = headerIndex(rows[0]);
     const idx = Object.fromEntries(PLAYER_COLUMNS.map(([key, header]) => [key, col(header)]));
     const moveIdx = col('Rank move');
+    // Optional (owner, 2026-11-12): expected points and points over expected per game, after FP/G. Shown only when the
+    // sheet has them; FPOE/G is worked out from FP/G − XFP/G when only XFP/G is there.
+    const xfpIdx = col('XFP/G');
+    const fpoeIdx = col('FPOE/G');
     const labelIdx = col('Label'); // optional: a hand-set label, used over the computed one
     const ytdIdx = col('YTD rank');
 
@@ -121,6 +132,7 @@ export function parseInSeasonPlayers(rows, pos) {
             team: cell(row, idx.team),
             rosPpg: toNum(cell(row, idx.rosPpg)),
             fpg: toNum(cell(row, idx.fpg)),
+            ...optionalExpected(toNum(cell(row, idx.fpg)), toNum(cell(row, xfpIdx)), toNum(cell(row, fpoeIdx))),
             targetShare: cell(row, idx.targetShare),
             move,
             buySell: bs === 'buy' ? 'Buy' : bs === 'sell' ? 'Sell' : '',

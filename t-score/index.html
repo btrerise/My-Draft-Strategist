@@ -207,6 +207,18 @@
                                 <span class="tooltip-text">Fantasy points per game so far this season (full PPR)</span>
                             </div>
                         </th>
+                        <th id="inSeasonXfpTh" hidden>
+                            <div class="table-header-tooltip">
+                                XFP/G
+                                <span class="tooltip-text">Expected fantasy points per game: what an average player would score with his targets and carries</span>
+                            </div>
+                        </th>
+                        <th id="inSeasonFpoeTh" hidden>
+                            <div class="table-header-tooltip">
+                                FPOE/G
+                                <span class="tooltip-text">Fantasy points over expected per game: FP/G minus XFP/G</span>
+                            </div>
+                        </th>
                         <th>
                             <div class="table-header-tooltip">
                                 Tgt %
@@ -283,6 +295,7 @@
             <li><strong>Move:</strong> ROS rank against his rank so far this season. An up arrow means the model expects him to finish higher than he has scored.</li>
             <li><strong>Buy and Sell:</strong> players projected to cross the line (WR 48, RB 36, TE 18). A Buy is outside it by points so far but projected inside it; a Sell is the reverse.</li>
             <li><strong>FP/G and target share:</strong> what he has done so far, for context.</li>
+            <li><strong>XFP/G and FPOE/G:</strong> two of the model's three inputs, beside FP/G: his expected points per game from his usage, and how far above (+) or below (−) that he has scored. A big FPOE/G is the part of his scoring the model trusts least to last.</li>
         </ul>
 
         <h3>What It Doesn't Know</h3>

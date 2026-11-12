@@ -24,10 +24,13 @@ test('opens on In-Season and draws the sheet: WR, RB, TE, Move, Buy/Sell, the fi
     await expect(page.locator('#inSeasonMessage')).toBeHidden();
 
     await expect(rows(page)).toHaveCount(22);
-    expect(await cells(rows(page).first())).toEqual(['1', 'Puka Nacua', 'Elite', 'LA', '22.14', '24.80', '36.1%', 'Up 1', '']);
+    // XFP/G and FPOE/G after FP/G (the fixture's are made up), FPOE/G signed with a real minus.
+    await expect(page.locator('#inSeasonXfpTh')).toBeVisible();
+    await expect(page.locator('#inSeasonFpoeTh')).toBeVisible();
+    expect(await cells(rows(page).first())).toEqual(['1', 'Puka Nacua', 'Elite', 'LA', '22.14', '24.80', '23.30', '+1.50', '36.1%', 'Up 1', '']);
     // Move: an arrow drawn as SVG, the number, and words for screen readers; 0 reads "No change".
     await expect(rows(page).nth(1).locator('.tscore-move.is-down svg[aria-hidden="true"]')).toHaveCount(1);
-    expect(await cells(rows(page).nth(1))).toEqual(['2', 'Jaxon Smith-Njigba', 'Elite', 'SEA', '20.73', '25.78', '35.7%', 'Down 1', '']);
+    expect(await cells(rows(page).nth(1))).toEqual(['2', 'Jaxon Smith-Njigba', 'Elite', 'SEA', '20.73', '25.78', '26.78', '−1.00', '35.7%', 'Down 1', '']);
     await expect(rows(page).nth(2).locator('.tscore-move.is-flat')).toHaveText('No change–');
     const waddle = rows(page).filter({ hasText: 'Jaylen Waddle' });
     await expect(waddle.locator('.tscore-chip.tscore-chip-buy')).toHaveText('Buy');
@@ -120,7 +123,11 @@ test('columns are found by name: reordered, an extra column, and Move from YTD r
 });
 
 test('a tab missing a column shows a plain message, and keeps the last good rankings when it has them', async ({ page }) => {
-    const noTargetShare = inSeasonFixture('wr').split('\n').map(l => l.split(',').filter((_, i) => i !== 5).join(',')).join('\n');
+    const withoutColumn = (csv, name) => {
+        const lines = csv.split('\n'); const at = lines[0].split(',').indexOf(name);
+        return lines.map(l => l.split(',').filter((_, i) => i !== at).join(',')).join('\n');
+    };
+    const noTargetShare = withoutColumn(inSeasonFixture('wr'), 'Target share');
     await openApp(page, '/t-score/', { beforeGoto: (p) => stubInSeasonSheets(p, { wr: noTargetShare }) });
     await expect(page.locator('#inSeasonMessage')).toHaveText('The WR sheet is missing a column this table needs: Target share.');
     await expect(page.locator('#inSeasonTableWrap')).toBeHidden();
@@ -160,7 +167,7 @@ test('a #tab link still opens that tab, and Back returns to In-Season', async ({
 });
 
 test('a Label column in the sheet overrides the computed label', async ({ page }) => {
-    const wr = inSeasonFixture('wr').replace('Buy/Sell', 'Buy/Sell,Label').replace(/\n1,Puka Nacua,LA,22.14,24.80,36.1%,2,1,/, '\n1,Puka Nacua,LA,22.14,24.80,36.1%,2,1,,Strong Starter')
+    const wr = inSeasonFixture('wr').replace('Buy/Sell', 'Buy/Sell,Label').replace(/\n1,Puka Nacua,LA,22.14,24.80,23.30,1.50,36.1%,2,1,/, '\n1,Puka Nacua,LA,22.14,24.80,23.30,1.50,36.1%,2,1,,Strong Starter')
         .replace(/\n2,Jaxon Smith-Njigba,(.*)/, '\n2,Jaxon Smith-Njigba,$1,Not a label');
     await openApp(page, '/t-score/', { beforeGoto: (p) => stubInSeasonSheets(p, { wr }) });
     await expect(rows(page).first().locator('td').nth(2)).toHaveText('Strong Starter');
@@ -200,4 +207,22 @@ test('without the cutoffs block in Model Weights, labels fall back to ROS rank',
     await expect(labelOf('Tyquan Thornton')).toHaveText('Depth Player'); // rank 49, past the WR line of 48
     await page.locator('#inSeasonTab details summary').click();
     expect(await page.locator('.tscore-labels-table tbody tr').first().locator('td').allTextContents()).toEqual(['Elite', '1–5', '1–4', '1–2']);
+});
+
+test('XFP/G and FPOE/G show only when the sheet has them; FPOE/G is worked out when only XFP/G is there', async ({ page }) => {
+    const drop = (csv, names) => {
+        const lines = csv.split('\n'); const at = names.map(n => lines[0].split(',').indexOf(n));
+        return lines.map(l => l.split(',').filter((_, i) => !at.includes(i)).join(',')).join('\n');
+    };
+    const wr = drop(inSeasonFixture('wr'), ['XFP/G', 'FPOE/G']);
+    const rb = drop(inSeasonFixture('rb'), ['FPOE/G']);
+    await openApp(page, '/t-score/', { beforeGoto: (p) => stubInSeasonSheets(p, { wr, rb }) });
+    // WR without both: the columns are hidden and the rows have none.
+    await expect(page.locator('#inSeasonXfpTh')).toBeHidden();
+    await expect(page.locator('#inSeasonFpoeTh')).toBeHidden();
+    expect(await cells(rows(page).first())).toEqual(['1', 'Puka Nacua', 'Elite', 'LA', '22.14', '24.80', '36.1%', 'Up 1', '']);
+    // RB with XFP/G only: FPOE/G = FP/G − XFP/G (Gibbs 26.04 − 24.54).
+    await page.locator('#inSeasonTab .pos-toggle-btn[data-pos="rb"]').click();
+    await expect(page.locator('#inSeasonFpoeTh')).toBeVisible();
+    expect((await cells(rows(page).first())).slice(5, 8)).toEqual(['26.04', '24.54', '+1.50']);
 });

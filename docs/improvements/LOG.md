@@ -11093,3 +11093,26 @@ in an invisible band above and below. In The Research's "The Data", a tap on the
   redundant with `[data-inline-link]` now; check before removing.
 - Other T-Score specs call `showTScoreTab` and don't wait for the fade-in either. None checks opacity or visibility
   the way this one did, so none was affected.
+
+## T1 follow-up — XFP/G and FPOE/G on the In-Season tab (owner, 2026-11-12)
+
+**Why they weren't there.** The owner asked why expected points weren't shown. They were cut in T1 because the first
+sheet took XFP/G and FPOE/G from the Late-Round dump (personal use only). After the move to open data, the public sheet
+computes them from nflverse's ffopportunity expected points (CC BY-SA 4.0, already credited under the table; its Data
+Sources tab says so), but kept the narrowed column list. Nothing stops showing them now.
+
+**Owner's decisions.** Both columns, right after FP/G. The owner's sheet session adds them to the public WR, RB and TE
+tabs (columns F and G; Target share moves to H). The site reads columns by name, so the move changes nothing else.
+
+**What changed.** `parseInSeasonPlayers` reads optional `XFP/G` and `FPOE/G` (FPOE/G worked out as FP/G − XFP/G when
+only XFP/G is there); the In-Season table shows the two columns (header tooltips, FPOE/G signed with a real minus)
+only when the position's rows have XFP/G, so the page looks as before until the sheet has them, and a copy saved before
+them still draws. The Research's "Reading the In-Season Tab" gains a line for both. CHANGELOG line; CACHE_NAME v2.10.3.
+
+**Tests.** The fixtures gain the two columns after FP/G with **made-up values** (FPOE/G from a fixed pattern, XFP/G =
+FP/G − FPOE/G): not real data, and never Late-Round's. Specs: the columns and their values; hidden when the sheet
+lacks them; FPOE/G worked out from XFP/G alone. A unit test for the optional parsing.
+
+**Screenshots.** Compared main against the branch in the same container: desktop `tscore-inSeasonTab.png` (two more
+columns) and desktop and phone `tscore-researchTab.png` (the new line); the phone In-Season PNG is unchanged (its
+table scrolls sideways and the new columns sit past the first screen). Re-taken on CI.
