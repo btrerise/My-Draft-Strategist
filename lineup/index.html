@@ -302,6 +302,9 @@
                 Optimize All Lineups
             </button>
         </div>
+        <!-- When you last synced (js/mls/render/dashboard.js renderLastSynced, improvements S46): the newest sync across
+             your Sleeper leagues, amber when old, and any league whose last sync failed. -->
+        <p id="lastSyncedLine" class="mls-last-synced" hidden></p>
         <!-- Lineups that need you (js/mls/render/dashboard.js, improvements S11): since S12 a one-line strip (how many
              need you, ✕ and "Sync All again"); the to-dos themselves are in the league cards below. -->
         <div id="lineupNeedsBox" class="mls-needs-box" role="status" hidden></div>

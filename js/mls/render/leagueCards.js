@@ -37,7 +37,7 @@ import { isBestBallLeague } from '../helpers.js';
 import { isEarlyPlayer } from '../lineup/earlyGames.js';
 import { getValidSleeperStarterIds, hasKickedOff } from '../lineup/gameInfo.js';
 import { bestBallBadgeMarkup, leagueStatusChipMarkup, paidBadgeMarkup } from '../badges.js';
-import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, reoptimizeKickedOffLeagues, renderLineupNeeds, syncChangesFor, syncChangesHTML } from './dashboard.js';
+import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, reoptimizeKickedOffLeagues, renderLastSynced, renderLineupNeeds, syncChangesFor, syncChangesHTML } from './dashboard.js';
 import { renderBestAvailable } from '../scout/bestAvailable.js';
 import { refreshThisWeek, renderThisWeek } from '../week/thisWeek.js';
 import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/viewTransition.js';
@@ -198,6 +198,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         if (dashboard && dashboard.classList.contains('active')) reoptimizeKickedOffLeagues();
         const needs = collectLineupNeeds();
         renderLineupNeeds(needs);
+        renderLastSynced();
 
         if (State.leagues.length === 0) {
             cmdCenter.style.display = 'none';

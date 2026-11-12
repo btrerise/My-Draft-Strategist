@@ -115,7 +115,7 @@ const GROUPS = [
         ['<span class="rset-rank-chip is-mine">4</span>',
             'When you view a ranking set\'s players: one of yours (his rank in blue). Pick Other teams there to see who has the rest.'],
         [`<span class="freshness-stale">Synced 3 days ago</span> <span class="sync-failed">Last sync failed</span>`,
-            'Amber: this information is a few days old, so refresh it (Sync All Leagues for rosters). Red: the last sync failed.'],
+            'Amber: this information is a few days old, so refresh it (Sync All Leagues for rosters). Red: the last sync failed. The Dashboard\'s "Last synced" line under Sync All turns amber once your newest sync is over a day old, or when a kickoff is less than 3 hours away and you haven\'t synced since 6 AM that day.'],
         [leagueStatusChipMarkup('good', 'Rankings', '', SAMPLE) + leagueStatusChipMarkup('warn', 'Rankings', '', SAMPLE) + leagueStatusChipMarkup('danger', 'Lineup', '', SAMPLE) + leagueStatusChipMarkup('pending', 'Lineup', '', SAMPLE) + bestBallBadgeMarkup(),
             'On each league\'s card on the Dashboard. Rankings: green, its Weekly rankings are fresh (this week\'s); amber, they\'re stale or missing. Lineup: green, it matches your Sleeper lineup; red, it differs (the changes are in the card); amber, there\'s no Sleeper lineup to compare yet; grey, not optimized yet. BB: a Best Ball league, with no lineup to set. Tap a chip for more.'],
         [paidBadgeMarkup({ sample: true }),
