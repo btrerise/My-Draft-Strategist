@@ -10472,6 +10472,51 @@ prior; it offered a fix and a weekly scheduled refresh: both the owner's call, o
 - Each week the owner updates the public sheet; the site picks it up on the next page open. The tab's title says
   "2026"; next season it needs the year (or the sheet could carry it).
 
+## W1 — CI: docs-only pull requests pass the required check in seconds
+
+**User-visible effect.** None on the site (no served file changes, so no `CACHE_NAME` bump and no CHANGELOG line).
+For the owner: a pull request that changes only docs passes the required `check` in seconds instead of ~20 minutes,
+so it can merge right away. Every other pull request, and every push to `main`, runs the full suite as before.
+
+**Owner's decisions (2026-11-12).**
+- Docs-only means every changed path is under `docs/` (any file, the review PNGs too), or ends in `.md` and isn't
+  under `tests/`, `scripts/` or `.github/`. `llms.txt`, `robots.txt` and `sitemap.xml` are not docs (the site serves
+  them). Checked first: no page, spec or unit test reads a `.md` file, and `noEmoji.test.mjs` scans only
+  `.js/.mjs/.css/.html`.
+- Pushes to `main` always run the full suite; only pull requests get the shortcut.
+
+**Built** (`.github/workflows/check.yml`). Checkout now fetches depth 2, so on a pull request GitHub's merge commit
+and both parents are there. A new first step, `changes` ("Docs-only pull request?"), lists
+`git diff --name-only --no-renames HEAD^1 HEAD` (main's tip against the merge commit: exactly what the pull request
+changes) and writes `docs_only=true` only when every path matches the list. It runs everything when it can't tell:
+not a pull request, no merge commit, a failed diff, no files listed, or a path git quotes (unusual characters).
+`--no-renames` makes a rename count by both paths, so moving an app file into `docs/` still runs the suite. Every
+later step has `if: steps.changes.outputs.docs_only != 'true'` (combined with the existing `!cancelled() && …` and
+`failure()` conditions). The job keeps the name `check`, so the required status still matches. Plain shell, no
+third-party action. The log and the run's summary say which way it went, why (the non-docs files, up to 20), and the
+changed files. A header comment in the workflow says never to use `[skip ci]` or `paths-ignore`.
+`docs/TESTING.md` ("The checks", CI bullets) documents the rule.
+
+**Checked.** The step's script, run against real merge commits in a scratch repo: docs and `.md` only → true
+(including a PNG in `docs/` and a `.md` outside it); an app `.js`, `tests/README.md`, `.github/x.md`, `llms.txt`, a
+`js/` → `docs/` rename, a deleted `.js`, a push event, a non-ASCII path and a commit with no second parent → false;
+a 3,000-file diff with one `.js` → false with no SIGPIPE under `pipefail` (`sed -n` instead of `head`).
+check-precache and `node --test` pass (the full Playwright suite isn't affected and wasn't run: no app file changed).
+
+**Proof runs on CI** (two throwaway draft pull requests into this card's branch, with the owner's OK; both closed).
+- Docs-only: #236 changed only `docs/improvements/analytics.md`. [Run 43160610607](https://github.com/btrerise/My-Draft-Strategist/actions/runs/43160610607)
+  passed in 8 seconds; its log says "Docs-only pull request: npm, Playwright and the checks are skipped (every changed
+  file is docs)", and setup-node, `npm ci`, the Playwright install, render-env, `npm run check` and the artifact upload
+  are all marked skipped.
+- App file: #237 changed only a comment in `js/shared/names.js`. [Run 43160615884](https://github.com/btrerise/My-Draft-Strategist/actions/runs/43160615884)
+  ran everything and passed (`npm run check` 20 min 25 s, the job about 21 minutes).
+- Note: GitHub runs a step without its own `shell:` as `bash -e {0}`, without `pipefail`; the script works under both.
+
+**Left over.**
+- The throwaway branches `w1-proof-docs` and `w1-proof-app` are still on GitHub: this session's git couldn't delete a
+  remote branch. Delete them from the repo's Branches page (Cloudflare Pages also made a preview of each; harmless).
+- W1's own pull request changes `.github/`, so it runs the full suite, as it should.
+
 ## S29 — Power Rankings: what your last trade did
 
 **User-visible effect.** On the Roster tab of a Sleeper league, a new box sits under the Positional Power Rankings
