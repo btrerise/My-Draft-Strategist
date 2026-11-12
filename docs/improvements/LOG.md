@@ -10601,3 +10601,10 @@ The full suite runs once, when the owner asks for the pull request.
   window to check until the next visit (`docs/TESTING.md`, Open follow-ups; re-reading the week on a timer would go
   beyond the owner's one refresh per window, so ask first).
 - Not tested on a real device: Safari's hidden-tab timers, and the notification's look on each OS.
+
+**Screenshots re-taken on CI** ([run 43238611092](https://github.com/btrerise/My-Draft-Strategist/actions/runs/43238611092),
+commit 2bbedba; it changed no other PNG). Opened each against the previous baseline:
+- `desktop/mls-empty-setup.png`, `desktop/mls-league-setup.png`: the Starter Alerts row (bell, title, help text, the
+  switch off) under Show Player Headshots; everything below it 90px lower; nothing above it changed.
+- `phone/mls-empty-setup.png`, `phone/mls-league-setup.png`: the same row (160px taller pages). Above the card, the empty
+  page also has 37 header pixels off by one colour step (anti-aliasing in a taller full-page render); nothing visible.
