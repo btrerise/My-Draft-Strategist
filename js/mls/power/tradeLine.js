@@ -16,7 +16,7 @@ import { fantasyPosition } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { computePositionalPower } from './shared.js';
-import { processSleeperData } from '../leagues/sync.js';
+import { syncLeagueForTrade } from '../leagues/sync.js';
 import { completedMoves, defaultTradeId, leaguesAroundMove, makeOwnerOf, moveTime, rankChanges, tradeEntries, tradeVerdictText, yourTrades } from './pastTrades.js';
 
 const loads = new Map();   // leagueId -> { status: 'loading' | 'done' | 'error', moves, rosterMap: the rosters it was read for }
@@ -106,7 +106,7 @@ export function renderPastTradeLine(ctx) {
             autoSynced.add(league.leagueId);
             entry.keepAfterSync = true;
             showSyncing(fresh);
-            processSleeperData(league.username, league.leagueId, null, true, {}, true, true).then(ok => {
+            syncLeagueForTrade(league, `Synced for your trade on ${dateOf(fresh.time)}`).then(ok => {
                 if (ok) return;
                 entry.keepAfterSync = false;
                 if (lastCtx && rosterTabShowing()) renderPastTradeLine(lastCtx);

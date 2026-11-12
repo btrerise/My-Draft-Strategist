@@ -10657,3 +10657,24 @@ fails" test's toast check used a selector that matched nothing (`.toast-message`
 
 Not tested: a failed automatic sync (the sync's own `console.error` fails `expectClean`); the code path falls back to
 the box as it was.
+
+### S29, round 7: a third review as a user (owner: "Go ahead")
+
+Walked through the automatic sync as a user and tried to break it. Found and fixed:
+1. **Bug: a league sync that finished after you switched leagues took you back to it.** `processSleeperData` always set
+   `State.activeLeagueId` to the league it synced, while the header kept the league you'd switched to, so the Lineup and
+   Roster tabs showed one league's data under the other's name. The Roster tab's Sync button had this on main too;
+   round 6's automatic sync made it likely on a slow connection. Test first (`tests/mls-sync-league-switch.spec.mjs`:
+   the Sync button and the automatic sync, each with the rosters request held until after the switch; both failed
+   before the fix). Fix in `js/mls/leagues/sync.js`: a single-league refresh (`isRefresh`, not `skipSave`) whose league
+   is no longer active saves the league and stops there: no `activeLeagueId`, rankings, lineup re-optimize or redraw,
+   the button put back, and its summary prefixed with the league's name. Sync All and Import All (`skipSave`) are
+   unchanged.
+2. **The sync is visible where you're looking:** the automatic sync now runs through `syncLeagueForTrade` (sync.js),
+   which puts the Roster tab's Sync button in its spinner state, as a tap does (`ROSTER_SYNC_BUSY_HTML`, shared with
+   `syncActiveLeague`).
+3. **The summary says why:** "Synced for your trade on Sep 8: Added: … · Dropped: …" (`toastPrefix`, a new last
+   option of `processSleeperData`; `rosterChangeText` builds the summary for both paths).
+
+The new spec ran 12 times at both widths with no failure (its first version read the stored roster before the sync had
+saved it; it now polls). CHANGELOG: a line for the fix under Lineup Strategist.

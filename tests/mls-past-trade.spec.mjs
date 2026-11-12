@@ -148,7 +148,9 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
         await expect(line(page).locator('.mls-roster-trade-lines dd').first()).toContainText('RB 2 → 1');
         await expect(line(page).locator('.mls-roster-trade-lines dd').first()).toContainText('WR 1 → 2');
         // The sync's own summary, as the Sync button gives it; the roster below has the new players.
-        await expect(page.locator('.toast-message').filter({ hasText: 'Added:' })).toBeVisible();
+        // It says why it synced (round 7).
+        await expect(page.locator('.toast-message').filter({ hasText: 'Synced for your trade on Sep 8: Added: ' })).toBeVisible();
+        await expect(page.locator('#rosterSyncBtn')).toHaveText('Sync Sleeper Waivers & Trades');
         await expect(page.locator('#rosterTab')).toContainText('Bijan Robinson');
         await page.waitForLoadState('networkidle');
         // One sync (the rosters once more), and the moves weren't read again after it.
