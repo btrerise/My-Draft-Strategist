@@ -10741,4 +10741,8 @@ this branch's:
 **Screenshots:** none changed. No screenshot fixture has two QB slots. Main and this branch rendered in this container
 (`npm run pxdiff`): 44 PNGs, all pixel-identical.
 
+**Checks** (full `npm run check`, once, before the last push): check-precache OK, 591 unit tests pass, 942 Playwright
+tests pass, 48 skipped. The 4 failures are `visual.spec.mjs`'s environment check (this container's fonts differ from
+CI's), as on main; the screenshot comparison above stands in for it.
+
 **Left over:** nothing.
