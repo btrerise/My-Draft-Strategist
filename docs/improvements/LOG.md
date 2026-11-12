@@ -10749,3 +10749,8 @@ paragraphs in a row, I thought). A first fix, `.step-desc + .step-desc { margin-
 wrong: the Guide already spaces paragraphs with `class="step-desc mt-2"` (0.5rem), and the new rule outranked `.mt-2`,
 widening every such gap (CI's re-take, b0b2546: the Guide 67px taller, changes from step 3 on). Undone; the Starter Alerts
 paragraph uses `mt-2` like the others, and the two PNGs re-taken again from the next commit.
+Re-taken on CI ([commit d2a47c2](https://github.com/btrerise/My-Draft-Strategist/commit/d2a47c2)): byte-identical to
+b44ed2f's (the first re-take), because `.mt-2` has no effect on a Guide paragraph: `.step-desc` (css/base.css, after
+`.mt-2`, same specificity) sets `margin: 0 0 0 2.2rem`. So on main every Guide step with a second paragraph (steps 3, 4,
+6, 9 and others, `step-desc mt-2`) shows it with no gap, and the Starter Alerts paragraph now matches them. A real gap
+is a Guide-wide visual change, left as a follow-up in `docs/TESTING.md` (owner to decide).

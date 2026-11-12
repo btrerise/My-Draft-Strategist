@@ -428,6 +428,9 @@ The card named does the item in its own session; remove the line when it's done.
   Lineup tab show a past week's lineup and points (read-only) would let those tiles open it again.
 
 **Small polish, one session each**
+- The Guide's second paragraphs have no gap (improvements N2, round 6): `class="step-desc mt-2"` in both apps' Guides
+  meant a 0.5rem gap, but `.step-desc` (css/base.css) comes after `.mt-2` and sets all four margins, so it never
+  applies. A fix (e.g. `.step-desc.mt-2 { margin-top: var(--space-2); }`) re-takes both apps' Guide screenshots.
 - One naming pattern for exported files (owner, improvements S22 round 4). The Scoreboard's is
   `Week_7_Recap_My_Lineup_Strategist.png` (what, when, then the app's full name); the others predate it:
   `My_Draft_Strategist_Team.png` (js/mds/export.js), `My_Lineup_Strategist.png` (Export Lineup) and
