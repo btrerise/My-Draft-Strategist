@@ -10971,8 +10971,8 @@ changes (the card isn't in any baseline).
 - **The setting** is `settings.max_subs` on each league (`GET /v1/league/<id>`): 0 = off, 1–3 = AutoSubs allowed per team
   per week. Two related keys: `sub_start_time_eligibility` (1 = "Require AutoSub To Not Play Before Starter": the sub's
   game must start at the same time as the starter's or later) and `sub_lock_if_starter_active`. In the owner's 21 leagues
-  (2026): 16 have `max_subs` 1–3 (LOOG - Chop Shop also has `sub_start_time_eligibility` 1), five have 0 (LRD Cucks,
-  2026 Late Round Charity League, Legacy Best Ball, Slow Mock Draft, and none other); `sub_lock_if_starter_active` is 0
+  (2026): 17 have `max_subs` 1–3 (LOOG - Chop Shop also has `sub_start_time_eligibility` 1), four have 0 (LRD Cucks,
+  2026 Late Round Charity League, Legacy Best Ball, Slow Mock Draft); `sub_lock_if_starter_active` is 0
   everywhere.
 - **What it is** ([Sleeper help: How does Player AutoSubs work?](https://support.sleeper.com/en/articles/9731991-how-does-player-autosubs-work),
   read through search results; support.sleeper.com isn't reachable from the cloud session): the commissioner turns it on
