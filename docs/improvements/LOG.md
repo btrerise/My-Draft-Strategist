@@ -10575,8 +10575,8 @@ shows exactly those changes (and Rival's the other way); two trades (drop-down, 
 alone after the later is undone, the pick kept across tab switches); no trades (two requests on opening the Roster tab,
 none before it, none again later); Sleeper failing (no box, no toast); a manual league (no box, no request).
 
-**Screenshots.** None should change: the box is hidden in every screenshot (the fixture league has no trades). To be
-confirmed by CI's `check` on the pull request.
+**Screenshots.** None change: the box is hidden in every screenshot (no fixture league has a trade). All 44 PNGs,
+rendered in this container on main and on the final branch, are pixel-identical (`npm run pxdiff`, 2026-11-12).
 
 **Left over.**
 - A trade made after the last sync isn't listed until the league is synced again (its players aren't on today's
@@ -10678,3 +10678,9 @@ Walked through the automatic sync as a user and tried to break it. Found and fix
 
 The new spec ran 12 times at both widths with no failure (its first version read the stored roster before the sync had
 saved it; it now polls). CHANGELOG: a line for the fix under Lineup Strategist.
+
+### S29: the full suite before the pull request (2026-11-12)
+
+`npm run check` in this container: precache OK, 583 unit tests, 936 Playwright tests passed (48 skipped). The 4 failures
+are `visual.spec.mjs` stopping at its environment check (the cloud image's fonts), as on main; the screenshots were
+compared on main and the branch here instead (identical, above). Nothing re-taken.
