@@ -2379,9 +2379,9 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
     .mls-roster-power-stat-name { font-size: 0.55rem; letter-spacing: 0; }
     .mls-roster-power-stat-rank { font-size: 0.95rem; }
 }
-/* What a past trade did (improvements S29; js/mls/power/tradeLine.js): under the strip, in the same kind of box. */
+/* What a past trade did (improvements S29; js/mls/power/tradeLine.js): under the Power Rankings table, in the strip's kind of box. */
 .mls-roster-trade {
-    margin: -0.4rem 0 0.9rem;
+    margin: 0.9rem 0 0;
     padding: 0.65rem 0.85rem;
     border: 1px solid var(--border);
     border-radius: 8px;

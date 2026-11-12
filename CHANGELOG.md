@@ -167,8 +167,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **What a trade did to your Power Rankings.** On the Roster tab of a Sleeper league, a box under the Power Rankings
-  strip now shows a trade made this season: who got whom, and each team's ranks (Start, Ovr, QB, RB, WR, TE and, in
+- **What a trade did to your Power Rankings.** On the Roster tab of a Sleeper league, a box under the Positional
+  Power Rankings table now shows a trade made this season: who got whom, and each team's ranks (Start, Ovr, QB, RB, WR, TE and, in
   dynasty and keeper leagues, Future) right before → right after it, green when better and red when worse. It opens on
   your newest trade; a drop-down picks any other trade in the league this season. It uses the strip's rankings as they
   are today, and leaves out moves made after the trade, so the numbers are what the Trade Analyzer would have shown for

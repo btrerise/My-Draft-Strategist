@@ -70,6 +70,11 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
         // Today's strip agrees with "after" (no move since).
         await expect(page.locator('#rosterPowerStrip .mls-roster-power-stat').filter({ hasText: 'RB' }).locator('.mls-roster-power-stat-rank')).toHaveText('1');
         await expect(line(page)).toContainText('right before → right after this trade, out of 2 teams');
+        // Under the full Power Rankings table, not under the strip (owner, round 2: it pushed the roster down on phones).
+        expect(await page.evaluate(() => {
+            const box = document.getElementById('rosterTradeLine'), table = document.querySelector('#powerRankingsOutput table');
+            return box.closest('#powerRankingsCard') !== null && !!table && !!(table.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING);
+        })).toBe(true);
         expect(await noSideScroll(page)).toBe(true);
         await expectClean(page, state);
     });

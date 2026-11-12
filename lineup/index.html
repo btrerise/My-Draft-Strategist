@@ -763,9 +763,6 @@
         <!-- Your row of the Positional Power Rankings (full table further down this tab), filled
              by renderRosterPowerStrip in js/mls/power/snapshot.js. Hidden when there's nothing to rank. -->
         <div id="rosterPowerStrip" class="mls-roster-power" style="display: none;" aria-live="polite"></div>
-        <!-- What a trade this season did to the Power Rankings (improvements S29), filled by renderPastTradeLine in
-             js/mls/power/tradeLine.js. Hidden in a manual league, with no trades, or when Sleeper doesn't answer. -->
-        <div id="rosterTradeLine" class="mls-roster-trade" hidden></div>
 
         <button id="rosterSyncBtn" class="btn btn-primary mb-3" style="display: none;" data-action="syncActiveLeague">
             Sync Sleeper Waivers & Trades
@@ -827,6 +824,10 @@
         <div id="powerRankingsOutput" class="mt-3" style="display: none;" aria-live="polite">
             <!-- The heatmap table injects here -->
         </div>
+        <!-- What a trade this season did to the Power Rankings (improvements S29), filled by renderPastTradeLine in
+             js/mls/power/tradeLine.js. Under the full table (owner, round 2: under the strip it pushed the roster down on
+             phones). Hidden in a manual league, with no trades, or when Sleeper doesn't answer. -->
+        <div id="rosterTradeLine" class="mls-roster-trade" hidden></div>
     </section>
 
     <!-- POSITIONAL STRENGTH OF SCHEDULE -->

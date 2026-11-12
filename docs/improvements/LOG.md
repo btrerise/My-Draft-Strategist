@@ -10475,7 +10475,7 @@ prior; it offered a fix and a weekly scheduled refresh: both the owner's call, o
 ## S29 — Power Rankings: what your last trade did
 
 **User-visible effect.** On the Roster tab of a Sleeper league, a new box sits under the Positional Power Rankings
-strip: **"Since your trade with Rival on Sep 8"**, who got whom ("You got Bijan Robinson, Jahmyr Gibbs, Saquon Barkley",
+table (round 2; it was first under the strip): **"Since your trade with Rival on Sep 8"**, who got whom ("You got Bijan Robinson, Jahmyr Gibbs, Saquon Barkley",
 best first by the strip's rankings), then one line per team with only the ranks that moved, right before → right after
 the trade ("You: Start 2 → 1 · RB 2 → 1 · WR 1 → 2", green better, red worse; "no rank changes" when none moved).
 Columns: Start, Ovr, QB, RB, WR, TE, and Future in dynasty and keeper leagues. With more than one trade this season, a
@@ -10488,12 +10488,14 @@ trades this season, or Sleeper failing: no box, no toast.
 1. **Which moves: trades** ("what I mainly care about"). Waiver and free-agent moves are read only to rebuild rosters.
 2. **How far back: the whole season, as a log to pick from** (owner asked for a list of all the league's trades rather
    than two weeks, since dynasty rankings change about monthly). Weeks 1 to the current week, every trade in the league.
-3. **Where: under the Roster tab's Power Rankings strip.** Not on the Dashboard.
+3. **Where: under the Roster tab's Power Rankings strip** at first; moved under the full table in round 2. Not on the
+   Dashboard.
 4. **The other team: one line** ("could be interesting to see how much a trade helped/hurt after some time").
 5. **Each trade on its own:** "after" is the league right after the trade (every later move undone), "before" the same
    with the trade undone too, both scored with today's rankings. So a trade's numbers are what the Trade Analyzer showed
    for it beforehand (with today's rankings), and two lines don't count the same move twice. The catch: the "after"
-   can differ from today's strip when moves came later. **The owner asked to check this once built.**
+   can differ from today's strip when moves came later. The owner asked to check this once built, and confirmed it in
+   round 2.
 
 **What changed and where.**
 - `js/shared/api/sleeper.js`: `getSleeperTransactions(leagueId, week)` (throws on a non-ok response). S34 can reuse it.
@@ -10532,9 +10534,17 @@ none before it, none again later); Sleeper failing (no box, no toast); a manual 
 confirmed by CI's `check` on the pull request.
 
 **Left over.**
-- The owner's check of question 5 (each trade on its own vs before → today).
 - A trade made after the last sync isn't listed until the league is synced again (its players aren't on today's
   rosters yet). A note saying so would need a comparison with Sleeper's list; not built.
 - Trades from last season (a dynasty league's previous season, `previous_league_id`) aren't read; neither are picks
   for drafts already held. Offseason trades in Sleeper's current-season league are (week 1).
 - The Guide's Roster tab text doesn't mention the box (a sentence there re-takes `mls-league-guide` at both widths).
+
+### S29, round 2 (owner, after trying it)
+
+1. **Moved under the full Power Rankings table** (inside `#powerRankingsCard`, after `#powerRankingsOutput`): under the
+   strip it pushed the start of the roster down on phones. `lineup/index.html`, `css/mls.css` (top margin instead of
+   tucking under the strip); the spec checks the box follows the table.
+2. **Trades not involving you:** the owner is torn (interesting, or clutter, since users mostly care about their own).
+   Asked for my view; left as built until they decide.
+3. **Question 5 (each trade on its own):** confirmed.

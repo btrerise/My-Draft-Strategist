@@ -1,10 +1,10 @@
 // --- ROSTER TAB: WHAT A PAST TRADE DID TO YOUR POWER RANKINGS (improvements S29) ---
-// The box under the Power Rankings strip (#rosterTradeLine): a trade in the active Sleeper league, picked from the
+// The box under the Roster tab's Power Rankings table (#rosterTradeLine): a trade in the active Sleeper league, picked from the
 // season's trades (your newest first shown), and each team's ranks right before → right after it. The math is in
 // power/pastTrades.js; the scoring is computePositionalPower with the strip's own rankings, so the numbers are the
 // Roster tab's and, for a trade before it happened, the Trade Analyzer's.
 //
-// Owner's choices (LOG, S29): trades only; any trade this season, from a drop-down; under the strip; a line for the
+// Owner's choices (LOG, S29): trades only; any trade this season, from a drop-down; under the full table (round 2); a line for the
 // other team too; each trade on its own (later moves undone), not "before → today".
 //
 // Sleeper is asked only for the active Sleeper league, when the Roster tab is showing, once per visit (weeks 1 to the
