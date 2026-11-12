@@ -1,3 +1,4 @@
+// W1 proof run: an app-file change. This branch is thrown away.
 // Moved verbatim from js/utils.js in refactor chunk 1A. An ES module: the code that uses it imports it.
 
 // Cache of raw name -> normalized result. normalizeName() is called repeatedly on the
