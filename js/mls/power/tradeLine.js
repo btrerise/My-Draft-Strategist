@@ -16,7 +16,7 @@ import { fantasyPosition } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague } from '../helpers.js';
 import { computePositionalPower } from './shared.js';
-import { completedMoves, defaultTradeId, leaguesAroundMove, makeOwnerOf, moveTime, rankChanges, tradeEntries, yourTrades } from './pastTrades.js';
+import { completedMoves, defaultTradeId, leaguesAroundMove, makeOwnerOf, moveTime, rankChanges, tradeEntries, tradeVerdictText, yourTrades } from './pastTrades.js';
 
 const loads = new Map();   // leagueId -> { status: 'loading' | 'done' | 'error', moves, rosterMap: the rosters it was read for }
 const picked = new Map();  // leagueId -> the trade picked in the drop-down, for this visit
@@ -24,7 +24,17 @@ let lastCtx = null;        // what refreshPowerRankings last passed, to draw aga
 let playerMap = null;
 
 const box = () => document.getElementById('rosterTradeLine');
+// The strip's link names the box when there's one (round 4: under the table it was easy to miss), so it can be found
+// without pushing the roster down. renderRosterPowerStrip draws the link's own text before this runs.
+const STRIP_LINK_TRADE = 'See the full breakdown and your last trade below \u2193';
+function stripLink(hasTrade) {
+    const link = document.querySelector('#rosterPowerStrip .mls-roster-power-link');
+    if (!link) return;
+    if (!link.dataset.text) link.dataset.text = link.textContent;
+    link.textContent = hasTrade ? STRIP_LINK_TRADE : link.dataset.text;
+}
 function hide() {
+    stripLink(false);
     const el = box();
     if (!el) return;
     el.innerHTML = '';
@@ -103,8 +113,10 @@ export function renderPastTradeLine(ctx) {
         const b = find(before, owner), a = find(after, owner);
         return b && a ? rankChanges(b, a) : null;
     };
-    el.innerHTML = tradeLineHTML(trade, trades, changesFor, before.length);
+    const verdict = tradeVerdictText(find(before, 'You'), find(after, 'You'), before.length);
+    el.innerHTML = tradeLineHTML(trade, trades, changesFor, verdict, before.length);
     el.hidden = false;
+    stripLink(true);
 }
 
 const dateOf = (ms) => ms ? new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
@@ -117,14 +129,16 @@ function tradeTitle(t) {
 }
 const optionLabel = (t) => `${dateOf(t.time)}: with ${joinNames(t.teams.filter(o => o !== 'You'))}`;
 
+// Each moved rank on its own (round 4: calmer than a bold run joined by dots; an item never breaks across lines).
 function changesHTML(changes) {
     if (changes === null) return '<span class="mls-roster-trade-none">not scored</span>';
     if (changes.length === 0) return '<span class="mls-roster-trade-none">no rank changes</span>';
-    return changes.map(c => `<span class="${c.to < c.from ? 'mls-trade-rank-up' : 'mls-trade-rank-down'}">${c.label} ${c.from} → ${c.to}</span>`)
-        .join('<span class="mls-roster-trade-sep" aria-hidden="true"> · </span>');
+    return changes.map(c => `<span class="mls-roster-trade-change ${c.to < c.from ? 'mls-trade-rank-up' : 'mls-trade-rank-down'}">${c.label} ${c.from} \u2192 ${c.to}</span>`).join('');
 }
 
-function tradeLineHTML(trade, trades, changesFor, teams) {
+// Round 4 order: the answer first (a sentence, then each team's ranks), what moved after it in smaller text, then a
+// one-line note with the details behind "How this is worked out" (i), as the Trade Analyzer's section has.
+function tradeLineHTML(trade, trades, changesFor, verdict, teams) {
     const choose = trades.length > 1 ? `
         <label class="mls-roster-trade-pick"><span>Trade</span>
             <select class="form-input" data-action="selectPastTrade" aria-label="Pick one of your trades this season">
@@ -134,15 +148,20 @@ function tradeLineHTML(trade, trades, changesFor, teams) {
         .map(o => `<span class="mls-roster-trade-got"><strong>${escapeHtml(teamName(o))}</strong> got ${escapeHtml(trade.gets[o].join(', '))}</span>`).join('');
     const rows = trade.teams.map(o => `
             <div><dt>${escapeHtml(teamName(o))}</dt><dd>${changesHTML(changesFor(o))}</dd></div>`).join('');
+    const about = `Your team as it was right before and right after this trade, rebuilt from Sleeper's list of moves, and both ranked by today's rankings (the table's), out of ${teams} teams. Moves since the trade are left out, so "after" can differ from the table above. 1 = strongest.`;
     return `
         <div class="mls-roster-trade-head">
             <span class="mls-roster-trade-title">${tradeTitle(trade)}</span>
             ${choose}
         </div>
-        ${got ? `<div class="mls-roster-trade-gets">${got}</div>` : ''}
+        ${verdict ? `<p class="mls-roster-trade-verdict">${escapeHtml(verdict)}</p>` : ''}
         <dl class="mls-roster-trade-lines">${rows}
         </dl>
-        <div class="mls-roster-trade-note">Power Rankings right before → right after this trade, out of ${teams} teams, by today's rankings. Moves since then are left out. 1 = strongest.</div>`;
+        ${got ? `<div class="mls-roster-trade-gets">${got}</div>` : ''}
+        <div class="mls-roster-trade-note">Right before \u2192 right after, by today's rankings.
+            <div class="tooltip-container"><div class="tooltip-icon" aria-label="How this is worked out">i</div>
+                <span class="tooltip-text">${escapeHtml(about)}</span></div>
+        </div>`;
 }
 
 // The drop-down (data-action="selectPastTrade", a change action in js/mls/main.js).

@@ -4,7 +4,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPower } from './helpers/powerEnv.mjs';
 import {
-    completedMoves, defaultTradeId, leaguesAroundMove, makeOwnerOf, rankChanges, tradeEntries, undoMove, undoPicks, yourTrades
+    completedMoves, defaultTradeId, leaguesAroundMove, makeOwnerOf, rankChanges, tradeEntries, undoMove, undoPicks, yourTrades, tradeVerdictText
 } from '../../js/mls/power/pastTrades.js';
 import { leagueAfterTrade } from '../../js/mls/trade/lineupImpact.js';
 
@@ -174,5 +174,20 @@ describe('tradeEntries, defaultTradeId, rankChanges, makeOwnerOf', () => {
         assert.equal(o(3), 'Unknown Team');
         assert.equal(o(null), null);
         assert.equal(makeOwnerOf({ rosterId: 1, teamNames: { 2: 'Gone' }, globalRosterMap: { a: 'You' } })(2), null);
+    });
+});
+
+describe('tradeVerdictText (owner, round 4)', () => {
+    const b = { starterRank: 6, overallRank: 4, futureRank: 5 };
+    test('starting lineup first, then overall and future when they moved', () => {
+        assert.equal(tradeVerdictText(b, { starterRank: 3, overallRank: 6, futureRank: 5 }, 12),
+            'Your starting lineup got stronger (6th → 3rd of 12); overall roster weaker (4th → 6th).');
+        assert.equal(tradeVerdictText(b, { starterRank: 6, overallRank: 4, futureRank: 2 }, 12),
+            'Your starting lineup stayed 6th of 12; future value stronger (5th → 2nd).');
+        assert.equal(tradeVerdictText({ starterRank: 11, overallRank: 1 }, { starterRank: 12, overallRank: 1 }, 12),
+            'Your starting lineup got weaker (11th → 12th of 12).');
+    });
+    test('null when a side is missing', () => {
+        assert.equal(tradeVerdictText(null, b, 12), null);
     });
 });

@@ -168,8 +168,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **What a trade did to your Power Rankings.** On the Roster tab of a Sleeper league, a box under the Positional
-  Power Rankings table now shows a trade made this season: who got whom, and each team's ranks (Start, Ovr, QB, RB, WR, TE and, in
-  dynasty and keeper leagues, Future) right before → right after it, green when better and red when worse. It opens on
+  Power Rankings table now shows a trade made this season: a one-line verdict ("Your starting lineup got stronger (6th → 3rd of
+  12)"), each team's ranks (Start, Ovr, QB, RB, WR, TE and, in
+  dynasty and keeper leagues, Future) right before → right after it, green when better and red when worse, then who got whom. When you have a trade, the
+  strip's link says so ("See the full breakdown and your last trade below"). It opens on
   your newest trade; with more than one, a drop-down picks any of your trades this season. It uses the strip's rankings as they
   are today, and leaves out moves made after the trade, so the numbers are what the Trade Analyzer would have shown for
   it. Nothing shows in a manual league, in a league with no trades, or when Sleeper doesn't answer.

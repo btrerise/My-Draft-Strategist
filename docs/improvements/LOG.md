@@ -10556,3 +10556,21 @@ confirmed by CI's `check` on the pull request.
 with …", the drop-down's options read "Sep 12: with Rival", and a league where only others traded shows no box. The
 undo rule still reads every move (others' trades and pickups too) to rebuild rosters. Unit test for `yourTrades`; the
 spec adds "a trade you weren't in: no line".
+
+### S29, round 4: a review as a user (owner: "All four")
+
+My review, wearing the user's hat: helpful (nothing else says what a trade did) and in the app's style, but (1) easy to
+miss under the table, (2) the answer came after the player list, (3) no verdict, so you add up the ranks yourself, (4)
+the bold rank run was louder than the table, (5) a three-line footnote on phones. The owner took all four fixes:
+- **A. Found from the strip:** when the box shows a trade, the strip's link reads "See the full breakdown and your last
+  trade below ↓" (`stripLink` in `tradeLine.js`, after `renderRosterPowerStrip` draws its own text; back to the old
+  text with no trade).
+- **B. The answer first:** title, then a verdict sentence (`tradeVerdictText` in `pastTrades.js`: "Your starting lineup
+  got stronger (6th → 3rd of 12); overall roster weaker (4th → 6th)." Start first, then Ovr and Future when they moved),
+  then each team's ranks, then who got whom in smaller text.
+- **C. Calmer ranks:** each change is its own item (weight 500, 14px apart, never split across lines), no dot separators.
+- **D. Short note:** "Right before → right after, by today's rankings." with the rest (rebuilt from Sleeper's moves, out
+  of N teams, later moves left out, 1 = strongest) behind an (i). The spec checks the tooltip opens on screen at 375px.
+
+Unit tests for `tradeVerdictText`; the spec checks the order, the sentence, the note, the weight and the strip's link
+(and its usual text with no trade). Screenshots: still none (no trades in the fixtures, so the link and box don't show).

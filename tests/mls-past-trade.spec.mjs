@@ -69,13 +69,25 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
         await expect(line(page).locator('dd').nth(1)).toContainText('WR 2 → 1');
         // Today's strip agrees with "after" (no move since).
         await expect(page.locator('#rosterPowerStrip .mls-roster-power-stat').filter({ hasText: 'RB' }).locator('.mls-roster-power-stat-rank')).toHaveText('1');
-        await expect(line(page)).toContainText('right before → right after this trade, out of 2 teams');
+        // Round 4: the answer first (a sentence, then the ranks), the players after, a one-line note with the details in (i).
+        await expect(line(page).locator('.mls-roster-trade-verdict')).toHaveText('Your starting lineup stayed 1st of 2; overall roster weaker (1st → 2nd).');
+        expect(await line(page).evaluate(el => [...el.children].map(c => c.className.replace(/^mls-roster-trade-/, '')))).toEqual(['head', 'verdict', 'lines', 'gets', 'note']);
+        await expect(line(page).locator('.mls-roster-trade-note')).toContainText("Right before → right after, by today's rankings.");
+        await expect(line(page).locator('.mls-roster-trade-note .tooltip-text')).toContainText('out of 2 teams');
+        await expect(line(page).locator('.mls-roster-trade-change').first()).toHaveCSS('font-weight', '500');
+        // The strip's link names the box, so it can be found from the top of the tab.
+        await expect(page.locator('#rosterPowerStrip .mls-roster-power-link')).toHaveText('See the full breakdown and your last trade below ↓');
         // Under the full Power Rankings table, not under the strip (owner, round 2: it pushed the roster down on phones).
         expect(await page.evaluate(() => {
             const box = document.getElementById('rosterTradeLine'), table = document.querySelector('#powerRankingsOutput table');
             return box.closest('#powerRankingsCard') !== null && !!table && !!(table.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING);
         })).toBe(true);
         expect(await noSideScroll(page)).toBe(true);
+        // The (i) opens on screen at 375px too (it sits near the left edge, and the site's tooltips open leftward).
+        await line(page).locator('.mls-roster-trade-note .tooltip-icon').click();
+        const tip = await line(page).locator('.mls-roster-trade-note .tooltip-text').boundingBox();
+        expect(tip.x).toBeGreaterThanOrEqual(0);
+        expect(tip.x + tip.width).toBeLessThanOrEqual(page.viewportSize().width);
         await expectClean(page, state);
     });
 
@@ -120,6 +132,7 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
         await expect.poll(() => requests.length).toBe(2); // weeks 1 and 2
         await page.waitForLoadState('networkidle');
         await expect(line(page)).toBeHidden();
+        await expect(page.locator('#rosterPowerStrip .mls-roster-power-link')).toHaveText('See the full league breakdown and explanations below ↓');
         await showTab(page, 'lineup');
         await showTab(page, 'roster');
         await page.waitForLoadState('networkidle');

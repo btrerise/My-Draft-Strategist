@@ -140,3 +140,23 @@ export function makeOwnerOf(league) {
         return owners.has('Unknown Team') ? 'Unknown Team' : null;
     };
 }
+
+// "1st", "2nd", "11th".
+const ord = (n) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+
+// The box's verdict in one sentence (owner, round 4: the rank list made you add it up yourself). Starting lineup first
+// (what a trade is mostly for), then the whole roster and future value when they moved:
+//   "Your starting lineup got stronger (6th → 3rd of 12); overall roster weaker (4th → 6th)."
+//   "Your starting lineup stayed 3rd of 12; future value stronger (5th → 2nd)."
+// Lower is better. null when either side wasn't scored.
+export function tradeVerdictText(before, after, teams) {
+    if (!before || !after) return null;
+    const moved = (k) => Number.isFinite(before[k]) && Number.isFinite(after[k]) && before[k] !== after[k];
+    const how = (k) => `${after[k] < before[k] ? 'stronger' : 'weaker'} (${ord(before[k])} → ${ord(after[k])})`;
+    const parts = [moved('starterRank')
+        ? `Your starting lineup got ${how('starterRank').replace(')', ` of ${teams})`)}`
+        : `Your starting lineup stayed ${ord(after.starterRank)} of ${teams}`];
+    if (moved('overallRank')) parts.push(`overall roster ${how('overallRank')}`);
+    if (moved('futureRank')) parts.push(`future value ${how('futureRank')}`);
+    return parts.join('; ') + '.';
+}
