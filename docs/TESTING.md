@@ -365,10 +365,13 @@ named reviews it with the owner.
   Justin Jefferson · Against Harrison Butker", tap for the boxes) when few players are left. S37 adds a per-player view
   of the same night to the Final Window, so decide there whether both are needed (S27, S33's `rootHTML` in
   js/mls/week/thisWeek.js).
-- **Review in U1 (research: re-think how features are organized): the league tiles on phones.** "Every league,
-  closest first" is one tile per row at 375px, so 20 leagues are about 1,600px. Two across would halve it, but S21's
-  round 6 keeps league names whole, which two across would cut on long names (S21, `tileHTML` and `.mls-week-tiles`
-  in css/mls.css).
+- **Review in M17 (room on phones: full-width sections, nothing boxed inside cards): the league tiles on phones.**
+  "Every league, closest first" is one tile per row at 375px, so 20 leagues are about 1,600px. Two across would halve
+  it, but S21's round 6 keeps league names whole, which two across would cut on long names (S21, `tileHTML` and
+  `.mls-week-tiles` in css/mls.css). M17 keeps the week tiles as tiles, so decide there whether they also go two
+  across. M17 should also cover the Final Window's own boxes inside the Scoreboard card (its two tiles, the bars and
+  the matchup cards, `.mls-fw-*` in css/mls.css), which its R1 rule ("inside cards nothing is boxed again") would
+  flatten. (Moved from U1, which merged before this note was written.)
 
 **Handed on by M2 to later Material 3 cards** (the owner's decision, after M2; details in docs/improvements/LOG.md, M2).
 The card named does the item in its own session; remove the line when it's done.

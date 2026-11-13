@@ -11424,8 +11424,9 @@ scores and percents; Root for, Against you and the list by kickoff name Jefferso
   keeps their tap areas from covering each other when it wraps (F20).
 - **C and D, not built, for the owner to decide later:** written under "Open follow-ups" in docs/TESTING.md with the
   card to review each: C (Player Scoreboard on a thin night, one line when few players are left) in **S37**, which
-  adds a per-player view of the same night; D (league tiles two across on phones) in **U1**, the research card on how
-  features are organized.
+  adds a per-player view of the same night; D (league tiles two across on phones) in **M17** (room on phones: full-width
+  sections, nothing boxed inside cards), together with the Final Window's own boxes, which M17's R1 rule would
+  flatten. (I first named U1; the owner pointed out it had already merged, and M17 is the card U1's round 2 became.)
 - CHANGELOG: the Final Window's entry rewritten as one bullet with sub-points (seven rounds had made it a run-on).
 - Specs: `mls-final-window` checks the two sections folded with their summaries, League opened for the window only
   (surviving a Refresh, nothing stored), both as remembered with the window folded, Player folded again when it
