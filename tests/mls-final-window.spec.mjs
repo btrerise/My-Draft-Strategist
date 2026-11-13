@@ -16,10 +16,12 @@ const SUNDAY = new Date('2026-09-20T18:30:00Z');
 const BUTKER = '5095';
 const fixture = (name) => readFileSync(new URL(`./fixtures/sleeper/${name}`, import.meta.url), 'utf8');
 // Butker hasn't played yet: his points come off his team's total.
-const benchButker = (name) => JSON.stringify(JSON.parse(fixture(name)).map(e => {
+// lead: points added to the opponent's total (roster 2), to settle a matchup for the one- and none-at-stake cases.
+const benchButker = (name, lead = 0) => JSON.stringify(JSON.parse(fixture(name)).map(e => {
     const pts = (e.players_points || {})[BUTKER];
     if (typeof pts !== 'number') return e;
-    return { ...e, points: Math.round((e.points - pts) * 100) / 100, players_points: { ...e.players_points, [BUTKER]: 0 } };
+    const extra = e.roster_id === 2 ? lead : 0;
+    return { ...e, points: Math.round((e.points - pts + extra) * 100) / 100, players_points: { ...e.players_points, [BUTKER]: 0 } };
 }));
 const GAMES = [['BUF', 'BAL'], ['CIN', 'DAL'], ['LV', 'ATL'], ['DET', 'NYG'], ['HOU', 'PHI'], ['KC', 'DEN'], ['MIN', 'CHI']];
 const scoreboard = (monday) => ({
@@ -39,15 +41,15 @@ async function addLeague(page, id, count) {
     await page.click('#mainSyncBtn');
     await expect(page.locator('#headerLeagueSelect option')).toHaveCount(count);
 }
-async function setup(page, when, { failWorker = false } = {}) {
+async function setup(page, when, { failWorker = false, lead = {} } = {}) {
     const monday = when === MONDAY;
     await page.clock.setFixedTime(when);
     const state = await openApp(page, '/lineup/');
     await page.clock.setFixedTime(when);
     await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, route => route.fulfill({ json: scoreboard(monday) }));
-    await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: benchButker('league-matchups-live.json') }));
+    await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: benchButker('league-matchups-live.json', lead.first || 0) }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE2_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: benchButker('league2-matchups.json') }));
-    await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE3_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: benchButker('league3-matchups.json') }));
+    await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE3_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: benchButker('league3-matchups.json', lead.third || 0) }));
     if (failWorker) await page.route(/lastWindowWorker\.js$/, route => route.abort());
     await seedMls(page);
     await addLeague(page, FIXTURE_LEAGUE2_ID, 2);
@@ -68,7 +70,8 @@ test.describe('Scoreboard: the Final Window', () => {
         expect(order).toEqual(['final', 'league', 'player']);
         await expect(sec.locator('.mls-week-fold-toggle')).toContainText('Final Window');
         await expect(sec.locator('.mls-week-fold-toggle')).toContainText('MIN @ CHI, KC @ DEN');
-        await expect(sec.locator('.mls-week-fold-toggle')).toContainText('3 matchups ride on them');
+        // Once the runs are in, the title counts what's at stake, and the settled one apart.
+        await expect(sec.locator('.mls-week-fold-toggle')).toContainText('2 matchups ride on them · 1 settled');
         await expect(sec.locator('svg.mls-fw-icon')).toHaveAttribute('aria-hidden', 'true');
 
         // The tiles, once the simulation is in.
@@ -76,7 +79,7 @@ test.describe('Scoreboard: the Final Window', () => {
         await expect(tiles).toHaveCount(4);
         await expect(sec.locator('.mls-fw-tiles')).not.toHaveAttribute('aria-busy', 'true');
         await expect(tiles.nth(0)).toContainText('At stake');
-        await expect(tiles.nth(0)).toContainText('3 live matchups');
+        await expect(tiles.nth(0)).toContainText('of 3 live matchups');
         await expect(tiles.nth(1)).toContainText(/Expected\s*\d\.\d W\s*usually \d(–\d)? W/);
         // The best case here is a sweep (both at stake won), so that tile shows the most likely number of wins instead.
         await expect(tiles.nth(2)).toContainText(/Most likely\s*0 W\s*\d+% of runs/);
@@ -108,6 +111,9 @@ test.describe('Scoreboard: the Final Window', () => {
         await expect(league.locator('.mls-fw-pointer')).toHaveText('Still in play: 2, in the Final Window above');
         await expect(league.locator('.mls-week-swings')).toHaveCount(0);
 
+        // How fresh the scores are, with a Refresh beside it.
+        await expect(sec.locator('.mls-fw-asof')).toContainText(/as of \d{1,2}:\d{2} (AM|PM)/);
+        await expect(sec.locator('.mls-fw-refresh')).toHaveText('Refresh');
         // It folds, remembered.
         await sec.locator('.mls-week-fold-toggle').click();
         await expect(sec.locator('.mls-week-fold-body')).toBeHidden();
@@ -134,6 +140,40 @@ test.describe('Scoreboard: the Final Window', () => {
         const vw = await page.evaluate(() => document.documentElement.clientWidth);
         expect(box.x).toBeGreaterThanOrEqual(0);
         expect(box.x + box.width).toBeLessThanOrEqual(vw);
+        await expectClean(page, state);
+    });
+
+    test('a card opens its league\'s Lineup tab, as the league tiles do', async ({ page }) => {
+        const state = await setup(page, MONDAY);
+        const third = section(page).locator('.mls-fw-match').filter({ hasText: 'Third Fixture League' });
+        await expect(third.locator('.mls-fw-match-open')).toHaveAttribute('aria-label', 'Third Fixture League: open its lineup');
+        await third.locator('.mls-fw-match-open').click();
+        await expect(page.locator('#lineupTab')).toHaveClass(/\bactive\b/);
+        await expect(page.locator('#headerLeagueSelect')).toHaveValue(FIXTURE_LEAGUE3_ID);
+        await expectClean(page, state);
+    });
+
+    test('one matchup at stake: one line names it, no tiles', async ({ page }) => {
+        // Fixture League down 36: settled too, so only Third Fixture League is at stake.
+        const state = await setup(page, MONDAY, { lead: { first: 30 } });
+        const sec = section(page);
+        await expect(sec.locator('.mls-week-fold-toggle')).toContainText('1 matchup rides on them · 2 settled');
+        await expect(sec.locator('.mls-fw-oneline')).toContainText(/^One matchup at stake: Third Fixture League, \d+% to win$/);
+        await expect(sec.locator('.mls-fw-tiles')).toHaveCount(0);
+        await expect(sec.locator('.mls-fw-match')).toHaveCount(1);
+        await expectClean(page, state);
+    });
+
+    test('nothing at stake: one line says so, and the settled ones', async ({ page }) => {
+        const state = await setup(page, MONDAY, { lead: { first: 30, third: 30 } });
+        const sec = section(page);
+        await expect(sec.locator('.mls-week-fold-toggle')).toContainText('nothing rides on them · 3 settled');
+        await expect(sec.locator('.mls-fw-oneline')).toHaveText('Nothing rides on tonight: all 3 live matchups are settled (1 W, 2 L).');
+        await expect(sec.locator('.mls-fw-tiles')).toHaveCount(0);
+        await expect(sec.locator('.mls-fw-match')).toHaveCount(0);
+        await expect(sec.locator('h4')).toHaveCount(0);
+        await expect(sec.locator('.mls-fw-note')).toContainText('Settled: ');
+        await expect(sec.locator('.mls-fw-asof')).toBeVisible();
         await expectClean(page, state);
     });
 

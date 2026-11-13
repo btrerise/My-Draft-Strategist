@@ -180,7 +180,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   how often it came up (the most likely number of wins when the best case is a sweep), and a clean sweep's chance. Under that, what each matchup needs, in points ("Down 2.0.
   Justin Jefferson needs 2.0+ more than Harrison Butker"), with a win-chance bar and, when two players decide it, what
   one needs if the other goes quiet, hits his projection or has a big night. Settled matchups share one line, and
-  Still in play points to the section instead of repeating it. One simulation across every matchup at
+  Still in play points to the section instead of repeating it. With one matchup at stake (or none) a single line
+  replaces the tiles; "as of 9:12 PM" and Refresh say how fresh the scores are; a matchup's name opens its lineup. One simulation across every matchup at
   once, so a player in several of them moves them all together. Inspired by FF Historian (ffhistorian.com), credited
   in the Guide and under the Scoreboard.
 

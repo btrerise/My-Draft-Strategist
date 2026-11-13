@@ -11297,3 +11297,26 @@ badgeLegend, noEmoji), and `mls-final-window`, `mls-this-week`, `mls-root-for`, 
 `tooltips-onscreen`, `touch-targets` at both widths. Screenshots (this round's render against round 1's, same container: only these two differ): the Guide's text changed again, so `desktop/mls-league-guide.png` and
 `phone/mls-league-guide.png` are re-taken on CI again; the Scoreboard PNGs CI took last round (opened: only the credit
 line under Sleepy's is new) don't change this round, since the screenshot league isn't in a final window.
+
+### S36, round 3: a second pass as a user, and the owner's "do 1–5"
+
+1. **One count for one idea.** The title line counts what's at stake once the runs are in, and the settled ones apart
+   ("2 matchups ride on them · 1 settled"; before the runs, "3 live matchups"); the At stake tile's sub-line is "of 3
+   live matchups". Before, "3 matchups ride on them", "2 W at stake" and the header's "2 still live" disagreed.
+2. **Tiles only from two at stake.** With one: "One matchup at stake: Third Fixture League, 26% to win" (the card is
+   below it). The four tiles all restated its bar.
+3. **Nothing at stake:** "Nothing rides on tonight: all 3 live matchups are settled (1 W, 2 L)." and the settled line,
+   with no empty tiles and no "What each matchup needs" heading.
+4. **How fresh:** "as of 11:30 PM" and a Refresh beside "What each matchup needs" (the time the matchups were loaded,
+   `view.loads`). Still no timer. On phones it wraps under the heading rather than squeezing it.
+5. **A card opens its league:** the card's top (name, margin, score, a › as on the tiles) is a button,
+   `openLeagueLineup` like the tiles. The table stays outside it (a button can't hold a table).
+
+Tests: the spec checks the new title and tile wording, the "as of" and Refresh, a card opening Third Fixture League's
+Lineup tab, and two new cases built by adding points to the opponent (`lead`): one at stake (one line, no tiles, one
+card) and none (one line, no cards, the settled line). Ran `mls-final-window`, `touch-targets`, `tooltips-onscreen`.
+
+**Follow-up for this session, before the pull request (owner, round 3):** "3% to win" is green on a losing, red-edged
+card, which reads like good news at a glance. The League Scoreboard's tiles and Still in play use the same green, so
+the change is to color the percent by who's favored (red under 50%) in all three places at once: the Final Window,
+the league tiles and Still in play. Not done yet; the owner asked to keep it for this session before the PR.
