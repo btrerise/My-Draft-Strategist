@@ -11409,3 +11409,29 @@ window folded) and in the Lineup tab's strip. `mls-this-week` and `badge-legend`
   first depends on the runs, so they open "What if…" when it's folded (`openWhatIf`). Ran `mls-final-window` three
   times over (54 passed), `mls-this-week`, `mls-root-for`, `mls-root-kickoff-find`, `tooltips-onscreen`, unit tests,
   check-precache. Screenshots: only the two Guide PNGs change (its text); re-taken on CI.
+
+### S36, round 8: the whole Scoreboard on a Monday night (owner: "do A and B, note C and D")
+
+My review as a user of the whole tab (six matchups riding on the last games, seven leagues): fine on desktop (about two
+screens); about five screens on a phone, most of it after the Final Window repeating it (the league tiles repeat its
+scores and percents; Root for, Against you and the list by kickoff name Jefferson and Butker again).
+- **A, built: focus while the Final Window is open.** League Scoreboard and Player Scoreboard start folded to their
+  one-line summaries. A tap opens one for that window only: in memory (`focus` in thisWeek.js, keyed by week and
+  games), surviving a Refresh, never written to `mls_scoreboard_folds`. Fold the Final Window, or once it's gone, and
+  each is as remembered. On a phone the Monday page goes from about five screens to about two and a half.
+- **B, built: one credit line.** "Inspired by Sleepy, sleepy-football.vercel.app (the root-for board), and FF Historian,
+  ffhistorian.com (the Final Window)". Both links sit directly in the paragraph, so css/base.css's in-sentence rule
+  keeps their tap areas from covering each other when it wraps (F20).
+- **C and D, not built, for the owner to decide later:** written under "Open follow-ups" in docs/TESTING.md with the
+  card to review each: C (Player Scoreboard on a thin night, one line when few players are left) in **S37**, which
+  adds a per-player view of the same night; D (league tiles two across on phones) in **U1**, the research card on how
+  features are organized.
+- CHANGELOG: the Final Window's entry rewritten as one bullet with sub-points (seven rounds had made it a run-on).
+- Specs: `mls-final-window` checks the two sections folded with their summaries, League opened for the window only
+  (surviving a Refresh, nothing stored), both as remembered with the window folded, Player folded again when it
+  reopens, and the one credit line. `mls-root-for.spec.mjs` (S27's fixture is also a Sunday-night final window) now
+  starts with the window folded, as `mls-this-week` does, and expects the one credit line. The both-live test uses
+  the first card (which matchups are still open depends on the runs). Ran `mls-final-window` and `mls-root-for` twice
+  over (76 passed), plus `mls-this-week`, `mls-root-kickoff-find`, `touch-targets`, `view-transitions`.
+- Screenshots: `desktop/` and `phone/mls-league-scoreboard.png` (the one credit line) and `desktop/` and
+  `phone/mls-league-guide.png` (the Guide's text); re-taken on CI.

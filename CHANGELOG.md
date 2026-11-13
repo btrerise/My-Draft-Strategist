@@ -180,15 +180,18 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **The Final Window, on the Scoreboard.** When the week is down to its last night games (Sunday night, or Monday's one
   or two games) and every player still to play in your matchups is in them, a section above League Scoreboard shows
   what rides on them: matchups at stake, expected wins, and a row of bars for how many of them you win (0 up to a clean
-  sweep), each the share of runs that ended that way. Under that, what each matchup needs, in points ("Down 2.0.
-  Justin Jefferson needs 2.0+ more than Harrison Butker"), with a win-chance bar and, when two players decide it, a
-  What if… table (open on the first matchup) with what one needs if the other goes quiet, hits his projection or has a
-  big night. Settled matchups share one line, and
-  Still in play points to the section instead of repeating it. With one matchup at stake (or none) a single line
-  replaces the tiles; "as of 9:12 PM" says how fresh the scores are; a matchup's name opens its lineup; five matchups
-  show, then Show all; games under way read "live"; and the Dashboard's week line says "Final Window: 2 at stake". One simulation across every matchup at
-  once, so a player in several of them moves them all together. Inspired by FF Historian (ffhistorian.com), credited
-  in the Guide and under the Scoreboard.
+  sweep), each the share of runs that ended that way. One simulation covers every matchup at once, so a player in
+  several of them moves them all together.
+  - What each matchup needs, in points ("Down 2.0. Justin Jefferson needs 2.0+ more than Harrison Butker"), with a
+    win-chance bar, and a What if… table when two players decide it (open on the first matchup): what one needs if the
+    other goes quiet, hits his projection or has a big night. Five matchups, then Show all; a name opens its lineup.
+  - Settled matchups share one line; with one matchup at stake, or none, one line replaces the tiles. Games under way
+    read "live", and "as of 9:12 PM" says how fresh the scores are.
+  - While it's open: League Scoreboard and Player Scoreboard start folded to one line each (a tap opens them; your own
+    folds are kept for the rest of the week), Still in play points to it, the league tiles, Still in play and the
+    Lineup tab use its chance to win so each matchup has one number, and the Dashboard's week line says "Final Window:
+    2 at stake".
+  - Inspired by FF Historian (ffhistorian.com), credited in the Guide and on one line with Sleepy under the Scoreboard.
 
 - **When you last synced, on the Dashboard.** Under Sync All Leagues and Optimize All Lineups, a line now says when
   you last synced your Sleeper leagues: "Last synced 9:42 AM", "yesterday 8:15 PM", "Sun 8:15 PM" or "Nov 9". It turns

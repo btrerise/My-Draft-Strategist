@@ -356,6 +356,20 @@ done or dropped, remove its line here in the same change. Background for each is
 - Save the name → position lookup (`window.sleeperPosByName`) so a new page doesn't rebuild it from the player map.
   Only a speed-up, and it needs a new storage key (3G).
 
+**Handed on by S36 for the owner to decide: a lighter Scoreboard on phones** (owner, 2026-11-13, after a review as
+a user of the whole Scoreboard on a Monday night; details in docs/improvements/LOG.md, S36 round 8). Not built; the card
+named reviews it with the owner.
+- **Review in S37 (the stat lines for the last game): Player Scoreboard on a thin night.** With one or two players
+  still to play, Who to root for's three boxes are mostly empty states ("6 finished", "All 2 have finished.") and the
+  list by kickoff names the same players again, about a phone screen and a half. It could shrink to one line ("Root for
+  Justin Jefferson · Against Harrison Butker", tap for the boxes) when few players are left. S37 adds a per-player view
+  of the same night to the Final Window, so decide there whether both are needed (S27, S33's `rootHTML` in
+  js/mls/week/thisWeek.js).
+- **Review in U1 (research: re-think how features are organized): the league tiles on phones.** "Every league,
+  closest first" is one tile per row at 375px, so 20 leagues are about 1,600px. Two across would halve it, but S21's
+  round 6 keeps league names whole, which two across would cut on long names (S21, `tileHTML` and `.mls-week-tiles`
+  in css/mls.css).
+
 **Handed on by M2 to later Material 3 cards** (the owner's decision, after M2; details in docs/improvements/LOG.md, M2).
 The card named does the item in its own session; remove the line when it's done.
 - **M5 (text fields): every text field and drop-down 48px tall.** Today `.form-input` fields and selects are 44 to 45px

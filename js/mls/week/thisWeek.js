@@ -824,6 +824,7 @@ function renderScoreboard(m) {
             : '';
         const sectionHead = (title, summary) => `<span class="mls-week-section-title">${title}</span>${summary ? `<span class="mls-week-summary">${summary}</span>` : ''}`;
         const fm = finalModel(m);
+        setFocus(fm);
         body = top.join('')
             + (fm ? foldSection('final', sectionHead(`${FINAL_ICON}Final Window`, finalSummary(fm)), finalHTML(fm, m.ctx), 'Final Window', 'mls-week-section mls-fw') : '')
             + foldSection('league', sectionHead('League Scoreboard', leagueText), parts.join(''), 'League Scoreboard', 'mls-week-section')
@@ -1170,7 +1171,19 @@ function foldGroup() {
     } catch (e) { return {}; }
 }
 // Each of the first two keys holds '1' for the state that isn't the default: open for MVPs & LVPs, folded for Still in play.
+// Focus while the Final Window is open (S36 round 8, owner's choice A): League Scoreboard and Player Scoreboard start
+// folded, to their one-line summaries, so a phone isn't five screens on Monday night with most of it repeating the
+// window. Your remembered folds are untouched: a tap during the window opens a section for that window only (in
+// memory, by week and games), and once the window is gone, or folded, each section is as you left it.
+const focus = { key: null, active: false, open: {} };
+const FOCUS_FOLDS = ['league', 'player'];
+function setFocus(fm) {
+    const key = fm ? `${fm.week}|${fm.win.games.map(g => `${g.away}@${g.home}`).join(',')}` : null;
+    if (key !== focus.key) { focus.key = key; focus.open = {}; }
+    focus.active = !!key && foldOpen('final');
+}
 function foldOpen(which) {
+    if (focus.active && FOCUS_FOLDS.includes(which)) return focus.open[which] ?? false;
     const f = FOLDS[which];
     if (f.group) { const v = foldGroup()[which]; return typeof v === 'boolean' ? v : f.byDefault; }
     try { return localStorage.getItem(f.key) === '1' ? !f.byDefault : f.byDefault; } catch (e) { return f.byDefault; }
@@ -1215,7 +1228,7 @@ export function toggleWeekFold(which) {
         const sec = find();
         if (!sec) return;
         const open = !sec.classList.contains('is-open');
-        setFoldOpen(which, open);
+        if (focus.active && FOCUS_FOLDS.includes(which)) focus.open[which] = open; else setFoldOpen(which, open);
         sec.classList.toggle('is-open', open);
         sec.querySelector('.mls-week-fold-toggle').setAttribute('aria-expanded', String(open));
         sec.querySelector('.mls-week-fold-body').hidden = !open;

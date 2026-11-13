@@ -171,6 +171,21 @@ test.describe('Scoreboard: the Final Window', () => {
         await expect(sec.locator('.mls-fw-note')).toHaveCount(1);
         // Still in play points here instead of repeating the same two matchups.
         const league = card(page).locator('.mls-week-fold[data-fold="league"]');
+        const player = card(page).locator('.mls-week-fold[data-fold="player"]');
+        // Focus (round 8): while the window is open, League Scoreboard and Player Scoreboard start folded, to their
+        // one-line summaries; nothing is written to your remembered folds.
+        await expect(league.locator('> .mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'false');
+        await expect(league.locator('> .mls-week-fold-toggle')).toContainText('League Scoreboard3 leagues · 2 still in play');
+        await expect(player.locator('> .mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'false');
+        await expect(player.locator('> .mls-week-fold-toggle')).toContainText('Root for 1');
+        // A tap opens it for this window only: it stays open across a Refresh, and the remembered folds are untouched.
+        await league.locator('> .mls-week-fold-toggle').click();
+        await expect(league.locator('> .mls-week-fold-body')).toBeVisible();
+        expect(await page.evaluate(() => localStorage.getItem('mls_scoreboard_folds'))).toBeNull();
+        await card(page).locator('.mls-week-refresh').click();
+        await expect(card(page).locator('.mls-week-refresh')).not.toHaveAttribute('aria-busy', 'true');
+        await expect(league.locator('> .mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'true');
+        await expect(player.locator('> .mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'false');
         await expect(league.locator('.mls-fw-pointer')).toHaveText('Still in play: 2, in the Final Window above');
         await expect(league.locator('.mls-week-swings')).toHaveCount(0);
 
@@ -188,6 +203,9 @@ test.describe('Scoreboard: the Final Window', () => {
         await sec.locator('.mls-week-fold-toggle').click();
         await expect(sec.locator('.mls-week-fold-body')).toBeHidden();
         expect(await page.evaluate(() => JSON.parse(localStorage.getItem('mls_scoreboard_folds')))).toEqual({ final: false });
+        // With the window folded, both sections are as remembered (open, the default).
+        await expect(league.locator('> .mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'true');
+        await expect(player.locator('> .mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'true');
         // Folded, Still in play lists its matchups again.
         await expect(league.locator('.mls-fw-pointer')).toHaveCount(0);
         await expect(league.locator('.mls-week-swing')).toHaveCount(2);
@@ -203,10 +221,13 @@ test.describe('Scoreboard: the Final Window', () => {
         await expect(sec.locator('.mls-week-fold-body')).toBeVisible();
         await expect(league.locator('.mls-fw-pointer')).toHaveCount(1);
 
-        // The credit, under the card and in the Guide (owner's choice).
-        const credit = page.locator('.mls-scoreboard-credit').filter({ hasText: 'FF Historian' });
-        await expect(credit).toHaveText('The Final Window was inspired by FF Historian, ffhistorian.com');
-        await expect(credit.locator('a')).toHaveAttribute('href', 'https://ffhistorian.com/');
+        // Open again, focus is back: Player Scoreboard folded (League stays open: it was opened in this window).
+        await expect(player.locator('> .mls-week-fold-toggle')).toHaveAttribute('aria-expanded', 'false');
+        // The credit, one line for both under the card (round 8), and in the Guide (owner's choice).
+        const credit = page.locator('.mls-scoreboard-credit');
+        await expect(credit).toHaveCount(1);
+        await expect(credit).toHaveText('Inspired by Sleepy, sleepy-football.vercel.app (the root-for board), and FF Historian, ffhistorian.com (the Final Window)');
+        await expect(credit.locator('a').nth(1)).toHaveAttribute('href', 'https://ffhistorian.com/');
         // Nothing past the card's edges.
         const over = await card(page).evaluate(el => { const r = el.getBoundingClientRect(); return [...el.querySelectorAll('.mls-fw *:not(.tooltip-text)')].filter(c => { const b = c.getBoundingClientRect(); return b.width && (b.right > r.right + 1 || b.left < r.left - 1); }).map(c => c.className); });
         expect(over).toEqual([]);
@@ -237,10 +258,11 @@ test.describe('Scoreboard: the Final Window', () => {
         const state = await setup(page, BOTH_LIVE);
         const sec = section(page);
         await expect(sec.locator('.mls-week-fold-toggle')).toContainText('MIN @ CHI live, KC @ DEN live ·');
-        const third = sec.locator('.mls-fw-match').filter({ hasText: 'Third Fixture League' });
-        await openWhatIf(third);
-        await expect(third.locator('.mls-fw-table thead')).toHaveText('If Jefferson addsButker must add');
-        await expect(third.locator('.mls-fw-table tbody tr').nth(1)).toContainText('Projected from here:');
+        // Every card is Jefferson against Butker; which are still open depends on the runs, so the first one.
+        const open = sec.locator('.mls-fw-match').first();
+        await openWhatIf(open);
+        await expect(open.locator('.mls-fw-table thead')).toHaveText('If Jefferson addsButker must add');
+        await expect(open.locator('.mls-fw-table tbody tr').nth(1)).toContainText('Projected from here:');
         await expectClean(page, state);
     });
 
