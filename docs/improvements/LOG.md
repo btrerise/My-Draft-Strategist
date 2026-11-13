@@ -10965,7 +10965,7 @@ Raised by the owner during N2 round 6; recommended by this session and agreed, n
 **Checked.** `mls-starter-alert.spec.mjs` (22, both widths, 2 repeats), `node --test` (584), check-precache. No screenshot
 changes (the card isn't in any baseline).
 
-## F18 — Scoreboard: count Sleeper's auto-subs (in progress: findings, waiting on the owner)
+## F18 — Scoreboard: count Sleeper's auto-subs
 
 **How Sleeper reports auto-subs (checked 2026-11-12).**
 - **The setting** is `settings.max_subs` on each league (`GET /v1/league/<id>`): 0 = off, 1–3 = AutoSubs allowed per team
@@ -11010,3 +11010,41 @@ up with the swap after a delay. Where a delay can come from:
 - The app: the Scoreboard re-fetches matchups older than 2 minutes (`FRESH_MS`, thisWeek.js; Refresh forces it). Nothing
   stores matchups across a reload (`State.lineupActualPoints` is in memory), and the service worker doesn't touch
   cross-origin requests.
+
+**Owner's decisions (2026-11-13).** After the research the owner checked again and no longer saw the mismatch, so it was
+Sleeper's matchups catching up with the swap, not the app. Of the options offered: **1, a regression test and one shared
+rule, no visible change**. Not done:
+- The "auto-sub" mark on the sub's row (asked in the card): the API never names a swap, so the app could only mark one it
+  had seen happen between two of its own fetches. Dropped.
+- Counting the sub as live before the swap (asked in the card): the API doesn't say who anyone's sub is. Dropped.
+- Timing Sleeper's swap on a Sunday by fetching the owner's leagues around kickoff (research only): not now; auto-subs
+  aren't that common and nothing would be built on it yet.
+- A "Sleeper may auto-sub" note on an Out starter: not chosen.
+
+**What changed, and where.** No user-visible change, so no CHANGELOG line, no legend line, no screenshots.
+- `js/mls/week/playerRecap.js`: `starterIdsOf` (who counts as a team's starters: Sleeper's `starters`, or Best Ball's
+  lineup) moved here from rootFor.js, beside `bestBallLineup`, with a comment on how Sleeper reports auto-subs. The MVPs &
+  LVPs (Started, started zeros, LVPs) now use it instead of their own copy of the rule; the same result.
+  `js/mls/week/rootFor.js` re-exports it. The card asked for the function beside `summarize` in scoreboard.js; it already
+  existed in rootFor.js, and playerRecap.js is the place that avoids a circular import (rootFor.js imports
+  `bestBallLineup` from it).
+- `js/mls/week/thisWeek.js`: the tiles' and Still in play's sides read their starters with `starterIdsOf` (its own
+  `starterIds` copy removed). S36's Final Window is built from those same sides, so it follows too.
+- Totals: every tile shows Sleeper's `points` (`custom_points` when a commissioner set one). No view adds up starters
+  itself, except Best Ball by design (its lineup is picked after the games).
+- `sw.js`: `CACHE_NAME` bumped (JS changed); no file added.
+
+**Tests.**
+- `tests/fixtures/sleeper/make-fixtures.mjs`: `league-autosub.json` (Fixture League with `max_subs` 1),
+  `league-matchups-autosub.json` (CeeDee Lamb inactive, Sleeper has put Amon-Ra St. Brown in his FLEX slot: 106.0–110.0)
+  and `league2-matchups-inactive.json` (Second Fixture League, no auto-subs: Lamb started on 0.0, St. Brown's 24.0 on the
+  bench: 105.4–95.2).
+- `tests/unit/playerRecap.test.mjs`: the sub counts as started (an MVP, Started 50% (1)); the starter he replaced
+  started only where there was no sub (LVP, a started zero in one league).
+- `tests/mls-auto-sub.spec.mjs` (new, both widths): the tiles are Sleeper's scores; St. Brown is in your finished
+  starters and Lamb in one league only; MVPs (St. Brown, Started 50% (1)), LVPs (Lamb, 50% (1)), Started zeros and Benched
+  booms (St. Brown named only in the league without auto-subs). And with no swap, the same lineups read as before (98.0 and
+  130.4; Lamb in 2, St. Brown on both benches).
+
+**Left over.** Nothing for the app. If Sleeper ever adds an auto-sub field to the public API, the mark and the live
+anticipation become possible.

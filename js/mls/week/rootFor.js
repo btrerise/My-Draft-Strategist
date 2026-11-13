@@ -28,7 +28,6 @@
 // When every weight is 0 (a past week, or every game over), the share falls back to the paid weights alone, so a finished
 // week still reads sensibly, and the lists order by how many leagues.
 
-import { bestBallLineup } from './playerRecap.js';
 
 export const PAID_WEIGHT = 1.5;
 // "In 2 or more" of your matchups for Root for and Against you.
@@ -167,13 +166,6 @@ export function sideOrder(rows, side) {
     return rows.filter(r => n(r) > 0).sort((a, b) => b[w] - a[w] || n(b) - n(a) || String(a.id).localeCompare(String(b.id)));
 }
 
-// The ids that count as one team's starters this week: Sleeper's starters (empty slots, '0', dropped; the bench never
-// counts), or in Best Ball, with the league's slot order, the lineup Best Ball would pick from the points so far
-// (bestBallLineup, as the Scoreboard scores it). entry: Sleeper's matchup entry { starters, players, players_points }.
-export function starterIdsOf(entry, { bestBall = false, slots = null, posOf = () => null } = {}) {
-    if (!entry) return [];
-    const starters = (entry.starters || []).filter(id => id && id !== '0');
-    if (!bestBall || !Array.isArray(slots) || !slots.length || (entry.starters || []).length !== slots.length) return starters;
-    const pts = entry.players_points || {};
-    return [...bestBallLineup(slots, entry.players || [], id => (typeof pts[id] === 'number' ? pts[id] : 0), posOf, new Set(starters))];
-}
+// The ids that count as one team's starters this week: starterIdsOf, beside bestBallLineup in playerRecap.js, so the
+// MVPs & LVPs use the same rule without a circular import. Re-exported here for the Scoreboard and the tests.
+export { starterIdsOf } from './playerRecap.js';

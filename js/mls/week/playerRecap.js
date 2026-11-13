@@ -118,6 +118,22 @@ export function bestBallLineup(slots, playerIds, pointsOf, posOf, preferred = ne
     return lineup;
 }
 
+// The ids that count as one team's starters this week, for every Scoreboard view (tiles, Still in play, Who to root
+// for, MVPs & LVPs and their Started): Sleeper's starters (empty slots, '0', dropped; the bench never counts), or in Best
+// Ball, with the league's slot order, the lineup Best Ball would pick from the points so far (bestBallLineup, as the
+// Scoreboard scores it). entry: Sleeper's matchup entry { starters, players, players_points }.
+// Sleeper's auto-subs (improvements F18): when a starter is inactive and his manager named a bench sub, Sleeper moves the
+// sub into `starters` and counts him in `points` (after a delay: the swap can't be made before the starter's kickoff,
+// and Sleeper's API is cached for up to about 6 minutes). Nothing in the public API names a swap or a manager's subs, so
+// the sub is a starter like any other and the starter he replaced is on the bench, as Sleeper shows it.
+export function starterIdsOf(entry, { bestBall = false, slots = null, posOf = () => null } = {}) {
+    if (!entry) return [];
+    const starters = (entry.starters || []).filter(id => id && id !== '0');
+    if (!bestBall || !Array.isArray(slots) || !slots.length || (entry.starters || []).length !== slots.length) return starters;
+    const pts = entry.players_points || {};
+    return [...bestBallLineup(slots, entry.players || [], id => (typeof pts[id] === 'number' ? pts[id] : 0), posOf, new Set(starters))];
+}
+
 // leagues: [{ id, name, bestBall, slots, entry: { players, starters, players_points } }] — your entry in each Sleeper
 //   league; slots: its starting slots in order (league.starterSlots, saved at sync since round 2), or null.
 //   A league with no entry, or an entry with no players (a chopped guillotine team), isn't counted.
@@ -144,12 +160,8 @@ export function buildPlayerRecap({ leagues = [], players = {}, games = {}, byeTe
     const byId = new Map();
     const unresolved = new Map();
     // Who started in each league: Sleeper's starters, or in Best Ball with the slot order, its own lineup (round 3).
-    const ptsIn = (l, id) => { const v = (l.entry.players_points || {})[id]; return typeof v === 'number' ? v : 0; };
-    const sleeperStarters = (l) => new Set((l.entry.starters || []).filter(id => id && id !== '0'));
     const slotted = (l) => Array.isArray(l.slots) && l.slots.length === (l.entry.starters || []).length && l.slots.length > 0;
-    const startedIn = new Map(counted.map(l => [l.id, l.bestBall && slotted(l)
-        ? bestBallLineup(l.slots, l.entry.players, id => ptsIn(l, id), id => players[id] && players[id].pos, sleeperStarters(l))
-        : sleeperStarters(l)]));
+    const startedIn = new Map(counted.map(l => [l.id, new Set(starterIdsOf(l.entry, { bestBall: !!l.bestBall, slots: l.slots, posOf: id => players[id] && players[id].pos }))]));
     counted.forEach(l => {
         const pts = l.entry.players_points || {};
         const starters = startedIn.get(l.id);
