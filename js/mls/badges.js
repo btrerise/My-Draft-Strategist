@@ -203,6 +203,12 @@ export const rootCountBadgeMarkup = (kind, n) =>
 // In Root for or Against you (round 4), a player who leans that way keeps the counts, in that group's color.
 export const rootOfBadgeMarkup = (yours, of, kind = 'both') =>
     `<span class="badge mls-root-count is-${kind === 'root' ? 'root' : (kind === 'against' ? 'against' : 'both')}">${Number(yours) || 0} of ${Number(of) || 0} yours</span>`;
+// The Final Window's win chance (improvements S36): a bar, green for your chance in the shared simulation, red for
+// theirs, and the percent, green when you're favored (50% or more) and red when not (round 5). pctLabel is the caption ("26% to win", "<1% to win").
+export const finalChanceMarkup = (share, pctLabel) => {
+    const pct = Math.max(0, Math.min(100, Math.round((Number(share) || 0) * 1000) / 10));
+    return `<div class="mls-fw-bar"><span class="mls-fw-bar-track" aria-hidden="true"><span style="width:${pct}%"></span></span><span class="mls-week-chance ${pct >= 50 ? 'is-fav' : 'is-dog'}">${pctLabel}</span></div>`;
+};
 // His stake, in the row's detail: a bar, green for the part of his weight that's in your leagues, red for the rest.
 export const rootShareMarkup = (share) => {
     const pct = Math.max(0, Math.min(100, Math.round(Number(share) || 0)));

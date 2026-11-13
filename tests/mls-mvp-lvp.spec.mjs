@@ -68,6 +68,9 @@ async function setup(page, opts = {}) {
     const state = await openApp(page, '/lineup/');
     await page.clock.setFixedTime(SUNDAY);
     await routeWeek(page, opts);
+    // Only the Sunday night game is left, so this is the week's Final Window (S36); while it's open, Player Scoreboard
+    // (which holds MVPs & LVPs) starts folded. These tests are about MVPs & LVPs, so the window starts folded.
+    await page.evaluate(() => localStorage.setItem('mls_scoreboard_folds', JSON.stringify({ final: false })));
     await seedMls(page);
     await page.fill('#sleeperLeagueId', FIXTURE_LEAGUE2_ID);
     await page.click('#mainSyncBtn');
@@ -402,6 +405,7 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         const state = await openApp(page, '/lineup/');
         await page.clock.setFixedTime(SUNDAY);
         await routeWeek(page, {});
+        await page.evaluate(() => localStorage.setItem('mls_scoreboard_folds', JSON.stringify({ final: false }))); // as setup does (S36)
         await seedMls(page);
         await showTab(page, 'scoreboard');
         await expect(page.locator('#thisWeekCard .mls-week-tile')).toHaveCount(1);

@@ -82,7 +82,7 @@ export const KEYS = {
         leagueCardsCollapsed: 'mls_league_cards_collapsed', // [leagueId] of the Dashboard's league cards folded to their header (improvements S12)
         playerRecapOpen: 'mls_player_recap_open', // '1' while the Scoreboard's MVPs & LVPs section is open (improvements S22)
         stillInPlayFolded: 'mls_still_in_play_folded', // '1' while the Scoreboard's Still in play is folded (improvements S22, round 3)
-        scoreboardFolds: 'mls_scoreboard_folds', // { league?, player?, root?: boolean } for the Scoreboard's League / Player Scoreboard and Who to root for, only while not the default (open) (improvements S27)
+        scoreboardFolds: 'mls_scoreboard_folds', // { league?, player?, root?, final?: boolean } for the Scoreboard's League / Player Scoreboard, Who to root for and the Final Window, only while not the default (open) (improvements S27, S36)
         recapLines: 'mls_recap_lines', // the MVPs & LVPs Boom / Bust lines, { QB: { boom, bust }, ... } (improvements S22)
         paidHintDismissed: 'mls_paid_hint_dismissed', // '1' once the Scoreboard's "mark the leagues you pay for" hint is dismissed (improvements S21)
         bestAvailableDismissed: 'mls_best_available_dismissed', // players dismissed from the Best Available card, per league, this NFL week (improvements S5)

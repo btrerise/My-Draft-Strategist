@@ -11277,3 +11277,278 @@ ALLOW note to M16's scope.
 **Update (owner, 2026-11-13, later): R2 is now its own card, M17** ("Room on phones"), in weeks 12–13 before S32, so S32
 designs phone rows at the final 343px; M14 is back to surface tones and corners (runbook version 1794583305-ec84). Exports
 follow the new look, drawn the same on every device, instead of keeping today's.
+
+## S36 — The Final Window: what rides on the last game of the week
+
+**User-visible effect.** On the Scoreboard, when every player still to play in your head-to-head matchups is in the
+week's last night window (Sunday night, or Monday's one or two games), a new section, **Final Window** (a moon icon),
+sits above League Scoreboard and folds like the halves (remembered):
+- **Its title line:** the games and kickoff, and how many matchups ride on them ("MIN @ CHI, KC @ DEN · Mon 7:15 PM ·
+  3 matchups ride on them").
+- **Four tiles** (two across on phones, four from 900px): **At stake** ("2 W · 3 live matchups"), **Expected** ("0.3 W ·
+  middle 80%: 0–1 W"), **Best case** ("2 W · 3% of runs") and **Clean sweep** ("3% · all 2 at stake"). While the
+  simulation runs they read "working it out"; if it fails, "couldn't run" and a line to tap Refresh.
+- **What each matchup needs:** one card per live matchup (one column on phones, two from 900px), most uncertain first,
+  settled ones last and dimmed: the league ($ if paid), the margin, "You 100.0 · Rival 102.0", a green/red win-chance
+  bar with "26% to win", one line in words ("Down 2.0. **Justin Jefferson** needs 2.0+ more than **Harrison Butker**.",
+  "Up 5.2. Hold **James Cook III** + **Jordan Mason** under 5.2 more.", "…: even a zero from X isn't enough",
+  "…: anything from X does it"), who's live on each side with position badges, and, when exactly two players decide it
+  (and it isn't settled), a table: "If A scores" Quiet: 0.0 / Projection: 8.3 / Big night: 10.0, against "B must score"
+  "under 6.3", "2.5+", "anything" or "even a zero isn't enough".
+- **Notes** under it: Best Ball leagues and leagues with no opponent are named, not counted; one line on how the runs work.
+- A muted credit line under the Scoreboard card ("The Final Window was inspired by FF Historian, ffhistorian.com"),
+  under Sleepy's, and the same credit at the end of the Guide's new Final Window item. The badge legend gains the
+  win-chance bar.
+- Nothing shows before the last window (Sunday afternoon, say), in a past week, or with no live head-to-head matchup.
+
+**Owner's decisions (2026-11-13, asked before building, with sketches at 375 and 1280px).**
+1. Name: **Final Window** (my recommendation; it fits Sunday night and two Monday games). Credit: **FF Historian,
+   https://ffhistorian.com/**, in the Guide and under the Scoreboard, as S27 credits Sleepy.
+2. When: **the last window, Sunday night too**: every live player's game in one night window (same day, US Eastern, at
+   5 PM or later), so SNF counts when nobody you care about plays Monday.
+3. Math: **one shared simulation** across every live matchup (players shared by matchups move together), with the four
+   tiles as sketched.
+4. The two-player table **in points**; stat lines stay with S37.
+
+**What changed, and where.**
+- `js/mls/week/lastWindow.js` (new, pure): `finalWindow` (the window from live teams, kickoffs and game states),
+  `simulateWindow` (10,000 runs; one standard normal per player per run, shared by every league he's in, each league
+  scaling it by its own mean and spread of his points still to come, floored at 0; a QB and his own team's WR/TE share
+  part of it, the Simulator worker's 0.35, here across leagues), `certainResult`, `shareText`, `needsLine` (names
+  escaped), `twoPlayerTable`. "At stake" leaves out matchups that are certain (only one side can still score and it's
+  that side's) or settled in the runs (under 0.5% or over 99.5%, the Scoreboard's own rule); the other tiles count the
+  matchups at stake.
+- `js/mls/week/lastWindowWorker.js` (new): a module worker running `simulateWindow`. Measured: 10,000 runs × 15
+  matchups take ~34 ms in Node and 75–100 ms in Chromium with the CPU slowed 4x, so it runs off the main thread (on the
+  page as a fallback if the worker can't start). The card suggested the Simulator's worker; that one is a classic
+  script, and a module worker importing `lastWindow.js` keeps the math in one place.
+- `js/mls/sim/winChance.js`: the history fetch is shared (`historiesFor`), and `remainingProfiles` gives each live
+  player's points still to come in each league's scoring (`getPlayerVarianceProfile`, less what he has; mid-game, the
+  Simulator's shareLeft rule). Unlike the Simulator, a player with no history still counts (projection with the
+  fallback spread), so a matchup is never dropped. `matchupWinChances` is unchanged in behavior.
+- `js/mls/week/thisWeek.js`: `finalModel`, `addFinalWindow` (queued after the board's chances, only while the
+  Scoreboard is open, rerun when scores, live players or game states change; Refresh reruns it), `finalHTML`; the
+  `final` fold in the `mls_scoreboard_folds` key (comment updated in `keys.js`; no new key).
+- `js/mls/badges.js` `finalChanceMarkup`, `js/mls/legend.js` (one line), `css/mls.css` (the `mls-fw-*` rules),
+  `lineup/index.html` (the Guide item and the credit line), `CHANGELOG.md`, `sw.js` (the two files in PRECACHE_ASSETS,
+  CACHE_NAME v2.10.4 → v2.10.5).
+
+**Tests.** `tests/unit/lastWindow.test.mjs` (9): the window (two Monday games as one, SNF alone, an afternoon game
+left, unknown kickoff, a final game), a sure win and a sure loss, a settled blowout, a shared player on both sides of
+different matchups (every run 1 or 2 wins, never a sweep), two leagues' scoring moving together, the sweep and middle
+80% over six coin flips, `shareText`, the needs lines (escaping), the two-player table (two yours, two theirs, one
+each, none with one or three). `tests/mls-final-window.spec.mjs` (both widths): Monday night with MIN @ CHI and KC @
+DEN left (S27's three fixture leagues, Butker's points set to 0): the section above League Scoreboard, its title, the
+tiles, three matchups with their lines, the table, the settled one last without a table, the fold remembered, the
+credit, nothing past the card; the worker blocked (the page runs it); Sunday afternoon, no section.
+`mls-root-for.spec.mjs`: its credit check picks Sleepy's line by text (there are two now).
+
+**Screenshots.** Rendered main and this branch in this container and compared them (`npm run pxdiff`): four change, by
+design; the other 40 match main. The screenshot league isn't in a final window, so the section itself isn't in any.
+- `desktop/mls-league-scoreboard.png`, `phone/mls-league-scoreboard.png`: the Final Window's credit line under Sleepy's.
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: the Guide's Final Window item and the legend's
+  win-chance bar line.
+CI re-takes these four (`update-screenshots.yml`, named in this round's commit message).
+
+**Checks run.** check-precache OK; `node --test`: all pass but `tscoreInSeason.test.mjs`, which needs `npm ci` in tests/
+(papaparse), as on main; Playwright: `mls-final-window`, `mls-root-for`, `mls-root-kickoff-find`, `mls-this-week`,
+`badge-legend`, `touch-targets`, `tooltips-onscreen` pass (both widths). The full suite hasn't run yet: per rule 7 it
+runs once, when the pull request is asked for.
+
+**Left over.**
+- In-game players use the Simulator's model (points so far plus the rest of his usual game); real live stats are S37.
+- Best Ball is left out with a note, as in the Simulator (the open follow-up on Best Ball there applies).
+- S37 (stat lines) builds on this: `remainingProfiles` and `finalHTML`'s matchup cards are where its lines would go.
+- S20: `thisWeek.js` now imports `remainingProfiles` from `sim/winChance.js` too; load it through S20's loader with
+  `matchupWinChances`.
+- The window's "night" is 5 PM Eastern or later; a late-season Saturday afternoon game as the last window wouldn't count.
+
+### S36, round 2: my review as a user, and the owner's "do all six"
+
+After looking at the section on the real Scoreboard at both widths, I listed what felt clunky; the owner asked for all six:
+1. **No repeat under League Scoreboard.** While the Final Window is open and shows every matchup Still in play would
+   list, Still in play is one line instead: "Still in play: 2, in the Final Window above". Fold the Final Window and the
+   list is back (the fold redraws the card); with a swing it doesn't cover, a Best Ball one say, the list shows as before.
+2. **No twin tiles.** When the best case is a sweep, the third tile is **Most likely** ("0 W · 73% of runs", the most
+   common number of wins) instead of a Best case that repeated Clean sweep. `simulateWindow` returns `likely` and
+   `likelyShare`.
+3. **The table reads more easily:** "you lose either way" instead of "even a zero isn't enough" in the "must score"
+   column, and last names in its headers ("If Jefferson scores | Butker must score"; `shortName`). The sure-loss line
+   above the cards keeps "even a zero … isn't enough", as the card asked.
+4. **Settled matchups share one line** under the cards ("Settled: Second Fixture League (W, +42.2).") instead of a card
+   each with a line like "Butker needs 42.2+ more than Jefferson".
+5. **No You/Them line.** The position badge sits beside each name in the sentence (`needsLine` takes a `nameHTML`).
+6. **Plainer words:** "usually 0–1 W" instead of "middle 80%: 0–1 W"; the "each of 10,000 runs…" paragraph moved into
+   an (i) beside "What each matchup needs". The Guide says "the usual range (the middle 80% of outcomes)".
+The kickoff in my screenshots read "Tue 12:15 AM" only because the test browser runs on UTC; users see their own time.
+
+Tests: two unit tests (`needsLine`'s `nameHTML`, `shortName`) and `likely`. `mls-this-week.spec.mjs`: its mid-Sunday
+fixture (only Jefferson left, on Sunday night) is now a final window, by the owner's rule, so its tests start with the
+Final Window folded (`mls_scoreboard_folds` = { final: false }) to keep testing Still in play's own list. The spec now checks two cards and the
+settled line, the badges in the sentence, the Most likely tile, "usually", the short headers, the (i) (opened, on screen) and
+Still in play's pointer (and the list back once the window is folded). Ran: check-precache, `node --test` (lastWindow,
+badgeLegend, noEmoji), and `mls-final-window`, `mls-this-week`, `mls-root-for`, `mls-root-kickoff-find`,
+`tooltips-onscreen`, `touch-targets` at both widths. Screenshots (this round's render against round 1's, same container: only these two differ): the Guide's text changed again, so `desktop/mls-league-guide.png` and
+`phone/mls-league-guide.png` are re-taken on CI again; the Scoreboard PNGs CI took last round (opened: only the credit
+line under Sleepy's is new) don't change this round, since the screenshot league isn't in a final window.
+
+### S36, round 3: a second pass as a user, and the owner's "do 1–5"
+
+1. **One count for one idea.** The title line counts what's at stake once the runs are in, and the settled ones apart
+   ("2 matchups ride on them · 1 settled"; before the runs, "3 live matchups"); the At stake tile's sub-line is "of 3
+   live matchups". Before, "3 matchups ride on them", "2 W at stake" and the header's "2 still live" disagreed.
+2. **Tiles only from two at stake.** With one: "One matchup at stake: Third Fixture League, 26% to win" (the card is
+   below it). The four tiles all restated its bar.
+3. **Nothing at stake:** "Nothing rides on tonight: all 3 live matchups are settled (1 W, 2 L)." and the settled line,
+   with no empty tiles and no "What each matchup needs" heading.
+4. **How fresh:** "as of 11:30 PM" and a Refresh (removed in round 4) beside "What each matchup needs" (the time the matchups were loaded,
+   `view.loads`). Still no timer. On phones it wraps under the heading rather than squeezing it.
+5. **A card opens its league:** the card's top (name, margin, score, a › as on the tiles) is a button,
+   `openLeagueLineup` like the tiles. The table stays outside it (a button can't hold a table).
+
+Tests: the spec checks the new title and tile wording, the "as of" and Refresh, a card opening Third Fixture League's
+Lineup tab, and two new cases built by adding points to the opponent (`lead`): one at stake (one line, no tiles, one
+card) and none (one line, no cards, the settled line). Ran `mls-final-window`, `touch-targets`, `tooltips-onscreen`.
+
+**Follow-up for this session, before the pull request (owner, round 3; done in round 5, below):** "3% to win" is green on a losing, red-edged
+card, which reads like good news at a glance. The League Scoreboard's tiles and Still in play use the same green, so
+the change is to color the percent by who's favored (red under 50%) in all three places at once: the Final Window,
+the league tiles and Still in play. Not done yet; the owner asked to keep it for this session before the PR.
+
+### S36, round 4: a third pass as a user (owner: do 1, 3, 4 and 5; not 2)
+
+1. **Five cards, then "Show all N"** (and "Show less"), as Still in play: with 11 at stake a phone scrolled four or
+   five screens. `showAllFinal` (main.js action), remembered for the week shown, in memory.
+3. **While the games are on:** the title says "live" for each game under way and gives the others their own kickoff
+   ("MIN @ CHI live, KC @ DEN Mon 9:15 PM · 2 matchups ride on them · 1 settled"). In the table, a player whose game
+   is under way "adds" rather than "scores", and his middle row reads "Projected from here" (his points still to
+   come, not his game projection). Mid-game the player with more still to come leads the table, which can swap who's
+   first.
+4. **Found from the Dashboard:** while the window is open, the Dashboard's week line adds "· Final Window: 2 at
+   stake" (the simulation's count once the Scoreboard has run it; before that, the matchups still in play by the
+   Scoreboard's rule).
+5. **One Refresh:** the "as of" time stays; its own Refresh is gone (the header's is the one).
+- **Not built, 2 (a closing "1–1 tonight" line once the last game ends):** the owner was torn about repeating the
+  recap; I agreed it would be a fourth telling of the same result (the header's record and Final, Biggest win / Worst
+  loss and the tiles already say it), so it's dropped.
+
+Tests: the spec gains the Dashboard line, no button in the "as of", "scores" before kickoff, a live case (MIN @ CHI
+in the 3rd quarter: "MIN @ CHI live, KC @ DEN …", Butker leading the table, "Jefferson must add"), a both-live case
+("live" twice, "If Jefferson adds", "Projected from here"), and six at stake with a seventh settled (four copies of
+the third league under other ids, served by the spec): five cards, Show all 6, Show less with focus kept. Ran
+`mls-final-window` (18), `mls-this-week`, `mls-root-for`, `mls-root-kickoff-find`, `mls-league-cards` (90), unit tests
+and check-precache.
+
+### S36, round 5: the win chance's color (round 3's follow-up; owner's choice B, in all four places)
+
+**The issue, as I put it to the owner.** Every chance to win was bold green whatever its number (S21 picked green to
+make the percent stand out, not to mean anything). Green means good everywhere else in the app, so a losing matchup
+could show a red margin, a red edge and a red L chip beside a green "3% to win". Options: A leave it; B green at 50% or
+more and red under; C the plain text color, leaving the margin, chip, edge and bar to say ahead or behind (my
+recommendation); D the Final Window only. **The owner chose B, in all four places, as part of S36.**
+
+**Outside this card.** The rule was shared, so this changes three S21 places as well as the Final Window: the
+Scoreboard's league tiles (`.mls-week-tile-chance`), Still in play (`.mls-week-chance` in `swingHTML`) and the Lineup
+tab's matchup strip (`renderMatchupStrip`). The card's "don't touch" list has the Scoreboard's tiles: their rules are
+unchanged; only the percent's color, at the owner's request. Who to root for's league detail ("26% to win" in plain
+text) was never colored and isn't now.
+
+**What changed.** `chanceTone` in `thisWeek.js` (`is-fav` at 50% or more, `is-dog` under) on the three S21 spans;
+`finalChanceMarkup` (badges.js) the same; `css/mls.css` one rule (`is-dog`: #ef4444, the margin's red when behind).
+The badge legend's Final Window line shows a green and a red sample and says the rule holds for every chance in the
+app. CHANGELOG line under Lineup Strategist.
+
+**Tests.** `mls-final-window.spec.mjs` checks every percent's class and color against its own number in the Final
+Window (including six at stake with favored and not side by side), on the league tiles, in Still in play (with the
+window folded) and in the Lineup tab's strip. `mls-this-week` and `badge-legend` still pass.
+
+### S36, round 6: a fourth pass as a user (owner: do 2a; explain 1 and 3 first)
+
+- **2a, built:** each card's two-player table sits behind a **"What if…"** toggle (chevron, `aria-expanded`), open on
+  the first card and folded on the rest, so six cards that hinge on the same two players don't show six tables. A tap
+  opens or closes it in place (`toggleFinalWhatIf`, main.js), remembered by league for the visit in memory (a Refresh
+  keeps it). Spec: open on the first, folded on the second, a tap opens it with focus kept, closing the first, both
+  surviving a Refresh.
+- **1, asked about, not built yet:** the Final Window said 27% to win where the same league's tile said 25%. Measured
+  over six runs: both numbers wobble between 25% and 27% from run to run, so it isn't two different models but the
+  same one (the Simulator's per-player model, `getPlayerVarianceProfile`) rolled twice, 10,000 runs each, about ±1
+  point of noise. Two real differences could make the gap bigger in rare cases: the Final Window counts a player with
+  no game history (at his projection; S21's run leaves him out), and it links a QB and his own team's WR/TE across
+  leagues (S21's only within one roster). Proposed fix: while the Final Window has its numbers, the tiles, Still in
+  play and the Lineup tab's strip show its chance for those leagues. Waiting on the owner.
+- **3, asked about, mock-up sent:** with linked matchups, Expected 2.0, "usually 0–6" and "Most likely 0 W" are hard
+  to square, because the outcomes pile up at both ends. Mock-up (375 and 1280px): keep At stake and Expected, and swap
+  Most likely and Clean sweep for one row of bars, one per number of wins (0 to 6), the last bar being the sweep; with
+  six unrelated matchups for contrast (a hump in the middle). Waiting on the owner.
+
+### S36, round 7: one chance per matchup, and the bars (owner: "do the fix for 1, and build the bars for 3")
+
+- **One number per matchup.** While the Final Window has its numbers, `chanceOf` (thisWeek.js) returns its chance for
+  those leagues (`finalChanceOf`), so the league tiles, Still in play, the Lineup tab's strip, the "effectively decided"
+  rule and the root-for weights all read the same figure. New scores clear the Final Window's numbers (they wait for its
+  next run, and meanwhile S21's chances show, as before); outside the window nothing changes. Best Ball leagues aren't in
+  its run, so they keep none, as before.
+- **The bars.** The tiles are now **At stake** and **Expected** ("1.6 W · on average"), then **"How many of the 6 you
+  win"**: one bar per number of wins among the matchups at stake (0 up to a clean sweep), its height the share of runs
+  that ended that way (tallest 72px), labeled with the percent ("<1%" for a sliver; past 10 at stake only bars of 5%
+  or more are labeled). A text alternative names every bar (`role="img"`, aria-label "0 W 37%, 1 W 24%, …"). On phones
+  the tiles sit two across over the bars; from 900px the two tiles stack at the left of the bars. Most likely, Best case,
+  Clean sweep and "usually" are gone (the bars show all of them). `simulateWindow` returns `dist`; the bars use the
+  site's blue (`--btn-blue-bg`). No legend line: a chart, not a badge.
+- Tests: a unit test for `dist` (four coin flips 1-4-6-4-1, the sure win left out, a linked trio all-or-nothing); the
+  spec checks the two tiles, the bars' heading, count, labels, aria-label, that they add up to 100 and that the
+  tallest is the most common, seven bars with six at stake, and that the tile, Still in play and the Lineup tab's strip
+  show the Final Window's own percent. That test found a double rounding (26.49% read "26%" on the card and "27%" on
+  the tile, rounded to 26.5 first): `finalChanceOf` now passes the share unrounded. In the live specs, which card comes
+  first depends on the runs, so they open "What if…" when it's folded (`openWhatIf`). Ran `mls-final-window` three
+  times over (54 passed), `mls-this-week`, `mls-root-for`, `mls-root-kickoff-find`, `tooltips-onscreen`, unit tests,
+  check-precache. Screenshots: only the two Guide PNGs change (its text); re-taken on CI.
+
+### S36, round 8: the whole Scoreboard on a Monday night (owner: "do A and B, note C and D")
+
+My review as a user of the whole tab (six matchups riding on the last games, seven leagues): fine on desktop (about two
+screens); about five screens on a phone, most of it after the Final Window repeating it (the league tiles repeat its
+scores and percents; Root for, Against you and the list by kickoff name Jefferson and Butker again).
+- **A, built: focus while the Final Window is open.** League Scoreboard and Player Scoreboard start folded to their
+  one-line summaries. A tap opens one for that window only: in memory (`focus` in thisWeek.js, keyed by week and
+  games), surviving a Refresh, never written to `mls_scoreboard_folds`. Fold the Final Window, or once it's gone, and
+  each is as remembered. On a phone the Monday page goes from about five screens to about two and a half.
+- **B, built: one credit line.** "Inspired by Sleepy, sleepy-football.vercel.app (the root-for board), and FF Historian,
+  ffhistorian.com (the Final Window)". Both links sit directly in the paragraph, so css/base.css's in-sentence rule
+  keeps their tap areas from covering each other when it wraps (F20).
+- **C and D, not built, for the owner to decide later:** written under "Open follow-ups" in docs/TESTING.md with the
+  card to review each: C (Player Scoreboard on a thin night, one line when few players are left) in **S37**, which
+  adds a per-player view of the same night; D (league tiles two across on phones) in **M17** (room on phones: full-width
+  sections, nothing boxed inside cards), together with the Final Window's own boxes, which M17's R1 rule would
+  flatten. (I first named U1; the owner pointed out it had already merged, and M17 is the card U1's round 2 became.)
+- CHANGELOG: the Final Window's entry rewritten as one bullet with sub-points (seven rounds had made it a run-on).
+- Specs: `mls-final-window` checks the two sections folded with their summaries, League opened for the window only
+  (surviving a Refresh, nothing stored), both as remembered with the window folded, Player folded again when it
+  reopens, and the one credit line. `mls-root-for.spec.mjs` (S27's fixture is also a Sunday-night final window) now
+  starts with the window folded, as `mls-this-week` does, and expects the one credit line. The both-live test uses
+  the first card (which matchups are still open depends on the runs). Ran `mls-final-window` and `mls-root-for` twice
+  over (76 passed), plus `mls-this-week`, `mls-root-kickoff-find`, `touch-targets`, `view-transitions`.
+- Screenshots: `desktop/` and `phone/mls-league-scoreboard.png` (the one credit line) and `desktop/` and
+  `phone/mls-league-guide.png` (the Guide's text); re-taken on CI.
+
+### S36, round 9: another pass as a user (owner: do 1 and 2)
+
+The whole Scoreboard on an ordinary Monday is now about a screen and a half on a phone and one screen on desktop.
+- **1, whose player:** each matchup's line says "your" and "their" before each side's names ("Up 1.0. Their Harrison
+  Butker needs 1.0+ more than your Justin Jefferson."; "Hold their James Cook III + Jordan Mason under 5.2 more.";
+  "Down 11.5. Your T.J. Hockenson + Jordan Addison need 11.5+ more."). When you led, "Harrison Butker needs …" read at
+  a glance like your own need. `needsLine` in lastWindow.js; unit tests and the spec updated.
+- **2, desktop:** the matchup cards side by side keep their own height (`align-items: start` on `.mls-fw-list`), so
+  the card beside an open "What if…" isn't stretched with empty space. The spec checks it at 1280px.
+- Not done (my optional 3): the bars from three at stake only. Left as is.
+- Ran `mls-final-window` twice over (36 passed) and the unit tests. Screenshots: the Guide's example sentence changed,
+  so `desktop/` and `phone/mls-league-guide.png` are re-taken on CI.
+
+### S36: the full check before the pull request
+
+`npm ci && npm run check` once, after merging main (U1's docs): check-precache and the unit tests passed; Playwright 966
+passed, 48 skipped, 28 failed. 4 were `visual.spec.mjs`'s environment check (this container's fonts), as on main.
+The other 24 were S22's `mls-mvp-lvp.spec.mjs`, at both widths: its Sunday fixture has only the night game left, so
+it's a Final Window, and focus folds Player Scoreboard, which holds MVPs & LVPs. Missed when I fixed the same in
+`mls-this-week` and `mls-root-for`. Fixed the same way (its setup, and its one-league test, start with the window
+folded); the spec then passed (32). Not run in full again, per rule 7; CI runs it on the pull request.

@@ -174,6 +174,26 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A chance to win is red when you're not favored.** On the Scoreboard's league tiles, Still in play, the Final
+  Window and the Lineup tab's matchup line, "74% to win" stays green and "26% to win" is now red. Before, every chance
+  was green, so a 3% long shot on a losing matchup read like good news.
+- **The Final Window, on the Scoreboard.** When the week is down to its last night games (Sunday night, or Monday's one
+  or two games) and every player still to play in your matchups is in them, a section above League Scoreboard shows
+  what rides on them: matchups at stake, expected wins, and a row of bars for how many of them you win (0 up to a clean
+  sweep), each the share of runs that ended that way. One simulation covers every matchup at once, so a player in
+  several of them moves them all together.
+  - What each matchup needs, in points ("Down 2.0. Your Justin Jefferson needs 2.0+ more than their Harrison
+    Butker"), with a win-chance bar, and a What if… table when two players decide it (open on the first matchup): what
+    one needs if the other goes quiet, hits his projection or has a big night. Five matchups, then Show all; a name
+    opens its lineup.
+  - Settled matchups share one line; with one matchup at stake, or none, one line replaces the tiles. Games under way
+    read "live", and "as of 9:12 PM" says how fresh the scores are.
+  - While it's open: League Scoreboard and Player Scoreboard start folded to one line each (a tap opens them; your own
+    folds are kept for the rest of the week), Still in play points to it, the league tiles, Still in play and the
+    Lineup tab use its chance to win so each matchup has one number, and the Dashboard's week line says "Final Window:
+    2 at stake".
+  - Inspired by FF Historian (ffhistorian.com), credited in the Guide and on one line with Sleepy under the Scoreboard.
+
 - **When you last synced, on the Dashboard.** Under Sync All Leagues and Optimize All Lineups, a line now says when
   you last synced your Sleeper leagues: "Last synced 9:42 AM", "yesterday 8:15 PM", "Sun 8:15 PM" or "Nov 9". It turns
   amber once that's over a day ago, or when a kickoff is less than 3 hours away and you haven't synced since 6 AM that
