@@ -34,6 +34,22 @@ function simulate(team1, team2) {
     });
 }
 
+// One history request per scoring format: the week files are shared (and cached in IndexedDB), and each league's
+// scoring picks a different points field out of them. Map scoringKey -> { id: [scores] } (null when it failed).
+async function historiesFor(matchups, season, week) {
+    const histories = new Map();
+    for (const key of new Set(matchups.map(m => m.scoringKey))) {
+        const ids = [...new Set(matchups.filter(m => m.scoringKey === key).flatMap(m => [...m.mine, ...m.theirs]).map(p => p.id))];
+        try {
+            const { blended } = await getPlayerWeeklyScoreHistory(ids, season, week, key, { minGamesBeforeSupplementing: MIN_RELIABLE_GAMES });
+            histories.set(key, blended || {});
+        } catch (e) {
+            histories.set(key, null);
+        }
+    }
+    return histories;
+}
+
 /**
  * matchups: [{ key, scoringKey, mine: [player], theirs: [player] }], where a player is
  *   { id, pos, team, actual: number | null (set once his game has kicked off), shareLeft: 0-1 (of his game still to
@@ -45,19 +61,7 @@ export async function matchupWinChances(matchups, { season, week }) {
     const out = new Map();
     if (!matchups.length || week == null || week < 2) return out;
 
-    // One history request per scoring format: the week files are shared (and cached in IndexedDB), and each league's
-    // scoring picks a different points field out of them.
-    const histories = new Map();
-    for (const key of new Set(matchups.map(m => m.scoringKey))) {
-        const ids = [...new Set(matchups.filter(m => m.scoringKey === key).flatMap(m => [...m.mine, ...m.theirs]).map(p => p.id))];
-        try {
-            const { blended } = await getPlayerWeeklyScoreHistory(ids, season, week, key, { minGamesBeforeSupplementing: MIN_RELIABLE_GAMES });
-            histories.set(key, blended || {});
-        } catch (e) {
-            histories.set(key, null);
-        }
-    }
-
+    const histories = await historiesFor(matchups, season, week);
     for (const m of matchups) {
         const history = histories.get(m.scoringKey);
         if (!history) continue;
@@ -73,6 +77,34 @@ export async function matchupWinChances(matchups, { season, week }) {
         if (!team1.length || !team2.length) continue;
         const pct = await simulate(team1, team2);
         if (pct !== null) out.set(m.key, Math.round(pct * 10) / 10);
+    }
+    return out;
+}
+
+/**
+ * The Final Window (improvements S36): each live player's points still to come, as the Simulator would draw them, in
+ * each matchup's own scoring. matchups: as matchupWinChances takes, with only the live players on each side.
+ * Returns Map key -> { mine: [{ id, pos, team, mean, sd }], theirs: [...] }: mean and sd of what's left (his profile's
+ * mean less what he has so far). Unlike the Simulator, a player with no game history still counts, at his projection
+ * with the Simulator's fallback spread (getPlayerVarianceProfile with no scores); with neither, at 0. A league whose
+ * history didn't load uses projections the same way, so the window never loses a matchup to a failed request.
+ */
+export async function remainingProfiles(matchups, { season, week }) {
+    const out = new Map();
+    if (!matchups.length || week == null) return out;
+    const histories = week >= 2 ? await historiesFor(matchups, season, week) : new Map();
+    const rest = (p, history) => {
+        const scores = (history && history[p.id]) || [];
+        const actual = typeof p.actual === 'number' ? p.actual : null;
+        const shareLeft = actual === null ? 1 : (p.shareLeft || 0);
+        if (actual !== null && shareLeft <= 0) return { id: p.id, pos: p.pos, team: p.team, mean: 0, sd: 0 };
+        const prof = getPlayerVarianceProfile(scores, { projectedMean: p.projected, actualScore: actual, shareLeft });
+        const mean = (Number(prof.mean) || 0) - (actual || 0), sd = Number(prof.stdDev) || 0;
+        return { id: p.id, pos: p.pos, team: p.team, mean: isFinite(mean) ? Math.max(mean, 0) : 0, sd: isFinite(sd) ? Math.max(sd, 0) : 0 };
+    };
+    for (const m of matchups) {
+        const history = histories.get(m.scoringKey) || null;
+        out.set(m.key, { mine: m.mine.map(p => rest(p, history)), theirs: m.theirs.map(p => rest(p, history)) });
     }
     return out;
 }

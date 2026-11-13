@@ -15,7 +15,7 @@
 import {
     BYE_BADGE_HTML, DISMISS_ICON, PICK_BADGE_HTML, STARTS_ICON, UPGRADE_ICON,
     WARNING_ICON, bestBallBadgeMarkup, edgeBadgeMarkup, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup, leagueStatusChipMarkup,
-    ROOT_ICONS, moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, rankGapChipMarkup, rootCountBadgeMarkup, rootOfBadgeMarkup, rootShareMarkup, scoutPillMarkup,
+    ROOT_ICONS, moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, rankGapChipMarkup, rootCountBadgeMarkup, rootOfBadgeMarkup, rootShareMarkup, finalChanceMarkup, scoutPillMarkup,
     opponentBadgeMarkup, sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, weekResultMarkup, weekStatusMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
@@ -115,7 +115,7 @@ const GROUPS = [
         ['<span class="rset-rank-chip is-mine">4</span>',
             'When you view a ranking set\'s players: one of yours (his rank in blue). Pick Other teams there to see who has the rest.'],
         [`<span class="freshness-stale">Synced 3 days ago</span> <span class="sync-failed">Last sync failed</span>`,
-            'Amber: this information is a few days old, so refresh it (Sync All Leagues for rosters). Red: the last sync failed.'],
+            'Amber: this information is a few days old, so refresh it (Sync All Leagues for rosters). Red: the last sync failed. The Dashboard\'s "Last synced" line under Sync All turns amber once your newest sync is over a day old, or when a kickoff is less than 3 hours away and you haven\'t synced since 6 AM that day.'],
         [leagueStatusChipMarkup('good', 'Rankings', '', SAMPLE) + leagueStatusChipMarkup('warn', 'Rankings', '', SAMPLE) + leagueStatusChipMarkup('danger', 'Lineup', '', SAMPLE) + leagueStatusChipMarkup('pending', 'Lineup', '', SAMPLE) + bestBallBadgeMarkup(),
             'On each league\'s card on the Dashboard. Rankings: green, its Weekly rankings are fresh (this week\'s); amber, they\'re stale or missing. Lineup: green, it matches your Sleeper lineup; red, it differs (the changes are in the card); amber, there\'s no Sleeper lineup to compare yet; grey, not optimized yet. BB: a Best Ball league, with no lineup to set. Tap a chip for more.'],
         [paidBadgeMarkup({ sample: true }),
@@ -128,6 +128,8 @@ const GROUPS = [
             'On the Scoreboard\'s Who to root for: how many of your matchups a player starts in. Green with a thumbs up, Root for: yours in 2 or more and against you in none. Red with a thumbs down, Against you: your opponents\' in 2 or more and yours in none. Amber with crossing arrows, Both sides: yours in 3 of his 4 (and against you in the other). A player on both sides with 75% or more of his leagues yours is in Root for instead, 25% or less in Against you, with the same "3 of 4 yours" in that color. Dimmed and marked "decided": every matchup he is in is already decided.'],
         [rootShareMarkup(72),
             'Tap a player on both sides for his stake: how much of his weight is in your leagues. Each league weighs more when it\'s paid (1.5 times), when the matchup is close (a decided one counts for nothing) and the bigger his share of his side\'s points still to come, so it can differ from the counts.'],
+        [`<span class="mls-fw-legend">${finalChanceMarkup(0.74, '74% to win')}</span><span class="mls-fw-legend">${finalChanceMarkup(0.26, '26% to win')}</span>`,
+            'In the Scoreboard\'s Final Window (when only the last night games are left): each matchup\'s chance to win, the bar green for yours, from one simulation of every live player across all your leagues at once. Every chance to win in the app (here, the league tiles, Still in play, the Lineup tab\'s matchup) is green when you\'re favored (50% or more) and red when you\'re not.'],
     ]],
     ['Schedule', [
         [sosBadgeMarkup(1, '', { compact: true, sample: true }) + sosBadgeMarkup(16, '', { compact: true, sample: true }) + sosBadgeMarkup(32, '', { compact: true, sample: true }),

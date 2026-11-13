@@ -58,6 +58,9 @@ async function setup(page, { leagues = 3, empty = false } = {}) {
     const state = await openApp(page, '/lineup/');
     await page.clock.setFixedTime(SUNDAY);
     await routeWeek(page, { empty });
+    // Only the Sunday night game is left, so this is the week's Final Window (S36); while it's open, League and Player
+    // Scoreboard start folded. These tests are about the root-for board, so the window starts folded.
+    await page.evaluate(() => localStorage.setItem('mls_scoreboard_folds', JSON.stringify({ final: false })));
     await seedMls(page);
     if (leagues >= 2) await addLeague(page, FIXTURE_LEAGUE2_ID, 2);
     if (leagues >= 3) await addLeague(page, FIXTURE_LEAGUE3_ID, 3);
@@ -210,7 +213,7 @@ test.describe('Scoreboard: who to root for', () => {
         await expect(section(page, 'league').locator(':scope > .mls-week-fold-body')).toBeHidden();
         await toggle('player').click();
         await expect(section(page, 'player').locator(':scope > .mls-week-fold-body')).toBeHidden();
-        expect(await page.evaluate(() => JSON.parse(localStorage.getItem('mls_scoreboard_folds')))).toEqual({ league: false, player: false });
+        expect(await page.evaluate(() => JSON.parse(localStorage.getItem('mls_scoreboard_folds')))).toEqual({ final: false, league: false, player: false });
         await page.reload();
         await showTab(page, 'scoreboard');
         await expect(toggle('league')).toHaveAttribute('aria-expanded', 'false');
@@ -221,8 +224,8 @@ test.describe('Scoreboard: who to root for', () => {
         await toggle('league').click();
         await toggle('player').click();
         await expect(toggle('player')).toHaveAttribute('aria-expanded', 'true');
-        // Back to the defaults: the key is removed.
-        expect(await page.evaluate(() => localStorage.getItem('mls_scoreboard_folds'))).toBeNull();
+        // Back to the defaults: only the Final Window's fold (seeded by setup) is left in the key.
+        expect(await page.evaluate(() => JSON.parse(localStorage.getItem('mls_scoreboard_folds')))).toEqual({ final: false });
         // With no player on both sides, that group says so.
         await expect(group(page, 'both')).toContainText('Nobody starts on both sides of your matchups.');
         await expectClean(page, state);
@@ -307,8 +310,10 @@ test.describe('Scoreboard: who to root for', () => {
                 .filter(el => { const r = el.getBoundingClientRect(); return r.width && (r.left < box.left - 1 || r.right > box.right + 1); }).length;
         });
         expect(over).toBe(0);
-        await expect(page.locator('.mls-scoreboard-credit')).toContainText('The root-for board was inspired by Sleepy');
-        await expect(page.locator('.mls-scoreboard-credit a')).toHaveAttribute('href', 'https://sleepy-football.vercel.app');
+        // The credit line under the card (S36 round 8: one line with the Final Window's).
+        const credit = page.locator('.mls-scoreboard-credit');
+        await expect(credit).toContainText('Inspired by Sleepy, sleepy-football.vercel.app (the root-for board)');
+        await expect(credit.locator('a').first()).toHaveAttribute('href', 'https://sleepy-football.vercel.app');
         await expectClean(page, state);
     });
 });

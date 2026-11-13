@@ -58,6 +58,9 @@ async function setup(page, opts = {}) {
     await page.clock.setFixedTime(SUNDAY);
     await routeWeek(page, o);
     if (o.routes) await o.routes(page);
+    // Only Jefferson is left, on Sunday night, so this is the week's Final Window (S36), and while that section is open
+    // Still in play just points to it. These tests are about Still in play's own list, so the window starts folded.
+    if (!o.finalOpen) await page.evaluate(() => localStorage.setItem('mls_scoreboard_folds', JSON.stringify({ final: false })));
     await seedMls(page);
     await page.fill('#sleeperLeagueId', FIXTURE_LEAGUE2_ID);
     await page.click('#mainSyncBtn');

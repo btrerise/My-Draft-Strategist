@@ -105,9 +105,16 @@ const lineFor = (pos) => state.data.weights?.byPos?.[pos]?.line || DEFAULT_LINES
 // The position's ROS PPG cutoffs for labels (Model Weights), or undefined: then labels go by rank.
 const cutoffsFor = (pos) => state.data.weights?.cutoffs?.[pos];
 
-function rowHTML(p, pos) {
+// FPOE/G with its sign: "+2.42", "−0.54" (a real minus), "0.00".
+const signed = (n) => (n === null || n === undefined ? '–' : n > 0 ? `+${n.toFixed(2)}` : n < 0 ? `\u2212${(-n).toFixed(2)}` : '0.00');
+
+// Whether a position's rows carry XFP/G (the sheet's optional columns; a copy saved before them has none).
+const hasExpected = (players) => !!players && players.some(p => p.xfp !== null && p.xfp !== undefined);
+
+function rowHTML(p, pos, expected) {
     const { label, cls } = labelFor(p, { cutoffs: cutoffsFor(pos), line: lineFor(pos) });
-    return `<tr><td>${p.rank}</td><td><strong>${escapeHtml(p.name)}</strong></td><td><span class="${cls}">${escapeHtml(label)}</span></td><td>${escapeHtml(p.team)}</td><td>${num(p.rosPpg)}</td><td>${num(p.fpg)}</td><td>${escapeHtml(p.targetShare)}</td><td>${moveHTML(p.move)}</td><td>${buySellHTML(p.buySell)}</td></tr>`;
+    const xCells = expected ? `<td>${num(p.xfp)}</td><td>${signed(p.fpoe)}</td>` : '';
+    return `<tr><td>${p.rank}</td><td><strong>${escapeHtml(p.name)}</strong></td><td><span class="${cls}">${escapeHtml(label)}</span></td><td>${escapeHtml(p.team)}</td><td>${num(p.rosPpg)}</td><td>${num(p.fpg)}</td>${xCells}<td>${escapeHtml(p.targetShare)}</td><td>${moveHTML(p.move)}</td><td>${buySellHTML(p.buySell)}</td></tr>`;
 }
 
 function weightsHTML() {
@@ -191,11 +198,13 @@ function render() {
     msgEl.hidden = !message;
 
     $('inSeasonTableWrap').hidden = !players;
+    const expected = hasExpected(players);
+    for (const id of ['inSeasonXfpTh', 'inSeasonFpoeTh']) { const th = $(id); if (th) th.hidden = !expected; }
     if (players) {
         const shown = state.buySellOnly ? players.filter(p => p.buySell) : players;
         body.innerHTML = shown.length
-            ? shown.map(p => rowHTML(p, pos)).join('')
-            : `<tr><td colspan="9" class="tscore-inseason-empty">No Buy or Sell calls at ${POS_LABEL[pos]} right now.</td></tr>`;
+            ? shown.map(p => rowHTML(p, pos, expected)).join('')
+            : `<tr><td colspan="${expected ? 11 : 9}" class="tscore-inseason-empty">No Buy or Sell calls at ${POS_LABEL[pos]} right now.</td></tr>`;
     } else {
         body.innerHTML = '';
     }

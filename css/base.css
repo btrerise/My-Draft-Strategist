@@ -2724,6 +2724,13 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
     left: min(0px, (100% - 48px) / 2);
     right: min(0px, (100% - 48px) / 2);
 }
+/* Links inside a sentence (directly in a paragraph or a list item) keep their text's size: WCAG 2.5.8's inline
+   exception, as tests/touch-targets.spec.mjs treats them. On a phone's wrapped lines one link's area would cover the
+   link on the line above (T-Score's "The Data": improvements F20). A link standing alone (Ko-fi, "Powered by
+   FantasyCalc", "Read Methodology") isn't directly in a <p> or <li> and keeps its area; the spec still checks those.
+   Zero specificity, like the rule above, so a component's own ::after still wins. The ::after stays, at the link's own
+   size: without it Chromium anti-aliased the ")" right after a link differently (T-Score's Research screenshots). */
+:where(p, li) > :where(a[href])::after { inset: 0; }
 /* Where neighbours sit closer than 48px, they split the gap (LOG M2). A close button grows away from what it closes (a
    banner's link or text sits to its left). The phone header's menu button sits right before the league arrow
    (Lineup) or 8px before the logo (T-Score). */

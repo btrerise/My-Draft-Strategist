@@ -17,6 +17,7 @@ import { updateWaiverScanSetting } from '../scout/waivers.js';
 import { isManualLeague, refreshManualInjuries } from '../leagues/manualInjuries.js';
 import { INFO_ICON, WARNING_ICON } from '../badges.js';
 import { showTab, updateDrawerActiveState } from '../nav.js';
+import { lastSyncedSummary } from '../leagues/lastSynced.js';
 
 
     export const renderSyncLogs = function() {
@@ -219,6 +220,27 @@ import { showTab, updateDrawerActiveState } from '../nav.js';
             ${checkLine}`;
         box.classList.toggle('has-problems', p > 0);
         box.hidden = false;
+    }
+
+    // "Last synced 9:42 AM" under Sync All / Optimize All (improvements S46; the rules are in leagues/lastSynced.js).
+    // Drawn with the league cards (renderLeagueCards), so it follows Sync All, Import All, the Draft Strategist hand-off,
+    // a single league's sync and the Dashboard being shown. No timer: the age is as of the last time the Dashboard drew.
+    const CLOCK_ICON = '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+    const FAILED_ICON = '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+    export function renderLastSynced() {
+        const line = document.getElementById('lastSyncedLine');
+        if (!line) return;
+        const sum = lastSyncedSummary(State.leagues, Date.now(), State.gameTimesByTeam);
+        if (!sum) {
+            line.hidden = true;
+            line.innerHTML = '';
+            return;
+        }
+        const parts = [];
+        if (sum.text) parts.push(`<span class="mls-last-synced-time ${sum.stale ? 'freshness-stale' : 'freshness-ok'}" title="${escapeHtml(sum.title)}">${CLOCK_ICON}${escapeHtml(sum.text)}</span>`);
+        if (sum.failed) parts.push(`<span class="mls-last-synced-failed sync-failed" title="${escapeHtml(sum.failed.title)}">${FAILED_ICON}${escapeHtml(sum.failed.text)}</span>`);
+        line.innerHTML = parts.join('');
+        line.hidden = false;
     }
 
     // ✕: hidden for the session, until a league it doesn't list now needs you (or the next run).

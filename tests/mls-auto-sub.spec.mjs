@@ -46,6 +46,9 @@ async function setup(page, opts) {
     const state = await openApp(page, '/lineup/');
     await page.clock.setFixedTime(SUNDAY);
     await routeWeek(page, opts);
+    // Only the Sunday night game is left, so this is the week's Final Window (S36), which folds the Player Scoreboard
+    // while it's open. These tests read the Player Scoreboard, so the window starts folded (as mls-mvp-lvp.spec.mjs).
+    await page.evaluate(() => localStorage.setItem('mls_scoreboard_folds', JSON.stringify({ final: false })));
     await seedMls(page);
     await page.fill('#sleeperLeagueId', FIXTURE_LEAGUE2_ID);
     await page.click('#mainSyncBtn');

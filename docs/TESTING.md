@@ -312,7 +312,12 @@ shot and S10 took four runs for 14.)
   covers part of a neighbour, or on a page that scrolls sideways; `focus-ring.spec.mjs` tabs through every tab and
   fails on a focused control without a 2px outline. A hit area that reaches up out of the Lineup tab's matchup strip, or
   past a switch drawn with `transform: scale()`, changed a few anti-aliased pixels in the screenshots: if a new area
-  moves pixels, aim it elsewhere.
+  moves pixels, aim it elsewhere. **Links inside a sentence** (directly in a `<p>` or `<li>`) keep their text's size
+  (`inset: 0`, improvements F20: WCAG 2.5.8's inline exception; on wrapped lines one link's area covered the link
+  above). So a link meant to stand alone goes in a `div` or `span`, not directly in a `<p>` or `<li>`, or it loses its
+  area (the spec then reports it as short). The spec waits for every animation that ends before it measures: a tab
+  measured on the first frame of its fade-in is at opacity 0, and `checkVisibility()` drops all of its controls (that
+  was why T-Score's tabs were measured only now and then).
 - **Image exports** (improvements S19, round 12): html2canvas draws text without the page's `tabular-nums`, so a new
   export calls `useProportionalDigits(clonedRoot)` (`js/shared/ui/exportImage.js`) in its `onclone`;
   `export-numerals.spec.mjs` checks three exports' clones; the Scoreboard's Export (improvements S22) is checked in
@@ -350,6 +355,23 @@ done or dropped, remove its line here in the same change. Background for each is
   (the worker picks per iteration); until then the Scoreboard shows no chance for Best Ball (S21, mid-game replay).
 - Save the name → position lookup (`window.sleeperPosByName`) so a new page doesn't rebuild it from the player map.
   Only a speed-up, and it needs a new storage key (3G).
+
+**Handed on by S36 for the owner to decide: a lighter Scoreboard on phones** (owner, 2026-11-13, after a review as
+a user of the whole Scoreboard on a Monday night; details in docs/improvements/LOG.md, S36 round 8). Not built; the card
+named reviews it with the owner.
+- **Review in S37 (the stat lines for the last game): Player Scoreboard on a thin night.** With one or two players
+  still to play, Who to root for's three boxes are mostly empty states ("6 finished", "All 2 have finished.") and the
+  list by kickoff names the same players again, about a phone screen and a half. It could shrink to one line ("Root for
+  Justin Jefferson · Against Harrison Butker", tap for the boxes) when few players are left. S37 adds a per-player view
+  of the same night to the Final Window, so decide there whether both are needed (S27, S33's `rootHTML` in
+  js/mls/week/thisWeek.js).
+- **Review in M17 (room on phones: full-width sections, nothing boxed inside cards): the league tiles on phones.**
+  "Every league, closest first" is one tile per row at 375px, so 20 leagues are about 1,600px. Two across would halve
+  it, but S21's round 6 keeps league names whole, which two across would cut on long names (S21, `tileHTML` and
+  `.mls-week-tiles` in css/mls.css). M17 keeps the week tiles as tiles, so decide there whether they also go two
+  across. M17 should also cover the Final Window's own boxes inside the Scoreboard card (its two tiles, the bars and
+  the matchup cards, `.mls-fw-*` in css/mls.css), which its R1 rule ("inside cards nothing is boxed again") would
+  flatten. (Moved from U1, which merged before this note was written.)
 
 **Handed on by M2 to later Material 3 cards** (the owner's decision, after M2; details in docs/improvements/LOG.md, M2).
 The card named does the item in its own session; remove the line when it's done.
