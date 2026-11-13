@@ -11273,3 +11273,7 @@ errors, 115 → 119 cards, the four new ones with prompts. It also marked U1 mer
 "awaiting its pull request" to "merged in #245", and gave "New" tags a "Nov 13" label. A second publish
 (1794580162-717c) marked F20 (#242) and S46 (#243) merged, noted the T1 follow-up (#244, no card), and added F20's
 ALLOW note to M16's scope.
+
+**Update (owner, 2026-11-13, later): R2 is now its own card, M17** ("Room on phones"), in weeks 12–13 before S32, so S32
+designs phone rows at the final 343px; M14 is back to surface tones and corners (runbook version 1794583305-ec84). Exports
+follow the new look, drawn the same on every device, instead of keeping today's.
