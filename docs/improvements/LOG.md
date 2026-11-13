@@ -11401,3 +11401,5 @@ Zone's 3px edge curved round its corners like a bracket; (5) Lineup rows are sti
 - **Screenshots** (local render against round 2's, `npm run pxdiff`): desktop `mds-empty-setup`, `mls-empty-setup`,
   `mls-league-setup` (the joined settings lists); phone `mds-draft-team`, `mds-empty-team` (the Team tab's cards to the
   edges), `mds-empty-setup`, `mls-empty-setup`, `mls-league-setup`.
+- **Re-taken on CI** (commit 00dfc40, "Screenshots re-taken on CI (8 PNGs)"): exactly those 8; opened and checked
+  (Advanced Settings one list with a straight red stripe, the Team tab's lineup to the screen's edges).
