@@ -11183,3 +11183,42 @@ lacks them; FPOE/G worked out from XFP/G alone. A unit test for the optional par
 **Screenshots.** Compared main against the branch in the same container: desktop `tscore-inSeasonTab.png` (two more
 columns) and desktop and phone `tscore-researchTab.png` (the new line); the phone In-Season PNG is unchanged (its
 table scrolls sideways and the new columns sit past the first screen). Re-taken on CI.
+
+## U1 — Research: how features are organized (the tabs are getting long)
+
+**Output.** `docs/improvements/organization.md`: an inventory of every tab of both apps at 375px (each card's height,
+how far its main action is from the bar, and what it's for), at 1280px in totals; usage (what Umami can tell, the
+owner's weekly cards, three proposed Umami events); Material 3's navigation bar, rail, drawer, tabs and canonical
+layouts, quoted from m3.material.io (rendered in headless Chromium, 2026-11-13); how each option fits the open layout
+cards; three options with mock-ups at 375 and 1280px, and a recommendation. Mock-ups in
+`docs/improvements/organization/` (22 PNGs, 256 colours): the real app at main 638d808, the fixture leagues synced and
+the fixture rankings loaded, mid-Sunday, its DOM edited in Playwright (a throwaway spec, not committed). No app code,
+CSS, baselines or `CACHE_NAME` change (docs only).
+
+**Findings.**
+- The length is mostly **setup and signposts, not weekly tools**: 66% of the phone Dashboard is set-once cards
+  (Add/Sync League, Active League Requirements, Advanced Settings, the Ko-fi foot); two cards only say where a feature
+  moved (Global Injury Auditor on Lineup since S11, Power Rankings on Scout since S29: 204px); Scout's "Sleeper Sync
+  Required" banner (177px) stays after a sync until dismissed.
+- Scout is two jobs (the Trade Analyzer 1.5 screens below the Waiver Wire Assistant at 375px); Lineup ends with the
+  occasional Simulator 3.5 screens down. The Scoreboard is already folds (S22, S27) and is fine.
+- Draft Strategist's length is all its Dashboard (4,592px at 375, all setup); S45 and S42 cover it, so no U1 card.
+- Umami today: page views per page only (A1's `data-exclude-hash`), plus K2's Ko-fi and Share and K3's Shared link
+  opened. Nothing per tab or card.
+- Material 3: three to five destinations in the bar; tabs inside a page swipe between themselves, which collides with
+  the app's swipe between destinations; on wide windows panes (M12, M13) are the answer to long pages.
+
+**The owner's weekly use** (asked 2026-11-13): League Command Center, Roster list, Power Rankings; Optimal Lineup and
+Bench, the Weekly rankings upload, Early Games; all four Scoreboard parts; Top Available, Auto-Find / Check a List and
+the Trade Analyzer. Not weekly: the setup cards, the Matchup Simulator, the Trade Finder.
+
+**Options put to the owner.** A base for all (S45's Settings page; the two signposts gone; the banner only while
+nothing is synced; Add/Sync League and Requirements folded once a league exists), then: **1** tidy in place, the
+occasional tools folded and jump chips on Scout and Lineup (recommended); **2** secondary tabs inside Scout (Waivers |
+Trades | Market); **3** trading moves to the Roster tab (renamed Team) and Scout becomes Waivers; **4** a sixth
+destination behind More (not recommended, against Material 3). Proposed cards for option 1 are at the end of
+organization.md.
+
+**Owner's decision.** Waiting (asked 2026-11-13).
+
+**Left over.** None yet; the build cards come from the decision.
