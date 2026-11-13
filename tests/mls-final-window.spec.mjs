@@ -42,6 +42,19 @@ const BOTH_LIVE = new Date('2026-09-22T02:30:00Z'); // both games under way
 const EXTRA = [['1000000000000000041', -1], ['1000000000000000042', 1], ['1000000000000000043', -3], ['1000000000000000044', 2]];
 
 const card = (page) => page.locator('#thisWeekCard');
+// Every win chance in a place, as [text, favored?, red?]: green at 50% or more, red under (round 5, owner's choice B).
+async function chanceTones(loc) {
+    return loc.locator('.mls-week-chance, .mls-week-tile-chance').evaluateAll(els => els.map(el => {
+        const t = el.textContent.trim();
+        const n = t.startsWith('<') ? 0 : (t.startsWith('>') ? 100 : parseFloat(t));
+        return [t, n >= 50, el.classList.contains('is-dog') && getComputedStyle(el).color === 'rgb(239, 68, 68)'];
+    }));
+}
+const expectTones = async (loc, atLeast = 1) => {
+    const tones = await chanceTones(loc);
+    expect(tones.length).toBeGreaterThanOrEqual(atLeast);
+    for (const [text, fav, red] of tones) expect(red, text).toBe(!fav);
+};
 const section = (page) => card(page).locator('.mls-week-fold[data-fold="final"]');
 
 async function addLeague(page, id, count) {
@@ -110,6 +123,8 @@ test.describe('Scoreboard: the Final Window', () => {
         await expect(third.locator('.mls-fw-need')).toHaveText('Down 2.0. WR Justin Jefferson needs 2.0+ more than K Harrison Butker.');
         await expect(third.locator('.mls-fw-need .pos-badge')).toHaveText(['WR', 'K']);
         await expect(third.locator('.mls-fw-bar .mls-week-chance')).toContainText('to win');
+        await expect(third.locator('.mls-fw-bar .mls-week-chance')).toHaveClass(/is-dog/);
+        await expectTones(sec, 2);
         await expect(third.locator('.mls-fw-table tbody tr')).toHaveCount(3);
         await expect(third.locator('.mls-fw-table tbody tr').first()).toContainText('Quiet: 0.0');
         await expect(third.locator('.mls-fw-table thead')).toHaveText('If Jefferson scoresButker must score');
@@ -145,6 +160,9 @@ test.describe('Scoreboard: the Final Window', () => {
         // Folded, Still in play lists its matchups again.
         await expect(league.locator('.mls-fw-pointer')).toHaveCount(0);
         await expect(league.locator('.mls-week-swing')).toHaveCount(2);
+        // Losing long shots read red there and on the tiles, as in the Final Window (26% and 3%).
+        await expectTones(league.locator('.mls-week-swings'), 2);
+        await expectTones(league.locator('.mls-week-tiles'), 2);
         await sec.locator('.mls-week-fold-toggle').click();
         await expect(sec.locator('.mls-week-fold-body')).toBeVisible();
         await expect(league.locator('.mls-fw-pointer')).toHaveCount(1);
@@ -197,6 +215,10 @@ test.describe('Scoreboard: the Final Window', () => {
         await expect(more).toHaveText('Show all 6');
         await more.click();
         await expect(sec.locator('.mls-fw-match')).toHaveCount(6);
+        // Favored and not, side by side: each percent green or red by its own number.
+        const tones = await chanceTones(sec);
+        expect(tones.some(([, fav]) => fav) && tones.some(([, fav]) => !fav)).toBe(true);
+        await expectTones(sec, 6);
         await expect(more).toHaveText('Show less');
         await expect(more).toBeFocused();
         await more.click();
@@ -211,6 +233,8 @@ test.describe('Scoreboard: the Final Window', () => {
         await third.locator('.mls-fw-match-open').click();
         await expect(page.locator('#lineupTab')).toHaveClass(/\bactive\b/);
         await expect(page.locator('#headerLeagueSelect')).toHaveValue(FIXTURE_LEAGUE3_ID);
+        // The Lineup tab's matchup strip colors its chance the same way.
+        await expectTones(page.locator('#lineupMatchupStrip'), 1);
         await expectClean(page, state);
     });
 

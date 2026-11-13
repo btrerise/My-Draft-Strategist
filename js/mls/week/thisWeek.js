@@ -414,6 +414,10 @@ const liveOf = (side) => [...side.live, ...side.liveBench];
 const trailReachOf = (res) => res.margin < 0 ? res.me.reach : (res.margin > 0 ? res.them.reach : Math.max(res.me.reach, res.them.reach));
 // "54%", or "<1%" / ">99%" for a chance that rounds to 0 or 100 while it's still in play (someone mid-game: round 12).
 const pctText = (c) => c < 0.5 ? '<1%' : (c > 99.5 ? '>99%' : `${Math.round(c)}%`);
+// Who's favored, for the percent's color (S36 round 5, owner's choice B): green at 50% or more, red under, on the tiles,
+// Still in play, the Lineup tab's strip and the Final Window. Before, every percent was green, so "3% to win" on a losing
+// matchup read like good news. c in percent (0-100).
+const chanceTone = (c) => c >= 50 ? 'is-fav' : 'is-dog';
 // Who's left, by name only when it's a few (owner, after the Thursday-night pass: every name on both sides, early in the
 // week, made the Scoreboard a wall of text). More than this many: just how many.
 const NAMES_UP_TO = 4;
@@ -520,7 +524,7 @@ function tileHTML(r, started, ctx) {
             youPts = fmt(res.me.points); oppPts = fmt(res.them.points); margin = res.margin;
             // A matchup still in play: its win chance beside the margin (owner, round 12, with the shorter list).
             const chance = res.status === 'swing' ? chanceOf(ctx, l.leagueId) : null;
-            if (chance != null) status.push(`<span class="mls-week-tile-chance">${pctText(chance)} to win</span>`);
+            if (chance != null) status.push(`<span class="mls-week-tile-chance ${chanceTone(chance)}">${pctText(chance)} to win</span>`);
         } else if (res.median) context.push(medianText(res.median, started));
     }
     const marginHTML = margin != null ? `<span class="mls-week-tile-margin${margin < 0 ? ' is-behind' : ''}">${signed(margin)}</span>` : '';
@@ -596,7 +600,7 @@ function swingHTML(r, ctx) {
             <span class="mls-week-line-name">${l.paid ? paidBadgeMarkup() + ' ' : ''}<span class="mls-week-name">${leagueName(l)}</span></span>
             <span class="mls-week-margin${res.margin < 0 ? ' is-behind' : ''}">${signed(res.margin)}</span>
         </div>
-        <div class="mls-week-swing-score">You ${fmt(res.me.points)} &middot; ${escapeHtml(res.oppName)} ${fmt(res.them.points)}${chance != null ? ` <span class="mls-week-chance">${pctText(chance)} to win</span>` : ''}</div>
+        <div class="mls-week-swing-score">You ${fmt(res.me.points)} &middot; ${escapeHtml(res.oppName)} ${fmt(res.them.points)}${chance != null ? ` <span class="mls-week-chance ${chanceTone(chance)}">${pctText(chance)} to win</span>` : ''}</div>
         <div class="mls-week-swing-live"><span class="mls-week-side">You:</span> ${liveText(liveOf(res.me))}</div>
         <div class="mls-week-swing-live"><span class="mls-week-side">Them:</span> ${liveText(liveOf(res.them))}</div>
     </li>`;
@@ -1787,7 +1791,7 @@ function renderMatchupStrip(m) {
         // The status, win chance and median: beside the score on wider screens, a line of their own on phones (the
         // owner, round 10: inline, they wrapped unevenly). A swing's live players get the line after.
         const status = res.status === 'swing'
-            ? (chance != null ? `<span class="mls-week-chance">${pctText(chance)} to win</span>` : '')
+            ? (chance != null ? `<span class="mls-week-chance ${chanceTone(chance)}">${pctText(chance)} to win</span>` : '')
             : `<span class="mls-strip-status">${m.final ? 'Final' : 'Effectively decided'}</span>`;
         main = `${weekResultMarkup(res.result)}${week}<span class="mls-strip-opp">vs ${escapeHtml(res.oppName)}</span>`
             + `<span class="mls-strip-score"><strong>${fmt(res.me.points)}</strong>&ndash;${fmt(res.them.points)}</span>`

@@ -2025,6 +2025,8 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .mls-week-tile-margin { color: var(--primary-green); font-variant-numeric: tabular-nums; font-weight: 600; }
 .mls-week-tile-margin.is-behind { color: #ef4444; }
 .mls-week-tile-chance { color: var(--primary-green); font-weight: 700; white-space: nowrap; }
+/* Under 50% (S36 round 5): red, as the margin when behind. */
+.mls-week-tile-chance.is-dog, .mls-week-chance.is-dog { color: #ef4444; }
 .mls-week-show-all { margin: 0.45rem 0 0; color: var(--primary-green); font-size: 0.8rem; font-weight: 600; cursor: pointer; padding: 0.2rem 0; }
 .mls-week-result { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 1.4rem; font-size: 0.7rem; font-weight: 700; border-radius: 4px; padding: 1px 0; }
 .mls-week-result.is-win { color: #10b981; background: rgba(16, 185, 129, 0.15); }
@@ -2988,5 +2990,5 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
     .mls-fw-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .mls-fw-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-.mls-fw-legend { display: inline-block; width: 150px; }
+.mls-fw-legend { display: inline-block; width: 150px; margin-right: 0.75rem; }
 .mls-fw-legend .mls-fw-bar { margin: 0; }

@@ -174,6 +174,9 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A chance to win is red when you're not favored.** On the Scoreboard's league tiles, Still in play, the Final
+  Window and the Lineup tab's matchup line, "74% to win" stays green and "26% to win" is now red. Before, every chance
+  was green, so a 3% long shot on a losing matchup read like good news.
 - **The Final Window, on the Scoreboard.** When the week is down to its last night games (Sunday night, or Monday's one
   or two games) and every player still to play in your matchups is in them, a section above League Scoreboard shows
   what rides on them: matchups at stake, expected wins with the usual range ("0.3 W · usually 0–1 W"), the best case and

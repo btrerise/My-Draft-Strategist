@@ -11316,7 +11316,7 @@ Tests: the spec checks the new title and tile wording, the "as of" and Refresh, 
 Lineup tab, and two new cases built by adding points to the opponent (`lead`): one at stake (one line, no tiles, one
 card) and none (one line, no cards, the settled line). Ran `mls-final-window`, `touch-targets`, `tooltips-onscreen`.
 
-**Follow-up for this session, before the pull request (owner, round 3):** "3% to win" is green on a losing, red-edged
+**Follow-up for this session, before the pull request (owner, round 3; done in round 5, below):** "3% to win" is green on a losing, red-edged
 card, which reads like good news at a glance. The League Scoreboard's tiles and Still in play use the same green, so
 the change is to color the percent by who's favored (red under 50%) in all three places at once: the Final Window,
 the league tiles and Still in play. Not done yet; the owner asked to keep it for this session before the PR.
@@ -11344,3 +11344,26 @@ in the 3rd quarter: "MIN @ CHI live, KC @ DEN …", Butker leading the table, "J
 the third league under other ids, served by the spec): five cards, Show all 6, Show less with focus kept. Ran
 `mls-final-window` (18), `mls-this-week`, `mls-root-for`, `mls-root-kickoff-find`, `mls-league-cards` (90), unit tests
 and check-precache.
+
+### S36, round 5: the win chance's color (round 3's follow-up; owner's choice B, in all four places)
+
+**The issue, as I put it to the owner.** Every chance to win was bold green whatever its number (S21 picked green to
+make the percent stand out, not to mean anything). Green means good everywhere else in the app, so a losing matchup
+could show a red margin, a red edge and a red L chip beside a green "3% to win". Options: A leave it; B green at 50% or
+more and red under; C the plain text color, leaving the margin, chip, edge and bar to say ahead or behind (my
+recommendation); D the Final Window only. **The owner chose B, in all four places, as part of S36.**
+
+**Outside this card.** The rule was shared, so this changes three S21 places as well as the Final Window: the
+Scoreboard's league tiles (`.mls-week-tile-chance`), Still in play (`.mls-week-chance` in `swingHTML`) and the Lineup
+tab's matchup strip (`renderMatchupStrip`). The card's "don't touch" list has the Scoreboard's tiles: their rules are
+unchanged; only the percent's color, at the owner's request. Who to root for's league detail ("26% to win" in plain
+text) was never colored and isn't now.
+
+**What changed.** `chanceTone` in `thisWeek.js` (`is-fav` at 50% or more, `is-dog` under) on the three S21 spans;
+`finalChanceMarkup` (badges.js) the same; `css/mls.css` one rule (`is-dog`: #ef4444, the margin's red when behind).
+The badge legend's Final Window line shows a green and a red sample and says the rule holds for every chance in the
+app. CHANGELOG line under Lineup Strategist.
+
+**Tests.** `mls-final-window.spec.mjs` checks every percent's class and color against its own number in the Final
+Window (including six at stake with favored and not side by side), on the league tiles, in Still in play (with the
+window folded) and in the Lineup tab's strip. `mls-this-week` and `badge-legend` still pass.
