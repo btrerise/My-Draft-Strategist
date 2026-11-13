@@ -11278,7 +11278,6 @@ ALLOW note to M16's scope.
 designs phone rows at the final 343px; M14 is back to surface tones and corners (runbook version 1794583305-ec84). Exports
 follow the new look, drawn the same on every device, instead of keeping today's.
 
-<<<<<<< HEAD
 ## M17 — Room on phones: full-width sections, and nothing boxed inside cards
 
 From U1's round 2 (R1 and R2, `docs/improvements/organization.md` section 7), split out of M14 so it lands before S32.
@@ -11424,7 +11423,7 @@ item's trailing icon "can communicate an action" only among other list items. So
   read as tappable. 16px over 8px: the frame's edge lines up with every section's text (Material 3's compact margin).
 - **Screenshots** (local render against round 3's): phone `mds-empty-setup`, `mls-empty-setup`, `mls-league-lineup`,
   `mls-league-roster`, `mls-league-setup`. Specs: room-on-phones, mds-setup, touch-targets pass.
-=======
+
 ## S36 — The Final Window: what rides on the last game of the week
 
 **User-visible effect.** On the Scoreboard, when every player still to play in your head-to-head matchups is in the
@@ -11699,4 +11698,3 @@ The other 24 were S22's `mls-mvp-lvp.spec.mjs`, at both widths: its Sunday fixtu
 it's a Final Window, and focus folds Player Scoreboard, which holds MVPs & LVPs. Missed when I fixed the same in
 `mls-this-week` and `mls-root-for`. Fixed the same way (its setup, and its one-league test, start with the window
 folded); the spec then passed (32). Not run in full again, per rule 7; CI runs it on the pull request.
->>>>>>> origin/main

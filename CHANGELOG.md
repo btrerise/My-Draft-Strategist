@@ -181,7 +181,6 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-<<<<<<< HEAD
 - **More room on phones, and nothing boxed inside a card.** Inside a card, rows (lineup, roster, waiver results, league
   cards) are plain list rows with a divider instead of boxes in the box; folded sections, toggle rows and the "needs
   you" boxes are a lighter shade with no border. The colours that mean something stay as a 3px edge: the league card's
@@ -192,7 +191,7 @@ What changed for users in each version of the two apps, in plain language. Newes
   phone as on a computer, in the site's current look. Advanced Settings is one list with dividers instead of separate
   strips, and the Danger Zone's red edge is a straight stripe. On phones Setup Progress runs to the screen's edges like a
   section; banners and the matchup strip keep their frame.
-=======
+
 - **A chance to win is red when you're not favored.** On the Scoreboard's league tiles, Still in play, the Final
   Window and the Lineup tab's matchup line, "74% to win" stays green and "26% to win" is now red. Before, every chance
   was green, so a 3% long shot on a losing matchup read like good news.
@@ -212,7 +211,6 @@ What changed for users in each version of the two apps, in plain language. Newes
     Lineup tab use its chance to win so each matchup has one number, and the Dashboard's week line says "Final Window:
     2 at stake".
   - Inspired by FF Historian (ffhistorian.com), credited in the Guide and on one line with Sleepy under the Scoreboard.
->>>>>>> origin/main
 
 - **When you last synced, on the Dashboard.** Under Sync All Leagues and Optimize All Lineups, a line now says when
   you last synced your Sleeper leagues: "Last synced 9:42 AM", "yesterday 8:15 PM", "Sun 8:15 PM" or "Nov 9". It turns
