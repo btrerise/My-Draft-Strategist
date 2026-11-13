@@ -11373,3 +11373,5 @@ The owner asked why T-Score got an exception and whether the Board had an edge-t
   first MLS shot usually lands inside that. Main's baseline, all four renders in this container and that run show it
   green; round 1's CI run (43486153756) was slower and caught "Sync Sleeper" (blue), which round 1 committed. Re-taken
   here with it named, so the baseline is green again, as on main. The race itself is a follow-up in TESTING.md.
+- **Re-taken on CI** (run 43493450519, commit 5843d8e, "Screenshots re-taken on CI (9 PNGs)"): exactly those 9; opened
+  and checked (the Board's grid from the 16px margin to the screen's edge, the Dashboard's Sync button green as on main).
