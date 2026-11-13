@@ -11367,3 +11367,22 @@ app. CHANGELOG line under Lineup Strategist.
 **Tests.** `mls-final-window.spec.mjs` checks every percent's class and color against its own number in the Final
 Window (including six at stake with favored and not side by side), on the league tiles, in Still in play (with the
 window folded) and in the Lineup tab's strip. `mls-this-week` and `badge-legend` still pass.
+
+### S36, round 6: a fourth pass as a user (owner: do 2a; explain 1 and 3 first)
+
+- **2a, built:** each card's two-player table sits behind a **"What if…"** toggle (chevron, `aria-expanded`), open on
+  the first card and folded on the rest, so six cards that hinge on the same two players don't show six tables. A tap
+  opens or closes it in place (`toggleFinalWhatIf`, main.js), remembered by league for the visit in memory (a Refresh
+  keeps it). Spec: open on the first, folded on the second, a tap opens it with focus kept, closing the first, both
+  surviving a Refresh.
+- **1, asked about, not built yet:** the Final Window said 27% to win where the same league's tile said 25%. Measured
+  over six runs: both numbers wobble between 25% and 27% from run to run, so it isn't two different models but the
+  same one (the Simulator's per-player model, `getPlayerVarianceProfile`) rolled twice, 10,000 runs each, about ±1
+  point of noise. Two real differences could make the gap bigger in rare cases: the Final Window counts a player with
+  no game history (at his projection; S21's run leaves him out), and it links a QB and his own team's WR/TE across
+  leagues (S21's only within one roster). Proposed fix: while the Final Window has its numbers, the tiles, Still in
+  play and the Lineup tab's strip show its chance for those leagues. Waiting on the owner.
+- **3, asked about, mock-up sent:** with linked matchups, Expected 2.0, "usually 0–6" and "Most likely 0 W" are hard
+  to square, because the outcomes pile up at both ends. Mock-up (375 and 1280px): keep At stake and Expected, and swap
+  Most likely and Clean sweep for one row of bars, one per number of wins (0 to 6), the last bar being the sweep; with
+  six unrelated matchups for contrast (a hump in the middle). Waiting on the owner.

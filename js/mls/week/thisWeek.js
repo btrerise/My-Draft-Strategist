@@ -837,6 +837,18 @@ function renderScoreboard(m) {
 const FINAL_ICON = `<svg class="mls-fw-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
 const finalView = { key: '', week: null, result: null, failed: false };
 const FINAL_SHOWN = 5;
+// Each card's "What if…" table (round 5, owner's choice 2a): open on the first card, folded on the rest, so six cards
+// that hinge on the same two players don't repeat six tables. A tap is remembered for the visit (by league), in memory.
+const finalWhatIf = new Map();
+export function toggleFinalWhatIf(leagueId) {
+    const btn = [...document.querySelectorAll('#thisWeekCard .mls-fw-whatif-toggle')].find(b => b.dataset.leagueId === leagueId);
+    if (!btn) return;
+    const open = btn.getAttribute('aria-expanded') !== 'true';
+    finalWhatIf.set(leagueId, open);
+    btn.setAttribute('aria-expanded', String(open));
+    const body = document.getElementById(btn.getAttribute('aria-controls'));
+    if (body) body.hidden = !open;
+}
 export function showAllFinal() {
     const week = weekCtx().week;
     view.allFinalWeek = view.allFinalWeek === week ? null : week;
@@ -969,7 +981,7 @@ function finalHTML(fm, ctx) {
     const done = res ? order.filter(r => settled(chance(r))) : [];
     // Five cards, then "Show all N" (round 4: with 11 at stake, a phone scrolled four or five screens), as Still in play.
     const allShown = view.allFinalWeek === fm.week;
-    const items = (allShown ? open : open.slice(0, FINAL_SHOWN)).map(r => {
+    const items = (allShown ? open : open.slice(0, FINAL_SHOWN)).map((r, index) => {
         const l = r.league, x = r.res, c = chance(r);
         const sim = res && res.matchups.get(l.leagueId);
         const mine = liveSide(x.me), theirs = liveSide(x.them);
@@ -983,8 +995,10 @@ function finalHTML(fm, ctx) {
             const playing = (who) => [...mine, ...theirs].some(p => p.id === who.id && typeof p.actual === 'number');
             const verb = (who, base) => playing(who) ? base.replace('score', 'add').replace('scores', 'adds') : base;
             const label = (row) => row.label === 'Projection' && playing(two.first) ? 'Projected from here' : row.label;
-            table = `<table class="mls-fw-table"><thead><tr><th scope="col">If ${escapeHtml(shortName(two.first.name))} ${playing(two.first) ? 'adds' : 'scores'}</th><th scope="col">${escapeHtml(shortName(two.second.name))} ${verb(two.second, 'must score')}</th></tr></thead><tbody>${
-                two.rows.map(row => `<tr><td>${label(row)}: ${fmt(row.value)}</td><td>${row.text}</td></tr>`).join('')}</tbody></table>`;
+            const id = `mlsFwWhatIf-${escapeHtml(l.leagueId)}`;
+            const shown = finalWhatIf.get(l.leagueId) ?? index === 0;
+            table = `<button type="button" class="btn-bare mls-fw-whatif-toggle" data-action="toggleFinalWhatIf" data-league-id="${escapeHtml(l.leagueId)}" aria-expanded="${shown}" aria-controls="${id}">${CHEVRON}What if…</button><div id="${id}" class="mls-fw-whatif"${shown ? '' : ' hidden'}><table class="mls-fw-table"><thead><tr><th scope="col">If ${escapeHtml(shortName(two.first.name))} ${playing(two.first) ? 'adds' : 'scores'}</th><th scope="col">${escapeHtml(shortName(two.second.name))} ${verb(two.second, 'must score')}</th></tr></thead><tbody>${
+                two.rows.map(row => `<tr><td>${label(row)}: ${fmt(row.value)}</td><td>${row.text}</td></tr>`).join('')}</tbody></table></div>`;
         }
         return `<li class="mls-fw-match${edge}">
             <button type="button" class="btn-bare mls-fw-match-open" data-action="openLeagueLineup" data-league-id="${escapeHtml(l.leagueId)}" aria-label="${leagueName(l)}: open its lineup">

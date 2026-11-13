@@ -131,6 +131,22 @@ test.describe('Scoreboard: the Final Window', () => {
         await expect(third.locator('.mls-fw-table tbody tr').first()).toContainText('you lose either way');
         const first = items.filter({ hasText: 'Fixture League' }).filter({ hasNotText: 'Second' }).filter({ hasNotText: 'Third' });
         await expect(first.locator('.mls-fw-need')).toHaveText('Down 6.0. WR Justin Jefferson needs 6.0+ more than K Harrison Butker.');
+        // "What if…": open on the first card (Third Fixture League, the closest), folded on the rest; a tap opens it
+        // in place, the chevron turning with aria-expanded, and it stays open across a redraw.
+        await expect(third.locator('.mls-fw-whatif-toggle')).toHaveAttribute('aria-expanded', 'true');
+        await expect(first.locator('.mls-fw-whatif-toggle')).toHaveAttribute('aria-expanded', 'false');
+        await expect(first.locator('.mls-fw-table')).toBeHidden();
+        await first.locator('.mls-fw-whatif-toggle').click();
+        await expect(first.locator('.mls-fw-table')).toBeVisible();
+        await expect(first.locator('.mls-fw-whatif-toggle')).toBeFocused();
+        await expect(first.locator('.mls-fw-whatif-toggle .chevron')).toHaveAttribute('aria-hidden', 'true');
+        await third.locator('.mls-fw-whatif-toggle').click();
+        await expect(third.locator('.mls-fw-table')).toBeHidden();
+        await card(page).locator('.mls-week-refresh').click();
+        await expect(card(page).locator('.mls-week-refresh')).not.toHaveAttribute('aria-busy', 'true');
+        await expect(sec.locator('.mls-fw-match').filter({ hasText: 'Fixture League' }).filter({ hasNotText: 'Third' }).locator('.mls-fw-table')).toBeVisible();
+        await expect(sec.locator('.mls-fw-match').filter({ hasText: 'Third Fixture League' }).locator('.mls-fw-table')).toBeHidden();
+        await third.locator('.mls-fw-whatif-toggle').click();
         // Up 42.2 against a kicker: settled, not at stake, on one line under the cards.
         await expect(items.filter({ hasText: 'Second Fixture League' })).toHaveCount(0);
         await expect(sec.locator('.mls-fw-note').first()).toHaveText('Settled: Second Fixture League (W, +42.2).');

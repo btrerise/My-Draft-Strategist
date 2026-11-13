@@ -2982,7 +2982,9 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .mls-fw-sub-row .mls-week-sub { margin-bottom: 0.4rem; }
 .mls-fw-asof { margin: 0 0 0.4rem auto; display: inline-flex; align-items: baseline; gap: 0.4rem; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
 .mls-fw-oneline { margin: 0.4rem 0; font-size: 0.85rem; color: var(--text-main); }
-.mls-fw-table { width: 100%; margin-top: 0.4rem; border-collapse: collapse; font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.mls-fw-whatif-toggle { display: inline-flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem; padding: 0.1rem 0; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+.mls-fw-whatif-toggle:hover { color: var(--text-main); }
+.mls-fw-table { width: 100%; margin-top: 0.2rem; border-collapse: collapse; font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .mls-fw-table th, .mls-fw-table td { padding: 0.2rem 0.3rem; border-top: 1px solid var(--border); text-align: left; font-weight: 400; }
 .mls-fw-table th { color: var(--text-muted); }
 .mls-fw-note { margin: 0.5rem 0 0; font-size: 0.75rem; }
