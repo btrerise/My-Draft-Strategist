@@ -17,6 +17,11 @@ banner gone, and a row of jump chips at the top of Scout and Lineup). It keeps f
 scroll per tab, and it fits every open layout card. Options 2 (secondary tabs inside Scout) and 3 (trading moves to the
 Roster tab) are below with mock-ups.
 
+**Round 2 (section 7): room on phones.** Content sits 21 to 55px from the screen's edge on a phone because cards hold
+boxes that hold boxes. Material 3 says to run lists edge to edge on phones with 16px margins and not to box what
+dividers can separate. **Recommendation: R2** (sections on phones, one box inside cards everywhere), built as part of
+M14.
+
 ## 1. Inventory at 375px
 
 Measured with `page.evaluate` on each tab at 375 x 812 (the fixture: one 2-team redraft league, 24 ranked players; the
@@ -312,3 +317,128 @@ everyone, option 3 can follow on top of it (the jump rows and folds carry over).
    README's privacy lines updated, a spec that the attributes are on the buttons.
 
 Draft Strategist needs no card from U1: S45 and S42 cover its Dashboard; M13 its Tracker.
+
+## 7. Room on phones: cards in a box (round 2, owner's question, 2026-11-13)
+
+**The question.** Most of both apps is "cards in a box": the page's padding, then a card's border and padding, then often
+a second bordered box (a lineup row, a folded section, a toggle row) with its own padding, before any content. How much
+width does that cost on a phone, and can Material 3 help?
+
+### How much room content gets at 375px today
+
+Measured on the real app (main, fixture data) at 375 x 812: the inset is the distance from the screen's edge to where
+content starts (left and right are the same), and the width is what's left. CSS: `.container` 8px on phones
+(css/base.css, `@media (max-width: 767px)`), `.settings-card` 1px border + 12px padding; the boxes inside add their own
+1px border and 6 to 16px padding.
+
+| What | Where | Inset | Width | Share of 375 |
+|---|---|---|---|---|
+| Text in a card | every tab | 21px | 333px | 89% |
+| Lineup row (a box in the card) | Lineup | 28px | 319px | 85% |
+| Roster row (a box in a padded list in the card) | Roster | 36px | 303px | 81% |
+| Folded section, toggle row (Lineup settings, Notifications…) | Dashboard, Lineup, Scout | 38px | 299px | 80% |
+| Sub-block in a card (the Simulator's parts; the Waiver Wire's results) | Lineup, Scout | 55px | 265px | 71% |
+| Tracker player card (its own card, no outer one) | Draft Strategist | 25px | 325px | 87% |
+| **Material 3's compact margin** | — | **16px** | **343px** | **91%** |
+
+The cost is in the second and third box, not the first. A Roster row loses 40px to boxes that Material 3 wouldn't
+draw, and the Simulator's and the Waiver Wire's sub-blocks lose 78px. Rows also stack those paddings vertically, plus
+an 8px gap between rows: a Lineup row is 79 to 97px tall, and some names and badge lines wrap to a third line.
+
+### What Material 3 says
+
+- **Cards** ([Guidelines](https://m3.material.io/components/cards/guidelines)): "Use a card to display content and
+  actions on a single topic." "Don't force content into cards when spacing, headlines, or dividers would create a
+  simpler visual hierarchy." "In mobile layouts, components such as lists or cards are stretched to fit the full width
+  of the screen." "On smaller screens with the compact breakpoint, consider swapping cards for lists, which can display
+  images and text in a more compact form." "Dividers can separate regions in cards."
+- **Lists** ([Guidelines](https://m3.material.io/components/lists/guidelines)): "Lists should extend edge-to-edge in
+  compact windows." "Limit the use of dividers to uncontained lists."
+- **Compact windows** ([Breakpoints: compact](https://m3.material.io/foundations/layout/breakpoints/compact)):
+  "Margins are 16dp from the leading and trailing edge of the window."
+- **Spacing** ([Spacing](https://m3.material.io/foundations/layout/grids-spacing/spacing)): explicit grouping ("outlines,
+  dividers, and shadows") and implicit grouping ("close proximity and open space"); "Give the most important content…
+  visual prominence with generous spacing and the brightest surfaces."
+- **Color roles** ([Roles](https://m3.material.io/styles/color/roles)): five surface container tones for "hierarchy and
+  nested containers" (M14's proposal: a nested container is a lighter tone, not another border).
+
+So Material 3 would: keep a card for one topic with actions, never put boxes in boxes, make the weekly lists (lineup,
+roster, player pool, waiver results) plain list rows with dividers, and on phones run sections to the screen's edge
+with 16px margins.
+
+### Two ways, with mock-ups
+
+Both are CSS only, injected into the real app. **R1** at every width, **R2** under 600px (Material 3's compact window;
+tablets and computers keep today's cards).
+
+- **R1, one box (M14's inside half, made concrete).** Cards stay as today. Inside a card nothing is boxed again: rows
+  become list rows with a divider (no border, no background, no side padding, no gap); folded sections, toggle rows and
+  sub-blocks become a slightly lighter tone with no border; the coloured edges that carry meaning (the league card's
+  amber "needs you", the active league's green) stay as a 3px edge.
+- **R2, sections on phones (R1 plus Material 3's compact layout).** Under 600px the page loses its 8px padding and each
+  card loses its side borders and corners: a full-width section with 16px margins, sections divided by an 8px band of
+  the page colour. Draft Strategist's player cards become list rows with dividers. Banners, the Setup Progress checklist
+  and the tier chips keep 16px margins. From 600px up it's R1.
+
+| | Today | R1, one box | R2, sections on phones |
+|---|---|---|---|
+| Text in a card | 333px | 333px | **343px** |
+| Lineup row | 319px | 333px | **343px** |
+| Roster row | 303px | 317px | **327px** (343px if the roster list's own padding goes too) |
+| Folded section, toggle row | 299px | 309px | **319px** |
+| Sub-block | 265px | 285px | **295px** |
+| Tracker player card | 325px | 325px | **343px** |
+| Lineup tab's length | 2,810px | −156px | **−231px** |
+| Roster tab's length | 2,502px | −155px | **−208px** |
+| Scout, Dashboard, Tracker | | about the same | 27 to 53px shorter |
+
+The Lineup tab at 375px (today, R1, R2):
+
+| Today | R1, one box | R2, sections on phones |
+|---|---|---|
+| ![Lineup today](organization/room-today-lineup-375.png) | ![Lineup, R1](organization/room-r1-lineup-375.png) | ![Lineup, R2](organization/room-r2-lineup-375.png) |
+
+The Roster tab and Draft Strategist's Tracker:
+
+| Roster today | Roster, R2 | Tracker today | Tracker, R2 |
+|---|---|---|---|
+| ![Roster today](organization/room-today-roster-375.png) | ![Roster, R2](organization/room-r2-roster-375.png) | ![Tracker today](organization/room-today-tracker-375.png) | ![Tracker, R2](organization/room-r2-tracker-375.png) |
+
+Everything else: [Roster, R1](organization/room-r1-roster-375.png); Dashboard [today](organization/room-today-setup-375.png),
+[R1](organization/room-r1-setup-375.png), [R2](organization/room-r2-setup-375.png); Scout
+[today](organization/room-today-scout-375.png), [R1](organization/room-r1-scout-375.png),
+[R2](organization/room-r2-scout-375.png); [Tracker, R1](organization/room-r1-tracker-375.png). At 1280px only R1
+changes anything (R2 is R1 there): Dashboard [today](organization/room-today-setup-1280.png) and
+[R1](organization/room-r1-setup-1280.png), Lineup [today](organization/room-today-lineup-1280.png) and
+[R1](organization/room-r1-lineup-1280.png).
+
+**What R1 and R2 don't fix.** A Lineup row's name column is about 130px wide because the slot badge, headshot, badge
+line and the points and buttons column share the row. That's S32's job (stack the headshot and badge, fewer badges at
+once). R2 gives S32 24px more to work with; it doesn't replace it.
+
+**Risks for the build card.**
+- **Exports.** The Lineup PNG, Export Team and Export Recap images are drawn from the page's DOM by html2canvas, so a
+  phone-width style would change a phone's export. The card must pin the exported element's width and look (M14's scope
+  already says "the export images keep their look").
+- **Identity.** Phones lose the framed-card look; tablets and computers keep it. R1 alone keeps it everywhere.
+- **Hover and tap feedback** on rows (M2's) moves from a border to a tone.
+- **Screenshots.** R1 changes every PNG with a row or a folded section; R2 every phone PNG. With M14's tones and corners
+  that's all 42 either way, so it should be one card, not two.
+
+### Recommendation for room on phones
+
+**R2, built as part of M14** (surface tones and corners, which already asks for mock-ups and re-takes all 42 PNGs).
+Phones get the room (rows +24px, sub-blocks +30px, the weekly tabs about 200px shorter) and Material 3's compact layout;
+tablets and computers keep their cards, now without boxes inside them. One visual card instead of two, and M14's
+"surface tones" half answers what replaces the inner borders.
+
+**How it fits the rest.**
+- **U1's cards 1 to 3** (tidy, folds, jump chips) are layout and behaviour; they re-take a few PNGs each. Run them
+  first, then M14 with R2 re-takes everything once. The jump row's sticky background is the page colour, so it works with
+  both looks.
+- **S32** (phone rows) can run before or after. Before, it designs rows for 319px and M14 widens them; after, it designs
+  for 343px. Since S32 is ready now and M14 isn't scheduled until later, I'd not hold S32 for it.
+- **M4, M9** (button groups, button emphasis) are visual too: one visual card at a time, as the runbook's notes say.
+- **M12, M13** (two panes from 1200px) and **M15** are unaffected: R2 is phone-only, and R1's flat rows read better
+  in a pane.
+- **U2** (onboarding): coach marks point at sections instead of cards; no difference in kind.
