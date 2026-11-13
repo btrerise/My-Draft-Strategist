@@ -11403,3 +11403,7 @@ Zone's 3px edge curved round its corners like a bracket; (5) Lineup rows are sti
   edges), `mds-empty-setup`, `mls-empty-setup`, `mls-league-setup`.
 - **Re-taken on CI** (commit 00dfc40, "Screenshots re-taken on CI (8 PNGs)"): exactly those 8; opened and checked
   (Advanced Settings one list with a straight red stripe, the Team tab's lineup to the screen's edges).
+- **The other specs** (every spec file this card hadn't run, 69 of them, both widths): 750 passed, 1 failed:
+  `mls-display-ranks.spec.mjs`'s phone check that the Lineup rank badge ("Pos: #5 (T3) | Flex: #13 (T3)") splits in two
+  on a narrow phone. At 320px a row now has 288px instead of 264px, so the badge fits on one line (nothing is cut off).
+  As S24 did when it moved the check from 390 to 320px, the check now uses a 300px window, where it still splits.
