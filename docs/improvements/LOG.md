@@ -11277,3 +11277,80 @@ ALLOW note to M16's scope.
 **Update (owner, 2026-11-13, later): R2 is now its own card, M17** ("Room on phones"), in weeks 12–13 before S32, so S32
 designs phone rows at the final 343px; M14 is back to surface tones and corners (runbook version 1794583305-ec84). Exports
 follow the new look, drawn the same on every device, instead of keeping today's.
+
+## M17 — Room on phones: full-width sections, and nothing boxed inside cards
+
+From U1's round 2 (R1 and R2, `docs/improvements/organization.md` section 7), split out of M14 so it lands before S32.
+
+**The owner's answers** (asked before building, with the Lineup, Roster, Dashboard and Scout tabs and the Tracker at
+375px and the Lineup tab at 1280px, today and after, plus Export Lineup made at 390 and 1280px; review page
+https://claude.ai/artifact/Pgf3ZTf3vBwtWSCw2jZwQB):
+1. **An 8px band of the page colour between sections on phones** (not a divider).
+2. **Every coloured edge that carries meaning stays, as a 3px edge**: the league card's amber "needs you" and green
+   active (amber wins when both, until nothing is left to do), the locked (green) and swapping (amber) Lineup rows, a
+   waiver result marked Start (green), the Danger Zone (red), the Power Rankings summary's tier colour. The week tiles
+   stay tiles.
+3. **Exports: approved** as shown (the 390px and 1280px images identical, 480px, the framed card with flat rows).
+4. **Row dividers a step brighter** than `--border` (owner, on the review page): `--divider`.
+
+**What changed and where.**
+- **css/base.css:** two variables in `:root`: `--surface-inset` (#182237, one shade lighter than the card, for nested
+  blocks) and `--divider` (#2a3546, between rows); M14 folds both into its surface tokens. `.lineup-slot` and
+  `.roster-item` are list rows: no border, background, radius, side padding or gap, a `--divider` line between rows,
+  M2's state layer as a 3% tone on hover (computers). `.toggle-row`, `.sos-details-accordion` and
+  `.settings-subsection`: `--surface-inset`, no border (the open fold's green border went too). The Danger Zone fold: a
+  3px red edge instead of its dashed frame. New last section **ROOM ON PHONES** (under 600px, both apps only, through
+  `.has-nav-bar`): `.container` has no side padding; `.settings-card` no border, corners or shadow, 16px side padding,
+  8px apart; whatever sits in the page outside a card (banners, Setup Progress, the tier chips, the matchup strip, the
+  Ko-fi foot) gets 16px margins. T-Score's folds keep their frame (`body:not(.has-nav-bar)`), so T-Score is identical.
+- **css/mls.css:** locked and swapping rows: a 3px inset edge with 0.75rem of room; empty slots muted, taxi rows a dashed
+  divider; `.scout-result-card` (waiver results, Market Disconnect, Trade Finder) list rows with dividers (its hover lift
+  gone); `.mls-scan-card-start`'s green border is a 3px inset edge; `.lineup-needs-box`, `.mls-needs-box`,
+  `.mls-week-summary-line`, `.mls-roster-power` and `.mls-power-summary-card` lighter with no frame (the summary keeps its
+  3px tier edge); `.mls-power-table-wrap` loses its frame; `.mls-lc-card` list rows with dividers. `#rosterList` kept
+  `.roster-empty-state`'s 8px side padding once it had rows: dropped, so a Roster row is 343px on a phone.
+- **css/mds.css:** under 600px `.player-card` is a list row (16px padding, a divider, no border, corners, gap or lift).
+- **Exports:** `EXPORT_WINDOW` in `js/shared/ui/exportImage.js` (`windowWidth: 1280`), spread into all four
+  html2canvas calls (Export Lineup and Export Trade in `js/mls/trade/export.js`, Export Recap in
+  `js/mls/week/thisWeek.js`, Export Team in `js/mds/export.js`): the clone is laid out at a computer's width, so it never
+  takes the phone layout, and Export Lineup's and Export Team's `maxWidth: '100%'` became `'none'` so the 480px holds.
+  Before, a phone's Export Lineup was 348px wide in the phone layout.
+- **Specs:** `tests/room-on-phones.spec.mjs` (at 375px a Lineup row is at x=16, 343px wide; the Lineup card is 375px
+  with no side border or corners and 16px padding; no bordered box inside any card on Dashboard, Roster, Lineup and Scout,
+  nor with Check a List's results, which are 343px; no sideways scroll; the Tracker's player cards 375px wide with 16px
+  padding; at 1280px every tab's first card keeps its 1px frame and 12px corners and the Lineup rows have no border).
+  `tests/export-same-everywhere.spec.mjs` (Export Lineup and Export Team made at 390px and at 1280px: both 960px at
+  scale 2 and pixel-identical). Run here: check-precache, `node --test` (627 pass), these two and export-flex,
+  export-numerals, mls-mvp-lvp, touch-targets, focus-ring, mls-league-cards, mls-lineup-needs, mls-trade-impact,
+  chevrons, scroll-shadows and smoke (146 pass). The full suite hasn't run yet (rule 7: when the pull request is asked
+  for).
+- `CACHE_NAME` v2.10.5. CHANGELOG lines under both apps. TESTING.md's M14 follow-up no longer lists the Scout result
+  cards' lift (gone here).
+
+**User-visible effect.** Inside a card, rows (lineup, roster, waiver and other Scout results, league cards) are plain
+list rows with a divider, and folded sections, toggle rows and the "needs you" boxes a lighter shade with no border; the
+coloured edges that mean something stay as a 3px edge. On a phone every section runs to the screen's edges with 16px
+margins and an 8px band between sections: a Lineup row gets 343px of 375 (319 before), a Roster row 343 (303), Check a
+List's results 343 (265). At 390px (the screenshots) the phone tabs are shorter: Lineup by 220px, Roster 233, Tracker
+255, Draft Strategist's Guide 285, Lineup Strategist's Guide 562. Tablets and computers keep their cards (the Lineup
+tab 145px shorter at 1280px, the Roster 177px). Every image export now looks like the site and is the same file on a
+phone as on a computer.
+
+**Screenshots** (23; found by rendering main and the branch in this container with `npm run pxdiff`, re-taken by CI):
+- **Phone, all 15 of the two apps' (R2, sections to the screen's edges):** `mds-draft-board`, `mds-draft-team`,
+  `mds-draft-tracker`, `mds-empty-board`, `mds-empty-guide`, `mds-empty-setup`, `mds-empty-team`, `mds-empty-tracker`,
+  `mls-empty-setup`, `mls-league-guide`, `mls-league-lineup`, `mls-league-roster`, `mls-league-scoreboard` (its
+  Week 2 line), `mls-league-scout`, `mls-league-setup`. The two Board PNGs keep their height: the board isn't in a
+  card, so it moved from 8px to 16px margins.
+- **Desktop, the 8 with rows, toggle rows or folds (R1):** `mds-draft-team`, `mds-empty-setup`, `mls-empty-setup`,
+  `mls-league-guide`, `mls-league-lineup`, `mls-league-roster`, `mls-league-scout`, `mls-league-setup`.
+- **Unchanged:** every T-Score PNG (an early render showed them 2px shorter, from the shared fold rule; T-Score's folds
+  now keep their frame) and the other 7 desktop PNGs of the two apps.
+
+**Left over.**
+- T-Score keeps its framed folds and 8px phone margins (this card covers the two apps). A small card if the owner wants
+  the same look there.
+- On a phone the Board's grid scrolls sideways inside 16px margins; running it to the screen's edges would show one more
+  column's sliver. Not asked; mention to S42 or M13.
+- M14 (surface tones and corners) takes `--surface-inset` and `--divider` into its tokens; S32 designs phone rows for
+  343px.

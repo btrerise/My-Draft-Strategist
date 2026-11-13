@@ -1438,6 +1438,14 @@ label.toggle-title,
     padding: 0.75rem 1rem;
 }
 
+/* T-Score (the page without the nav bar) keeps its framed folds: M17 covered the two apps only. */
+body:not(.has-nav-bar) .sos-details-accordion {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    transition: border-color 0.2s;
+}
+body:not(.has-nav-bar) .sos-details-accordion[open] { border-color: rgba(16, 185, 129, 0.3); }
+
 /* The Danger Zone accordion (MLS Setup, Advanced Settings): its red stays as a 3px edge (improvements M17). It has to
    come after the rule above, or its background wins. */
 .sos-details-accordion.danger-card {

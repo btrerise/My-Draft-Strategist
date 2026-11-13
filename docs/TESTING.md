@@ -368,8 +368,8 @@ The card named does the item in its own session; remove the line when it's done.
   in tests/touch-targets.spec.mjs (the spec must still pass), and re-take the screenshots this changes (most of both
   apps': every form and the header).
 - **M14 (surfaces and corners): no hover lift on cards.** After M2 the only lifts left on the site are cards: the
-  Tracker's player cards (`.player-card:hover`, css/mds.css: `translateY(-2px)` and a shadow), the Scout tab's result
-  cards (`.scout-result-card:hover`, css/mls.css: `translateY(-1px)`) and the guide banner (`.guide-banner:hover`,
+  Tracker's player cards (`.player-card:hover`, css/mds.css: `translateY(-2px)` and a shadow; gone under 600px since
+  improvements M17, which made them list rows there) and the guide banner (`.guide-banner:hover`,
   css/base.css: `translateY(-2px)`). Replace each lift with M14's surface-tone change (or the shared state layer if the
   card is a button). Computers only; no screenshot shows a hover.
 - **M4 (chips and segmented controls): 48px targets for the chips and segments.** On `ALLOW` in
