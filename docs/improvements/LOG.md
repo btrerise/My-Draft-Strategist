@@ -11431,6 +11431,8 @@ item's trailing icon "can communicate an action" only among other list items. So
   merge). The merge first committed conflict markers in CHANGELOG and LOG (both sides kept since). Specs after the merge:
   room-on-phones, export-same-everywhere, mls-final-window, mls-mvp-lvp, mls-this-week, mls-root-for, touch-targets,
   badge-legend (126 pass); check-precache; `node --test` (639 pass).
+- **Re-taken on CI** (commit f6b40f0, "Screenshots re-taken on CI (3 PNGs)"): exactly those 3; opened (the Scoreboard
+  with S36's changes, running to the screen's edges).
 
 ## S36 — The Final Window: what rides on the last game of the week
 
