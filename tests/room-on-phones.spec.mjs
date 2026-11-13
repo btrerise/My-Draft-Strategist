@@ -65,7 +65,7 @@ test.describe('room on phones', () => {
         await expectClean(page, state);
     });
 
-    test('at 375px Draft Strategist\'s player cards are list rows across the screen', async ({ page }, info) => {
+    test('at 375px Draft Strategist\'s player cards are list rows across the screen, and the Board runs to the edges', async ({ page }, info) => {
         test.skip(info.project.name !== 'phone', 'phone width');
         await page.setViewportSize({ width: 375, height: 812 });
         const state = await openApp(page, '/');
@@ -76,6 +76,16 @@ test.describe('room on phones', () => {
         }));
         for (const c of cards) expect(c).toEqual({ x: 0, width: 375, left: '0px', pad: '16px' });
         expect(await page.evaluate(BOXES_IN_CARDS)).toEqual([]);
+
+        // The Draft Board's grid still runs to the screen's edges (its phone bleed), starting at the 16px margin, and
+        // the page doesn't scroll sideways.
+        await showTab(page, 'board');
+        const board = await page.locator('#draftMatrixContainer').evaluate((el) => {
+            const r = el.getBoundingClientRect(); const cs = getComputedStyle(el);
+            return { x: r.x, width: r.width, pad: cs.paddingLeft, scrolls: el.scrollWidth > el.clientWidth };
+        });
+        expect(board).toEqual({ x: 0, width: 375, pad: '16px', scrolls: true });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth), 'the Board scrolls the page sideways').toBe(375);
         await expectClean(page, state);
     });
 

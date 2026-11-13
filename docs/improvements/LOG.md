@@ -11302,7 +11302,7 @@ https://claude.ai/artifact/Pgf3ZTf3vBwtWSCw2jZwQB):
   3px red edge instead of its dashed frame. New last section **ROOM ON PHONES** (under 600px, both apps only, through
   `.has-nav-bar`): `.container` has no side padding; `.settings-card` no border, corners or shadow, 16px side padding,
   8px apart; whatever sits in the page outside a card (banners, Setup Progress, the tier chips, the matchup strip, the
-  Ko-fi foot) gets 16px margins. T-Score's folds keep their frame (`body:not(.has-nav-bar)`), so T-Score is identical.
+  Ko-fi foot) gets 16px margins. (Round 1 kept T-Score's folds framed; round 2 dropped that, below.)
 - **css/mls.css:** locked and swapping rows: a 3px inset edge with 0.75rem of room; empty slots muted, taxi rows a dashed
   divider; `.scout-result-card` (waiver results, Market Disconnect, Trade Finder) list rows with dividers (its hover lift
   gone); `.mls-scan-card-start`'s green border is a 3px inset edge; `.lineup-needs-box`, `.mls-needs-box`,
@@ -11341,18 +11341,30 @@ phone as on a computer.
   `mds-draft-tracker`, `mds-empty-board`, `mds-empty-guide`, `mds-empty-setup`, `mds-empty-team`, `mds-empty-tracker`,
   `mls-empty-setup`, `mls-league-guide`, `mls-league-lineup`, `mls-league-roster`, `mls-league-scoreboard` (its
   Week 2 line), `mls-league-scout`, `mls-league-setup`. The two Board PNGs keep their height: the board isn't in a
-  card, so it moved from 8px to 16px margins.
+  card, so it moved from 8px to 16px margins (a regression, fixed in round 2).
 - **Desktop, the 8 with rows, toggle rows or folds (R1):** `mds-draft-team`, `mds-empty-setup`, `mls-empty-setup`,
   `mls-league-guide`, `mls-league-lineup`, `mls-league-roster`, `mls-league-scout`, `mls-league-setup`.
 - **Re-taken on CI** (run 43486153756, commit f068891, "Screenshots re-taken on CI (23 PNGs)"): exactly these 23, no
   other screenshot changed; opened and checked (rows flat at 343px, the Tracker's rows across the screen).
-- **Unchanged:** every T-Score PNG (an early render showed them 2px shorter, from the shared fold rule; T-Score's folds
-  now keep their frame) and the other 7 desktop PNGs of the two apps.
+- **Unchanged in round 1:** every T-Score PNG (an early render showed them 2px shorter, from the shared fold rule; a
+  T-Score-only rule kept its frame until round 2) and the other 7 desktop PNGs of the two apps.
 
 **Left over.**
-- T-Score keeps its framed folds and 8px phone margins (this card covers the two apps). A small card if the owner wants
-  the same look there.
-- On a phone the Board's grid scrolls sideways inside 16px margins; running it to the screen's edges would show one more
-  column's sliver. Not asked; mention to S42 or M13.
 - M14 (surface tones and corners) takes `--surface-inset` and `--divider` into its tokens; S32 designs phone rows for
-  343px.
+  343px. Both cards already say so; nothing was added to their runbook cards or to TESTING.md's follow-ups.
+
+### M17, round 2: the Draft Board runs to the edges again, and T-Score's folds match (owner, 2026-11-13)
+
+The owner asked why T-Score got an exception and whether the Board had an edge-to-edge rule.
+- **The Board was a regression of round 1.** css/mds.css's phone bleed (`.draft-board-container`, -0.5rem margins
+  matched to `.container`'s old 8px) ran the grid to the screen's edges; ROOM ON PHONES's 16px margins for what isn't a
+  card overrode it, so the grid sat inside 16px margins. Now the margin rule leaves the board out, and under 600px
+  (css/mds.css, last rule) the board is the screen's full width with 16px of inner padding: it starts at the margin
+  and scrolls to the edge. The bleed's -0.5rem would have scrolled the page sideways now that `.container` has no side
+  padding. `room-on-phones.spec.mjs` checks it (x 0, 375px wide, 16px padding, the grid scrolls, the page doesn't).
+- **T-Score matches (owner's choice).** Round 1 kept T-Score's framed folds with a T-Score-only rule; the owner chose
+  one look across the site, so that rule is gone and T-Score's folds are the lighter shade with no border like the two
+  apps'. T-Score keeps its 8px phone margins (ROOM ON PHONES needs the nav bar; not asked).
+- **Screenshots** (re-taken by CI, below): phone `mds-draft-board` and `mds-empty-board` (the grid from 16px to the
+  screen's edge); desktop and phone `tscore-inSeasonTab`, `tscore-researchTab` and `tscore-top50Tab` (2px shorter,
+  folds lighter without a border).

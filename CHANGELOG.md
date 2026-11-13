@@ -17,8 +17,9 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 - **More room on phones.** On a phone the Tracker's players are list rows across the screen with a divider between
   them, instead of separate cards with gaps, and every section runs to the screen's edges with 16px margins (an 8px
-  band of the page colour between sections). The Tracker is about 260px shorter. Tablets and computers keep their cards.
-  Export Team now draws the same image on a phone as on a computer.
+  band of the page colour between sections). The Tracker is about 260px shorter, and the Draft Board's grid still runs to
+  the screen's edge. Tablets and computers keep their cards. Export Team now draws the same image on a phone as on a
+  computer. T-Score's folded sections are a lighter shade with no border, like the apps'.
 
 - **T-Score: expected points beside points so far.** The In-Season tab adds XFP/G (expected fantasy points per game
   from a player's usage) and FPOE/G (how far above or below that he has scored) after FP/G, once the sheet carries

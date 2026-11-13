@@ -1051,3 +1051,17 @@ body.hide-headshots .draft-cell-img {
     .player-card + .player-card { border-top: 1px solid var(--divider); }
     .player-card:hover, .player-card:has(:focus-visible) { transform: none; box-shadow: none; }
 }
+
+/* The Draft Board's grid runs to the screen's edges on phones (the bleed above). Under 600px the page has no side
+   padding any more (css/base.css, ROOM ON PHONES), so the bleed's -0.5rem would overshoot and scroll the page sideways:
+   the grid sits at the edges and starts at the 16px margin instead, scrolling all the way to the edge
+   (improvements M17). */
+@media (max-width: 599.98px) {
+    .draft-board-container {
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}
