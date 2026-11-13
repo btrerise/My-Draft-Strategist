@@ -11731,3 +11731,5 @@ park the mouse) showed the rest. Three findings, all built:
   (the league card's edge); phone `mds-draft-tracker`, `mds-empty-board`, `mds-empty-team`, `mds-empty-tracker`,
   `mls-league-lineup`, `mls-league-roster`, `mls-league-setup`.
 - Specs run: room-on-phones, export-same-everywhere, mls-lineup-row-actions, mls-display-ranks, touch-targets (24 pass).
+- **Re-taken on CI** (commit 32c9f30, "Screenshots re-taken on CI (13 PNGs)"): exactly those 13; opened (the league
+  card's amber edge outside its content, the denser Tracker).
