@@ -1037,3 +1037,17 @@ body.hide-headshots .draft-cell-img {
     font-size: 0.8rem;
     white-space: nowrap;
 }
+
+/* Room on phones (improvements M17, css/base.css's ROOM ON PHONES): under 600px the Tracker's player cards are list rows
+   across the screen with 16px of padding and a divider, not cards with gaps. The lift on hover goes with the card. */
+@media (max-width: 599.98px) {
+    .player-pool-container { gap: 0; }
+    .player-card {
+        border: 0;
+        border-radius: 0;
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+    .player-card + .player-card { border-top: 1px solid var(--divider); }
+    .player-card:hover, .player-card:has(:focus-visible) { transform: none; box-shadow: none; }
+}

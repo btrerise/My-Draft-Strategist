@@ -1,0 +1,102 @@
+// Room on phones (improvements M17; U1 round 2's R1 and R2, docs/improvements/organization.md section 7).
+//   * Under 600px each section runs to the screen's edges with 16px margins: a Lineup row's content is 343px wide at
+//     375px (319px before), and a card has no side borders or corners.
+//   * At every width nothing inside a card is boxed again: rows are list rows with dividers, nested blocks a lighter shade
+//     with no border. Controls (buttons, fields, chips, badges) keep theirs; a coloured edge that carries meaning is a 3px
+//     inset shadow, not a border.
+//   * From 600px up the cards keep their frame.
+import { test, expect } from '@playwright/test';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, seedMds } from './helpers.mjs';
+
+// Every visible block inside a card that draws a border on its sides, other than controls and small marks. A box is a
+// block at least 40% as wide as its card whose left and right borders both show.
+const BOXES_IN_CARDS = () => {
+    const CONTROL = '.tooltip-text, .mls-segmented, button, input, select, textarea, a, summary, [role=button], .badge, [class*="badge"], [class*="chip"], [class*="pill"], table, th, td, tr, label';
+    const out = [];
+    for (const card of document.querySelectorAll('.settings-card')) {
+        if (!card.checkVisibility()) continue;
+        const cw = card.getBoundingClientRect().width;
+        for (const el of card.querySelectorAll('*')) {
+            if (el.matches(CONTROL) || el.closest(CONTROL) || !el.checkVisibility()) continue;
+            const r = el.getBoundingClientRect();
+            if (r.width < cw * 0.4 || r.height < 16) continue;
+            const cs = getComputedStyle(el);
+            const shows = (side) => parseFloat(cs[`border${side}Width`]) > 0 && cs[`border${side}Style`] !== 'none'
+                && !/rgba\(.*, 0\)$/.test(cs[`border${side}Color`]);
+            if (shows('Left') && shows('Right')) out.push(`${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}.${[...el.classList].join('.')}`);
+        }
+    }
+    return [...new Set(out)];
+};
+
+test.describe('room on phones', () => {
+    test('at 375px a Lineup row is 343px wide, cards run to the edges, and nothing in a card is boxed', async ({ page }, info) => {
+        test.skip(info.project.name !== 'phone', 'phone width');
+        await page.setViewportSize({ width: 375, height: 812 });
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+
+        await showTab(page, 'lineup');
+        const row = page.locator('#optimalLineupContainer .lineup-slot:not(.locked):not(.swapping)').first();
+        const box = await row.boundingBox();
+        expect(Math.round(box.x)).toBe(16);
+        expect(Math.round(box.width)).toBe(343);
+        const card = await page.locator('#lineupTab .settings-card').first().evaluate((el) => {
+            const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
+            return { x: r.x, width: r.width, left: cs.borderLeftWidth, radius: cs.borderTopLeftRadius, pad: cs.paddingLeft };
+        });
+        expect(card).toEqual({ x: 0, width: 375, left: '0px', radius: '0px', pad: '16px' });
+
+        for (const tab of ['setup', 'roster', 'lineup', 'scout']) {
+            await showTab(page, tab);
+            expect(await page.evaluate(BOXES_IN_CARDS), `boxes inside cards on ${tab}`).toEqual([]);
+            expect(await page.evaluate(() => document.documentElement.scrollWidth), `${tab} scrolls sideways`).toBe(375);
+        }
+        // The Waiver Wire's results: rows with a divider, 343px wide (265px before, inside two boxes).
+        await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
+        const result = page.locator('#scoutTab .scout-result-card').first();
+        await expect(result).toBeVisible();
+        expect(Math.round((await result.boundingBox()).width)).toBe(343);
+        expect(await page.evaluate(BOXES_IN_CARDS), 'boxes inside cards with waiver results').toEqual([]);
+        await expectClean(page, state);
+    });
+
+    test('at 375px Draft Strategist\'s player cards are list rows across the screen', async ({ page }, info) => {
+        test.skip(info.project.name !== 'phone', 'phone width');
+        await page.setViewportSize({ width: 375, height: 812 });
+        const state = await openApp(page, '/');
+        await seedMds(page);
+        const cards = await page.locator('#playerPool .player-card').evaluateAll((els) => els.slice(0, 3).map((el) => {
+            const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
+            return { x: r.x, width: r.width, left: cs.borderLeftWidth, pad: cs.paddingLeft };
+        }));
+        for (const c of cards) expect(c).toEqual({ x: 0, width: 375, left: '0px', pad: '16px' });
+        expect(await page.evaluate(BOXES_IN_CARDS)).toEqual([]);
+        await expectClean(page, state);
+    });
+
+    test('at 1280px cards keep their frame, with flat rows inside', async ({ page }, info) => {
+        test.skip(info.project.name !== 'desktop', 'desktop width');
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page);
+        for (const tab of ['setup', 'roster', 'lineup', 'scout']) {
+            await showTab(page, tab);
+            const frame = await page.locator(`#${tab}Tab .settings-card`).first().evaluate((el) => {
+                const cs = getComputedStyle(el);
+                return { left: cs.borderLeftWidth, radius: cs.borderTopLeftRadius };
+            });
+            expect(frame, `${tab}'s first card`).toEqual({ left: '1px', radius: '12px' });
+            expect(await page.evaluate(BOXES_IN_CARDS), `boxes inside cards on ${tab}`).toEqual([]);
+        }
+        await showTab(page, 'lineup');
+        const rows = await page.locator('#optimalLineupContainer .lineup-slot').evaluateAll((els) => els.map((el) => {
+            const cs = getComputedStyle(el);
+            return { left: cs.borderLeftWidth, bg: cs.backgroundColor };
+        }));
+        expect(rows.length).toBeGreaterThan(5);
+        for (const r of rows) expect(r.left).toBe('0px');
+        await expectClean(page, state);
+    });
+});

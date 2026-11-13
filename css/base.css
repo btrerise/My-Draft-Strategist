@@ -49,6 +49,12 @@
     /* The line where a dialog's scrolling middle meets its pinned title or buttons (improvements F10): --border is
        too faint to see on a phone. */
     --modal-edge: #334155;
+    /* Room on phones (improvements M17). Inside a card nothing is boxed again: a nested block (a folded section, a toggle
+       row, a "needs you" box) is this one shade lighter than the card, with no border, and rows are list rows split by
+       --divider, a step brighter than --border so they read on the dark card (owner's choice). M14 folds both into its
+       surface tokens. */
+    --surface-inset: #182237;
+    --divider: #2a3546;
 
     /* Premium Accents (Desaturated for better contrast) */
     --primary-green: #10b981; 
@@ -1028,8 +1034,7 @@ html { scroll-padding-top: 5rem; }
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem 1rem;
-    background: rgba(0,0,0,0.15);
-    border: 1px solid var(--border);
+    background: var(--surface-inset); /* one shade lighter, no border (improvements M17) */
     border-radius: 8px;
     margin-bottom: 1rem;
     gap: 16px;
@@ -1330,21 +1335,21 @@ label.toggle-title,
 .mls-pos-badge-sizing { min-width: 26px; padding: 2px 4px; text-align: center; }
 
 /* --- Lineup Slots & Roster Rows --- */
+/* List rows inside their card (improvements M17, Material 3: "don't force content into cards"): no box, border, side
+   padding or gap of their own, a divider between rows. A row whose state carries meaning (locked, swapping) keeps a 3px
+   coloured edge (css/mls.css). On hover a computer gets M2's state layer as a tone. */
 .lineup-slot, .roster-item { 
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
-    padding: 0.8rem 1rem; 
-    border: 1px solid var(--border); 
-    background: rgba(0, 0, 0, 0.2); 
-    margin-bottom: 0.5rem; 
-    border-radius: 8px; 
-    transition: border-color 0.2s, background-color 0.2s;
+    padding: 0.8rem 0; 
+    transition: background-color 0.15s;
     gap: 1rem;
 }
+.lineup-slot + .lineup-slot, .roster-item + .roster-item { border-top: 1px solid var(--divider); }
 
-.lineup-slot:hover, .roster-item:hover {
-    border-color: rgba(255, 255, 255, 0.15);
+@media (hover: hover) {
+    .lineup-slot:hover, .roster-item:hover { background-color: rgba(255, 255, 255, 0.03); }
 }
 
 /* 1. Fix position badge width so it never shifts */
@@ -1366,7 +1371,7 @@ label.toggle-title,
 /* Responsive adjustments for optimal mobile density */
 @media (max-width: 480px) {
     .lineup-slot, .roster-item { 
-        padding: 0.5rem 0.4rem; 
+        padding: 0.5rem 0; 
         gap: 0.4rem; 
     }
     
@@ -1425,24 +1430,20 @@ label.toggle-title,
    2. In the ROS/Weekly cards the chevron lives inside the button but is pinned to the header's
       right edge, where it used to sit after the tooltip. */
 /* Accordion styling for Manual SoS */
+/* A folded section inside a card: one shade lighter, no border (improvements M17). */
 .sos-details-accordion {
     margin-top: 1.25rem;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid var(--border);
+    background: var(--surface-inset);
     border-radius: 8px;
     padding: 0.75rem 1rem;
-    transition: border-color 0.2s;
 }
 
-.sos-details-accordion[open] {
-    border-color: rgba(16, 185, 129, 0.3);
-}
-
-/* The Danger Zone accordion (MLS Setup, Advanced Settings) gets .danger-card's red style; it has
-   to come after both rules above, or their border and background win, open or closed. */
+/* The Danger Zone accordion (MLS Setup, Advanced Settings): its red stays as a 3px edge (improvements M17). It has to
+   come after the rule above, or its background wins. */
 .sos-details-accordion.danger-card {
-    border: 1px dashed rgba(239, 68, 68, 0.4);
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.03), var(--card-bg));
+    border: 0;
+    background: var(--surface-inset);
+    box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.6);
 }
 
 .sos-summary {
@@ -2035,8 +2036,7 @@ a.nav-btn,
 .settings-subsection {
     margin-top: var(--space-5);
     padding: var(--space-4);
-    background: rgba(0, 0, 0, 0.15);
-    border: 1px solid var(--border);
+    background: var(--surface-inset); /* one shade lighter, no border (improvements M17) */
     border-radius: 8px;
 }
 .settings-subsection .toggle-row { padding: 0; border: none; background: none; margin-bottom: var(--space-3); }
@@ -2833,4 +2833,31 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
 }
 @media (min-width: 840px) {
     .has-nav-bar .notify-card { bottom: calc(24px + env(safe-area-inset-bottom)); }
+}
+
+/* --- ROOM ON PHONES (improvements M17; U1 round 2's R2, docs/improvements/organization.md section 7) ---
+   Material 3's compact window: under 600px both apps run each section to the screen's edges with 16px margins ("lists
+   should extend edge-to-edge in compact windows"), instead of a card in an 8px page padding with its own boxes inside.
+   .container loses its side padding; a card loses its side borders, corners and shadow and keeps 16px of padding;
+   sections are split by an 8px band of the page colour (owner's choice, over a divider). What isn't a card (banners,
+   the Setup Progress checklist, the tier chips, the matchup strip) keeps 16px margins. Draft Strategist's player cards
+   become list rows (css/mds.css). From 600px up the cards keep their frame, with flat rows inside (the rules above).
+   T-Score (no nav bar) is left as it is. The image exports lay their clone out at a computer's width, so they never get
+   this (EXPORT_WINDOW, js/shared/ui/exportImage.js). */
+@media (max-width: 599.98px) {
+    .has-nav-bar .container { padding-left: 0; padding-right: 0; }
+    .has-nav-bar .settings-card {
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding-left: 16px;
+        padding-right: 16px;
+        margin-bottom: 8px;
+    }
+    .has-nav-bar .container > :not(.tab-content):not(.settings-card):not(.sr-only),
+    .has-nav-bar .container > .tab-content > :not(.settings-card):not(.sr-only):not(.player-pool-container) {
+        margin-left: 16px;
+        margin-right: 16px;
+        width: calc(100% - 32px);
+    }
 }

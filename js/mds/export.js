@@ -1,7 +1,7 @@
 // Moved from js/mds/legacy.js (the second half of the old js/mds.js) in refactor chunk 2B:
 // TEAM EXPORT LOGIC.
 import { ensureHtml2Canvas } from '../shared/ui/scriptLoader.js';
-import { useProportionalDigits } from '../shared/ui/exportImage.js';
+import { useProportionalDigits, EXPORT_WINDOW } from '../shared/ui/exportImage.js';
 import { showToast } from '../shared/ui/toast.js';
 
 // html2canvas draws the image at this scale; the flex labels' canvases below match it so they stay sharp.
@@ -84,6 +84,7 @@ async function drawFlexLabelsOnCanvas(clonedDoc) {
             const canvas = await html2canvas(container, { 
                 backgroundColor: '#0a0e17', // Updated to match your true app background
                 scale: EXPORT_SCALE,
+                ...EXPORT_WINDOW, // the computer layout, so a phone's image matches (improvements M17)
                 useCORS: true,     
                 allowTaint: true,
                 onclone: async (clonedDoc) => {
@@ -108,7 +109,7 @@ async function drawFlexLabelsOnCanvas(clonedDoc) {
 
                     if (clonedContainer) {
                         clonedContainer.style.width = '480px';
-                        clonedContainer.style.maxWidth = '100%';
+                        clonedContainer.style.maxWidth = 'none';
                         clonedContainer.style.margin = '0 auto';
                         clonedContainer.style.padding = '1.5rem'; // Slight padding bump to frame the logo beautifully
                         clonedContainer.style.boxSizing = 'border-box';

@@ -74,7 +74,7 @@
 /* What this lineup needs from you (improvements S11, round 4; js/mls/lineup/gameInfo.js, getLineupNeedsHTML): one
    box above the lineup in place of the red injured-starter warning, the purple IR-slot line and the amber "differs
    from Sleeper" line. Neutral, like the Dashboard's box; each item takes its color (.mls-needs-item below). */
-.lineup-needs-box { border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); padding: 0.5rem 0.75rem; margin-bottom: 0.75rem; font-size: 0.85rem; }
+.lineup-needs-box { border-radius: 8px; background: var(--surface-inset); padding: 0.5rem 0.75rem; margin-bottom: 0.75rem; font-size: 0.85rem; }
 .lineup-needs-title { display: flex; align-items: center; gap: 6px; width: 100%; text-align: left; font-weight: 600; color: var(--text-main); cursor: pointer; }
 .lineup-needs-title > span { flex: 1; min-width: 0; }
 /* Its chevron turns with the shared .chevron rule (css/base.css, CHEVRONS; improvements F11). */
@@ -336,28 +336,28 @@ body.mls-hide-headshots .mls-headshot { display: none; }
 }
 
 /* --- Lineup Slots & Roster Rows --- */
+/* Rows are flat list rows (improvements M17): a state that carries meaning keeps a 3px coloured edge, with room for it. */
 .lineup-slot.locked { 
-    border-color: var(--primary-green); 
-    background: var(--target-bg); 
+    box-shadow: inset 3px 0 0 var(--primary-green); 
+    padding-left: 0.75rem; 
 }
 
 .lineup-slot.swapping, .roster-item.swapping { 
-    border-color: #f59e0b; 
-    background: rgba(245, 158, 11, 0.1); 
+    box-shadow: inset 3px 0 0 #f59e0b; 
+    background: rgba(245, 158, 11, 0.06); 
+    padding-left: 0.75rem; 
 }
 
 .lineup-slot.empty {
-    border: 1px dashed var(--border);
-    background: rgba(255, 255, 255, 0.01);
+    color: var(--text-muted);
 }
 
 /* Taxi-squad rows at the foot of the bench. Recedes via a flatter background and a dashed
    border -- the same "not in play" language .lineup-slot.empty already uses -- rather than
    via opacity, which would also wash out the TAXI and injury badges these rows exist to
    show. Everything on the row stays at full contrast; only its container steps back. */
-.lineup-slot.taxi-row {
-    border: 1px dashed var(--border);
-    background: rgba(0, 0, 0, 0.32);
+.lineup-slot.taxi-row + .lineup-slot.taxi-row {
+    border-top-style: dashed;
 }
 
 /* Separates real bench depth from the taxi squad below it. A rule with an inset label rather
@@ -540,21 +540,18 @@ button.close-chip {
 
 .scout-textarea:focus { border-color: var(--primary-green); }
 
+/* Result rows inside their card (improvements M17): list rows with a divider, no box. */
 .scout-result-card { 
-    background: var(--card-bg); 
-    border: 1px solid var(--border); 
-    border-radius: 8px; 
-    padding: 1rem; 
-    margin-bottom: 0.75rem; 
+    padding: 1rem 0; 
     display: flex; 
     justify-content: space-between; 
     align-items: center; 
-    transition: border-color 0.2s, transform 0.2s;
+    transition: background-color 0.15s;
 }
+.scout-result-card + .scout-result-card { border-top: 1px solid var(--divider); }
 
-.scout-result-card:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-    transform: translateY(-1px);
+@media (hover: hover) {
+    .scout-result-card:hover { background-color: rgba(255, 255, 255, 0.03); }
 }
 
 .scout-status { 
@@ -1672,6 +1669,8 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
         padding: 1.5rem 0.5rem;
     }
 }
+/* #rosterList keeps .roster-empty-state once it has rows; the rows then run to the card's padding (improvements M17). */
+.roster-container-wrapper .roster-empty-state:has(.roster-item) { padding: 0; }
 
 /* --- MOBILE COLLAPSIBLE CARDS CONDITIONAL LAYOUT --- */
 .custom-scrollbar::-webkit-scrollbar { width: 4px; } 
@@ -1702,7 +1701,7 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .mls-scan-notes { margin: 0.4rem 0 0; padding-left: 1.1rem; font-size: 0.78rem; }
 .mls-scan-notes li { margin-top: 0.2rem; }
 .mls-scan-card { align-items: flex-start; gap: 0.75rem; }
-.mls-scan-card-start { border-left: 3px solid var(--primary-green); }
+.mls-scan-card-start { box-shadow: inset 3px 0 0 var(--primary-green); padding-left: 0.75rem; }
 .mls-scan-main { min-width: 0; flex: 1; }
 .mls-scan-ranks { margin-top: 5px; }
 .mls-scan-verdict { font-size: 0.8rem; color: var(--text-main); margin-top: 6px; line-height: 1.4; }
@@ -1824,7 +1823,7 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .mls-last-synced[hidden] { display: none; }
 .mls-last-synced > span { display: inline-flex; align-items: center; gap: 0.3em; }
 .mls-last-synced svg { flex: none; }
-.mls-needs-box { margin-bottom: 0.75rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); padding: 0.5rem 0.75rem; }
+.mls-needs-box { margin-bottom: 0.75rem; border-radius: 8px; background: var(--surface-inset); padding: 0.5rem 0.75rem; }
 .mls-needs-box[hidden] { display: none; }
 .mls-needs-head { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: 600; color: var(--text-main); }
 .mls-needs-head > svg { flex-shrink: 0; color: var(--text-muted); }
@@ -1873,10 +1872,13 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .mls-lc-toolbar-summary { min-width: 0; }
 .mls-lc-toolbar-buttons { margin-left: auto; display: inline-flex; gap: 0.9rem; }
 .mls-lc-fold-all { color: var(--primary-green); font-weight: 600; text-decoration: underline; cursor: pointer; white-space: nowrap; }
-.mls-lc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
-.mls-lc-card { position: relative; border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); padding: 0.55rem 0.7rem 0.6rem; min-width: 0; }
-.mls-lc-card.is-active { background: rgba(16, 185, 129, 0.06); box-shadow: inset 3px 0 0 var(--primary-green); }
-.mls-lc-card.needs-you { border-color: rgba(245, 158, 11, 0.55); }
+/* League rows (improvements M17): list rows with a divider inside the Command Center's card. The active league keeps its
+   3px green edge, a league that needs you a 3px amber one (amber wins on the active league until nothing is left). */
+.mls-lc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.mls-lc-card { position: relative; padding: 0.55rem 0 0.6rem; min-width: 0; }
+.mls-lc-card + .mls-lc-card { border-top: 1px solid var(--divider); }
+.mls-lc-card.is-active { box-shadow: inset 3px 0 0 var(--primary-green); padding-left: 0.6rem; }
+.mls-lc-card.needs-you { box-shadow: inset 3px 0 0 #f59e0b; padding-left: 0.6rem; }
 .mls-lc-head { display: flex; align-items: flex-start; gap: 0.4rem; }
 .mls-lc-fold { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; color: var(--text-muted); cursor: pointer; }
 .mls-lc-fold:hover { color: var(--text-main); background: rgba(255, 255, 255, 0.06); }
@@ -1924,7 +1926,7 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .mls-lc-todo + .mls-lc-ba:has(> .mls-ba-fold[data-default="false"]) { display: none; }
 /* Phones: the status row starts at the card's edge, under the chevron, so the chips get the full width. */
 @media (max-width: 600px) {
-    .mls-lc-card { padding: 0.5rem 0.55rem 0.55rem; }
+    .mls-lc-card { padding-top: 0.5rem; padding-bottom: 0.55rem; }
     .mls-lc-status, .mls-lc-synced { margin-left: 0; }
 }
 
@@ -2035,9 +2037,9 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .mls-week-failed { color: #f87171; }
 .mls-week-foot { margin: 0.5rem 0 0; font-size: 0.75rem; }
 /* The Dashboard's line, opening the Scoreboard. */
-.mls-week-summary-line { display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.6rem; width: 100%; margin: 0 0 0.75rem; padding: 0.55rem 0.7rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); color: var(--text-main); font: inherit; text-align: left; cursor: pointer; }
+/* Inside the Command Center's card: one shade lighter, no border (improvements M17). */
+.mls-week-summary-line { display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.6rem; width: 100%; margin: 0 0 0.75rem; padding: 0.55rem 0.7rem; border: 0; border-radius: 8px; background: var(--surface-inset); color: var(--text-main); font: inherit; text-align: left; cursor: pointer; }
 .mls-week-summary-line[hidden] { display: none; }
-.mls-week-summary-line:hover { background: rgba(255, 255, 255, 0.04); }
 .mls-week-summary-line > svg:first-child { color: var(--primary-green); flex-shrink: 0; }
 .mls-week-summary-title { font-weight: 700; }
 .mls-week-summary-go { margin-left: auto; display: inline-flex; align-items: center; gap: 0.15rem; color: var(--primary-green); font-size: 0.8rem; font-weight: 600; }
@@ -2237,7 +2239,7 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
    Markup from renderPowerRankingsTable in js/mls/power/rosterCard.js. Replaces the old inline-styled table. Cell
    colors are the same green / neutral / red thirds powerTier() uses everywhere else.
    overflow: visible so the player tooltips aren't clipped by the table wrapper. */
-.mls-power-table-wrap { overflow: visible; border: 1px solid var(--border); border-radius: 6px; }
+.mls-power-table-wrap { overflow: visible; } /* no frame inside its card (improvements M17): the rows' dividers do */
 .mls-power-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 0.9rem; }
 .mls-power-table th {
     padding: 10px 6px;
@@ -2335,10 +2337,9 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .mls-power-summary-card {
     margin-bottom: 0.9rem;
     padding: 0.8rem 0.9rem;
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--border);
+    border-left: 3px solid var(--border); /* the tier's colour, a 3px edge; one shade lighter, no frame (improvements M17) */
     border-radius: 6px;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--surface-inset);
 }
 .mls-power-summary-contender { border-left-color: #4ade80; }
 .mls-power-summary-retool { border-left-color: #93c5fd; }
@@ -2356,9 +2357,8 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .mls-roster-power {
     margin-bottom: 0.9rem;
     padding: 0.75rem 0.85rem;
-    border: 1px solid var(--border);
     border-radius: 8px;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--surface-inset); /* one shade lighter, no border (improvements M17) */
 }
 .mls-roster-power-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin-bottom: 0.55rem; }
 .mls-roster-power-title { font-size: 0.8rem; font-weight: 700; color: var(--text-main); }

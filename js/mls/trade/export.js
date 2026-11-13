@@ -7,7 +7,7 @@ import { getActiveLeague } from '../helpers.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { flashButton } from '../../shared/ui/flashButton.js';
 import { ensureHtml2Canvas } from '../../shared/ui/scriptLoader.js';
-import { useProportionalDigits } from '../../shared/ui/exportImage.js';
+import { useProportionalDigits, EXPORT_WINDOW } from '../../shared/ui/exportImage.js';
 
 // The FLEX, SFLEX, W/T and W/R slot badges draw a blended border with two background layers: the dark fill
 // clipped to the padding box over the gradient clipped to the border box (css/mls.css, --*-blend in
@@ -102,6 +102,7 @@ function splitBlendedBorders(root) {
         const canvas = await html2canvas(container, { 
             backgroundColor: '#1c2541', 
             scale: 2,
+            ...EXPORT_WINDOW, // the computer layout, so a phone's image matches (improvements M17)
             onclone: (clonedDoc) => {
                 const clonedContainer = clonedDoc.getElementById('optimalLineupContainer');
                 if (clonedContainer) {
@@ -118,7 +119,7 @@ function splitBlendedBorders(root) {
                     clonedContainer.querySelectorAll('.lineup-needs-box, .mls-lineup-source').forEach(el => el.remove());
                     splitBlendedBorders(clonedContainer);
                     clonedContainer.style.width = '480px';
-                    clonedContainer.style.maxWidth = '100%';
+                    clonedContainer.style.maxWidth = 'none';
                     clonedContainer.style.margin = '0 auto';
                     clonedContainer.style.padding = '1rem';
                     clonedContainer.style.borderRadius = '8px';
@@ -203,6 +204,7 @@ export const exportTrade = async function() {
         const canvas = await html2canvas(out, {
             backgroundColor: '#1c2541',
             scale: 2,
+            ...EXPORT_WINDOW, // the computer layout, so a phone's image matches (improvements M17)
             onclone: (clonedDoc) => {
                 const clone = clonedDoc.getElementById('tradeOutput');
                 if (!clone) return;
