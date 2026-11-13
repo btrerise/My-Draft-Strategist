@@ -24,14 +24,22 @@ const benchButker = (name, lead = 0) => JSON.stringify(JSON.parse(fixture(name))
     return { ...e, points: Math.round((e.points - pts + extra) * 100) / 100, players_points: { ...e.players_points, [BUTKER]: 0 } };
 }));
 const GAMES = [['BUF', 'BAL'], ['CIN', 'DAL'], ['LV', 'ATL'], ['DET', 'NYG'], ['HOU', 'PHI'], ['KC', 'DEN'], ['MIN', 'CHI']];
-const scoreboard = (monday) => ({
+// live 'min': MIN @ CHI under way (3rd quarter, 10:00 left), KC @ DEN still to come. 'both': MIN @ CHI in the 2nd
+// quarter and KC @ DEN in the 4th (5:00 left), so Jefferson has more to come than Butker.
+const scoreboard = (monday, live = null) => ({
     events: GAMES.map(([a, b]) => {
         const [date, state] = monday
-            ? (a === 'MIN' ? ['2026-09-22T00:15:00Z', 'pre'] : a === 'KC' ? ['2026-09-22T01:15:00Z', 'pre'] : ['2026-09-20T17:00:00Z', 'post'])
+            ? (a === 'MIN' ? ['2026-09-22T00:15:00Z', live ? 'in' : 'pre'] : a === 'KC' ? ['2026-09-22T01:15:00Z', live === 'both' ? 'in' : 'pre'] : ['2026-09-20T17:00:00Z', 'post'])
             : (a === 'MIN' ? ['2026-09-21T00:20:00Z', 'pre'] : ['2026-09-20T17:00:00Z', 'in']);
-        return { date, status: { type: { state } }, competitions: [{ competitors: [{ team: { abbreviation: a }, homeAway: 'away' }, { team: { abbreviation: b }, homeAway: 'home' }] }] };
+        const clock = live === 'both' ? (a === 'MIN' ? { period: 2, clock: 900 } : { period: 4, clock: 300 }) : { period: 3, clock: 600 };
+        const status = state === 'in' ? { type: { state }, ...clock } : { type: { state } };
+        return { date, status, competitions: [{ competitors: [{ team: { abbreviation: a }, homeAway: 'away' }, { team: { abbreviation: b }, homeAway: 'home' }] }] };
     }),
 });
+const LIVE = new Date('2026-09-22T01:00:00Z'); // MIN @ CHI in the 3rd quarter, before KC @ DEN
+const BOTH_LIVE = new Date('2026-09-22T02:30:00Z'); // both games under way
+// Copies of the third league under other ids, for the cap on cards (lead: its opponent's extra points).
+const EXTRA = [['1000000000000000041', -1], ['1000000000000000042', 1], ['1000000000000000043', -3], ['1000000000000000044', 2]];
 
 const card = (page) => page.locator('#thisWeekCard');
 const section = (page) => card(page).locator('.mls-week-fold[data-fold="final"]');
@@ -41,19 +49,28 @@ async function addLeague(page, id, count) {
     await page.click('#mainSyncBtn');
     await expect(page.locator('#headerLeagueSelect option')).toHaveCount(count);
 }
-async function setup(page, when, { failWorker = false, lead = {} } = {}) {
-    const monday = when === MONDAY;
+async function setup(page, when, { failWorker = false, lead = {}, extra = false } = {}) {
+    const monday = when === MONDAY || when === LIVE || when === BOTH_LIVE;
     await page.clock.setFixedTime(when);
     const state = await openApp(page, '/lineup/');
     await page.clock.setFixedTime(when);
-    await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, route => route.fulfill({ json: scoreboard(monday) }));
+    await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, route => route.fulfill({ json: scoreboard(monday, when === LIVE ? 'min' : (when === BOTH_LIVE ? 'both' : null)) }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: benchButker('league-matchups-live.json', lead.first || 0) }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE2_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: benchButker('league2-matchups.json') }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE3_ID}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: benchButker('league3-matchups.json', lead.third || 0) }));
+    if (extra) {
+        for (const [id, d] of EXTRA) {
+            const n = id.slice(-1);
+            await page.route(new RegExp(`sleeper\\.app/v1/league/${id}$`), route => route.fulfill({ json: { ...JSON.parse(fixture('league3.json')), league_id: id, name: `Extra League ${n}` } }));
+            await page.route(new RegExp(`sleeper\\.app/v1/league/${id}/rosters$`), route => route.fulfill({ contentType: 'application/json', body: fixture('league3-rosters.json') }));
+            await page.route(new RegExp(`sleeper\\.app/v1/league/${id}/matchups/\\d+$`), route => route.fulfill({ contentType: 'application/json', body: benchButker('league3-matchups.json', d) }));
+        }
+    }
     if (failWorker) await page.route(/lastWindowWorker\.js$/, route => route.abort());
     await seedMls(page);
     await addLeague(page, FIXTURE_LEAGUE2_ID, 2);
     await addLeague(page, FIXTURE_LEAGUE3_ID, 3);
+    if (extra) for (const [i, [id]] of EXTRA.entries()) await addLeague(page, id, 4 + i);
     await page.waitForLoadState('networkidle');
     await showTab(page, 'scoreboard');
     await expect(card(page).locator('.mls-week-fold[data-fold="league"]')).toBeVisible();
@@ -112,8 +129,15 @@ test.describe('Scoreboard: the Final Window', () => {
         await expect(league.locator('.mls-week-swings')).toHaveCount(0);
 
         // How fresh the scores are, with a Refresh beside it.
-        await expect(sec.locator('.mls-fw-asof')).toContainText(/as of \d{1,2}:\d{2} (AM|PM)/);
-        await expect(sec.locator('.mls-fw-refresh')).toHaveText('Refresh');
+        await expect(sec.locator('.mls-fw-asof')).toHaveText(/^as of \d{1,2}:\d{2} (AM|PM)$/);
+        await expect(sec.locator('.mls-fw-asof button')).toHaveCount(0);
+        // Before kickoff, the window's time; the table speaks of whole games.
+        await expect(sec.locator('.mls-week-fold-toggle')).not.toContainText('live');
+        await expect(third.locator('.mls-fw-table thead')).toHaveText('If Jefferson scoresButker must score');
+        // The Dashboard's week line points to it.
+        await showTab(page, 'setup');
+        await expect(page.locator('#weekSummaryLine')).toContainText('Final Window: 2 at stake');
+        await showTab(page, 'scoreboard');
         // It folds, remembered.
         await sec.locator('.mls-week-fold-toggle').click();
         await expect(sec.locator('.mls-week-fold-body')).toBeHidden();
@@ -140,6 +164,43 @@ test.describe('Scoreboard: the Final Window', () => {
         const vw = await page.evaluate(() => document.documentElement.clientWidth);
         expect(box.x).toBeGreaterThanOrEqual(0);
         expect(box.x + box.width).toBeLessThanOrEqual(vw);
+        await expectClean(page, state);
+    });
+
+    test('during the game: "live" in the title, and the table speaks of what he adds from here', async ({ page }) => {
+        const state = await setup(page, LIVE);
+        const sec = section(page);
+        await expect(sec.locator('.mls-week-fold-toggle')).toContainText(/MIN @ CHI live, KC @ DEN \S+ \d{1,2}:\d{2} (AM|PM) ·/);
+        const third = sec.locator('.mls-fw-match').filter({ hasText: 'Third Fixture League' });
+        // Jefferson is half through his game, so Butker has more to come and leads the table; Jefferson "must add".
+        await expect(third.locator('.mls-fw-table thead')).toHaveText('If Butker scoresJefferson must add');
+        await expect(third.locator('.mls-fw-table tbody tr').nth(1)).toContainText('Projection:');
+        await expectClean(page, state);
+    });
+
+    test('both games under way: "live" for each, and "Projected from here" for the player mid-game', async ({ page }) => {
+        const state = await setup(page, BOTH_LIVE);
+        const sec = section(page);
+        await expect(sec.locator('.mls-week-fold-toggle')).toContainText('MIN @ CHI live, KC @ DEN live ·');
+        const third = sec.locator('.mls-fw-match').filter({ hasText: 'Third Fixture League' });
+        await expect(third.locator('.mls-fw-table thead')).toHaveText('If Jefferson addsButker must add');
+        await expect(third.locator('.mls-fw-table tbody tr').nth(1)).toContainText('Projected from here:');
+        await expectClean(page, state);
+    });
+
+    test('six at stake (and a seventh settled): five cards, then Show all 6 and Show less', async ({ page }) => {
+        const state = await setup(page, MONDAY, { extra: true });
+        const sec = section(page);
+        await expect(sec.locator('.mls-fw-tile').nth(0)).toContainText('6 W');
+        await expect(sec.locator('.mls-fw-match')).toHaveCount(5);
+        const more = sec.locator('[data-action="showAllFinal"]');
+        await expect(more).toHaveText('Show all 6');
+        await more.click();
+        await expect(sec.locator('.mls-fw-match')).toHaveCount(6);
+        await expect(more).toHaveText('Show less');
+        await expect(more).toBeFocused();
+        await more.click();
+        await expect(sec.locator('.mls-fw-match')).toHaveCount(5);
         await expectClean(page, state);
     });
 

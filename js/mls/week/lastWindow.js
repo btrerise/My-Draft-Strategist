@@ -229,7 +229,7 @@ export function twoPlayerTable(m) {
         return { ...s, need: lead, text: lead <= 0 ? 'you lose either way' : `under ${fmt(lead)}` };
     });
     return {
-        first: { name: first.name, side: first.side }, second: { name: second.name, side: second.side },
+        first: { id: first.id, name: first.name, side: first.side }, second: { id: second.id, name: second.name, side: second.side },
         head: second.side === 'mine' ? 'needs' : 'must stay',
         rows,
     };

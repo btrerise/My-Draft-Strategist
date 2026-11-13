@@ -832,6 +832,12 @@ function renderScoreboard(m) {
 // "Monday Night Miracle", credited in the Guide and under the card. Only on the Scoreboard, for this week.
 const FINAL_ICON = `<svg class="mls-fw-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
 const finalView = { key: '', week: null, result: null, failed: false };
+const FINAL_SHOWN = 5;
+export function showAllFinal() {
+    const week = weekCtx().week;
+    view.allFinalWeek = view.allFinalWeek === week ? null : week;
+    renderThisWeek();
+}
 const liveSide = (side) => side.live.map(p => ({ id: p.id, name: p.name, pos: p.pos, team: p.team, actual: p.actual, shareLeft: p.shareLeft, projected: p.projected }));
 
 // The window and the matchups it decides, or null. Best Ball's live players (bench too) and a league with no opponent
@@ -897,14 +903,19 @@ async function addFinalWindow() {
 // The title line counts what's at stake once the runs are in (round 3: "3 matchups ride on them" beside "2 W at stake"
 // and the header's "2 still live" were three numbers for one idea), and the settled ones apart.
 function finalSummary(fm) {
-    const games = fm.win.games.map(g => `${escapeHtml(g.away || '?')} @ ${escapeHtml(g.home || '?')}`).join(', ');
-    const when = formatKickoffLabel(new Date(fm.win.kickoff).toISOString());
+    // Once a game has started, each game says "live" or its own kickoff (round 4: the window's first kickoff time stayed
+    // up through the 3rd quarter).
+    const started = (g) => g.state === 'in' || Date.now() >= g.kickoff;
+    const name = (g) => `${escapeHtml(g.away || '?')} @ ${escapeHtml(g.home || '?')}`;
+    const when = fm.win.games.some(started)
+        ? fm.win.games.map(g => `${name(g)} ${started(g) ? 'live' : escapeHtml(formatKickoffLabel(new Date(g.kickoff).toISOString()))}`).join(', ')
+        : `${fm.win.games.map(name).join(', ')} · ${escapeHtml(formatKickoffLabel(new Date(fm.win.kickoff).toISOString()))}`;
     const n = fm.rows.length;
     const t = finalResultFor(fm)?.tiles;
     const on = fm.win.games.length === 1 ? 'it' : 'them';
     const stakes = !t ? `${n} live matchup${n === 1 ? '' : 's'}`
         : (t.atStake ? `${t.atStake} matchup${t.atStake === 1 ? ' rides' : 's ride'} on ${on}` : `nothing rides on ${on}`) + (n - t.atStake ? ` · ${n - t.atStake} settled` : '');
-    return `${games} · ${escapeHtml(when)} · ${stakes}`;
+    return `${when} · ${stakes}`;
 }
 const finalTile = (label, value, sub) => `<div class="mls-fw-tile"><span class="mls-fw-tile-label">${label}</span><b class="mls-fw-tile-value">${value}</b><span class="mls-fw-tile-sub">${sub}</span></div>`;
 const posBadge = (pos) => `<span class="badge pos-badge ${escapeHtml(pos)} mls-root-pos">${escapeHtml(pos === 'DEF' ? 'D/ST' : pos)}</span>`;
@@ -952,7 +963,9 @@ function finalHTML(fm, ctx) {
     // Settled ones (certain, or under 0.5% / over 99.5% in the runs) go on one line under the cards, not a card each.
     const open = res ? order.filter(r => !settled(chance(r))) : order;
     const done = res ? order.filter(r => settled(chance(r))) : [];
-    const items = open.map(r => {
+    // Five cards, then "Show all N" (round 4: with 11 at stake, a phone scrolled four or five screens), as Still in play.
+    const allShown = view.allFinalWeek === fm.week;
+    const items = (allShown ? open : open.slice(0, FINAL_SHOWN)).map(r => {
         const l = r.league, x = r.res, c = chance(r);
         const sim = res && res.matchups.get(l.leagueId);
         const mine = liveSide(x.me), theirs = liveSide(x.them);
@@ -962,8 +975,12 @@ function finalHTML(fm, ctx) {
         // Not for a settled matchup: "if he goes quiet, the other must score under 42.2" says nothing new.
         const two = sim && !settled(c) && twoPlayerTable(sim);
         if (two) {
-            table = `<table class="mls-fw-table"><thead><tr><th scope="col">If ${escapeHtml(shortName(two.first.name))} scores</th><th scope="col">${escapeHtml(shortName(two.second.name))} must score</th></tr></thead><tbody>${
-                two.rows.map(row => `<tr><td>${row.label}: ${fmt(row.value)}</td><td>${row.text}</td></tr>`).join('')}</tbody></table>`;
+            // A player mid-game: the numbers are what he adds from here (round 4), so the words say so.
+            const playing = (who) => [...mine, ...theirs].some(p => p.id === who.id && typeof p.actual === 'number');
+            const verb = (who, base) => playing(who) ? base.replace('score', 'add').replace('scores', 'adds') : base;
+            const label = (row) => row.label === 'Projection' && playing(two.first) ? 'Projected from here' : row.label;
+            table = `<table class="mls-fw-table"><thead><tr><th scope="col">If ${escapeHtml(shortName(two.first.name))} ${playing(two.first) ? 'adds' : 'scores'}</th><th scope="col">${escapeHtml(shortName(two.second.name))} ${verb(two.second, 'must score')}</th></tr></thead><tbody>${
+                two.rows.map(row => `<tr><td>${label(row)}: ${fmt(row.value)}</td><td>${row.text}</td></tr>`).join('')}</tbody></table>`;
         }
         return `<li class="mls-fw-match${edge}">
             <button type="button" class="btn-bare mls-fw-match-open" data-action="openLeagueLineup" data-league-id="${escapeHtml(l.leagueId)}" aria-label="${leagueName(l)}: open its lineup">
@@ -978,10 +995,12 @@ function finalHTML(fm, ctx) {
     const how = `<span class="tooltip-container mls-week-info"><span class="tooltip-icon">i</span><span class="tooltip-text">One simulation of ${DEFAULT_RUNS.toLocaleString('en-US')} runs across all your live matchups: each run draws every live player once and scores him in every league he's in, with that league's scoring, so one big night moves all his matchups together.</span></span>`;
     // How fresh the scores are (round 3): there's no timer, so during the game this says when they were loaded.
     const loadedAt = (view.loads.get(fm.week) || {}).loadedAt;
-    const asOf = loadedAt ? `<span class="mls-fw-asof">as of ${escapeHtml(new Date(loadedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }))}<button type="button" class="btn-bare mls-fw-refresh" data-action="refreshThisWeek"${view.loading ? ' disabled aria-busy="true"' : ''}>Refresh</button></span>` : '';
+    // The time only (round 4: a second Refresh beside the header's was one too many).
+    const asOf = loadedAt ? `<span class="mls-fw-asof">as of ${escapeHtml(new Date(loadedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }))}</span>` : '';
     if (items.length) {
         parts.push(`<div class="mls-fw-sub-row"><h4 class="mls-week-sub">What each matchup needs</h4>${how}${asOf}</div>`);
         parts.push(`<ul class="mls-fw-list">${items.join('')}</ul>`);
+        parts.push(moreButton('showAllFinal', null, open.length, FINAL_SHOWN, allShown));
     } else if (asOf) parts.push(`<div class="mls-fw-sub-row">${asOf}</div>`);
     const notes = [];
     if (done.length) notes.push(`<strong>Settled:</strong> ${done.map(r => `${leagueName(r.league)} (${chance(r) > 0.5 ? 'W' : 'L'}, ${signed(r.res.margin)})`).join(', ')}.`);
@@ -1733,9 +1752,14 @@ function renderSummaryLine(m) {
     if (!el) return;
     if (!m.sleeperLeagues.length || m.ctx.week == null) { el.hidden = true; el.innerHTML = ''; return; }
     el.hidden = false;
-    el.innerHTML = `${SCOREBOARD_ICON}<span class="mls-week-summary-title">${titleText(m)}</span><span class="mls-week-summary">${summaryText(m)}</span>`
+    // While the Final Window is open (S36 round 4), the line says so, so it's found from the Dashboard on Monday night.
+    const fm = finalModel(m);
+    const fmTiles = fm && finalResultFor(fm)?.tiles;
+    const stake = fm ? (fmTiles ? fmTiles.atStake : fm.rows.filter(r => r.res.status === 'swing').length) : 0;
+    const fwText = stake ? ` · Final Window: ${stake} at stake` : '';
+    el.innerHTML = `${SCOREBOARD_ICON}<span class="mls-week-summary-title">${titleText(m)}</span><span class="mls-week-summary">${summaryText(m)}${fwText}</span>`
         + `${m.started && m.listed.length ? weekStatusMarkup(m.final) : ''}<span class="mls-week-summary-go">Scoreboard ${ARROW_ICON}</span>`;
-    el.setAttribute('aria-label', `${titleText(m)}: ${summaryText(m)}. Open the Scoreboard`);
+    el.setAttribute('aria-label', `${titleText(m)}: ${summaryText(m)}${fwText}. Open the Scoreboard`);
 }
 
 // The Lineup tab's strip: this league's matchup.

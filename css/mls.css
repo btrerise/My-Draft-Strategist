@@ -2979,7 +2979,6 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .mls-fw-sub-row .mls-week-sub { flex: none; white-space: nowrap; }
 .mls-fw-sub-row .mls-week-sub { margin-bottom: 0.4rem; }
 .mls-fw-asof { margin: 0 0 0.4rem auto; display: inline-flex; align-items: baseline; gap: 0.4rem; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
-.mls-fw-refresh { color: var(--primary-green); font-weight: 600; font-size: 0.75rem; }
 .mls-fw-oneline { margin: 0.4rem 0; font-size: 0.85rem; color: var(--text-main); }
 .mls-fw-table { width: 100%; margin-top: 0.4rem; border-collapse: collapse; font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .mls-fw-table th, .mls-fw-table td { padding: 0.2rem 0.3rem; border-top: 1px solid var(--border); text-align: left; font-weight: 400; }

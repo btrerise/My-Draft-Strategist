@@ -11307,7 +11307,7 @@ line under Sleepy's is new) don't change this round, since the screenshot league
    below it). The four tiles all restated its bar.
 3. **Nothing at stake:** "Nothing rides on tonight: all 3 live matchups are settled (1 W, 2 L)." and the settled line,
    with no empty tiles and no "What each matchup needs" heading.
-4. **How fresh:** "as of 11:30 PM" and a Refresh beside "What each matchup needs" (the time the matchups were loaded,
+4. **How fresh:** "as of 11:30 PM" and a Refresh (removed in round 4) beside "What each matchup needs" (the time the matchups were loaded,
    `view.loads`). Still no timer. On phones it wraps under the heading rather than squeezing it.
 5. **A card opens its league:** the card's top (name, margin, score, a › as on the tiles) is a button,
    `openLeagueLineup` like the tiles. The table stays outside it (a button can't hold a table).
@@ -11320,3 +11320,27 @@ card) and none (one line, no cards, the settled line). Ran `mls-final-window`, `
 card, which reads like good news at a glance. The League Scoreboard's tiles and Still in play use the same green, so
 the change is to color the percent by who's favored (red under 50%) in all three places at once: the Final Window,
 the league tiles and Still in play. Not done yet; the owner asked to keep it for this session before the PR.
+
+### S36, round 4: a third pass as a user (owner: do 1, 3, 4 and 5; not 2)
+
+1. **Five cards, then "Show all N"** (and "Show less"), as Still in play: with 11 at stake a phone scrolled four or
+   five screens. `showAllFinal` (main.js action), remembered for the week shown, in memory.
+3. **While the games are on:** the title says "live" for each game under way and gives the others their own kickoff
+   ("MIN @ CHI live, KC @ DEN Mon 9:15 PM · 2 matchups ride on them · 1 settled"). In the table, a player whose game
+   is under way "adds" rather than "scores", and his middle row reads "Projected from here" (his points still to
+   come, not his game projection). Mid-game the player with more still to come leads the table, which can swap who's
+   first.
+4. **Found from the Dashboard:** while the window is open, the Dashboard's week line adds "· Final Window: 2 at
+   stake" (the simulation's count once the Scoreboard has run it; before that, the matchups still in play by the
+   Scoreboard's rule).
+5. **One Refresh:** the "as of" time stays; its own Refresh is gone (the header's is the one).
+- **Not built, 2 (a closing "1–1 tonight" line once the last game ends):** the owner was torn about repeating the
+  recap; I agreed it would be a fourth telling of the same result (the header's record and Final, Biggest win / Worst
+  loss and the tiles already say it), so it's dropped.
+
+Tests: the spec gains the Dashboard line, no button in the "as of", "scores" before kickoff, a live case (MIN @ CHI
+in the 3rd quarter: "MIN @ CHI live, KC @ DEN …", Butker leading the table, "Jefferson must add"), a both-live case
+("live" twice, "If Jefferson adds", "Projected from here"), and six at stake with a seventh settled (four copies of
+the third league under other ids, served by the spec): five cards, Show all 6, Show less with focus kept. Ran
+`mls-final-window` (18), `mls-this-week`, `mls-root-for`, `mls-root-kickoff-find`, `mls-league-cards` (90), unit tests
+and check-precache.

@@ -181,7 +181,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   Justin Jefferson needs 2.0+ more than Harrison Butker"), with a win-chance bar and, when two players decide it, what
   one needs if the other goes quiet, hits his projection or has a big night. Settled matchups share one line, and
   Still in play points to the section instead of repeating it. With one matchup at stake (or none) a single line
-  replaces the tiles; "as of 9:12 PM" and Refresh say how fresh the scores are; a matchup's name opens its lineup. One simulation across every matchup at
+  replaces the tiles; "as of 9:12 PM" says how fresh the scores are; a matchup's name opens its lineup; five matchups
+  show, then Show all; games under way read "live"; and the Dashboard's week line says "Final Window: 2 at stake". One simulation across every matchup at
   once, so a player in several of them moves them all together. Inspired by FF Historian (ffhistorian.com), credited
   in the Guide and under the Scoreboard.
 

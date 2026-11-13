@@ -55,7 +55,7 @@ import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineu
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
 import { initStarterAlerts, planStarterAlerts, runStarterAlertCheck, sendTestStarterAlert, setStarterAlertLead, toggleStaleRankingsAlert, toggleStarterAlerts } from './lineup/starterAlert.js';
 import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeaguePaid, toggleLeagueReorder, withCardsTransition } from './render/leagueCards.js';
-import { dismissPaidHint, exportScoreboard, leaveScoreboardWeek, clearRootFind, refreshThisWeek, renderThisWeek, scoreboardThisWeek, showAllRecap, showAllRoot, showAllSwings, stepScoreboardWeek, toggleRootFinished, toggleRootPlayer, toggleRootWindow, toggleWeekFold } from './week/thisWeek.js';
+import { dismissPaidHint, exportScoreboard, leaveScoreboardWeek, clearRootFind, refreshThisWeek, renderThisWeek, scoreboardThisWeek, showAllFinal, showAllRecap, showAllRoot, showAllSwings, stepScoreboardWeek, toggleRootFinished, toggleRootPlayer, toggleRootWindow, toggleWeekFold } from './week/thisWeek.js';
 import { resetRecapLines, saveRecapLines } from './week/recapLines.js';
 import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
@@ -149,6 +149,7 @@ const clickActions = {
     scoreboardThisWeek() { scoreboardThisWeek(); },
     dismissPaidHint() { dismissPaidHint(); },
     showAllSwings() { showAllSwings(); },
+    showAllFinal() { showAllFinal(); },
     // The Scoreboard's folds (MVPs & LVPs, Still in play) and Show all (week/thisWeek.js, improvements S22), and the
     // MVP / LVP lines in Advanced Settings
     toggleWeekFold() { toggleWeekFold(this.dataset.fold); },
