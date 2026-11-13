@@ -20,7 +20,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   band of the page colour between sections). The Tracker is about 260px shorter, and the Draft Board's grid still runs to
   the screen's edge. Tablets and computers keep their cards. Export Team now draws the same image on a phone as on a
   computer. T-Score's folded sections are a lighter shade with no border, like the apps'. On the Team tab the lineup
-  runs to the screen's edges like the sections around it, and the Dashboard's settings are one list with dividers.
+  runs to the screen's edges like the sections around it, and the Dashboard's settings are one list with dividers. The
+  Tracker fits more players on a phone screen, and empty states are plain text instead of dashed boxes.
 
 - **T-Score: expected points beside points so far.** The In-Season tab adds XFP/G (expected fantasy points per game
   from a player's usage) and FPOE/G (how far above or below that he has scored) after FP/G, once the sheet carries
@@ -190,7 +191,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   Tablets and computers keep their cards. Export Lineup, Export Trade and Export Recap now draw the same image on a
   phone as on a computer, in the site's current look. Advanced Settings is one list with dividers instead of separate
   strips, and the Danger Zone's red edge is a straight stripe. On phones Setup Progress runs to the screen's edges like a
-  section; banners and the matchup strip keep their frame.
+  section; banners and the matchup strip keep their frame. A locked or swapping lineup row's content now lines up with the rows around it
+  (its coloured edge sits outside the content), and rows show a clearer tone under the mouse.
 
 - **A chance to win is red when you're not favored.** On the Scoreboard's league tiles, Still in play, the Final
   Window and the Lineup tab's matchup line, "74% to win" stays green and "26% to win" is now red. Before, every chance

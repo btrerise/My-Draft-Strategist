@@ -11708,3 +11708,26 @@ The other 24 were S22's `mls-mvp-lvp.spec.mjs`, at both widths: its Sunday fixtu
 it's a Final Window, and focus folds Player Scoreboard, which holds MVPs & LVPs. Missed when I fixed the same in
 `mls-this-week` and `mls-root-for`. Fixed the same way (its setup, and its one-league test, start with the window
 folded); the spec then passed (32). Not run in full again, per rule 7; CI runs it on the pull request.
+
+### M17, round 5: a second review as a user; the owner took all three (2026-11-13)
+
+The weekly tabs read as one calm column on a phone and the desktop cards look finished; a hover render (the screenshots
+park the mouse) showed the rest. Three findings, all built:
+1. **Rows reach into their card's padding** (css/mls.css, last section; Lineup Strategist only, since Draft Strategist's one
+   `.roster-item` list sets its padding inline): `.lineup-slot`, `.roster-item`, `.scout-result-card` and `.mls-lc-card`
+   have -12px side margins and 12px side padding, so their content stays put (343px on a 375px phone) while a 3px edge
+   sits outside the content. Before, a locked or swapping row moved its content 12px right, out of line with its
+   neighbours. The hover tone is Material 3's 8% (was 3%, and started right at the slot badge). The dividers stay at the
+   content's width, in line with the card header's rule (a `::before` 12px in from each side; a first try let them reach
+   4px from a phone's edge, past the header's rule), so rows are 1px shorter each.
+2. **Empty states are plain text**: `.mls-power-empty` (Power Rankings before rankings) and Draft Strategist's
+   `.empty-state-card` (Tracker, Team, Board) lose their dashed frame, background and inset shadow.
+3. **The Tracker is denser on phones**: 12px above and below a player (16 before), tier headings 1.25rem / 0.5rem (2rem /
+   1rem), the first one 0.25rem after the chips. The phone Tracker is 249px shorter at 390px.
+- **Spec:** `room-on-phones.spec.mjs` measures a row's content box (x 16, 343px wide), and locks a row and checks its name
+  lines up with an unlocked row's (12px off before this round).
+- **Screenshots** (local render against the merged branch's): desktop `mds-empty-board`, `mds-empty-team`,
+  `mds-empty-tracker` (empty states), `mls-league-lineup`, `mls-league-roster` (rows 1px shorter), `mls-league-setup`
+  (the league card's edge); phone `mds-draft-tracker`, `mds-empty-board`, `mds-empty-team`, `mds-empty-tracker`,
+  `mls-league-lineup`, `mls-league-roster`, `mls-league-setup`.
+- Specs run: room-on-phones, export-same-everywhere, mls-lineup-row-actions, mls-display-ranks, touch-targets (24 pass).

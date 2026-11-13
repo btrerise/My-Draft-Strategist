@@ -38,10 +38,21 @@ test.describe('room on phones', () => {
         await loadMlsRankings(page);
 
         await showTab(page, 'lineup');
+        // The row reaches 12px into the card's padding (round 5) and pads its content back, so its content is at the
+        // 16px margin and 343px wide.
+        const content = (loc) => loc.evaluate((el) => {
+            const r = el.getBoundingClientRect(); const cs = getComputedStyle(el);
+            return { x: Math.round(r.x + parseFloat(cs.paddingLeft)), width: Math.round(r.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) };
+        });
         const row = page.locator('#optimalLineupContainer .lineup-slot:not(.locked):not(.swapping)').first();
-        const box = await row.boundingBox();
-        expect(Math.round(box.x)).toBe(16);
-        expect(Math.round(box.width)).toBe(343);
+        expect(await content(row)).toEqual({ x: 16, width: 343 });
+        // A locked row's 3px edge sits outside its content, so its name lines up with the rows around it (round 5).
+        await page.locator('#optimalLineupContainer .lineup-slot .lock-btn').first().click();
+        const locked = page.locator('#optimalLineupContainer .lineup-slot.locked').first();
+        await expect(locked).toBeVisible();
+        const nameX = (loc) => loc.locator('.player-name-wrap').first().evaluate((el) => Math.round(el.getBoundingClientRect().x));
+        expect(await content(locked)).toEqual({ x: 16, width: 343 });
+        expect(await nameX(locked)).toBe(await nameX(page.locator('#optimalLineupContainer .lineup-slot:not(.locked):not(.empty)').first()));
         const card = await page.locator('#lineupTab .settings-card').first().evaluate((el) => {
             const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
             return { x: r.x, width: r.width, left: cs.borderLeftWidth, radius: cs.borderTopLeftRadius, pad: cs.paddingLeft };
@@ -60,7 +71,7 @@ test.describe('room on phones', () => {
         await page.click('#waiverScanBtn');
         const result = page.locator('#scoutTab .scout-result-card').first();
         await expect(result).toBeVisible();
-        expect(Math.round((await result.boundingBox()).width)).toBe(343);
+        expect((await content(result)).width).toBe(343);
         expect(await page.evaluate(BOXES_IN_CARDS), 'boxes inside cards with waiver results').toEqual([]);
         await expectClean(page, state);
     });

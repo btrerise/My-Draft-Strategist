@@ -1349,7 +1349,7 @@ label.toggle-title,
 .lineup-slot + .lineup-slot, .roster-item + .roster-item { border-top: 1px solid var(--divider); }
 
 @media (hover: hover) {
-    .lineup-slot:hover, .roster-item:hover { background-color: rgba(255, 255, 255, 0.03); }
+    .lineup-slot:hover, .roster-item:hover { background-color: rgba(255, 255, 255, 0.08); }
 }
 
 /* 1. Fix position badge width so it never shifts */
