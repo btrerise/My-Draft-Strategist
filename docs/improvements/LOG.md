@@ -11344,6 +11344,8 @@ phone as on a computer.
   card, so it moved from 8px to 16px margins.
 - **Desktop, the 8 with rows, toggle rows or folds (R1):** `mds-draft-team`, `mds-empty-setup`, `mls-empty-setup`,
   `mls-league-guide`, `mls-league-lineup`, `mls-league-roster`, `mls-league-scout`, `mls-league-setup`.
+- **Re-taken on CI** (run 43486153756, commit f068891, "Screenshots re-taken on CI (23 PNGs)"): exactly these 23, no
+  other screenshot changed; opened and checked (rows flat at 343px, the Tracker's rows across the screen).
 - **Unchanged:** every T-Score PNG (an early render showed them 2px shorter, from the shared fold rule; T-Score's folds
   now keep their frame) and the other 7 desktop PNGs of the two apps.
 
