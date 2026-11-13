@@ -11260,3 +11260,12 @@ folded sections, toggle rows and sub-blocks a lighter surface tone with no borde
 3px edge; Draft Strategist's `.player-card` becomes a list row under 600px. The exports (Lineup PNG, Export Team,
 Export Recap, all html2canvas from the DOM) keep their look at any width. After U1's cards 1 to 3; S32 need not wait
 for it.
+
+**Runbook (not yet published).** Cards named for the runbook: **U4** (Dashboard and Scout tidy; after S45; weeks 12–13),
+**A2** (Umami Tab, Tool and Section events; any time; weeks 12–13), **U5** (fold the Simulator, Trade Finder and SoS;
+after S20; January), **U6** (jump chips; after U5, before M12; January); **M14** gains R2 (title, goal, ask, scope, done;
+~30k tok) and runs after U4 to U6. A new track "Organization (U1)" and a top note. The edits are in
+`docs/improvements/organization/runbook-u1-edits.py`, checked against runbook version 1794512485-d1fd (the page renders
+with no errors: 119 cards, the four new ones with prompts). Publishing was refused: the Artifact tool needs the session to
+have read all 1,782 lines (512KB) of the live runbook first, which didn't fit in this session's context. **Left over:** a
+fresh session reads the runbook in full, runs the script on the saved copy, and publishes it to the same URL.
