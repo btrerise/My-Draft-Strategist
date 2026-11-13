@@ -2947,3 +2947,38 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .starter-alerts-test { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.75rem; margin-top: 0.25rem; }
 .starter-alerts-test .btn { width: auto; flex: none; }
 .starter-alerts-test .text-helper:empty { display: none; }
+
+/* --- The Final Window (improvements S36, week/thisWeek.js finalHTML): the Scoreboard's section when only the last night
+   window is left. Tiles two across on phones, four from 900px; matchups one column, two from 900px. --- */
+.mls-fw .mls-week-section-title { display: inline-flex; align-items: center; gap: 0.4rem; }
+.mls-fw-icon { flex: none; color: #a78bfa; }
+.mls-fw-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; margin: 0.4rem 0 0.2rem; }
+.mls-fw-tile { min-width: 0; display: flex; flex-direction: column; gap: 1px; padding: 0.5rem 0.65rem; border: 1px solid var(--border); border-radius: 10px; background: rgba(255, 255, 255, 0.02); }
+.mls-fw-tile-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.mls-fw-tile-value { font-size: 1.3rem; line-height: 1.2; color: var(--text-main); font-variant-numeric: tabular-nums; }
+.mls-fw-tile-sub { font-size: 0.75rem; color: var(--text-muted); }
+.mls-fw-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
+.mls-fw-match { min-width: 0; padding: 0.5rem 0.65rem; border: 1px solid var(--border); border-left: 3px solid #f59e0b; border-radius: 8px; }
+.mls-fw-match.is-ahead { border-left-color: var(--primary-green); }
+.mls-fw-match.is-behind { border-left-color: #ef4444; }
+.mls-fw-match.is-settled { opacity: 0.7; }
+.mls-fw-match-head { display: flex; align-items: baseline; gap: 0.5rem; }
+.mls-fw-match-head .mls-week-line-name { flex: 1 1 auto; min-width: 0; font-weight: 600; }
+.mls-fw-score { font-size: 0.85rem; color: var(--text-main); font-variant-numeric: tabular-nums; }
+.mls-fw-bar { display: flex; align-items: center; gap: 0.5rem; margin: 0.3rem 0; font-size: 0.78rem; }
+.mls-fw-bar .mls-week-chance { margin-left: 0; }
+.mls-fw-bar-track { flex: 1 1 auto; height: 6px; border-radius: 3px; background: #ef4444; overflow: hidden; }
+.mls-fw-bar-track > span { display: block; height: 100%; background: var(--primary-green); }
+.mls-fw-need { margin: 0.2rem 0 0; font-size: 0.85rem; color: var(--text-main); }
+.mls-fw-who { margin-top: 0.2rem; font-size: 0.78rem; color: var(--text-muted); }
+.mls-fw-who .mls-root-pos { margin-right: 1px; }
+.mls-fw-table { width: 100%; margin-top: 0.4rem; border-collapse: collapse; font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.mls-fw-table th, .mls-fw-table td { padding: 0.2rem 0.3rem; border-top: 1px solid var(--border); text-align: left; font-weight: 400; }
+.mls-fw-table th { color: var(--text-muted); }
+.mls-fw-note { margin: 0.5rem 0 0; font-size: 0.75rem; }
+@media (min-width: 900px) {
+    .mls-fw-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .mls-fw-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.mls-fw-legend { display: inline-block; width: 150px; }
+.mls-fw-legend .mls-fw-bar { margin: 0; }

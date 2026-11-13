@@ -34,11 +34,12 @@ import { State, parseEspnScoreboard, refreshGameTimes } from '../state.js';
 import { isBestBallLeague, isExcludedFromSimulation } from '../helpers.js';
 import { fantasyPosition } from '../constants.js';
 import { ensureLineupProjections, formatKickoffLabel, getLeagueScoringKey, storeLeagueMatchups } from '../lineup/gameInfo.js';
-import { ROOT_ICONS, paidBadgeMarkup, rootCountBadgeMarkup, rootOfBadgeMarkup, rootShareMarkup, weekResultMarkup, weekStatusMarkup } from '../badges.js';
+import { ROOT_ICONS, finalChanceMarkup, paidBadgeMarkup, rootCountBadgeMarkup, rootOfBadgeMarkup, rootShareMarkup, weekResultMarkup, weekStatusMarkup } from '../badges.js';
 import { playerHeadshotHTML } from '../lineup/headshots.js';
 import { buildRootFor, kickoffOrder, sideOrder, starterIdsOf } from './rootFor.js';
 import { attachPlayerAutocomplete } from '../players.js';
-import { matchupWinChances } from '../sim/winChance.js';
+import { matchupWinChances, remainingProfiles } from '../sim/winChance.js';
+import { DEFAULT_RUNS, SETTLED, finalWindow, needsLine, shareText, simulateWindow, twoPlayerTable } from './lastWindow.js';
 import { RECAP_SCALES, buildPlayerRecap, ownText, pointsRange, slotLabel, startedText } from './playerRecap.js';
 import { getRecapLines } from './recapLines.js';
 import { scoreboardImageHTML } from './shareImage.js';
@@ -250,7 +251,7 @@ export function refreshThisWeek({ force = false } = {}) {
     const allIn = leagues.every(l => hasWeek(l, week) || failedFor(week).has(l.leagueId));
     if (!force && allIn && load && Date.now() - load.loadedAt < FRESH_MS) {
         renderThisWeek();
-        if (onScoreboard()) queued(addBoardChances); // opening the Scoreboard on matchups the Dashboard loaded (S27)
+        if (onScoreboard()) { queued(addBoardChances); queued(addFinalWindow); } // opening the Scoreboard on matchups the Dashboard loaded (S27, S36)
         return Promise.resolve();
     }
 
@@ -258,7 +259,7 @@ export function refreshThisWeek({ force = false } = {}) {
         await null; // view.loading is set before the first draw below, which shows the spinner
         try {
             // A scoreboard that has a game under way and is a minute old is fetched again (gameStatusMayBeStale).
-            if (force) State.gameTimesFetchedAt = 0;
+            if (force) { State.gameTimesFetchedAt = 0; finalView.key = ''; }
             await Promise.all([
                 isOther ? loadOtherWeek(week, season, past) : Promise.all([refreshGameTimes(), ensureLineupProjections()]),
                 getSleeperPlayerMap().catch(() => null),
@@ -287,7 +288,7 @@ export function refreshThisWeek({ force = false } = {}) {
         // A league added while this was loading, or another week chosen meanwhile, gets its turn now.
         const now = weekCtx().week;
         if (now !== week || (State.leagues || []).filter(isSleeperLeague).some(l => !hasWeek(l, week) && !failedFor(week).has(l.leagueId))) refreshThisWeek();
-        if (now === week) { await queued(addWinChances); await queued(addBoardChances); }
+        if (now === week) { await queued(addWinChances); await queued(addBoardChances); await queued(addFinalWindow); }
     })().catch(err => { console.warn('This week: matchups did not load.', err); view.loading = null; renderThisWeek(); });
     renderThisWeek();
     return view.loading;
@@ -801,7 +802,9 @@ function renderScoreboard(m) {
             ? [`${listed.length} ${started ? 'league' : 'matchup'}${listed.length === 1 ? '' : 's'}`, started && swingCount ? `${swingCount} still in play` : ''].filter(Boolean).join(' · ')
             : '';
         const sectionHead = (title, summary) => `<span class="mls-week-section-title">${title}</span>${summary ? `<span class="mls-week-summary">${summary}</span>` : ''}`;
+        const fm = finalModel(m);
         body = top.join('')
+            + (fm ? foldSection('final', sectionHead(`${FINAL_ICON}Final Window`, finalSummary(fm)), finalHTML(fm, m.ctx), 'Final Window', 'mls-week-section mls-fw') : '')
             + foldSection('league', sectionHead('League Scoreboard', leagueText), parts.join(''), 'League Scoreboard', 'mls-week-section')
             + foldSection('player', sectionHead('Player Scoreboard', rf.players.length ? groupsText : ''), playerBody, 'Player Scoreboard', 'mls-week-section')
             + exportHTML;
@@ -817,6 +820,140 @@ function renderScoreboard(m) {
     if (focused) focusStep(focused);
     restoreFocus(el, focusKey);
 }
+// --- THE FINAL WINDOW (improvements S36) ---
+// When every live player in your matchups is in one night window (Sunday night, or Monday's one or two games), a section
+// above League Scoreboard: what's at stake, expected wins, the best case and a sweep, from one simulation across every
+// live matchup (lastWindow.js), then what each matchup needs. The owner's name for it; the idea is FF Historian's
+// "Monday Night Miracle", credited in the Guide and under the card. Only on the Scoreboard, for this week.
+const FINAL_ICON = `<svg class="mls-fw-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+const finalView = { key: '', week: null, result: null, failed: false };
+const liveSide = (side) => side.live.map(p => ({ id: p.id, name: p.name, pos: p.pos, team: p.team, actual: p.actual, shareLeft: p.shareLeft, projected: p.projected }));
+
+// The window and the matchups it decides, or null. Best Ball's live players (bench too) and a league with no opponent
+// count toward "is the week down to one window", but aren't simulated: they're named in a note instead.
+function finalModel(m) {
+    const { ctx, rows, started } = m;
+    if (!ctx || ctx.past || ctx.other || !started || !rows || !rows.length) return null;
+    const liveOf2 = (side) => side ? [...side.live, ...(side.liveBench || [])] : [];
+    const h2h = rows.filter(r => r.res.kind === 'h2h' && liveOf2(r.res.me).length + liveOf2(r.res.them).length > 0);
+    const counted = h2h.filter(r => !r.res.bestBall);
+    if (!counted.length) return null;
+    const noOpp = rows.filter(r => (r.res.kind === 'guillotine' || r.res.kind === 'nomatch') && liveOf2(r.res.me).length);
+    const teams = [...h2h.flatMap(r => [...liveOf2(r.res.me), ...liveOf2(r.res.them)]), ...noOpp.flatMap(r => liveOf2(r.res.me))].map(p => p.team);
+    const win = finalWindow({ liveTeams: teams, times: ctx.times, games: ctx.games });
+    if (!win) return null;
+    const key = `${ctx.week}|` + counted.map(r => `${r.league.leagueId}:${r.res.me.points}:${r.res.them.points}:${r.res.me.live.map(p => p.id)}:${r.res.them.live.map(p => p.id)}`).join('|')
+        + '|' + win.games.map(g => `${g.away}${g.state}`).join(',');
+    return { win, rows: counted, bestBall: h2h.filter(r => r.res.bestBall), noOpp, key, week: ctx.week };
+}
+const finalResultFor = (fm) => finalView.week === fm.week && finalView.key === fm.key ? finalView.result : null;
+
+// The simulation in its own module worker (lastWindowWorker.js; resolved against /lineup/, like sim/winChance.js's),
+// or here if a worker can't start.
+let finalWorker = null;
+function runFinalSim(matchups) {
+    return new Promise((resolve) => {
+        const here = () => { try { const r = simulateWindow(matchups); resolve({ chances: r.chances, tiles: r.tiles }); } catch (e) { resolve(null); } };
+        let w;
+        try { w = finalWorker || (finalWorker = new Worker('../js/mls/week/lastWindowWorker.js', { type: 'module' })); } catch (e) { here(); return; }
+        const done = () => { clearTimeout(timer); w.onmessage = null; w.onerror = null; };
+        const timer = setTimeout(() => { done(); finalWorker = null; try { w.terminate(); } catch (e) { /* gone */ } here(); }, 10000);
+        w.onmessage = (e) => { done(); const d = e.data || {}; if (d.error || !d.tiles) { here(); return; } resolve({ chances: new Map(d.chances), tiles: d.tiles }); };
+        w.onerror = (e) => { if (e && e.preventDefault) e.preventDefault(); done(); finalWorker = null; here(); };
+        w.postMessage({ id: 1, matchups });
+    });
+}
+
+async function addFinalWindow() {
+    if (!onScoreboard()) return;
+    const fm = finalModel(buildModel());
+    if (!fm || (finalView.week === fm.week && finalView.key === fm.key)) return;
+    finalView.week = fm.week; finalView.key = fm.key; finalView.result = null; finalView.failed = false;
+    const ctx = weekCtx();
+    let result = null;
+    try {
+        const input = fm.rows.map(r => ({ key: r.league.leagueId, scoringKey: r.res.scoringKey, mine: liveSide(r.res.me), theirs: liveSide(r.res.them) }));
+        const profiles = await remainingProfiles(input, { season: ctx.season, week: ctx.week });
+        const named = (list, profs) => list.map((p, i) => ({ ...profs[i], name: p.name }));
+        const matchups = input.map(m => {
+            const pr = profiles.get(m.key) || { mine: [], theirs: [] };
+            const r = fm.rows.find(x => x.league.leagueId === m.key);
+            return { key: m.key, margin: r.res.me.points - r.res.them.points, mine: named(m.mine, pr.mine), theirs: named(m.theirs, pr.theirs) };
+        });
+        const sim = await runFinalSim(matchups);
+        if (sim) result = { ...sim, matchups: new Map(matchups.map(x => [x.key, x])) };
+    } catch (e) { result = null; }
+    if (finalView.key !== fm.key) return; // newer scores came in meanwhile
+    finalView.result = result;
+    finalView.failed = !result;
+    renderThisWeek();
+}
+
+function finalSummary(fm) {
+    const games = fm.win.games.map(g => `${escapeHtml(g.away || '?')} @ ${escapeHtml(g.home || '?')}`).join(', ');
+    const when = formatKickoffLabel(new Date(fm.win.kickoff).toISOString());
+    const n = fm.rows.length;
+    return `${games} · ${escapeHtml(when)} · ${n} matchup${n === 1 ? ' rides' : 's ride'} on ${fm.win.games.length === 1 ? 'it' : 'them'}`;
+}
+const finalTile = (label, value, sub) => `<div class="mls-fw-tile"><span class="mls-fw-tile-label">${label}</span><b class="mls-fw-tile-value">${value}</b><span class="mls-fw-tile-sub">${sub}</span></div>`;
+const posBadge = (pos) => `<span class="badge pos-badge ${escapeHtml(pos)} mls-root-pos">${escapeHtml(pos === 'DEF' ? 'D/ST' : pos)}</span>`;
+const fwPlayers = (list) => list.length ? list.map(p => `${posBadge(p.pos)} ${escapeHtml(p.name)}`).join(', ') : 'nobody left';
+
+function finalHTML(fm, ctx) {
+    const res = finalResultFor(fm);
+    const failed = finalView.week === fm.week && finalView.key === fm.key && finalView.failed;
+    const t = res && res.tiles;
+    const dash = failed ? '–' : '…';
+    const n = fm.rows.length;
+    const tiles = t ? [
+        finalTile('At stake', `${t.atStake} W`, `${n} live matchup${n === 1 ? '' : 's'}`),
+        finalTile('Expected', `${t.expected.toFixed(1)} W`, t.atStake ? `middle 80%: ${t.low === t.high ? t.low : `${t.low}–${t.high}`} W` : 'nothing left to swing'),
+        finalTile('Best case', `${t.best} W`, t.atStake ? `${shareText(t.bestShare)} of runs` : '–'),
+        finalTile('Clean sweep', t.atStake ? shareText(t.sweepShare) : '–', t.atStake ? `all ${t.atStake} at stake` : 'nothing at stake'),
+    ] : ['At stake', 'Expected', 'Best case', 'Clean sweep'].map((l, i) => finalTile(l, i === 0 ? `${n} live` : dash, i === 0 ? `matchup${n === 1 ? '' : 's'}` : (failed ? "couldn't run" : 'working it out')));
+    const parts = [`<div class="mls-fw-tiles"${t ? '' : ' aria-busy="true"'}>${tiles.join('')}</div>`];
+    if (failed) parts.push(`<p class="text-helper mls-fw-note">The simulation didn't run. Tap Refresh to try again.</p>`);
+
+    const chance = (r) => res ? res.chances.get(r.league.leagueId) : null;
+    const settled = (c) => c == null || c < SETTLED || c > 1 - SETTLED;
+    const order = [...fm.rows].sort((a, b) => {
+        const ca = chance(a), cb = chance(b);
+        const sa = settled(ca), sb = settled(cb);
+        if (sa !== sb) return sa ? 1 : -1;
+        if (ca != null && cb != null && ca !== cb) return Math.abs(ca - 0.5) - Math.abs(cb - 0.5);
+        return Math.abs(a.res.margin) - Math.abs(b.res.margin);
+    });
+    const items = order.map(r => {
+        const l = r.league, x = r.res, c = chance(r);
+        const sim = res && res.matchups.get(l.leagueId);
+        const mine = liveSide(x.me), theirs = liveSide(x.them);
+        const edge = c == null ? '' : (c > 0.5 ? ' is-ahead' : (c < 0.5 ? ' is-behind' : ''));
+        const bar = c == null ? '' : finalChanceMarkup(c, `${pctText(c * 100)} to win`);
+        let table = '';
+        // Not for a settled matchup: "if he goes quiet, the other must score under 42.2" says nothing new.
+        const two = sim && !settled(c) && twoPlayerTable(sim);
+        if (two) {
+            table = `<table class="mls-fw-table"><thead><tr><th scope="col">If ${escapeHtml(two.first.name)} scores</th><th scope="col">${escapeHtml(two.second.name)} must score</th></tr></thead><tbody>${
+                two.rows.map(row => `<tr><td>${row.label}: ${fmt(row.value)}</td><td>${row.text}</td></tr>`).join('')}</tbody></table>`;
+        }
+        return `<li class="mls-fw-match${edge}${res && settled(c) ? ' is-settled' : ''}">
+            <div class="mls-fw-match-head"><span class="mls-week-line-name">${l.paid ? paidBadgeMarkup() + ' ' : ''}<span class="mls-week-name">${leagueName(l)}</span></span><span class="mls-week-margin${x.margin < 0 ? ' is-behind' : ''}">${signed(x.margin)}</span></div>
+            <div class="mls-fw-score">You ${fmt(x.me.points)} &middot; ${escapeHtml(x.oppName)} ${fmt(x.them.points)}</div>
+            ${bar}
+            <p class="mls-fw-need">${needsLine({ margin: x.margin, mine, theirs }, escapeHtml)}</p>
+            <div class="mls-fw-who"><span class="mls-week-side">You:</span> ${fwPlayers(mine)} &middot; <span class="mls-week-side">Them:</span> ${fwPlayers(theirs)}</div>
+            ${table}
+        </li>`;
+    });
+    parts.push(`<h4 class="mls-week-sub">What each matchup needs</h4><ul class="mls-fw-list">${items.join('')}</ul>`);
+    const notes = [];
+    if (fm.bestBall.length) notes.push(`Not counted, Best Ball (anyone on the roster can still count, which the simulation can't play yet): ${fm.bestBall.map(r => leagueName(r.league)).join(', ')}.`);
+    if (fm.noOpp.length) notes.push(`No opponent to beat: ${fm.noOpp.map(r => leagueName(r.league)).join(', ')}.`);
+    notes.push(`Each of ${DEFAULT_RUNS.toLocaleString('en-US')} runs draws every live player once and scores him in every league he's in, with that league's scoring, so one big night moves all his matchups together.`);
+    parts.push(notes.map(t2 => `<p class="text-helper mls-fw-note">${t2}</p>`).join(''));
+    return parts.join('');
+}
+
 // After a redraw: the first row Show all added (S27), or the root-for control focus was on.
 function restoreFocus(el, focusKey) {
     const next = view.focusNext;
@@ -921,6 +1058,7 @@ const FOLDS = {
     league: { group: true, byDefault: true },
     player: { group: true, byDefault: true },
     root: { group: true, byDefault: true },
+    final: { group: true, byDefault: true },
 };
 function foldGroup() {
     try {

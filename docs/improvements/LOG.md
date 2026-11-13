@@ -11183,3 +11183,76 @@ lacks them; FPOE/G worked out from XFP/G alone. A unit test for the optional par
 **Screenshots.** Compared main against the branch in the same container: desktop `tscore-inSeasonTab.png` (two more
 columns) and desktop and phone `tscore-researchTab.png` (the new line); the phone In-Season PNG is unchanged (its
 table scrolls sideways and the new columns sit past the first screen). Re-taken on CI.
+
+## S36 — The Final Window: what rides on the last game of the week
+
+**User-visible effect.** On the Scoreboard, when every player still to play in your head-to-head matchups is in the
+week's last night window (Sunday night, or Monday's one or two games), a new section, **Final Window** (a moon icon),
+sits above League Scoreboard and folds like the halves (remembered):
+- **Its title line:** the games and kickoff, and how many matchups ride on them ("MIN @ CHI, KC @ DEN · Mon 7:15 PM ·
+  3 matchups ride on them").
+- **Four tiles** (two across on phones, four from 900px): **At stake** ("2 W · 3 live matchups"), **Expected** ("0.3 W ·
+  middle 80%: 0–1 W"), **Best case** ("2 W · 3% of runs") and **Clean sweep** ("3% · all 2 at stake"). While the
+  simulation runs they read "working it out"; if it fails, "couldn't run" and a line to tap Refresh.
+- **What each matchup needs:** one card per live matchup (one column on phones, two from 900px), most uncertain first,
+  settled ones last and dimmed: the league ($ if paid), the margin, "You 100.0 · Rival 102.0", a green/red win-chance
+  bar with "26% to win", one line in words ("Down 2.0. **Justin Jefferson** needs 2.0+ more than **Harrison Butker**.",
+  "Up 5.2. Hold **James Cook III** + **Jordan Mason** under 5.2 more.", "…: even a zero from X isn't enough",
+  "…: anything from X does it"), who's live on each side with position badges, and, when exactly two players decide it
+  (and it isn't settled), a table: "If A scores" Quiet: 0.0 / Projection: 8.3 / Big night: 10.0, against "B must score"
+  "under 6.3", "2.5+", "anything" or "even a zero isn't enough".
+- **Notes** under it: Best Ball leagues and leagues with no opponent are named, not counted; one line on how the runs work.
+- A muted credit line under the Scoreboard card ("The Final Window was inspired by FF Historian, ffhistorian.com"),
+  under Sleepy's, and the same credit at the end of the Guide's new Final Window item. The badge legend gains the
+  win-chance bar.
+- Nothing shows before the last window (Sunday afternoon, say), in a past week, or with no live head-to-head matchup.
+
+**Owner's decisions (2026-11-13, asked before building, with sketches at 375 and 1280px).**
+1. Name: **Final Window** (my recommendation; it fits Sunday night and two Monday games). Credit: **FF Historian,
+   https://ffhistorian.com/**, in the Guide and under the Scoreboard, as S27 credits Sleepy.
+2. When: **the last window, Sunday night too**: every live player's game in one night window (same day, US Eastern, at
+   5 PM or later), so SNF counts when nobody you care about plays Monday.
+3. Math: **one shared simulation** across every live matchup (players shared by matchups move together), with the four
+   tiles as sketched.
+4. The two-player table **in points**; stat lines stay with S37.
+
+**What changed, and where.**
+- `js/mls/week/lastWindow.js` (new, pure): `finalWindow` (the window from live teams, kickoffs and game states),
+  `simulateWindow` (10,000 runs; one standard normal per player per run, shared by every league he's in, each league
+  scaling it by its own mean and spread of his points still to come, floored at 0; a QB and his own team's WR/TE share
+  part of it, the Simulator worker's 0.35, here across leagues), `certainResult`, `shareText`, `needsLine` (names
+  escaped), `twoPlayerTable`. "At stake" leaves out matchups that are certain (only one side can still score and it's
+  that side's) or settled in the runs (under 0.5% or over 99.5%, the Scoreboard's own rule); the other tiles count the
+  matchups at stake.
+- `js/mls/week/lastWindowWorker.js` (new): a module worker running `simulateWindow`. Measured: 10,000 runs × 15
+  matchups take ~34 ms in Node and 75–100 ms in Chromium with the CPU slowed 4x, so it runs off the main thread (on the
+  page as a fallback if the worker can't start). The card suggested the Simulator's worker; that one is a classic
+  script, and a module worker importing `lastWindow.js` keeps the math in one place.
+- `js/mls/sim/winChance.js`: the history fetch is shared (`historiesFor`), and `remainingProfiles` gives each live
+  player's points still to come in each league's scoring (`getPlayerVarianceProfile`, less what he has; mid-game, the
+  Simulator's shareLeft rule). Unlike the Simulator, a player with no history still counts (projection with the
+  fallback spread), so a matchup is never dropped. `matchupWinChances` is unchanged in behavior.
+- `js/mls/week/thisWeek.js`: `finalModel`, `addFinalWindow` (queued after the board's chances, only while the
+  Scoreboard is open, rerun when scores, live players or game states change; Refresh reruns it), `finalHTML`; the
+  `final` fold in the `mls_scoreboard_folds` key (comment updated in `keys.js`; no new key).
+- `js/mls/badges.js` `finalChanceMarkup`, `js/mls/legend.js` (one line), `css/mls.css` (the `mls-fw-*` rules),
+  `lineup/index.html` (the Guide item and the credit line), `CHANGELOG.md`, `sw.js` (the two files in PRECACHE_ASSETS,
+  CACHE_NAME v2.10.4 → v2.10.5).
+
+**Tests.** `tests/unit/lastWindow.test.mjs` (9): the window (two Monday games as one, SNF alone, an afternoon game
+left, unknown kickoff, a final game), a sure win and a sure loss, a settled blowout, a shared player on both sides of
+different matchups (every run 1 or 2 wins, never a sweep), two leagues' scoring moving together, the sweep and middle
+80% over six coin flips, `shareText`, the needs lines (escaping), the two-player table (two yours, two theirs, one
+each, none with one or three). `tests/mls-final-window.spec.mjs` (both widths): Monday night with MIN @ CHI and KC @
+DEN left (S27's three fixture leagues, Butker's points set to 0): the section above League Scoreboard, its title, the
+tiles, three matchups with their lines, the table, the settled one last without a table, the fold remembered, the
+credit, nothing past the card; the worker blocked (the page runs it); Sunday afternoon, no section.
+`mls-root-for.spec.mjs`: its credit check picks Sleepy's line by text (there are two now).
+
+**Left over.**
+- In-game players use the Simulator's model (points so far plus the rest of his usual game); real live stats are S37.
+- Best Ball is left out with a note, as in the Simulator (the open follow-up on Best Ball there applies).
+- S37 (stat lines) builds on this: `remainingProfiles` and `finalHTML`'s matchup cards are where its lines would go.
+- S20: `thisWeek.js` now imports `remainingProfiles` from `sim/winChance.js` too; load it through S20's loader with
+  `matchupWinChances`.
+- The window's "night" is 5 PM Eastern or later; a late-season Saturday afternoon game as the last window wouldn't count.

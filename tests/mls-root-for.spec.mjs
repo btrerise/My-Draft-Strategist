@@ -307,8 +307,10 @@ test.describe('Scoreboard: who to root for', () => {
                 .filter(el => { const r = el.getBoundingClientRect(); return r.width && (r.left < box.left - 1 || r.right > box.right + 1); }).length;
         });
         expect(over).toBe(0);
-        await expect(page.locator('.mls-scoreboard-credit')).toContainText('The root-for board was inspired by Sleepy');
-        await expect(page.locator('.mls-scoreboard-credit a')).toHaveAttribute('href', 'https://sleepy-football.vercel.app');
+        // The first credit line under the card (S36 added the Final Window's under it).
+        const credit = page.locator('.mls-scoreboard-credit').filter({ hasText: 'Sleepy' });
+        await expect(credit).toContainText('The root-for board was inspired by Sleepy');
+        await expect(credit.locator('a')).toHaveAttribute('href', 'https://sleepy-football.vercel.app');
         await expectClean(page, state);
     });
 });
