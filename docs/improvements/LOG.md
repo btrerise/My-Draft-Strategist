@@ -11395,6 +11395,9 @@ Zone's 3px edge curved round its corners like a bracket; (5) Lineup rows are sti
   corners, so the 3px edge is a straight stripe.
 - **2, mock-up only** (on the review page, "Round 3"): under 600px those four drawn like sections (no frame, full
   width, 16px padding, an 8px band; banners keep their tint). Waiting for the owner.
+- **A regression from round 1, found by `mds-setup.spec.mjs`:** on a phone with Reduce Motion on, the setup card
+  marked "next" lost its static green glow, because ROOM ON PHONES's `box-shadow: none` on cards beat
+  `.pulse-border`'s. Round 1 didn't run that spec. A rule after ROOM ON PHONES puts the glow back; the spec passes.
 - **Screenshots** (local render against round 2's, `npm run pxdiff`): desktop `mds-empty-setup`, `mls-empty-setup`,
   `mls-league-setup` (the joined settings lists); phone `mds-draft-team`, `mds-empty-team` (the Team tab's cards to the
   edges), `mds-empty-setup`, `mls-empty-setup`, `mls-league-setup`.

@@ -2882,3 +2882,8 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
        them, with the same 8px band between its cards (round 3). */
     .has-nav-bar .container > .tab-content > :has(> .settings-card) { gap: 8px; }
 }
+/* The "this is next" glow on a setup card (.pulse-border) survives the flat card: with Reduce Motion it's a static
+   box-shadow, which the rule above would remove (round 3; mds-setup.spec.mjs). */
+@media (max-width: 599.98px) and (prefers-reduced-motion: reduce) {
+    .has-nav-bar .settings-card.pulse-border { box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+}
