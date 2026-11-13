@@ -11368,3 +11368,8 @@ The owner asked why T-Score got an exception and whether the Board had an edge-t
 - **Screenshots** (re-taken by CI, below): phone `mds-draft-board` and `mds-empty-board` (the grid from 16px to the
   screen's edge); desktop and phone `tscore-inSeasonTab`, `tscore-researchTab` and `tscore-top50Tab` (2px shorter,
   folds lighter without a border).
+- **A timing race, not a change:** CI's first try (run 43489877214) refused because desktop `mls-league-setup.png`
+  changed too. After Sync, the button shows "Synced Successfully" (green) for 2.5s (`flashButton`), and `visual.spec`'s
+  first MLS shot usually lands inside that. Main's baseline, all four renders in this container and that run show it
+  green; round 1's CI run (43486153756) was slower and caught "Sync Sleeper" (blue), which round 1 committed. Re-taken
+  here with it named, so the baseline is green again, as on main. The race itself is a follow-up in TESTING.md.

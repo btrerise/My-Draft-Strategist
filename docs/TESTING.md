@@ -436,6 +436,10 @@ The card named does the item in its own session; remove the line when it's done.
   Lineup tab show a past week's lineup and points (read-only) would let those tiles open it again.
 
 **Small polish, one session each**
+- `visual.spec.mjs`'s "MLS synced league tabs" shoots the Dashboard right after the sync, while Sync's button shows
+  "Synced Successfully" for 2.5s (`flashButton`); a slow run catches it back on "Sync Sleeper", changing
+  `desktop/mls-league-setup.png` (improvements M17, round 2: CI's screenshot run did once). Waiting for the flash to end
+  before that shot (or hiding the flash text in `hide-transient.css`) would end it, and re-take both widths' Dashboard PNGs.
 - The Guide's second paragraphs have no gap (improvements N2, round 6): `class="step-desc mt-2"` in both apps' Guides
   meant a 0.5rem gap, but `.step-desc` (css/base.css) comes after `.mt-2` and sets all four margins, so it never
   applies. A fix (e.g. `.step-desc.mt-2 { margin-top: var(--space-2); }`) re-takes both apps' Guide screenshots.
