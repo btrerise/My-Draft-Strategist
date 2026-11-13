@@ -11643,7 +11643,10 @@ leagues, ~600 moves), with kickoffs from ESPN's scoreboard.
   request).
 - Screenshots: main and this branch rendered in the same container differ only in `desktop/` and
   `phone/mls-league-guide.png` (the legend's two new lines; the Dashboard screenshots don't show a Best available
-  list). Re-taken on CI with `[update screenshots: …]`.
+  list). Re-taken on CI with `[update screenshots: …]` (run 94, commit "Screenshots re-taken on CI (2 PNGs)"). I
+  opened both: pixel-identical above the Best available legend lines; the two new lines (FA / W chips, and the muted
+  "too late for this week" sample) are added there (phone +293 px, desktop +142 px); below them the same content,
+  moved down by that height (text a sub-pixel off, so not byte-equal rows).
 
 ### Left over
 - `daily_waivers_days` isn't decoded (above). If a league marks some days "Locked" or "FA", the chip can be wrong on
