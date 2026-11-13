@@ -189,7 +189,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   lineup row gets 343px of the 375 instead of 319, and the Lineup and Roster tabs are about 230 to 260px shorter.
   Tablets and computers keep their cards. Export Lineup, Export Trade and Export Recap now draw the same image on a
   phone as on a computer, in the site's current look. Advanced Settings is one list with dividers instead of separate
-  strips, and the Danger Zone's red edge is a straight stripe.
+  strips, and the Danger Zone's red edge is a straight stripe. On phones Setup Progress runs to the screen's edges like a
+  section; banners and the matchup strip keep their frame.
 
 - **When you last synced, on the Dashboard.** Under Sync All Leagues and Optimize All Lineups, a line now says when
   you last synced your Sleeper leagues: "Last synced 9:42 AM", "yesterday 8:15 PM", "Sun 8:15 PM" or "Nov 9". It turns

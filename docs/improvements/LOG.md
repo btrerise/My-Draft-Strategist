@@ -11407,3 +11407,19 @@ Zone's 3px edge curved round its corners like a bracket; (5) Lineup rows are sti
   `mls-display-ranks.spec.mjs`'s phone check that the Lineup rank badge ("Pos: #5 (T3) | Flex: #13 (T3)") splits in two
   on a narrow phone. At 320px a row now has 288px instead of 264px, so the badge fits on one line (nothing is cut off).
   As S24 did when it moved the check from 390 to 320px, the check now uses a 300px window, where it still splits.
+
+### M17, round 4: Setup Progress is a section on phones; banners and the matchup strip stay framed (owner, 2026-11-13)
+
+From the round 3 mock-up. The owner liked Setup Progress as a section, and asked whether Material 3 covers banners and
+whether the strip stays clearly tappable without its frame. Checked on m3.material.io (rendered in Chromium): Material 3
+has **no banner component** (its component list has Snackbars, Cards, Lists…; `/components/banners` is a 404; banners
+were Material 2's). Snackbars are short updates at the bottom of the screen; a message that stays until you act is a
+card in the content. A single-action surface reads as one by its container (a card's "primary action area"); a list
+item's trailing icon "can communicate an action" only among other list items. So:
+- **Built:** under 600px `.setup-checklist` has no frame, 16px padding and the 8px band (css/base.css, ROOM ON PHONES),
+  like a section. It's content you work through, and its text gains about 40px.
+- **Kept framed at 16px margins (owner's choice, agreeing):** the guide banner, Scout's Sleeper Sync banner, Draft
+  Strategist's banners and the matchup strip. They come and go, and the frame says so; the strip's frame is what makes it
+  read as tappable. 16px over 8px: the frame's edge lines up with every section's text (Material 3's compact margin).
+- **Screenshots** (local render against round 3's): phone `mds-empty-setup`, `mls-empty-setup`, `mls-league-lineup`,
+  `mls-league-roster`, `mls-league-setup`. Specs: room-on-phones, mds-setup, touch-targets pass.
