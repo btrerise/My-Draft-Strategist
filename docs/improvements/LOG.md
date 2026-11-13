@@ -11261,11 +11261,15 @@ folded sections, toggle rows and sub-blocks a lighter surface tone with no borde
 Export Recap, all html2canvas from the DOM) keep their look at any width. After U1's cards 1 to 3; S32 need not wait
 for it.
 
-**Runbook (not yet published).** Cards named for the runbook: **U4** (Dashboard and Scout tidy; after S45; weeks 12–13),
+**Runbook (published 2026-11-13).** Cards named for the runbook: **U4** (Dashboard and Scout tidy; after S45; weeks 12–13),
 **A2** (Umami Tab, Tool and Section events; any time; weeks 12–13), **U5** (fold the Simulator, Trade Finder and SoS;
 after S20; January), **U6** (jump chips; after U5, before M12; January); **M14** gains R2 (title, goal, ask, scope, done;
 ~30k tok) and runs after U4 to U6. A new track "Organization (U1)" and a top note. The edits are in
-`docs/improvements/organization/runbook-u1-edits.py`, checked against runbook version 1794512485-d1fd (the page renders
-with no errors: 119 cards, the four new ones with prompts). Publishing was refused: the Artifact tool needs the session to
-have read all 1,782 lines (512KB) of the live runbook first, which didn't fit in this session's context. **Left over:** a
-fresh session reads the runbook in full, runs the script on the saved copy, and publishes it to the same URL.
+`docs/improvements/organization/runbook-u1-edits.py`, written against runbook version 1794512485-d1fd. This session's
+Artifact tool refused to publish: it needed the session to have read all 1,782 lines (512KB) of the live runbook first,
+which didn't fit in this session's context. A later session (after this PR merged as #245) read the runbook in full, ran
+the script on the saved copy (all six edits applied as written), and published it as version 1794578611-132a: no page
+errors, 115 → 119 cards, the four new ones with prompts. It also marked U1 merged (#245), changed the top note's
+"awaiting its pull request" to "merged in #245", and gave "New" tags a "Nov 13" label. A second publish
+(1794580162-717c) marked F20 (#242) and S46 (#243) merged, noted the T1 follow-up (#244, no card), and added F20's
+ALLOW note to M16's scope.
