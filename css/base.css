@@ -1438,12 +1438,29 @@ label.toggle-title,
     padding: 0.75rem 1rem;
 }
 
-/* The Danger Zone accordion (MLS Setup, Advanced Settings): its red stays as a 3px edge (improvements M17). It has to
-   come after the rule above, or its background wins. */
+/* The Danger Zone accordion (MLS Setup, Advanced Settings): its red stays as a 3px edge (improvements M17), on square
+   left corners so it's a straight stripe rather than a bracket. It has to come after the rule above, or its background
+   wins. */
 .sos-details-accordion.danger-card {
     border: 0;
     background: var(--surface-inset);
     box-shadow: inset 3px 0 0 rgba(239, 68, 68, 0.6);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* Toggle rows and folds that follow one another in a card are one lighter block with dividers, a list, rather than a
+   stack of separate strips (improvements M17, round 3: Advanced Settings, Draft Strategist's Dashboard). */
+.settings-card > :is(.toggle-row:not(.toggle-row-flush), .sos-details-accordion):has(+ :is(.toggle-row:not(.toggle-row-flush), .sos-details-accordion)) {
+    margin-bottom: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.settings-card > :is(.toggle-row:not(.toggle-row-flush), .sos-details-accordion) + :is(.toggle-row:not(.toggle-row-flush), .sos-details-accordion) {
+    margin-top: 0;
+    border-top: 1px solid var(--divider);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
 }
 
 .sos-summary {
@@ -2856,9 +2873,12 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
         margin-bottom: 8px;
     }
     .has-nav-bar .container > :not(.tab-content):not(.settings-card):not(.sr-only),
-    .has-nav-bar .container > .tab-content > :not(.settings-card):not(.sr-only):not(.player-pool-container):not(.draft-board-container) {
+    .has-nav-bar .container > .tab-content > :not(.settings-card):not(.sr-only):not(.player-pool-container):not(.draft-board-container):not(:has(> .settings-card)) {
         margin-left: 16px;
         margin-right: 16px;
         width: calc(100% - 32px);
     }
+    /* A wrapper that holds cards (Draft Strategist's Team tab: the part Export Team captures) runs to the edges like
+       them, with the same 8px band between its cards (round 3). */
+    .has-nav-bar .container > .tab-content > :has(> .settings-card) { gap: 8px; }
 }

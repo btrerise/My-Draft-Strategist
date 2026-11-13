@@ -1065,3 +1065,7 @@ body.hide-headshots .draft-cell-img {
         padding-right: 16px;
     }
 }
+
+/* Team tab: the part Export Team captures, its cards in a column (was an inline style). Under 600px the gap is the 8px
+   band between sections (css/base.css, ROOM ON PHONES). */
+.team-export-stack { display: flex; flex-direction: column; gap: 1rem; }

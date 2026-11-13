@@ -11375,3 +11375,26 @@ The owner asked why T-Score got an exception and whether the Board had an edge-t
   here with it named, so the baseline is green again, as on main. The race itself is a follow-up in TESTING.md.
 - **Re-taken on CI** (run 43493450519, commit 5843d8e, "Screenshots re-taken on CI (9 PNGs)"): exactly those 9; opened
   and checked (the Board's grid from the 16px margin to the screen's edge, the Dashboard's Sync button green as on main).
+
+### M17, round 3: a review as a user; the owner took 1, 3 and 4, and asked for a mock-up of 2 (2026-11-13)
+
+Looking at the CI screenshots as a user: the weekly tabs feel roomier and calmer, and the cards on computers lose
+nothing. Five clunky spots, mostly leftovers that stood out once everything around them changed: (1) Draft
+Strategist's Team tab: "Starting Lineup & Bench" was still an inset box on the page between full-width sections;
+(2) Setup Progress, the guide banner, the matchup strip and Scout's Sleeper Sync banner stay framed boxes at 16px
+margins between full-width sections; (3) Advanced Settings was a stack of separate lighter strips; (4) the Danger
+Zone's 3px edge curved round its corners like a bracket; (5) Lineup rows are still about 94px tall on phones (S32's).
+- **1, done:** `#exportableTeamContainer`'s inline flex style is now `.team-export-stack` (css/mds.css); under 600px a
+  wrapper that holds cards (`:has(> .settings-card)`) no longer gets the 16px margins, so its cards run to the edges,
+  with an 8px gap like the band between sections (css/base.css, ROOM ON PHONES). Export Team is unchanged (drawn at a
+  computer's width).
+- **3, done:** toggle rows and folds that follow one another directly in a card join into one lighter block with
+  `--divider` lines between them (css/base.css, after the fold rules; `:has(+ …)` squares the corners where they meet).
+  Advanced Settings in both apps' Dashboards.
+- **4, done:** the Danger Zone, the Power Rankings summary and the Waiver Wire's benchmark box square their left
+  corners, so the 3px edge is a straight stripe.
+- **2, mock-up only** (on the review page, "Round 3"): under 600px those four drawn like sections (no frame, full
+  width, 16px padding, an 8px band; banners keep their tint). Waiting for the owner.
+- **Screenshots** (local render against round 2's, `npm run pxdiff`): desktop `mds-empty-setup`, `mls-empty-setup`,
+  `mls-league-setup` (the joined settings lists); phone `mds-draft-team`, `mds-empty-team` (the Team tab's cards to the
+  edges), `mds-empty-setup`, `mls-empty-setup`, `mls-league-setup`.
