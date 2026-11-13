@@ -11436,3 +11436,16 @@ scores and percents; Root for, Against you and the list by kickoff name Jefferso
   over (76 passed), plus `mls-this-week`, `mls-root-kickoff-find`, `touch-targets`, `view-transitions`.
 - Screenshots: `desktop/` and `phone/mls-league-scoreboard.png` (the one credit line) and `desktop/` and
   `phone/mls-league-guide.png` (the Guide's text); re-taken on CI.
+
+### S36, round 9: another pass as a user (owner: do 1 and 2)
+
+The whole Scoreboard on an ordinary Monday is now about a screen and a half on a phone and one screen on desktop.
+- **1, whose player:** each matchup's line says "your" and "their" before each side's names ("Up 1.0. Their Harrison
+  Butker needs 1.0+ more than your Justin Jefferson."; "Hold their James Cook III + Jordan Mason under 5.2 more.";
+  "Down 11.5. Your T.J. Hockenson + Jordan Addison need 11.5+ more."). When you led, "Harrison Butker needs …" read at
+  a glance like your own need. `needsLine` in lastWindow.js; unit tests and the spec updated.
+- **2, desktop:** the matchup cards side by side keep their own height (`align-items: start` on `.mls-fw-list`), so
+  the card beside an open "What if…" isn't stretched with empty space. The spec checks it at 1280px.
+- Not done (my optional 3): the bars from three at stake only. Left as is.
+- Ran `mls-final-window` twice over (36 passed) and the unit tests. Screenshots: the Guide's example sentence changed,
+  so `desktop/` and `phone/mls-league-guide.png` are re-taken on CI.

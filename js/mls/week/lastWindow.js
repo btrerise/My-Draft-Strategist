@@ -187,22 +187,26 @@ const needVerb = (list) => list.length === 1 ? 'needs' : 'need';
 export function needsLine(m, esc = escapeHtml, nameHTML = boldName) {
     const g = fmt(Math.abs(m.margin));
     const mine = m.mine || [], theirs = m.theirs || [];
+    // Whose player, in words (round 9: "Up 1.0. Harrison Butker needs 1.0+ more than Justin Jefferson" read at a glance
+    // like your own need): "your" and "their" before each side's names, "Your"/"Their" at the start of a sentence.
     const M = namesOf(mine, esc, nameHTML), T = namesOf(theirs, esc, nameHTML);
+    const yours = `your ${M}`, theirsTxt = `their ${T}`;
+    const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
     const lead = m.margin > 0 ? `Up ${g}.` : (m.margin < 0 ? `Down ${g}.` : 'Level.');
     if (!mine.length && !theirs.length) return `${lead} Nobody left to play.`;
     if (!theirs.length) {
-        if (m.margin > 0) return `${lead} Nobody left on their side: anything from ${M} does it.`;
-        if (m.margin === 0) return `${lead} Any points from ${M} win it.`;
-        return `${lead} ${M} ${needVerb(mine)} ${g}+ more.`;
+        if (m.margin > 0) return `${lead} Nobody left on their side: anything from ${yours} does it.`;
+        if (m.margin === 0) return `${lead} Any points from ${yours} win it.`;
+        return `${lead} ${cap(yours)} ${needVerb(mine)} ${g}+ more.`;
     }
     if (!mine.length) {
-        if (m.margin > 0) return `${lead} Hold ${T} under ${g} more.`;
-        if (m.margin === 0) return `${lead} Nobody left on your side: any points from ${T} win it for them.`;
-        return `${lead} Nobody left on your side: even a zero from ${T} isn't enough.`;
+        if (m.margin > 0) return `${lead} Hold ${theirsTxt} under ${g} more.`;
+        if (m.margin === 0) return `${lead} Nobody left on your side: any points from ${theirsTxt} win it for them.`;
+        return `${lead} Nobody left on your side: even a zero from ${theirsTxt} isn't enough.`;
     }
-    if (m.margin < 0) return `${lead} ${M} ${needVerb(mine)} ${g}+ more than ${T}.`;
-    if (m.margin > 0) return `${lead} ${T} ${needVerb(theirs)} ${g}+ more than ${M}.`;
-    return `${lead} ${M} ${needVerb(mine)} more than ${T}.`;
+    if (m.margin < 0) return `${lead} ${cap(yours)} ${needVerb(mine)} ${g}+ more than ${theirsTxt}.`;
+    if (m.margin > 0) return `${lead} ${cap(theirsTxt)} ${needVerb(theirs)} ${g}+ more than ${yours}.`;
+    return `${lead} ${cap(yours)} ${needVerb(mine)} more than ${theirsTxt}.`;
 }
 
 /**

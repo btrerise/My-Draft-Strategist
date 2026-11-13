@@ -135,7 +135,7 @@ test.describe('Scoreboard: the Final Window', () => {
         const items = sec.locator('.mls-fw-match');
         await expect(items).toHaveCount(2);
         const third = items.filter({ hasText: 'Third Fixture League' });
-        await expect(third.locator('.mls-fw-need')).toHaveText('Down 2.0. WR Justin Jefferson needs 2.0+ more than K Harrison Butker.');
+        await expect(third.locator('.mls-fw-need')).toHaveText('Down 2.0. Your WR Justin Jefferson needs 2.0+ more than their K Harrison Butker.');
         await expect(third.locator('.mls-fw-need .pos-badge')).toHaveText(['WR', 'K']);
         await expect(third.locator('.mls-fw-bar .mls-week-chance')).toContainText('to win');
         await expect(third.locator('.mls-fw-bar .mls-week-chance')).toHaveClass(/is-dog/);
@@ -145,11 +145,16 @@ test.describe('Scoreboard: the Final Window', () => {
         await expect(third.locator('.mls-fw-table thead')).toHaveText('If Jefferson scoresButker must score');
         await expect(third.locator('.mls-fw-table tbody tr').first()).toContainText('you lose either way');
         const first = items.filter({ hasText: 'Fixture League' }).filter({ hasNotText: 'Second' }).filter({ hasNotText: 'Third' });
-        await expect(first.locator('.mls-fw-need')).toHaveText('Down 6.0. WR Justin Jefferson needs 6.0+ more than K Harrison Butker.');
+        await expect(first.locator('.mls-fw-need')).toHaveText('Down 6.0. Your WR Justin Jefferson needs 6.0+ more than their K Harrison Butker.');
         // "What if…": open on the first card (Third Fixture League, the closest), folded on the rest; a tap opens it
         // in place, the chevron turning with aria-expanded, and it stays open across a redraw.
         await expect(third.locator('.mls-fw-whatif-toggle')).toHaveAttribute('aria-expanded', 'true');
         await expect(first.locator('.mls-fw-whatif-toggle')).toHaveAttribute('aria-expanded', 'false');
+        // Side by side on desktop, each card keeps its own height (round 9): the folded one isn't stretched to match.
+        if ((page.viewportSize()?.width || 0) >= 900) {
+            const h = async (loc) => (await loc.boundingBox()).height;
+            expect(await h(first)).toBeLessThan(await h(third) - 40);
+        }
         await expect(first.locator('.mls-fw-table')).toBeHidden();
         await first.locator('.mls-fw-whatif-toggle').click();
         await expect(first.locator('.mls-fw-table')).toBeVisible();

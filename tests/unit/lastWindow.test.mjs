@@ -128,18 +128,18 @@ test('shareText', () => {
 const N = (name) => ({ name });
 test('needsLine: the margin and what it takes, from your side', () => {
     assert.equal(needsLine({ margin: 5.2, mine: [], theirs: [N('James Cook III'), N('Jordan Mason')] }),
-        'Up 5.2. Hold <strong>James Cook III</strong> + <strong>Jordan Mason</strong> under 5.2 more.');
+        'Up 5.2. Hold their <strong>James Cook III</strong> + <strong>Jordan Mason</strong> under 5.2 more.');
     assert.equal(needsLine({ margin: -11.5, mine: [N('T.J. Hockenson'), N('Jordan Addison')], theirs: [] }),
-        'Down 11.5. <strong>T.J. Hockenson</strong> + <strong>Jordan Addison</strong> need 11.5+ more.');
+        'Down 11.5. Your <strong>T.J. Hockenson</strong> + <strong>Jordan Addison</strong> need 11.5+ more.');
     assert.equal(needsLine({ margin: -2.3, mine: [N('Josh Allen')], theirs: [N('Justin Jefferson')] }),
-        'Down 2.3. <strong>Josh Allen</strong> needs 2.3+ more than <strong>Justin Jefferson</strong>.');
+        'Down 2.3. Your <strong>Josh Allen</strong> needs 2.3+ more than their <strong>Justin Jefferson</strong>.');
     assert.equal(needsLine({ margin: 2.3, mine: [N('Josh Allen')], theirs: [N('Justin Jefferson')] }),
-        'Up 2.3. <strong>Justin Jefferson</strong> needs 2.3+ more than <strong>Josh Allen</strong>.');
-    assert.equal(needsLine({ margin: 4, mine: [N('A')], theirs: [] }), 'Up 4.0. Nobody left on their side: anything from <strong>A</strong> does it.');
-    assert.equal(needsLine({ margin: -4, mine: [], theirs: [N('B')] }), "Down 4.0. Nobody left on your side: even a zero from <strong>B</strong> isn't enough.");
-    assert.equal(needsLine({ margin: 0, mine: [N('A')], theirs: [N('B')] }), 'Level. <strong>A</strong> needs more than <strong>B</strong>.');
+        'Up 2.3. Their <strong>Justin Jefferson</strong> needs 2.3+ more than your <strong>Josh Allen</strong>.');
+    assert.equal(needsLine({ margin: 4, mine: [N('A')], theirs: [] }), 'Up 4.0. Nobody left on their side: anything from your <strong>A</strong> does it.');
+    assert.equal(needsLine({ margin: -4, mine: [], theirs: [N('B')] }), "Down 4.0. Nobody left on your side: even a zero from their <strong>B</strong> isn't enough.");
+    assert.equal(needsLine({ margin: 0, mine: [N('A')], theirs: [N('B')] }), 'Level. Your <strong>A</strong> needs more than their <strong>B</strong>.');
     // Names are escaped.
-    assert.equal(needsLine({ margin: -1, mine: [N('<b>Ja\'Marr</b>')], theirs: [] }), 'Down 1.0. <strong>&lt;b&gt;Ja&#39;Marr&lt;/b&gt;</strong> needs 1.0+ more.');
+    assert.equal(needsLine({ margin: -1, mine: [N('<b>Ja\'Marr</b>')], theirs: [] }), 'Down 1.0. Your <strong>&lt;b&gt;Ja&#39;Marr&lt;/b&gt;</strong> needs 1.0+ more.');
 });
 
 test('twoPlayerTable: two of yours, two of theirs, one each; none with three', () => {
@@ -165,7 +165,7 @@ test('twoPlayerTable: two of yours, two of theirs, one each; none with three', (
 
 test('needsLine with a name drawn by the caller (the Scoreboard adds a position badge)', () => {
     const line = needsLine({ margin: -3, mine: [{ name: 'A&B', pos: 'WR' }], theirs: [] }, undefined, (p, esc) => `[${p.pos}] ${esc(p.name)}`);
-    assert.equal(line, 'Down 3.0. [WR] A&amp;B needs 3.0+ more.');
+    assert.equal(line, 'Down 3.0. Your [WR] A&amp;B needs 3.0+ more.');
 });
 
 test('shortName', () => {
