@@ -11249,6 +11249,18 @@ tiles, three matchups with their lines, the table, the settled one last without 
 credit, nothing past the card; the worker blocked (the page runs it); Sunday afternoon, no section.
 `mls-root-for.spec.mjs`: its credit check picks Sleepy's line by text (there are two now).
 
+**Screenshots.** Rendered main and this branch in this container and compared them (`npm run pxdiff`): four change, by
+design; the other 40 match main. The screenshot league isn't in a final window, so the section itself isn't in any.
+- `desktop/mls-league-scoreboard.png`, `phone/mls-league-scoreboard.png`: the Final Window's credit line under Sleepy's.
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: the Guide's Final Window item and the legend's
+  win-chance bar line.
+CI re-takes these four (`update-screenshots.yml`, named in this round's commit message).
+
+**Checks run.** check-precache OK; `node --test`: all pass but `tscoreInSeason.test.mjs`, which needs `npm ci` in tests/
+(papaparse), as on main; Playwright: `mls-final-window`, `mls-root-for`, `mls-root-kickoff-find`, `mls-this-week`,
+`badge-legend`, `touch-targets`, `tooltips-onscreen` pass (both widths). The full suite hasn't run yet: per rule 7 it
+runs once, when the pull request is asked for.
+
 **Left over.**
 - In-game players use the Simulator's model (points so far plus the rest of his usual game); real live stats are S37.
 - Best Ball is left out with a note, as in the Simulator (the open follow-up on Best Ball there applies).
