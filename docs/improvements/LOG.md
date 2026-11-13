@@ -11184,6 +11184,100 @@ lacks them; FPOE/G worked out from XFP/G alone. A unit test for the optional par
 columns) and desktop and phone `tscore-researchTab.png` (the new line); the phone In-Season PNG is unchanged (its
 table scrolls sideways and the new columns sit past the first screen). Re-taken on CI.
 
+## U1 — Research: how features are organized (the tabs are getting long)
+
+**Output.** `docs/improvements/organization.md`: an inventory of every tab of both apps at 375px (each card's height,
+how far its main action is from the bar, and what it's for), at 1280px in totals; usage (what Umami can tell, the
+owner's weekly cards, three proposed Umami events); Material 3's navigation bar, rail, drawer, tabs and canonical
+layouts, quoted from m3.material.io (rendered in headless Chromium, 2026-11-13); how each option fits the open layout
+cards; three options with mock-ups at 375 and 1280px, and a recommendation. Mock-ups in
+`docs/improvements/organization/` (22 PNGs, 256 colours): the real app at main 638d808, the fixture leagues synced and
+the fixture rankings loaded, mid-Sunday, its DOM edited in Playwright (a throwaway spec, not committed). No app code,
+CSS, baselines or `CACHE_NAME` change (docs only).
+
+**Findings.**
+- The length is mostly **setup and signposts, not weekly tools**: 66% of the phone Dashboard is set-once cards
+  (Add/Sync League, Active League Requirements, Advanced Settings, the Ko-fi foot); two cards only say where a feature
+  moved (Global Injury Auditor on Lineup since S11, Power Rankings on Scout since S29: 204px); Scout's "Sleeper Sync
+  Required" banner (177px) stays after a sync until dismissed.
+- Scout is two jobs (the Trade Analyzer 1.5 screens below the Waiver Wire Assistant at 375px); Lineup ends with the
+  occasional Simulator 3.5 screens down. The Scoreboard is already folds (S22, S27) and is fine.
+- Draft Strategist's length is all its Dashboard (4,592px at 375, all setup); S45 and S42 cover it, so no U1 card.
+- Umami today: page views per page only (A1's `data-exclude-hash`), plus K2's Ko-fi and Share and K3's Shared link
+  opened. Nothing per tab or card.
+- Material 3: three to five destinations in the bar; tabs inside a page swipe between themselves, which collides with
+  the app's swipe between destinations; on wide windows panes (M12, M13) are the answer to long pages.
+
+**The owner's weekly use** (asked 2026-11-13): League Command Center, Roster list, Power Rankings; Optimal Lineup and
+Bench, the Weekly rankings upload, Early Games; all four Scoreboard parts; Top Available, Auto-Find / Check a List and
+the Trade Analyzer. Not weekly: the setup cards, the Matchup Simulator, the Trade Finder.
+
+**Options put to the owner.** A base for all (S45's Settings page; the two signposts gone; the banner only while
+nothing is synced; Add/Sync League and Requirements folded once a league exists), then: **1** tidy in place, the
+occasional tools folded and jump chips on Scout and Lineup (recommended); **2** secondary tabs inside Scout (Waivers |
+Trades | Market); **3** trading moves to the Roster tab (renamed Team) and Scout becomes Waivers; **4** a sixth
+destination behind More (not recommended, against Material 3). Proposed cards for option 1 are at the end of
+organization.md.
+
+**Owner's decision (2026-11-13).** **Option 1: tidy in place, with jump chips**, on top of the shared base. **Yes to
+all three Umami events** (Tab, Tool, Section).
+
+**Proposed cards** (for the runbook; details at the end of organization.md):
+1. **Dashboard and Scout tidy** (~10k tok), after S45, not alongside it (both edit the Dashboard): Add/Sync League and
+   Active League Requirements fold to one line once a league exists (open while there is none; remembered); the Sleeper
+   Sync banner shows only while no Sleeper league is synced; the Injury Auditor and Power Rankings signpost cards go.
+   Re-takes the league Dashboard, Lineup and Scout PNGs; `mls-empty-setup` stays identical.
+2. **Fold the occasional tools** (~10k tok): the Matchup Simulator, the Trade Finder and the SoS card fold like the
+   Scoreboard's sections (one `mls_` key in keys.js). Not alongside S20 (the same Scout and Simulator code); if S20 runs
+   first, the Simulator can load on first unfold.
+3. **Jump chips on Scout and Lineup** (~12k tok), after 2 (a chip opens a folded target): `js/shared/ui/jumpList.js`,
+   sticky, the chip in view highlighted, keyboard and Reduce Motion; shown at every width until M12, then hidden from
+   1200px where the panes show the sections side by side.
+4. **Umami: Tab, Tool and Section events** (~6k tok), beside anything: attributes as in organization.md section 2; the
+   Guides', T-Score's and README's privacy lines updated; a spec that the attributes are there. Check the month's total
+   against the free plan's 100K a week after it ships.
+
+**Left over.** Draft Strategist gets no U1 card: S45 and S42 cover its Dashboard, M13 its Tracker. Option 3 (trading on
+a Team tab) stays an idea to revisit if the `Tool` event shows the Trade Analyzer used as much as waivers.
+
+### U1, round 2: room on phones (owner's question, 2026-11-13)
+
+The owner asked whether "cards in a box" (two layers of padding before any content) costs room on phones, and whether
+Material 3 helps. Measured at 375px on the real app: text in a card starts 21px from the edge (333px wide); a Lineup row
+28px (319), a Roster row 36px (303), folded sections and toggle rows 38px (299), sub-blocks inside a card (the
+Simulator's parts, the Waiver Wire's results) 55px (265). Material 3's compact margin is 16px (343). Material 3: "Don't
+force content into cards when spacing, headlines, or dividers would create a simpler visual hierarchy"; "Lists should
+extend edge-to-edge in compact windows"; "consider swapping cards for lists" on compact screens; 16dp margins. Two
+mock-ups (CSS injected into the real app; organization.md section 7, `organization/room-*.png`): **R1** one box (cards
+stay, nothing boxed inside them: rows with dividers, sub-blocks a lighter tone) and **R2** sections on phones (R1 plus,
+under 600px, full-width sections with 16px margins and Draft Strategist's player cards as list rows).
+
+**Owner's decision.** **R2, built inside M14** (surface tones and corners), which already asks for mock-ups and re-takes
+all 42 PNGs, so one visual card instead of two. M14's scope grows: under 600px `.container` loses its side padding and
+`.settings-card` its side borders, corners and shadow (16px padding, an 8px band between sections); inside cards at
+every width, rows (`.lineup-slot`, `.roster-item`, waiver results, league cards) become list rows with dividers and
+folded sections, toggle rows and sub-blocks a lighter surface tone with no border; meaningful coloured edges stay as a
+3px edge; Draft Strategist's `.player-card` becomes a list row under 600px. The exports (Lineup PNG, Export Team,
+Export Recap, all html2canvas from the DOM) keep their look at any width. After U1's cards 1 to 3; S32 need not wait
+for it.
+
+**Runbook (published 2026-11-13).** Cards named for the runbook: **U4** (Dashboard and Scout tidy; after S45; weeks 12–13),
+**A2** (Umami Tab, Tool and Section events; any time; weeks 12–13), **U5** (fold the Simulator, Trade Finder and SoS;
+after S20; January), **U6** (jump chips; after U5, before M12; January); **M14** gains R2 (title, goal, ask, scope, done;
+~30k tok) and runs after U4 to U6. A new track "Organization (U1)" and a top note. The edits are in
+`docs/improvements/organization/runbook-u1-edits.py`, written against runbook version 1794512485-d1fd. This session's
+Artifact tool refused to publish: it needed the session to have read all 1,782 lines (512KB) of the live runbook first,
+which didn't fit in this session's context. A later session (after this PR merged as #245) read the runbook in full, ran
+the script on the saved copy (all six edits applied as written), and published it as version 1794578611-132a: no page
+errors, 115 → 119 cards, the four new ones with prompts. It also marked U1 merged (#245), changed the top note's
+"awaiting its pull request" to "merged in #245", and gave "New" tags a "Nov 13" label. A second publish
+(1794580162-717c) marked F20 (#242) and S46 (#243) merged, noted the T1 follow-up (#244, no card), and added F20's
+ALLOW note to M16's scope.
+
+**Update (owner, 2026-11-13, later): R2 is now its own card, M17** ("Room on phones"), in weeks 12–13 before S32, so S32
+designs phone rows at the final 343px; M14 is back to surface tones and corners (runbook version 1794583305-ec84). Exports
+follow the new look, drawn the same on every device, instead of keeping today's.
+
 ## S36 — The Final Window: what rides on the last game of the week
 
 **User-visible effect.** On the Scoreboard, when every player still to play in your head-to-head matchups is in the
