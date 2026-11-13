@@ -2981,6 +2981,17 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .mls-fw-sub-row .mls-week-sub { flex: none; white-space: nowrap; }
 .mls-fw-sub-row .mls-week-sub { margin-bottom: 0.4rem; }
 .mls-fw-asof { margin: 0 0 0.4rem auto; display: inline-flex; align-items: baseline; gap: 0.4rem; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+.mls-fw-top { display: grid; gap: 0.5rem; margin: 0.4rem 0 0.2rem; }
+.mls-fw-top > .mls-fw-tiles { margin: 0; }
+.mls-fw-bars { margin: 0; padding: 0.5rem 0.65rem; border: 1px solid var(--border); border-radius: 10px; background: rgba(255, 255, 255, 0.02); }
+.mls-fw-bars-head { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.mls-fw-bars-head span { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.mls-fw-bars-cols { display: grid; gap: 4px; height: 110px; margin-top: 0.4rem; }
+.mls-fw-bars-col { min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 2px; }
+.mls-fw-bars-bar { display: block; width: 100%; max-width: 34px; background: var(--btn-blue-bg); border-radius: 3px 3px 0 0; }
+.mls-fw-bars-pct { font-size: 0.68rem; color: var(--text-main); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mls-fw-bars-w { font-size: 0.72rem; color: var(--text-muted); }
+.mls-fw-bars-axis { text-align: center; font-size: 0.68rem; color: var(--text-muted); }
 .mls-fw-oneline { margin: 0.4rem 0; font-size: 0.85rem; color: var(--text-main); }
 .mls-fw-whatif-toggle { display: inline-flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem; padding: 0.1rem 0; font-size: 0.78rem; font-weight: 600; color: var(--text-muted); cursor: pointer; }
 .mls-fw-whatif-toggle:hover { color: var(--text-main); }
@@ -2989,7 +3000,10 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .mls-fw-table th { color: var(--text-muted); }
 .mls-fw-note { margin: 0.5rem 0 0; font-size: 0.75rem; }
 @media (min-width: 900px) {
-    .mls-fw-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .mls-fw-top { grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); }
+    .mls-fw-tiles { grid-template-columns: minmax(0, 1fr); }
+    .mls-fw-top.is-waiting { grid-template-columns: minmax(0, 1fr); }
+    .mls-fw-top.is-waiting .mls-fw-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .mls-fw-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .mls-fw-legend { display: inline-block; width: 150px; margin-right: 0.75rem; }

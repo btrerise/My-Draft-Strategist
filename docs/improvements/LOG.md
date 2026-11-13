@@ -11386,3 +11386,26 @@ window folded) and in the Lineup tab's strip. `mls-this-week` and `badge-legend`
   to square, because the outcomes pile up at both ends. Mock-up (375 and 1280px): keep At stake and Expected, and swap
   Most likely and Clean sweep for one row of bars, one per number of wins (0 to 6), the last bar being the sweep; with
   six unrelated matchups for contrast (a hump in the middle). Waiting on the owner.
+
+### S36, round 7: one chance per matchup, and the bars (owner: "do the fix for 1, and build the bars for 3")
+
+- **One number per matchup.** While the Final Window has its numbers, `chanceOf` (thisWeek.js) returns its chance for
+  those leagues (`finalChanceOf`), so the league tiles, Still in play, the Lineup tab's strip, the "effectively decided"
+  rule and the root-for weights all read the same figure. New scores clear the Final Window's numbers (they wait for its
+  next run, and meanwhile S21's chances show, as before); outside the window nothing changes. Best Ball leagues aren't in
+  its run, so they keep none, as before.
+- **The bars.** The tiles are now **At stake** and **Expected** ("1.6 W · on average"), then **"How many of the 6 you
+  win"**: one bar per number of wins among the matchups at stake (0 up to a clean sweep), its height the share of runs
+  that ended that way (tallest 72px), labeled with the percent ("<1%" for a sliver; past 10 at stake only bars of 5%
+  or more are labeled). A text alternative names every bar (`role="img"`, aria-label "0 W 37%, 1 W 24%, …"). On phones
+  the tiles sit two across over the bars; from 900px the two tiles stack at the left of the bars. Most likely, Best case,
+  Clean sweep and "usually" are gone (the bars show all of them). `simulateWindow` returns `dist`; the bars use the
+  site's blue (`--btn-blue-bg`). No legend line: a chart, not a badge.
+- Tests: a unit test for `dist` (four coin flips 1-4-6-4-1, the sure win left out, a linked trio all-or-nothing); the
+  spec checks the two tiles, the bars' heading, count, labels, aria-label, that they add up to 100 and that the
+  tallest is the most common, seven bars with six at stake, and that the tile, Still in play and the Lineup tab's strip
+  show the Final Window's own percent. That test found a double rounding (26.49% read "26%" on the card and "27%" on
+  the tile, rounded to 26.5 first): `finalChanceOf` now passes the share unrounded. In the live specs, which card comes
+  first depends on the runs, so they open "What if…" when it's folded (`openWhatIf`). Ran `mls-final-window` three
+  times over (54 passed), `mls-this-week`, `mls-root-for`, `mls-root-kickoff-find`, `tooltips-onscreen`, unit tests,
+  check-precache. Screenshots: only the two Guide PNGs change (its text); re-taken on CI.

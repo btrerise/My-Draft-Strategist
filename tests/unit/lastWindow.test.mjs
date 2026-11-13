@@ -175,3 +175,18 @@ test('shortName', () => {
     assert.equal(shortName('Ravens'), 'Ravens');
     assert.equal(shortName(''), '');
 });
+
+test('dist: the share of runs with 0, 1, … wins among the matchups at stake', () => {
+    const ms = Array.from({ length: 4 }, (_, i) => ({ key: `m${i}`, margin: 0, mine: [P(`me${i}`, 10, 4)], theirs: [P(`them${i}`, 10, 4)] }));
+    const sim = run([...ms, { key: 'sure', margin: 9, mine: [P('x', 3, 1)], theirs: [] }], 8000);
+    const { dist } = sim.tiles;
+    assert.equal(dist.length, 5); // 0 to 4 wins: the sure win isn't at stake
+    assert.ok(Math.abs(dist.reduce((a, b) => a + b, 0) - 1) < 1e-9);
+    // Four coin flips: 1, 4, 6, 4, 1 in 16.
+    [1, 4, 6, 4, 1].forEach((k, w) => assert.ok(Math.abs(dist[w] - k / 16) < 0.02, `${w} wins`));
+    assert.equal(dist[4], sim.tiles.sweepShare);
+    // One player deciding every matchup: all or nothing, never in between.
+    const allen = P('allen', 15, 6, { pos: 'QB', team: 'BUF' });
+    const linked = run([0, 1, 2].map(i => ({ key: `l${i}`, margin: -15 + i, mine: [allen], theirs: [] })), 4000);
+    assert.ok(linked.tiles.dist[0] > 0.2 && linked.tiles.dist[3] > 0.2);
+});

@@ -82,7 +82,17 @@ const view = { loads: new Map(), loading: null, chances: new Map(), chancesWeek:
     // root-for board's weights only; and a row to focus after the next draw (Show all).
     boardChances: new Map(), boardChancesWeek: null, boardKey: '', focusNext: null };
 const failedFor = (week) => (view.loads.get(week) || {}).failed || new Map();
-const chanceOf = (ctx, leagueId) => view.chancesWeek === ctx.week ? view.chances.get(leagueId) : undefined;
+// While the Final Window has its numbers (S36 round 7), its chance stands for those leagues everywhere: the tiles, Still in
+// play and the Lineup tab's strip read the same matchup the same way. Its own runs and S21's are the same model, but
+// each is 10,000 random runs, so side by side they differed by a point or two (27% beside 25%).
+const finalChanceOf = (ctx, leagueId) => {
+    const r = finalView.result;
+    if (!r || finalView.week !== ctx.week || ctx.other || !r.chances.has(leagueId)) return undefined;
+    // Unrounded: the card draws pctText(share × 100) from the same number, so a 26.49% must not become 26.5 here and
+    // then "27%" on the tile beside the card's "26%".
+    return r.chances.get(leagueId) * 100;
+};
+const chanceOf = (ctx, leagueId) => finalChanceOf(ctx, leagueId) ?? (view.chancesWeek === ctx.week ? view.chances.get(leagueId) : undefined);
 // Each week's player stats from Sleeper (S22, round 8): each player's points on the MVPs & LVPs scale, loaded with the
 // matchups (and again with them), in memory only.
 const weekStats = new Map();
@@ -280,6 +290,8 @@ export function refreshThisWeek({ force = false } = {}) {
                 }
             });
             await resolveForDraw();
+            // New scores: the Final Window's numbers (which the tiles also show, above) wait for its next run.
+            finalView.result = null; finalView.key = '';
             view.loads.set(week, { loadedAt: Date.now(), failed });
         } finally {
             view.loading = null;
@@ -938,6 +950,26 @@ const posBadge = (pos) => `<span class="badge pos-badge ${escapeHtml(pos)} mls-r
 // A name in a matchup's line, with his position badge (owner's review: a separate "You: … Them: …" line repeated the names).
 const fwName = (p, esc) => `<span class="mls-fw-name">${posBadge(p.pos)} <strong>${esc(p.name)}</strong></span>`;
 
+// How many of the matchups at stake you win, as bars (S36 round 7, owner's choice after a mock-up): one per number of
+// wins, its height the share of runs that ended that way, the last one a clean sweep. It replaced Most likely, Best case
+// and Clean sweep, which, when one player decides several matchups, couldn't show that the runs pile up at both ends
+// (Expected 2.0 with "most likely 0" beside it). Labels: every bar up to 10 at stake; past that, only bars of 5% or more.
+function finalBars(t) {
+    const dist = t.dist || [];
+    const max = Math.max(...dist, 0) || 1;
+    const many = dist.length > 11;
+    const label = (p) => p === 0 ? '0%' : (p < 0.005 ? '<1%' : `${Math.round(p * 100)}%`);
+    const cols = dist.map((p, w) => {
+        const h = p ? Math.max(2, Math.round(p / max * 72)) : 0; // px; the tallest bar 72px
+        const show = !many || p >= 0.05;
+        return `<div class="mls-fw-bars-col"><span class="mls-fw-bars-pct">${show ? label(p) : ''}</span><span class="mls-fw-bars-bar" style="height:${h}px"></span><span class="mls-fw-bars-w">${w}</span></div>`;
+    }).join('');
+    const said = dist.map((p, w) => `${w} W ${label(p)}`).join(', ');
+    return `<div class="mls-fw-bars"><div class="mls-fw-bars-head">How many of the ${t.atStake} you win <span>(share of ${DEFAULT_RUNS.toLocaleString('en-US')} runs)</span></div>`
+        + `<div class="mls-fw-bars-cols" role="img" aria-label="How many of the ${t.atStake} at stake you win: ${said}" style="grid-template-columns:repeat(${dist.length},minmax(0,1fr))">${cols}</div>`
+        + `<div class="mls-fw-bars-axis" aria-hidden="true">wins</div></div>`;
+}
+
 function finalHTML(fm, ctx) {
     const res = finalResultFor(fm);
     const failed = finalView.week === fm.week && finalView.key === fm.key && finalView.failed;
@@ -946,20 +978,17 @@ function finalHTML(fm, ctx) {
     const n = fm.rows.length;
     const tiles = t ? [
         finalTile('At stake', `${t.atStake} W`, `of ${n} live matchup${n === 1 ? '' : 's'}`),
-        // "usually": the middle 80% of the runs (owner's review: "middle 80%" read as jargon).
-        finalTile('Expected', `${t.expected.toFixed(1)} W`, t.atStake ? `usually ${t.low === t.high ? t.low : `${t.low}–${t.high}`} W` : 'nothing left to swing'),
-        // When the best case is a sweep it would repeat the Clean sweep tile, so the most likely number of wins instead.
-        t.atStake && t.best === t.atStake
-            ? finalTile('Most likely', `${t.likely} W`, `${shareText(t.likelyShare)} of runs`)
-            : finalTile('Best case', `${t.best} W`, t.atStake ? `${shareText(t.bestShare)} of runs` : '–'),
-        finalTile('Clean sweep', t.atStake ? shareText(t.sweepShare) : '–', t.atStake ? `all ${t.atStake} at stake` : 'nothing at stake'),
-    ] : ['At stake', 'Expected', 'Best case', 'Clean sweep'].map((l, i) => finalTile(l, i === 0 ? `${n} live` : dash, i === 0 ? `matchup${n === 1 ? '' : 's'}` : (failed ? "couldn't run" : 'working it out')));
+        finalTile('Expected', `${t.expected.toFixed(1)} W`, 'on average'),
+    ] : ['At stake', 'Expected'].map((l, i) => finalTile(l, i === 0 ? `${n} live` : dash, i === 0 ? `matchup${n === 1 ? '' : 's'}` : (failed ? "couldn't run" : 'working it out')));
     const parts = [];
     const chance = (r) => res ? res.chances.get(r.league.leagueId) : null;
     const settled = (c) => c == null || c < SETTLED || c > 1 - SETTLED;
     // The tiles only from two at stake (round 3): with one, Expected, Most likely and Clean sweep all restate its bar,
     // so one line names it; with none, one line says so instead of four empty tiles.
-    if (!t || t.atStake >= 2) parts.push(`<div class="mls-fw-tiles"${t ? '' : ' aria-busy="true"'}>${tiles.join('')}</div>`);
+    if (!t || t.atStake >= 2) {
+        // The two tiles and the bars: stacked on phones, side by side from 900px (the tiles in a column at the left).
+        parts.push(`<div class="mls-fw-top${t ? '' : ' is-waiting'}"><div class="mls-fw-tiles"${t ? '' : ' aria-busy="true"'}>${tiles.join('')}</div>${t ? finalBars(t) : ''}</div>`);
+    }
     else if (t.atStake === 1) {
         const r = fm.rows.find(x => !settled(chance(x)));
         parts.push(`<p class="mls-fw-oneline"><strong>One matchup at stake:</strong> ${r ? `${leagueName(r.league)}, ${pctText(chance(r) * 100)} to win` : ''}</p>`);

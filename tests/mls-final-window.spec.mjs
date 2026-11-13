@@ -50,6 +50,13 @@ async function chanceTones(loc) {
         return [t, n >= 50, el.classList.contains('is-dog') && getComputedStyle(el).color === 'rgb(239, 68, 68)'];
     }));
 }
+// A card's "What if…" table, opened if it's folded (only the first card's starts open, and which card is first depends
+// on the runs).
+async function openWhatIf(match) {
+    const t = match.locator('.mls-fw-whatif-toggle');
+    if ((await t.getAttribute('aria-expanded')) !== 'true') await t.click();
+    await expect(match.locator('.mls-fw-table')).toBeVisible();
+}
 const expectTones = async (loc, atLeast = 1) => {
     const tones = await chanceTones(loc);
     expect(tones.length).toBeGreaterThanOrEqual(atLeast);
@@ -106,14 +113,22 @@ test.describe('Scoreboard: the Final Window', () => {
 
         // The tiles, once the simulation is in.
         const tiles = sec.locator('.mls-fw-tile');
-        await expect(tiles).toHaveCount(4);
+        await expect(tiles).toHaveCount(2);
         await expect(sec.locator('.mls-fw-tiles')).not.toHaveAttribute('aria-busy', 'true');
         await expect(tiles.nth(0)).toContainText('At stake');
         await expect(tiles.nth(0)).toContainText('of 3 live matchups');
-        await expect(tiles.nth(1)).toContainText(/Expected\s*\d\.\d W\s*usually \d(–\d)? W/);
-        // The best case here is a sweep (both at stake won), so that tile shows the most likely number of wins instead.
-        await expect(tiles.nth(2)).toContainText(/Most likely\s*0 W\s*\d+% of runs/);
-        await expect(tiles.nth(3)).toContainText('Clean sweep');
+        await expect(tiles.nth(1)).toContainText(/Expected\s*\d\.\d W\s*on average/);
+        // The bars (round 7): one per number of wins of the 2 at stake, labeled, with the whole spread in the label.
+        const bars = sec.locator('.mls-fw-bars');
+        await expect(bars.locator('.mls-fw-bars-head')).toHaveText('How many of the 2 you win (share of 10,000 runs)');
+        await expect(bars.locator('.mls-fw-bars-col')).toHaveCount(3);
+        await expect(bars.locator('.mls-fw-bars-w')).toHaveText(['0', '1', '2']);
+        await expect(bars.locator('.mls-fw-bars-cols')).toHaveAttribute('aria-label', /^How many of the 2 at stake you win: 0 W \d+%, 1 W (\d+|<1)%, 2 W (\d+|<1)%$/);
+        const pcts = (await bars.locator('.mls-fw-bars-pct').allTextContents()).map(t => t.startsWith('<') ? 0.5 : parseFloat(t));
+        expect(Math.abs(pcts.reduce((a, b) => a + b, 0) - 100)).toBeLessThanOrEqual(2);
+        // The tallest bar is the most common outcome.
+        const heights = await bars.locator('.mls-fw-bars-bar').evaluateAll(els => els.map(e => e.getBoundingClientRect().height));
+        expect(heights.indexOf(Math.max(...heights))).toBe(pcts.indexOf(Math.max(...pcts)));
 
         // What each matchup needs: a card per open matchup, each with its line (position badges in it), a bar, and the
         // one-on-one table; the settled one on a line under them.
@@ -179,6 +194,11 @@ test.describe('Scoreboard: the Final Window', () => {
         // Losing long shots read red there and on the tiles, as in the Final Window (26% and 3%).
         await expectTones(league.locator('.mls-week-swings'), 2);
         await expectTones(league.locator('.mls-week-tiles'), 2);
+        // One matchup, one number (round 7): the tiles and Still in play show the Final Window's own chance.
+        const fwChance = async (name) => (await sec.locator('.mls-fw-match').filter({ hasText: name }).locator('.mls-fw-bar .mls-week-chance').textContent()).trim();
+        const fwThird = await fwChance('Third Fixture League');
+        await expect(league.locator('.mls-week-tile').filter({ hasText: 'Third Fixture League' }).locator('.mls-week-tile-chance')).toHaveText(fwThird);
+        await expect(league.locator('.mls-week-swing').filter({ hasText: 'Third Fixture League' }).locator('.mls-week-chance')).toHaveText(fwThird);
         await sec.locator('.mls-week-fold-toggle').click();
         await expect(sec.locator('.mls-week-fold-body')).toBeVisible();
         await expect(league.locator('.mls-fw-pointer')).toHaveCount(1);
@@ -207,6 +227,7 @@ test.describe('Scoreboard: the Final Window', () => {
         await expect(sec.locator('.mls-week-fold-toggle')).toContainText(/MIN @ CHI live, KC @ DEN \S+ \d{1,2}:\d{2} (AM|PM) ·/);
         const third = sec.locator('.mls-fw-match').filter({ hasText: 'Third Fixture League' });
         // Jefferson is half through his game, so Butker has more to come and leads the table; Jefferson "must add".
+        await openWhatIf(third);
         await expect(third.locator('.mls-fw-table thead')).toHaveText('If Butker scoresJefferson must add');
         await expect(third.locator('.mls-fw-table tbody tr').nth(1)).toContainText('Projection:');
         await expectClean(page, state);
@@ -217,6 +238,7 @@ test.describe('Scoreboard: the Final Window', () => {
         const sec = section(page);
         await expect(sec.locator('.mls-week-fold-toggle')).toContainText('MIN @ CHI live, KC @ DEN live ·');
         const third = sec.locator('.mls-fw-match').filter({ hasText: 'Third Fixture League' });
+        await openWhatIf(third);
         await expect(third.locator('.mls-fw-table thead')).toHaveText('If Jefferson addsButker must add');
         await expect(third.locator('.mls-fw-table tbody tr').nth(1)).toContainText('Projected from here:');
         await expectClean(page, state);
@@ -231,6 +253,7 @@ test.describe('Scoreboard: the Final Window', () => {
         await expect(more).toHaveText('Show all 6');
         await more.click();
         await expect(sec.locator('.mls-fw-match')).toHaveCount(6);
+        await expect(sec.locator('.mls-fw-bars-col')).toHaveCount(7);
         // Favored and not, side by side: each percent green or red by its own number.
         const tones = await chanceTones(sec);
         expect(tones.some(([, fav]) => fav) && tones.some(([, fav]) => !fav)).toBe(true);
@@ -245,12 +268,15 @@ test.describe('Scoreboard: the Final Window', () => {
     test('a card opens its league\'s Lineup tab, as the league tiles do', async ({ page }) => {
         const state = await setup(page, MONDAY);
         const third = section(page).locator('.mls-fw-match').filter({ hasText: 'Third Fixture League' });
+        const chance = (await third.locator('.mls-fw-bar .mls-week-chance').textContent()).trim();
         await expect(third.locator('.mls-fw-match-open')).toHaveAttribute('aria-label', 'Third Fixture League: open its lineup');
         await third.locator('.mls-fw-match-open').click();
         await expect(page.locator('#lineupTab')).toHaveClass(/\bactive\b/);
         await expect(page.locator('#headerLeagueSelect')).toHaveValue(FIXTURE_LEAGUE3_ID);
         // The Lineup tab's matchup strip colors its chance the same way.
         await expectTones(page.locator('#lineupMatchupStrip'), 1);
+        // And the same number as the Final Window (round 7).
+        await expect(page.locator('#lineupMatchupStrip .mls-week-chance')).toHaveText(chance);
         await expectClean(page, state);
     });
 

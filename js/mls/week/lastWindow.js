@@ -89,7 +89,8 @@ export function certainResult(m) {
  * Each run draws one standard normal per player id (QB and his team's WR/TE share part of it), and every matchup
  * scores it with its own mean and sd. Options: runs, random (for tests).
  * Returns { runs, chances: Map key -> your win share 0-1, tiles: { live, atStake, stake: [keys], expected, low, high,
- * best, bestShare, likely (the most common number of wins), likelyShare, sweepShare } } where the tiles count only the matchups at stake (not certain, and between SETTLED
+ * best, bestShare, likely (the most common number of wins), likelyShare, sweepShare, dist: [share of runs with 0, 1, …
+ * wins] } } where the tiles count only the matchups at stake (not certain, and between SETTLED
  * and 1 − SETTLED in the runs): low / high are the 10th and 90th percentiles of their wins.
  */
 export function simulateWindow(matchups, { runs = DEFAULT_RUNS, random = Math.random } = {}) {
@@ -159,6 +160,8 @@ export function simulateWindow(matchups, { runs = DEFAULT_RUNS, random = Math.ra
             best, bestShare: runs ? hist[best] / runs : 0,
             likely, likelyShare: runs ? hist[likely] / runs : 0,
             sweepShare: runs && stake.length ? hist[stake.length] / runs : 0,
+            // The share of runs that won 0, 1, … of the matchups at stake (S36 round 7: the Final Window's bars).
+            dist: hist.map(c => runs ? c / runs : 0),
         },
     };
 }
