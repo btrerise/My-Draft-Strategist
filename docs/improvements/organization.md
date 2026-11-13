@@ -4,7 +4,7 @@ Research for card U1 of the [improvements runbook](https://claude.ai/artifact/SF
 owner's note of 2026-11-08: "Re-think feature organization (tabs are getting long)." No app code changes here. The
 mock-ups in [`organization/`](organization/) are the real app (main at 638d808, the fixture leagues synced, the fixture
 rankings loaded) with its DOM edited in Playwright, so they show what each option would look like with today's styles.
-The owner's pick goes in `docs/improvements/LOG.md` (U1), and the build cards come from it.
+**The owner picked option 1 and all three Umami events (2026-11-13);** the decision and the proposed cards are in `docs/improvements/LOG.md` (U1).
 
 **In one paragraph.** Lineup Strategist's tabs are long mostly because of **setup and occasional cards mixed in with
 the weekly ones**, not because there are too many weekly tools. The owner uses nearly every weekly card (asked

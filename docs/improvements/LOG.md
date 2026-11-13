@@ -11219,6 +11219,23 @@ Trades | Market); **3** trading moves to the Roster tab (renamed Team) and Scout
 destination behind More (not recommended, against Material 3). Proposed cards for option 1 are at the end of
 organization.md.
 
-**Owner's decision.** Waiting (asked 2026-11-13).
+**Owner's decision (2026-11-13).** **Option 1: tidy in place, with jump chips**, on top of the shared base. **Yes to
+all three Umami events** (Tab, Tool, Section).
 
-**Left over.** None yet; the build cards come from the decision.
+**Proposed cards** (for the runbook; details at the end of organization.md):
+1. **Dashboard and Scout tidy** (~10k tok), after S45, not alongside it (both edit the Dashboard): Add/Sync League and
+   Active League Requirements fold to one line once a league exists (open while there is none; remembered); the Sleeper
+   Sync banner shows only while no Sleeper league is synced; the Injury Auditor and Power Rankings signpost cards go.
+   Re-takes the league Dashboard, Lineup and Scout PNGs; `mls-empty-setup` stays identical.
+2. **Fold the occasional tools** (~10k tok): the Matchup Simulator, the Trade Finder and the SoS card fold like the
+   Scoreboard's sections (one `mls_` key in keys.js). Not alongside S20 (the same Scout and Simulator code); if S20 runs
+   first, the Simulator can load on first unfold.
+3. **Jump chips on Scout and Lineup** (~12k tok), after 2 (a chip opens a folded target): `js/shared/ui/jumpList.js`,
+   sticky, the chip in view highlighted, keyboard and Reduce Motion; shown at every width until M12, then hidden from
+   1200px where the panes show the sections side by side.
+4. **Umami: Tab, Tool and Section events** (~6k tok), beside anything: attributes as in organization.md section 2; the
+   Guides', T-Score's and README's privacy lines updated; a spec that the attributes are there. Check the month's total
+   against the free plan's 100K a week after it ships.
+
+**Left over.** Draft Strategist gets no U1 card: S45 and S42 cover its Dashboard, M13 its Tracker. Option 3 (trading on
+a Team tab) stays an idea to revisit if the `Tool` event shows the Trade Analyzer used as much as waivers.
