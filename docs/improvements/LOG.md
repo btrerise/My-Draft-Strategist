@@ -11423,6 +11423,14 @@ item's trailing icon "can communicate an action" only among other list items. So
   read as tappable. 16px over 8px: the frame's edge lines up with every section's text (Material 3's compact margin).
 - **Screenshots** (local render against round 3's): phone `mds-empty-setup`, `mls-empty-setup`, `mls-league-lineup`,
   `mls-league-roster`, `mls-league-setup`. Specs: room-on-phones, mds-setup, touch-targets pass.
+- **Re-taken on CI** (commit 1843a0b, "Screenshots re-taken on CI (5 PNGs)"): exactly those 5.
+- **Main moved (S36, #248) and was merged in.** `CACHE_NAME` v2.10.6, above main's v2.10.5. S36 and this card both
+  changed three baselines (desktop and phone `mls-league-guide`, phone `mls-league-scoreboard`): the merge takes main's,
+  then CI re-takes those three with both changes (main and the merged branch rendered here: only those three differ from
+  main among S36's four; desktop `mls-league-scoreboard` matches main; every other PNG matches this branch before the
+  merge). The merge first committed conflict markers in CHANGELOG and LOG (both sides kept since). Specs after the merge:
+  room-on-phones, export-same-everywhere, mls-final-window, mls-mvp-lvp, mls-this-week, mls-root-for, touch-targets,
+  badge-legend (126 pass); check-precache; `node --test` (639 pass).
 
 ## S36 — The Final Window: what rides on the last game of the week
 
