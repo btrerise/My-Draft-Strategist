@@ -10975,11 +10975,14 @@ changes (the card isn't in any baseline).
   2026 Late Round Charity League, Legacy Best Ball, Slow Mock Draft); `sub_lock_if_starter_active` is 0
   everywhere.
 - **What it is** ([Sleeper help: How does Player AutoSubs work?](https://support.sleeper.com/en/articles/9731991-how-does-player-autosubs-work),
-  read through search results; support.sleeper.com isn't reachable from the cloud session): the commissioner turns it on
-  in General League Settings → Player Auto-Subs and picks the weekly number; each manager names a bench sub per starter
-  (mobile app only), who must fit the starter's slot and whose game hasn't started; if the starter is inactive for his
-  game, the sub moves into the lineup. Sleeper added the start-time option later
-  ([SleeperHQ on X](https://x.com/SleeperHQ/status/1824543398432223396)).
+  read in full on 2026-11-13): "If a starter is inactive, the assigned sub will automatically move into the lineup." The
+  commissioner turns it on in General League Settings → Player Auto-Subs and picks how many each team can use per week;
+  managers set a sub per starter on the Swap Player screen (mobile app only; shown on web). Both games must not have
+  started, and the sub must fit the starter's slot. "As soon as one player in the AutoSub pairing kicks off, both players
+  lock." One sub per starter; no injury tag needed. Subs show in Sleeper's team and matchup views (yours and your
+  opponent's). The page doesn't say when the swap is written. Sleeper added the start-time option later
+  ([SleeperHQ on X](https://x.com/SleeperHQ/status/1824543398432223396)). The Footballguys thread sits behind a
+  Cloudflare challenge, so it couldn't be read.
 - **The public API** ([docs.sleeper.com](https://docs.sleeper.com/)) has no auto-sub endpoint or field. A matchup entry
   has exactly `roster_id`, `matchup_id`, `points`, `custom_points`, `starters`, `starters_points`, `players`,
   `players_points` (every entry of the owner's 21 leagues, weeks 1–10). Rosters carry no sub assignments either (their
@@ -10998,3 +11001,12 @@ changes (the card isn't in any baseline).
 starters itself, except Best Ball by design (`bestBallLineup`). So after Sleeper's swap the tiles, record, Still in play,
 Root for / Against you and MVPs / LVPs / Started already count the sub. Before the swap (starter ruled out, his game not
 started) the starter is left out as Out and the sub is a bench player.
+
+**The owner's check (2026-11-13).** The mismatch the owner saw is gone when he looks again, so Sleeper's matchups catch
+up with the swap after a delay. Where a delay can come from:
+- Sleeper writing the swap (not documented; the starter has to be inactive, which is only certain at his kickoff).
+- Sleeper's CDN: `GET /v1/league/<id>/matchups/<week>` answers with `cache-control: public, s-maxage=60,
+  stale-while-revalidate=300`, so a response can be up to about 6 minutes old.
+- The app: the Scoreboard re-fetches matchups older than 2 minutes (`FRESH_MS`, thisWeek.js; Refresh forces it). Nothing
+  stores matchups across a reload (`State.lineupActualPoints` is in memory), and the service worker doesn't touch
+  cross-origin requests.
