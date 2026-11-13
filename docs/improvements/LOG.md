@@ -11543,3 +11543,12 @@ The whole Scoreboard on an ordinary Monday is now about a screen and a half on a
 - Not done (my optional 3): the bars from three at stake only. Left as is.
 - Ran `mls-final-window` twice over (36 passed) and the unit tests. Screenshots: the Guide's example sentence changed,
   so `desktop/` and `phone/mls-league-guide.png` are re-taken on CI.
+
+### S36: the full check before the pull request
+
+`npm ci && npm run check` once, after merging main (U1's docs): check-precache and the unit tests passed; Playwright 966
+passed, 48 skipped, 28 failed. 4 were `visual.spec.mjs`'s environment check (this container's fonts), as on main.
+The other 24 were S22's `mls-mvp-lvp.spec.mjs`, at both widths: its Sunday fixture has only the night game left, so
+it's a Final Window, and focus folds Player Scoreboard, which holds MVPs & LVPs. Missed when I fixed the same in
+`mls-this-week` and `mls-root-for`. Fixed the same way (its setup, and its one-league test, start with the window
+folded); the spec then passed (32). Not run in full again, per rule 7; CI runs it on the pull request.
