@@ -6,7 +6,7 @@
 //     inset shadow, not a border.
 //   * From 600px up the cards keep their frame.
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, loadMlsRankings, seedMds } from './helpers.mjs';
+import { openApp, expectClean, showTab, callApp, seedMls, loadMlsRankings, seedMds } from './helpers.mjs';
 
 // Every visible block inside a card that draws a border on its sides, other than controls and small marks. A box is a
 // block at least 40% as wide as its card whose left and right borders both show.
@@ -54,7 +54,10 @@ test.describe('room on phones', () => {
             expect(await page.evaluate(() => document.documentElement.scrollWidth), `${tab} scrolls sideways`).toBe(375);
         }
         // The Waiver Wire's results: rows with a divider, 343px wide (265px before, inside two boxes).
-        await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
+        await callApp(page, 'setWaiverMode', 'list');
+        await callApp(page, 'setWaiverCompare', 'roster');
+        await page.fill('#waiverInput', 'Zay Flowers\nChase Brown');
+        await page.click('#waiverScanBtn');
         const result = page.locator('#scoutTab .scout-result-card').first();
         await expect(result).toBeVisible();
         expect(Math.round((await result.boundingBox()).width)).toBe(343);

@@ -15,6 +15,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **More room on phones.** On a phone the Tracker's players are list rows across the screen with a divider between
+  them, instead of separate cards with gaps, and every section runs to the screen's edges with 16px margins (an 8px
+  band of the page colour between sections). The Tracker is about 260px shorter. Tablets and computers keep their cards.
+  Export Team now draws the same image on a phone as on a computer.
+
 - **T-Score: expected points beside points so far.** The In-Season tab adds XFP/G (expected fantasy points per game
   from a player's usage) and FPOE/G (how far above or below that he has scored) after FP/G, once the sheet carries
   them. The Research's "Reading the In-Season Tab" says what they mean.
@@ -173,6 +178,15 @@ What changed for users in each version of the two apps, in plain language. Newes
 ## Lineup Strategist
 
 ### Unreleased
+
+- **More room on phones, and nothing boxed inside a card.** Inside a card, rows (lineup, roster, waiver results, league
+  cards) are plain list rows with a divider instead of boxes in the box; folded sections, toggle rows and the "needs
+  you" boxes are a lighter shade with no border. The colours that mean something stay as a 3px edge: the league card's
+  amber "needs you" and green "active", the locked and swapping lineup rows, a waiver pick marked Start, the Danger
+  Zone. On a phone every section runs to the screen's edges with 16px margins (an 8px band between sections), so a
+  lineup row gets 343px of the 375 instead of 319, and the Lineup and Roster tabs are about 230 to 260px shorter.
+  Tablets and computers keep their cards. Export Lineup, Export Trade and Export Recap now draw the same image on a
+  phone as on a computer, in the site's current look.
 
 - **When you last synced, on the Dashboard.** Under Sync All Leagues and Optimize All Lineups, a line now says when
   you last synced your Sleeper leagues: "Last synced 9:42 AM", "yesterday 8:15 PM", "Sun 8:15 PM" or "Nov 9". It turns
