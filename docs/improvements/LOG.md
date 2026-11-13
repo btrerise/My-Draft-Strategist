@@ -11268,3 +11268,32 @@ runs once, when the pull request is asked for.
 - S20: `thisWeek.js` now imports `remainingProfiles` from `sim/winChance.js` too; load it through S20's loader with
   `matchupWinChances`.
 - The window's "night" is 5 PM Eastern or later; a late-season Saturday afternoon game as the last window wouldn't count.
+
+### S36, round 2: my review as a user, and the owner's "do all six"
+
+After looking at the section on the real Scoreboard at both widths, I listed what felt clunky; the owner asked for all six:
+1. **No repeat under League Scoreboard.** While the Final Window is open and shows every matchup Still in play would
+   list, Still in play is one line instead: "Still in play: 2, in the Final Window above". Fold the Final Window and the
+   list is back (the fold redraws the card); with a swing it doesn't cover, a Best Ball one say, the list shows as before.
+2. **No twin tiles.** When the best case is a sweep, the third tile is **Most likely** ("0 W · 73% of runs", the most
+   common number of wins) instead of a Best case that repeated Clean sweep. `simulateWindow` returns `likely` and
+   `likelyShare`.
+3. **The table reads more easily:** "you lose either way" instead of "even a zero isn't enough" in the "must score"
+   column, and last names in its headers ("If Jefferson scores | Butker must score"; `shortName`). The sure-loss line
+   above the cards keeps "even a zero … isn't enough", as the card asked.
+4. **Settled matchups share one line** under the cards ("Settled: Second Fixture League (W, +42.2).") instead of a card
+   each with a line like "Butker needs 42.2+ more than Jefferson".
+5. **No You/Them line.** The position badge sits beside each name in the sentence (`needsLine` takes a `nameHTML`).
+6. **Plainer words:** "usually 0–1 W" instead of "middle 80%: 0–1 W"; the "each of 10,000 runs…" paragraph moved into
+   an (i) beside "What each matchup needs". The Guide says "the usual range (the middle 80% of outcomes)".
+The kickoff in my screenshots read "Tue 12:15 AM" only because the test browser runs on UTC; users see their own time.
+
+Tests: two unit tests (`needsLine`'s `nameHTML`, `shortName`) and `likely`. `mls-this-week.spec.mjs`: its mid-Sunday
+fixture (only Jefferson left, on Sunday night) is now a final window, by the owner's rule, so its tests start with the
+Final Window folded (`mls_scoreboard_folds` = { final: false }) to keep testing Still in play's own list. The spec now checks two cards and the
+settled line, the badges in the sentence, the Most likely tile, "usually", the short headers, the (i) (opened, on screen) and
+Still in play's pointer (and the list back once the window is folded). Ran: check-precache, `node --test` (lastWindow,
+badgeLegend, noEmoji), and `mls-final-window`, `mls-this-week`, `mls-root-for`, `mls-root-kickoff-find`,
+`tooltips-onscreen`, `touch-targets` at both widths. Screenshots (this round's render against round 1's, same container: only these two differ): the Guide's text changed again, so `desktop/mls-league-guide.png` and
+`phone/mls-league-guide.png` are re-taken on CI again; the Scoreboard PNGs CI took last round (opened: only the credit
+line under Sleepy's is new) don't change this round, since the screenshot league isn't in a final window.

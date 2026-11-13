@@ -2,7 +2,7 @@
 // shared simulation's tiles, what each matchup needs in words, and the two-player table.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { finalWindow, simulateWindow, certainResult, needsLine, twoPlayerTable, shareText } from '../../js/mls/week/lastWindow.js';
+import { finalWindow, simulateWindow, certainResult, needsLine, twoPlayerTable, shareText, shortName } from '../../js/mls/week/lastWindow.js';
 
 // A seeded generator, so the runs are the same every time.
 function seeded(seed = 1) {
@@ -111,6 +111,9 @@ test('the clean sweep, expected wins and the middle 80% over many open matchups'
     assert.ok(Math.abs(sim.tiles.sweepShare - 1 / 64) < 0.008);
     assert.equal(sim.tiles.best, 6);
     assert.equal(sim.tiles.bestShare, sim.tiles.sweepShare);
+    // The most common number of wins: 3 (20 in 64).
+    assert.equal(sim.tiles.likely, 3);
+    assert.ok(Math.abs(sim.tiles.likelyShare - 20 / 64) < 0.02);
 });
 
 test('shareText', () => {
@@ -148,14 +151,27 @@ test('twoPlayerTable: two of yours, two of theirs, one each; none with three', (
 
     const theirs = twoPlayerTable({ margin: 5.2, mine: [], theirs: [{ name: 'Cook', mean: 11.8, sd: 6 }, { name: 'Mason', mean: 4, sd: 3 }] });
     assert.equal(theirs.head, 'must stay');
-    assert.deepEqual(theirs.rows.map(r => r.text), ['under 5.2', "even a zero isn't enough", "even a zero isn't enough"]);
+    assert.deepEqual(theirs.rows.map(r => r.text), ['under 5.2', 'you lose either way', 'you lose either way']);
 
     // One each: Allen (yours, more to come) against Jefferson.
     const each = twoPlayerTable({ margin: -2.3, mine: [{ name: 'Allen', mean: 20, sd: 7 }], theirs: [{ name: 'Jefferson', mean: 15, sd: 6 }] });
     assert.equal(each.first.name, 'Allen');
     assert.equal(each.second.side, 'theirs');
-    assert.deepEqual(each.rows.map(r => r.text), ["even a zero isn't enough", 'under 17.7', 'under 26.7']);
+    assert.deepEqual(each.rows.map(r => r.text), ['you lose either way', 'under 17.7', 'under 26.7']);
 
     assert.equal(twoPlayerTable({ margin: 1, mine: [{ name: 'a', mean: 1, sd: 1 }], theirs: [] }), null);
     assert.equal(twoPlayerTable({ margin: 1, mine: [{ name: 'a' }, { name: 'b' }], theirs: [{ name: 'c' }] }), null);
+});
+
+test('needsLine with a name drawn by the caller (the Scoreboard adds a position badge)', () => {
+    const line = needsLine({ margin: -3, mine: [{ name: 'A&B', pos: 'WR' }], theirs: [] }, undefined, (p, esc) => `[${p.pos}] ${esc(p.name)}`);
+    assert.equal(line, 'Down 3.0. [WR] A&amp;B needs 3.0+ more.');
+});
+
+test('shortName', () => {
+    assert.equal(shortName('Justin Jefferson'), 'Jefferson');
+    assert.equal(shortName('James Cook III'), 'Cook III');
+    assert.equal(shortName('T.J. Hockenson'), 'Hockenson');
+    assert.equal(shortName('Ravens'), 'Ravens');
+    assert.equal(shortName(''), '');
 });

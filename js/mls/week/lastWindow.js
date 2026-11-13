@@ -89,7 +89,7 @@ export function certainResult(m) {
  * Each run draws one standard normal per player id (QB and his team's WR/TE share part of it), and every matchup
  * scores it with its own mean and sd. Options: runs, random (for tests).
  * Returns { runs, chances: Map key -> your win share 0-1, tiles: { live, atStake, stake: [keys], expected, low, high,
- * best, bestShare, sweepShare } } where the tiles count only the matchups at stake (not certain, and between SETTLED
+ * best, bestShare, likely (the most common number of wins), likelyShare, sweepShare } } where the tiles count only the matchups at stake (not certain, and between SETTLED
  * and 1 − SETTLED in the runs): low / high are the 10th and 90th percentiles of their wins.
  */
 export function simulateWindow(matchups, { runs = DEFAULT_RUNS, random = Math.random } = {}) {
@@ -147,8 +147,8 @@ export function simulateWindow(matchups, { runs = DEFAULT_RUNS, random = Math.ra
         hist[w]++;
     }
     const pct = (q) => { let cum = 0; for (let w = 0; w < hist.length; w++) { cum += hist[w]; if (cum >= q * runs) return w; } return hist.length - 1; };
-    let best = 0;
-    hist.forEach((c, w) => { if (c > 0) best = w; });
+    let best = 0, likely = 0;
+    hist.forEach((c, w) => { if (c > 0) best = w; if (c > hist[likely]) likely = w; });
     const expected = runs ? hist.reduce((t, c, w) => t + c * w, 0) / runs : 0;
     return {
         runs, chances,
@@ -157,6 +157,7 @@ export function simulateWindow(matchups, { runs = DEFAULT_RUNS, random = Math.ra
             expected: Math.round(expected * 10) / 10,
             low: runs ? pct(0.1) : 0, high: runs ? pct(0.9) : 0,
             best, bestShare: runs ? hist[best] / runs : 0,
+            likely, likelyShare: runs ? hist[likely] / runs : 0,
             sweepShare: runs && stake.length ? hist[stake.length] / runs : 0,
         },
     };
@@ -171,17 +172,19 @@ export function shareText(share) {
 }
 
 // --- What each matchup needs, in words ---
-const namesOf = (list, esc) => list.map(p => `<strong>${esc(p.name)}</strong>`).join(' + ');
+const boldName = (p, esc) => `<strong>${esc(p.name)}</strong>`;
+const namesOf = (list, esc, nameHTML) => list.map(p => nameHTML(p, esc)).join(' + ');
 const needVerb = (list) => list.length === 1 ? 'needs' : 'need';
 
 /**
  * One line, from your side: the margin and what it takes. m: { margin, mine: [{ name }], theirs: [{ name }] }.
- * Names are escaped (esc: escapeHtml by default) and wrapped in <strong>.
+ * Names are escaped (esc: escapeHtml by default) and wrapped in <strong>; nameHTML(p, esc) draws a name instead (the
+ * Scoreboard adds his position badge, so the card needs no separate "You: … Them: …" line).
  */
-export function needsLine(m, esc = escapeHtml) {
+export function needsLine(m, esc = escapeHtml, nameHTML = boldName) {
     const g = fmt(Math.abs(m.margin));
     const mine = m.mine || [], theirs = m.theirs || [];
-    const M = namesOf(mine, esc), T = namesOf(theirs, esc);
+    const M = namesOf(mine, esc, nameHTML), T = namesOf(theirs, esc, nameHTML);
     const lead = m.margin > 0 ? `Up ${g}.` : (m.margin < 0 ? `Down ${g}.` : 'Level.');
     if (!mine.length && !theirs.length) return `${lead} Nobody left to play.`;
     if (!theirs.length) {
@@ -203,7 +206,7 @@ export function needsLine(m, esc = escapeHtml) {
  * When exactly two live players decide a matchup: "if the first gets 0 / his projection / a big night, the second
  * needs …". The first is the one with more still to come. m: { margin, mine: [P], theirs: [P] } with P { name, mean, sd }.
  * Returns null, or { first: { name, side }, second: { name, side }, head, rows: [{ label, value, text }] }:
- * text is "12.3+" or "anything" when the second is yours, "under 12.3" or "even a zero isn't enough" when he's theirs.
+ * text is "12.3+" or "anything" when the second is yours, "under 12.3" or "you lose either way" when he's theirs.
  */
 export function twoPlayerTable(m) {
     const all = [...(m.mine || []).map(p => ({ ...p, side: 'mine' })), ...(m.theirs || []).map(p => ({ ...p, side: 'theirs' }))];
@@ -223,11 +226,17 @@ export function twoPlayerTable(m) {
             const need = round1(-lead);
             return { ...s, need, text: need < 0 ? 'anything' : `${fmt(need)}+` };
         }
-        return { ...s, need: lead, text: lead <= 0 ? "even a zero isn't enough" : `under ${fmt(lead)}` };
+        return { ...s, need: lead, text: lead <= 0 ? 'you lose either way' : `under ${fmt(lead)}` };
     });
     return {
         first: { name: first.name, side: first.side }, second: { name: second.name, side: second.side },
         head: second.side === 'mine' ? 'needs' : 'must stay',
         rows,
     };
+}
+
+// "Jefferson", "Cook III", "Ravens": a name without its first word, for the two-player table's narrow headers.
+export function shortName(name) {
+    const parts = String(name || '').trim().split(/\s+/);
+    return parts.length > 1 ? parts.slice(1).join(' ') : parts[0] || '';
 }

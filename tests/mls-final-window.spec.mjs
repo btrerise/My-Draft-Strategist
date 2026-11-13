@@ -77,46 +77,63 @@ test.describe('Scoreboard: the Final Window', () => {
         await expect(sec.locator('.mls-fw-tiles')).not.toHaveAttribute('aria-busy', 'true');
         await expect(tiles.nth(0)).toContainText('At stake');
         await expect(tiles.nth(0)).toContainText('3 live matchups');
-        await expect(tiles.nth(1)).toContainText(/Expected\s*\d\.\d W/);
-        await expect(tiles.nth(2)).toContainText(/Best case\s*\d W/);
+        await expect(tiles.nth(1)).toContainText(/Expected\s*\d\.\d W\s*usually \d(–\d)? W/);
+        // The best case here is a sweep (both at stake won), so that tile shows the most likely number of wins instead.
+        await expect(tiles.nth(2)).toContainText(/Most likely\s*0 W\s*\d+% of runs/);
         await expect(tiles.nth(3)).toContainText('Clean sweep');
 
-        // What each matchup needs: one per live matchup, each with its line, a bar, and the one-on-one table.
+        // What each matchup needs: a card per open matchup, each with its line (position badges in it), a bar, and the
+        // one-on-one table; the settled one on a line under them.
         const items = sec.locator('.mls-fw-match');
-        await expect(items).toHaveCount(3);
+        await expect(items).toHaveCount(2);
         const third = items.filter({ hasText: 'Third Fixture League' });
-        await expect(third.locator('.mls-fw-need')).toHaveText('Down 2.0. Justin Jefferson needs 2.0+ more than Harrison Butker.');
-        await expect(third.locator('.mls-fw-who')).toContainText('You: WR Justin Jefferson · Them: K Harrison Butker');
+        await expect(third.locator('.mls-fw-need')).toHaveText('Down 2.0. WR Justin Jefferson needs 2.0+ more than K Harrison Butker.');
+        await expect(third.locator('.mls-fw-need .pos-badge')).toHaveText(['WR', 'K']);
         await expect(third.locator('.mls-fw-bar .mls-week-chance')).toContainText('to win');
         await expect(third.locator('.mls-fw-table tbody tr')).toHaveCount(3);
         await expect(third.locator('.mls-fw-table tbody tr').first()).toContainText('Quiet: 0.0');
-        await expect(third.locator('.mls-fw-table thead')).toHaveText('If Justin Jefferson scoresHarrison Butker must score');
-        await expect(third.locator('.mls-fw-table tbody tr').first()).toContainText("even a zero isn't enough");
+        await expect(third.locator('.mls-fw-table thead')).toHaveText('If Jefferson scoresButker must score');
+        await expect(third.locator('.mls-fw-table tbody tr').first()).toContainText('you lose either way');
         const first = items.filter({ hasText: 'Fixture League' }).filter({ hasNotText: 'Second' }).filter({ hasNotText: 'Third' });
-        await expect(first.locator('.mls-fw-need')).toHaveText('Down 6.0. Justin Jefferson needs 6.0+ more than Harrison Butker.');
-        const second = items.filter({ hasText: 'Second Fixture League' });
-        await expect(second.locator('.mls-fw-need')).toHaveText('Up 42.2. Harrison Butker needs 42.2+ more than Justin Jefferson.');
-        // Up 42.2 against a kicker: settled, listed last and dimmed, not at stake.
-        await expect(items.last()).toContainText('Second Fixture League');
-        await expect(second).toHaveClass(/is-settled/);
-        await expect(second.locator('.mls-fw-table')).toHaveCount(0);
+        await expect(first.locator('.mls-fw-need')).toHaveText('Down 6.0. WR Justin Jefferson needs 6.0+ more than K Harrison Butker.');
+        // Up 42.2 against a kicker: settled, not at stake, on one line under the cards.
+        await expect(items.filter({ hasText: 'Second Fixture League' })).toHaveCount(0);
+        await expect(sec.locator('.mls-fw-note').first()).toHaveText('Settled: Second Fixture League (W, +42.2).');
         await expect(tiles.nth(0)).toContainText('2 W');
-        await expect(sec.locator('.mls-fw-note').last()).toContainText('draws every live player once');
+        // How it's worked out is in the (i) beside the heading, not in plain view.
+        await expect(sec.locator('.mls-fw-sub-row .tooltip-text')).toContainText('draws every live player once');
+        await expect(sec.locator('.mls-fw-note')).toHaveCount(1);
+        // Still in play points here instead of repeating the same two matchups.
+        const league = card(page).locator('.mls-week-fold[data-fold="league"]');
+        await expect(league.locator('.mls-fw-pointer')).toHaveText('Still in play: 2, in the Final Window above');
+        await expect(league.locator('.mls-week-swings')).toHaveCount(0);
 
         // It folds, remembered.
         await sec.locator('.mls-week-fold-toggle').click();
         await expect(sec.locator('.mls-week-fold-body')).toBeHidden();
         expect(await page.evaluate(() => JSON.parse(localStorage.getItem('mls_scoreboard_folds')))).toEqual({ final: false });
+        // Folded, Still in play lists its matchups again.
+        await expect(league.locator('.mls-fw-pointer')).toHaveCount(0);
+        await expect(league.locator('.mls-week-swing')).toHaveCount(2);
         await sec.locator('.mls-week-fold-toggle').click();
         await expect(sec.locator('.mls-week-fold-body')).toBeVisible();
+        await expect(league.locator('.mls-fw-pointer')).toHaveCount(1);
 
         // The credit, under the card and in the Guide (owner's choice).
         const credit = page.locator('.mls-scoreboard-credit').filter({ hasText: 'FF Historian' });
         await expect(credit).toHaveText('The Final Window was inspired by FF Historian, ffhistorian.com');
         await expect(credit.locator('a')).toHaveAttribute('href', 'https://ffhistorian.com/');
         // Nothing past the card's edges.
-        const over = await card(page).evaluate(el => { const r = el.getBoundingClientRect(); return [...el.querySelectorAll('.mls-fw *')].filter(c => { const b = c.getBoundingClientRect(); return b.width && (b.right > r.right + 1 || b.left < r.left - 1); }).length; });
-        expect(over).toBe(0);
+        const over = await card(page).evaluate(el => { const r = el.getBoundingClientRect(); return [...el.querySelectorAll('.mls-fw *:not(.tooltip-text)')].filter(c => { const b = c.getBoundingClientRect(); return b.width && (b.right > r.right + 1 || b.left < r.left - 1); }).map(c => c.className); });
+        expect(over).toEqual([]);
+        // The (i) opens on a tap and its box stays on the screen (tooltips-onscreen.spec.mjs's rule).
+        const icon = sec.locator('.mls-fw-sub-row .tooltip-icon');
+        await expect(icon).toHaveText('i');
+        await icon.click();
+        const box = await sec.locator('.mls-fw-sub-row .tooltip-text').boundingBox();
+        const vw = await page.evaluate(() => document.documentElement.clientWidth);
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(vw);
         await expectClean(page, state);
     });
 

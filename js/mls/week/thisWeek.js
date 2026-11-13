@@ -39,7 +39,7 @@ import { playerHeadshotHTML } from '../lineup/headshots.js';
 import { buildRootFor, kickoffOrder, sideOrder, starterIdsOf } from './rootFor.js';
 import { attachPlayerAutocomplete } from '../players.js';
 import { matchupWinChances, remainingProfiles } from '../sim/winChance.js';
-import { DEFAULT_RUNS, SETTLED, finalWindow, needsLine, shareText, simulateWindow, twoPlayerTable } from './lastWindow.js';
+import { DEFAULT_RUNS, SETTLED, finalWindow, needsLine, shareText, shortName, simulateWindow, twoPlayerTable } from './lastWindow.js';
 import { RECAP_SCALES, buildPlayerRecap, ownText, pointsRange, slotLabel, startedText } from './playerRecap.js';
 import { getRecapLines } from './recapLines.js';
 import { scoreboardImageHTML } from './shareImage.js';
@@ -725,7 +725,12 @@ function renderScoreboard(m) {
         if (callable.length >= 2) parts.push(extremesHTML(callable, final, ctx));
         const swings = callable.filter(r => r.res.status === 'swing').map(r => ({ ...r, margin: r.res.margin, winChance: chanceOf(ctx, r.league.leagueId) ?? null, trailReach: trailReachOf(r.res) }))
             .sort(swingOrder);
-        if (swings.length) {
+        // While the Final Window is open and shows every one of them, a pointer instead of the same list again (owner's
+        // review, S36). Folded, the list is back.
+        const fwKeys = new Set((foldOpen('final') && finalModel(m)?.rows || []).map(r => r.league.leagueId));
+        if (swings.length && swings.every(r => fwKeys.has(r.league.leagueId))) {
+            parts.push(`<p class="mls-week-decided mls-fw-pointer"><strong>Still in play:</strong> ${swings.length}, in the Final Window above</p>`);
+        } else if (swings.length) {
             // The most uncertain few, with "Show all" for the rest (owner, round 12: on a busy Sunday 14 of 20 were in
             // play, and the list repeated most of the tiles below it; the tiles carry each one's win chance too).
             const shown = view.allSwingsWeek === ctx.week ? swings : swings.slice(0, SWINGS_SHOWN);
@@ -897,7 +902,8 @@ function finalSummary(fm) {
 }
 const finalTile = (label, value, sub) => `<div class="mls-fw-tile"><span class="mls-fw-tile-label">${label}</span><b class="mls-fw-tile-value">${value}</b><span class="mls-fw-tile-sub">${sub}</span></div>`;
 const posBadge = (pos) => `<span class="badge pos-badge ${escapeHtml(pos)} mls-root-pos">${escapeHtml(pos === 'DEF' ? 'D/ST' : pos)}</span>`;
-const fwPlayers = (list) => list.length ? list.map(p => `${posBadge(p.pos)} ${escapeHtml(p.name)}`).join(', ') : 'nobody left';
+// A name in a matchup's line, with his position badge (owner's review: a separate "You: … Them: …" line repeated the names).
+const fwName = (p, esc) => `<span class="mls-fw-name">${posBadge(p.pos)} <strong>${esc(p.name)}</strong></span>`;
 
 function finalHTML(fm, ctx) {
     const res = finalResultFor(fm);
@@ -907,8 +913,12 @@ function finalHTML(fm, ctx) {
     const n = fm.rows.length;
     const tiles = t ? [
         finalTile('At stake', `${t.atStake} W`, `${n} live matchup${n === 1 ? '' : 's'}`),
-        finalTile('Expected', `${t.expected.toFixed(1)} W`, t.atStake ? `middle 80%: ${t.low === t.high ? t.low : `${t.low}–${t.high}`} W` : 'nothing left to swing'),
-        finalTile('Best case', `${t.best} W`, t.atStake ? `${shareText(t.bestShare)} of runs` : '–'),
+        // "usually": the middle 80% of the runs (owner's review: "middle 80%" read as jargon).
+        finalTile('Expected', `${t.expected.toFixed(1)} W`, t.atStake ? `usually ${t.low === t.high ? t.low : `${t.low}–${t.high}`} W` : 'nothing left to swing'),
+        // When the best case is a sweep it would repeat the Clean sweep tile, so the most likely number of wins instead.
+        t.atStake && t.best === t.atStake
+            ? finalTile('Most likely', `${t.likely} W`, `${shareText(t.likelyShare)} of runs`)
+            : finalTile('Best case', `${t.best} W`, t.atStake ? `${shareText(t.bestShare)} of runs` : '–'),
         finalTile('Clean sweep', t.atStake ? shareText(t.sweepShare) : '–', t.atStake ? `all ${t.atStake} at stake` : 'nothing at stake'),
     ] : ['At stake', 'Expected', 'Best case', 'Clean sweep'].map((l, i) => finalTile(l, i === 0 ? `${n} live` : dash, i === 0 ? `matchup${n === 1 ? '' : 's'}` : (failed ? "couldn't run" : 'working it out')));
     const parts = [`<div class="mls-fw-tiles"${t ? '' : ' aria-busy="true"'}>${tiles.join('')}</div>`];
@@ -923,7 +933,10 @@ function finalHTML(fm, ctx) {
         if (ca != null && cb != null && ca !== cb) return Math.abs(ca - 0.5) - Math.abs(cb - 0.5);
         return Math.abs(a.res.margin) - Math.abs(b.res.margin);
     });
-    const items = order.map(r => {
+    // Settled ones (certain, or under 0.5% / over 99.5% in the runs) go on one line under the cards, not a card each.
+    const open = res ? order.filter(r => !settled(chance(r))) : order;
+    const done = res ? order.filter(r => settled(chance(r))) : [];
+    const items = open.map(r => {
         const l = r.league, x = r.res, c = chance(r);
         const sim = res && res.matchups.get(l.leagueId);
         const mine = liveSide(x.me), theirs = liveSide(x.them);
@@ -933,23 +946,24 @@ function finalHTML(fm, ctx) {
         // Not for a settled matchup: "if he goes quiet, the other must score under 42.2" says nothing new.
         const two = sim && !settled(c) && twoPlayerTable(sim);
         if (two) {
-            table = `<table class="mls-fw-table"><thead><tr><th scope="col">If ${escapeHtml(two.first.name)} scores</th><th scope="col">${escapeHtml(two.second.name)} must score</th></tr></thead><tbody>${
+            table = `<table class="mls-fw-table"><thead><tr><th scope="col">If ${escapeHtml(shortName(two.first.name))} scores</th><th scope="col">${escapeHtml(shortName(two.second.name))} must score</th></tr></thead><tbody>${
                 two.rows.map(row => `<tr><td>${row.label}: ${fmt(row.value)}</td><td>${row.text}</td></tr>`).join('')}</tbody></table>`;
         }
-        return `<li class="mls-fw-match${edge}${res && settled(c) ? ' is-settled' : ''}">
+        return `<li class="mls-fw-match${edge}">
             <div class="mls-fw-match-head"><span class="mls-week-line-name">${l.paid ? paidBadgeMarkup() + ' ' : ''}<span class="mls-week-name">${leagueName(l)}</span></span><span class="mls-week-margin${x.margin < 0 ? ' is-behind' : ''}">${signed(x.margin)}</span></div>
             <div class="mls-fw-score">You ${fmt(x.me.points)} &middot; ${escapeHtml(x.oppName)} ${fmt(x.them.points)}</div>
             ${bar}
-            <p class="mls-fw-need">${needsLine({ margin: x.margin, mine, theirs }, escapeHtml)}</p>
-            <div class="mls-fw-who"><span class="mls-week-side">You:</span> ${fwPlayers(mine)} &middot; <span class="mls-week-side">Them:</span> ${fwPlayers(theirs)}</div>
+            <p class="mls-fw-need">${needsLine({ margin: x.margin, mine, theirs }, escapeHtml, fwName)}</p>
             ${table}
         </li>`;
     });
-    parts.push(`<h4 class="mls-week-sub">What each matchup needs</h4><ul class="mls-fw-list">${items.join('')}</ul>`);
+    const how = `<span class="tooltip-container mls-week-info"><span class="tooltip-icon">i</span><span class="tooltip-text">One simulation of ${DEFAULT_RUNS.toLocaleString('en-US')} runs across all your live matchups: each run draws every live player once and scores him in every league he's in, with that league's scoring, so one big night moves all his matchups together.</span></span>`;
+    parts.push(`<div class="mls-fw-sub-row"><h4 class="mls-week-sub">What each matchup needs</h4>${how}</div>`);
+    if (items.length) parts.push(`<ul class="mls-fw-list">${items.join('')}</ul>`);
     const notes = [];
+    if (done.length) notes.push(`<strong>Settled:</strong> ${done.map(r => `${leagueName(r.league)} (${chance(r) > 0.5 ? 'W' : 'L'}, ${signed(r.res.margin)})`).join(', ')}.`);
     if (fm.bestBall.length) notes.push(`Not counted, Best Ball (anyone on the roster can still count, which the simulation can't play yet): ${fm.bestBall.map(r => leagueName(r.league)).join(', ')}.`);
     if (fm.noOpp.length) notes.push(`No opponent to beat: ${fm.noOpp.map(r => leagueName(r.league)).join(', ')}.`);
-    notes.push(`Each of ${DEFAULT_RUNS.toLocaleString('en-US')} runs draws every live player once and scores him in every league he's in, with that league's scoring, so one big night moves all his matchups together.`);
     parts.push(notes.map(t2 => `<p class="text-helper mls-fw-note">${t2}</p>`).join(''));
     return parts.join('');
 }
@@ -1116,6 +1130,8 @@ export function toggleWeekFold(which) {
         sec.classList.toggle('is-open', open);
         sec.querySelector('.mls-week-fold-toggle').setAttribute('aria-expanded', String(open));
         sec.querySelector('.mls-week-fold-body').hidden = !open;
+        // The Final Window's fold decides whether Still in play is a pointer or its list (S36): redraw for that.
+        if (which === 'final') renderThisWeek();
     };
     if (!canViewTransition()) { update(); return Promise.resolve(); }
     // The card, the section and what follows it in the card, near the screen only (as leagueCards.js's nameCards does).

@@ -176,10 +176,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 - **The Final Window, on the Scoreboard.** When the week is down to its last night games (Sunday night, or Monday's one
   or two games) and every player still to play in your matchups is in them, a section above League Scoreboard shows
-  what rides on them: matchups at stake, expected wins with the middle 80% ("0.3 W · middle 80%: 0–1 W"), the best case
-  and how often it came up, and a clean sweep's chance. Under that, what each matchup needs, in points ("Down 2.0.
+  what rides on them: matchups at stake, expected wins with the usual range ("0.3 W · usually 0–1 W"), the best case and
+  how often it came up (the most likely number of wins when the best case is a sweep), and a clean sweep's chance. Under that, what each matchup needs, in points ("Down 2.0.
   Justin Jefferson needs 2.0+ more than Harrison Butker"), with a win-chance bar and, when two players decide it, what
-  one needs if the other goes quiet, hits his projection or has a big night. One simulation across every matchup at
+  one needs if the other goes quiet, hits his projection or has a big night. Settled matchups share one line, and
+  Still in play points to the section instead of repeating it. One simulation across every matchup at
   once, so a player in several of them moves them all together. Inspired by FF Historian (ffhistorian.com), credited
   in the Guide and under the Scoreboard.
 
