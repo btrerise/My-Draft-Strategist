@@ -16,7 +16,7 @@ import {
     BYE_BADGE_HTML, DISMISS_ICON, PICK_BADGE_HTML, STARTS_ICON, UPGRADE_ICON,
     WARNING_ICON, bestBallBadgeMarkup, edgeBadgeMarkup, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup, leagueStatusChipMarkup,
     ROOT_ICONS, moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, rankGapChipMarkup, rootCountBadgeMarkup, rootOfBadgeMarkup, rootShareMarkup, finalChanceMarkup, scoutPillMarkup,
-    opponentBadgeMarkup, sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, weekResultMarkup, weekStatusMarkup
+    opponentBadgeMarkup, sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, waiverChipMarkup, weekResultMarkup, weekStatusMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
 import { openSheet } from '../shared/ui/sheet.js';
@@ -79,6 +79,10 @@ const GROUPS = [
             'In Top Available: he\'d make your lineup this week.'],
         [`<span class="mls-ba-player is-upgrade">${UPGRADE_ICON}<span class="mls-ba-name">Player</span></span>`,
             'On the Dashboard\'s Best Available: an upgrade over one of your players at his position.'],
+        [waiverChipMarkup('free', '', SAMPLE) + waiverChipMarkup('waivers', '', SAMPLE),
+            'In a Sleeper league, on Best Available, Auto-Find and Check a List: FA, a free agent you can add now (until his game starts); W, on waivers, because he was dropped lately or his game has started. Tap for when the claim runs, in your time zone. Manual leagues show neither: the app can\'t see their waivers.'],
+        [`<span class="mls-ba-player is-late"><span class="mls-ba-name">Player</span>${waiverChipMarkup('waivers', '', SAMPLE)}</span> <span class="mls-ba-late">too late for this week</span>`,
+            'On Best Available (Weekly): on waivers, and his game is before the claim runs, so he can\'t play for you this week. Not counted as an upgrade; the next free agent at his position is checked instead.'],
         [`<span class="btn-bare mls-ba-dismiss">${DISMISS_ICON}</span>`,
             'On Best Available: hides him in that league for the rest of the week.'],
         [rankGapChipMarkup('now', '', SAMPLE) + rankGapChipMarkup('later', '', SAMPLE),

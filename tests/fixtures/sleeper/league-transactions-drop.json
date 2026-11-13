@@ -1,0 +1,18 @@
+[
+ {
+  "transaction_id": "3000000000000000003",
+  "type": "free_agent",
+  "status": "complete",
+  "leg": 2,
+  "roster_ids": [
+   2
+  ],
+  "adds": null,
+  "drops": {
+   "8138": 2
+  },
+  "draft_picks": [],
+  "created": 1789833600000,
+  "status_updated": 1789833600000
+ }
+]

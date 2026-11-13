@@ -11552,3 +11552,103 @@ The other 24 were S22's `mls-mvp-lvp.spec.mjs`, at both widths: its Sunday fixtu
 it's a Final Window, and focus folds Player Scoreboard, which holds MVPs & LVPs. Missed when I fixed the same in
 `mls-this-week` and `mls-root-for`. Fixed the same way (its setup, and its one-league test, start with the window
 folded); the spec then passed (32). Not run in full again, per rule 7; CI runs it on the pull request.
+
+## S34 — Waiver claim or free agent: the Dashboard's upgrades say which, and when
+
+**User-visible effect.** In Sleeper leagues, each player on a league card's **Best available**, on **Auto-Find**'s cards
+and on **Check a List**'s free agents now carries a small chip after his rank: **FA** (grey outline: a free agent, add
+him now, until his game starts) or **W** (amber: on waivers). A tap (or hover) says why and when, in the viewer's time
+zone: "Waivers (FAAB) · runs Wed 12 AM: his game has started, so Sleeper locks him until the weekly run.", "Waivers
+(FAAB) · clears about Sat 5 PM: dropped lately, …", "Free agent: add him now on Sleeper until his game starts (Sun 10
+AM), no claim needed." On **Weekly**, an upgrade who's on waivers and plays before the claim runs is greyed with "too
+late for this week", isn't counted in the card's "1 upgrade" (so the card can fold), and the position's next free agent
+gets the upgrade check instead; other waiver players whose game is before the run are greyed too. On ROS he's marked W
+but still counts (it's about the rest of the season). Manual leagues show no chip. A league synced before this card
+has no waiver settings, so no chips until its next sync. The Guide's badge legend has two new lines.
+
+**Owner's decisions (asked before building, with 375px sketches):**
+1. **A chip on both** ("FA" and "W"), not my suggestion of W only.
+2. **Muted and not counted** ("too late for this week"), my suggestion; and the next free agent at his position is
+   checked instead.
+3. **Auto-Find and Check a List** get the chip; **not Top Available** (nor the All Leagues search).
+
+### Sleeper's rules, as the app uses them (sources)
+
+Sources: Sleeper's help pages "After Game Waivers / Custom Daily Waivers" (support.sleeper.com/en/articles/3242468),
+"Waivers for regular season & playoffs" (…/3978868) and "Why was my waiver time pushed back" (…/4042901), read through
+a web search's summary (support.sleeper.com isn't reachable from this cloud session); and the owner's 21 leagues'
+settings and their transactions for weeks 7–10 of 2026 (`api.sleeper.app/v1/league/<id>/transactions/<week>`, 10
+leagues, ~600 moves), with kickoffs from ESPN's scoreboard.
+- **`waiver_type`:** 0 rolling waivers, 1 reverse standings, 2 FAAB (only the FAAB leagues' claims carry a
+  `waiver_bid`). The type doesn't change who's on waivers; the chip's tap text names it.
+- **Game start:** a player is locked on waivers once his game starts, until the weekly run ("After Game Waivers":
+  Sleeper's help says a Thursday player is "locked and on waivers until Tue After Day (or 12:05 a.m. PST on
+  Wednesday)"). In the transactions, all 178 free-agent adds of a player with a game that week came before his
+  kickoff (one apparent exception was a player who has since changed teams); Sunday adds stop at 10 AM PT, Tuesdays
+  have only drops, and Wednesday has the big batch of claims.
+- **The weekly run:** the day after `waiver_day_of_week` (2 = Tuesday, Sunday = 0, so Wednesday) at
+  `daily_waivers_hour`, **Pacific time**: claims land at Wed 12:07–12:15 AM PT in the hour-0 leagues (daily or not),
+  and at Wed 9:02 AM PT in REDRAFT Late Round Board of Directors (hour 9) and 9:05 in Legends of the Pocket Dynasty
+  (hour 9). The app computes it in America/Los_Angeles and shows it in the viewer's zone.
+- **Dropped players:** on waivers for `waiver_clear_days` days, each on his own clock: claims landed 47 h after the
+  drop in 2-day leagues (Penix Wed 6:24 PM → Fri 5:31 PM; Dobbins Thu 5:08 PM → Sat 4:12 PM; Hurst Thu 10:15 AM → Sat
+  9:22 AM) and 23 h in 1-day ones (Gainwell Wed 12:15 AM → Wed 11:15 PM). The app uses drop + N days and says "about".
+  One exception: in REDRAFT a Tuesday drop cleared at Thursday's 9:02 AM daily run (49 h), so on some days a daily
+  league waits for its run hour; that's the next item.
+- **`daily_waivers` / `daily_waivers_days`:** daily processing on the days in a 2-bits-a-day mask (5461 = every day
+  "1"; 1360, 6140, 10580, 10581, 10583 in other leagues). Sleeper's per-day options are "FA", "Locked" and "Waivers →
+  FA". I couldn't decode the mask with confidence from the data (REDRAFT's 1360 matches Sunday-first days shifted by
+  one, other leagues don't), so the app **doesn't use it**: it's stored, and only the game-start lock and the drop
+  clock decide. Free-agent adds happen in daily leagues all week, so most unrostered players are free agents, as the
+  card said.
+
+### What changed, and where
+- `js/mls/scout/waiverStatus.js` (new, pure): `waiverSettingsFrom(settings)`, `nextWeeklyRun(waivers, after)`,
+  `waiverStatus(player, waivers, drops, kickoffs, now)` → `{ status: 'free' | 'waivers', clearsAt, tooLateThisWeek,
+  reason: 'dropped' | 'played', atRun, kickoff, claimType }` (null when the app can't tell), `waiverStatusText`.
+  Nothing is "too late" once the week's last game is over (about 4 hours after the last kickoff): the Wednesday run
+  is before next week's games.
+- `js/mls/scout/recentDrops.js` (new): each Sleeper league's drops from this week's and last week's transactions
+  (S29's `getSleeperTransactions`), 4 leagues at a time, cached for the visit and re-read after a league syncs. On
+  an error that league gets null: no chips, no toast (a console warning).
+- `js/mls/leagues/sync.js`: `league.waivers` from Sleeper's settings, kept from the last sync if a response lacks
+  them. It's on the league object, so Backup / Restore carries it (no new storage key).
+- `js/mls/scout/bestAvailable.js`: the upgrade check per position walks past waiver players who are too late (Weekly
+  only), lists them muted after the real upgrades, and draws the chip on every player. Drops load with the player map,
+  projections and kickoffs; kickoffs count only when they're this week's.
+- `js/mls/scout/waivers.js`: `waiverChipHTML` (the one helper), and `buildWaiverContext` gives `waiverStatusOf` to
+  Auto-Find's cards; `js/mls/scout/engine.js` adds it to Check a List's free agents in a synced league.
+- `js/mls/badges.js` `waiverChipMarkup`; `js/mls/main.js` `explainWaiver` (the tip as a toast, like SoS);
+  `css/mls.css`; `js/mls/legend.js` two lines; `sw.js` (two new files, `CACHE_NAME` v2.10.6).
+
+### Tests
+- `tests/unit/waiverStatus.test.mjs` (17): settings mapping, the weekly run (12 AM and 9 AM, before and after the
+  hour, across the end of daylight saving time), dropped yesterday in a 2-day league, a 1-day drop that has cleared, a
+  Saturday drop locked at a Sunday kickoff, game started, the Monday-night player on Sunday, daily waivers at 9 before
+  and after the run hour, Tuesday with every game over, FAAB vs rolling, a bye-week player, the tap texts.
+- `tests/mls-waiver-status.spec.mjs` (5, both widths): nobody dropped (every chip FA, "1 upgrade", the tap toast, the
+  settings stored on the league); game day with `league-transactions-drop.json` (Cook dropped Saturday, kickoffs set:
+  Cook muted, "too late for this week", W, not counted; Chase Brown, whose game had started, W and muted; Auto-Find and
+  Check a List chips); the same drop on ROS (W, still counted); transactions failing (no chips, the upgrade counts, no
+  toast about it); a league synced before S34 (no chips). Fixture league now has waiver settings
+  (`tests/fixtures/sleeper/make-fixtures.mjs`).
+- Existing specs changed by the new chip and fetch: `mls-waiver-flex-unranked` (its pinned card texts now have "FA"
+  after the team) and `mls-past-trade` (the Dashboard now reads this week's and last week's transactions once per
+  visit, so the Roster tab's requests are counted from after it; the manual-league test counts from after the league
+  turns manual). `buildWaiverContext` only reads drops for a synced league.
+- Ran: check-precache, `node --test` (656 passed), `mls-waiver-status`, `mls-best-available`, `mls-waiver-sos`,
+  `mls-waiver-tiers`, `mls-waiver-insights`, `mls-waiver-flex-unranked`, `mls-past-trade`, `mls-scout`,
+  `mls-scout-league-switch`, `mls-display-ranks`, `mls-opponent-strength`, `mls-trade-picks-market`, `backup`,
+  `mls-league-cards`, `mls-last-synced`, `touch-targets` and the others listed in the session (all passed). The full suite hasn't run yet (rule 7: once, when you ask for the pull
+  request).
+- Screenshots: main and this branch rendered in the same container differ only in `desktop/` and
+  `phone/mls-league-guide.png` (the legend's two new lines; the Dashboard screenshots don't show a Best available
+  list). Re-taken on CI with `[update screenshots: …]`.
+
+### Left over
+- `daily_waivers_days` isn't decoded (above). If a league marks some days "Locked" or "FA", the chip can be wrong on
+  those days; a session with the league's settings screen open (or Sleeper's help pages reachable) could map the bits.
+- Sleeper's state week may move to the next week before Wednesday's run; then this week's kickoffs are next week's and
+  the "game started" lock isn't seen on Tuesday (drops still are). Small: nothing is "too late" then anyway.
+- Top Available and the All Leagues search have no chip (owner's choice); `waiverChipHTML` and `ctx.waiverStatusOf`
+  are ready if wanted. S35 (FAAB bids) can reuse `recentDrops.js`'s fetch and `league.waivers.budget`.

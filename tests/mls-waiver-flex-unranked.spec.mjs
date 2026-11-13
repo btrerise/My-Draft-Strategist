@@ -118,19 +118,20 @@ async function flexRankTheRest(page) {
     await page.waitForLoadState('networkidle');
 }
 
-// Pinned from main before the fix: the same players, in the same order, with the same verdicts and pills.
+// Pinned from main before the fix: the same players, in the same order, with the same verdicts and pills. Since
+// improvements S34 each free agent also carries the FA chip (nobody was dropped in the fixture).
 const BEFORE = {
     autoLineup: [
-        'WR Jaxon Smith-Njigba SEA Wk Pos: WR20 (T5)Wk Flex: #5ROS: UR Replaces CeeDee Lamb (your FLEX) Would Start',
-        'TE Sam LaPorta DET Wk Pos: TE5 (T2)Wk Flex: URROS: UR Replaces CeeDee Lamb (your FLEX) Would Start',
+        'WR Jaxon Smith-Njigba SEA FA Wk Pos: WR20 (T5)Wk Flex: #5ROS: UR Replaces CeeDee Lamb (your FLEX) Would Start',
+        'TE Sam LaPorta DET FA Wk Pos: TE5 (T2)Wk Flex: URROS: UR Replaces CeeDee Lamb (your FLEX) Would Start',
     ],
     listLineup: [
-        'TE Sam LaPorta Wk Pos: TE5 (T2)Wk Flex: URROS: UR Replaces CeeDee Lamb (your FLEX) Free AgentWould Start',
-        'WR Jaxon Smith-Njigba Wk Pos: WR20 (T5)Wk Flex: #5ROS: UR Replaces CeeDee Lamb (your FLEX) Free AgentWould Start',
+        'TE Sam LaPorta FA Wk Pos: TE5 (T2)Wk Flex: URROS: UR Replaces CeeDee Lamb (your FLEX) Free AgentWould Start',
+        'WR Jaxon Smith-Njigba FA Wk Pos: WR20 (T5)Wk Flex: #5ROS: UR Replaces CeeDee Lamb (your FLEX) Free AgentWould Start',
     ],
     autoRoster: [
-        'WR Jaxon Smith-Njigba SEA Wk Pos: WR20 (T5)Wk Flex: #5ROS: UR Upgrade over CeeDee Lamb Would Start',
-        'TE Sam LaPorta DET Wk Pos: TE5 (T2)Wk Flex: URROS: UR Upgrade over CeeDee Lamb Would Start',
+        'WR Jaxon Smith-Njigba SEA FA Wk Pos: WR20 (T5)Wk Flex: #5ROS: UR Upgrade over CeeDee Lamb Would Start',
+        'TE Sam LaPorta DET FA Wk Pos: TE5 (T2)Wk Flex: URROS: UR Upgrade over CeeDee Lamb Would Start',
     ],
 };
 

@@ -170,17 +170,21 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
         await loadMlsRankings(page);
-        expect(requests).toEqual([]);
+        // The Dashboard's Best available reads this week's and last week's drops (improvements S34), once per visit;
+        // the Roster tab's own requests are counted from here.
+        await page.waitForLoadState('networkidle');
+        const dashboard = requests.length;
+        expect(dashboard).toBeLessThanOrEqual(2);
         await showTab(page, 'roster');
         await expect(page.locator('#rosterPowerStrip')).toBeVisible();
-        await expect.poll(() => requests.length).toBe(2); // weeks 1 and 2
+        await expect.poll(() => requests.length - dashboard).toBe(2); // weeks 1 and 2
         await page.waitForLoadState('networkidle');
         await expect(line(page)).toBeHidden();
         await expect(page.locator('#rosterPowerStrip .mls-roster-power-link')).toHaveText('See the full league breakdown and explanations below ↓');
         await showTab(page, 'lineup');
         await showTab(page, 'roster');
         await page.waitForLoadState('networkidle');
-        expect(requests.length).toBe(2);
+        expect(requests.length - dashboard).toBe(2);
         await expectClean(page, state);
     });
 
@@ -223,6 +227,9 @@ test.describe('Roster tab: what a past trade did to your Power Rankings', () => 
             league.username = 'Manual';
             league.globalRosterMap = Object.fromEntries(Object.entries(league.globalRosterMap).filter(([, o]) => o === 'You'));
         });
+        // Counted from here: while the league was still synced, the Dashboard read its drops (improvements S34).
+        await page.waitForLoadState('networkidle');
+        requests.length = 0;
         await showTab(page, 'roster');
         await page.waitForLoadState('networkidle');
         await expect(line(page)).toBeHidden();

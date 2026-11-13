@@ -91,6 +91,9 @@ import { isDraftPickName } from '../trade/valueCurve.js';
 import { applyDefaultFolds, showTab, switchActiveLeague } from '../main.js';
 import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
 import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
+import { waiverStatus } from './waiverStatus.js';
+import { recentDropsFor } from './recentDrops.js';
+import { waiverChipHTML } from './waivers.js';
 
     const PER_LEAGUE = 3;
 
@@ -179,7 +182,7 @@ import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
     const chip = (pos, posRank) => `<span class="badge pos-badge ${escapeHtml(pos)} mls-ta-pos">${rankText(pos, posRank)}</span>`;
 
     // Everything a league's line needs, worked out without making it the active league.
-    function analyzeLeague(league, meta, dismissedAll) {
+    function analyzeLeague(league, meta, dismissedAll, wctx = {}) {
         const basis = leagueBasis(league);
         if (!basis) return { league, basis: null, upgrade: null };
 
@@ -235,62 +238,88 @@ import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
         };
         const flexRankOf = (clean) => (display[clean] && display[clean].flexRank) || null;
         const rankedFlex = Object.values(display).filter(d => d && d.flexRank).length;
+        // Free agent or waivers (improvements S34): null when the app can't tell (a manual league, an old sync, or
+        // the league's transactions couldn't be read), and then nobody is held back.
+        const statusOf = (fa) => waiverStatus({ cleanName: fa.cleanName, team: freeAgentPlayer(fa, meta).team },
+            league.waivers, wctx.drops ? wctx.drops[league.leagueId] : null, wctx.kickoffs, wctx.now);
         const upgrades = [];
-        FLEX_POSITIONS.forEach(pos => {
-            const best = findFreeAgents(basis.data, { ...options, posFilter: pos }).freeAgents[0];
-            if (!best) return;
+        // Weekly only (owner's choice, S34): a waiver player whose game is before the claim runs can't start for you
+        // this week, so he's shown muted and not counted, and the position's next free agent is checked instead.
+        // ROS asks about the rest of the season, so there he's checked like anyone.
+        const late = [];
+        // The upgrade check for one free agent at a position, or null.
+        const upgradeFor = (best, pos) => {
             const faRank = posRankOf(best.cleanName);
             if (lineupMode) {
                 const verdict = checkAgainstLineup(freeAgentPlayer(best, meta), starters, deps);
-                if (verdict.status !== 'starts') return;
+                if (verdict.status !== 'starts') return null;
                 if (!verdict.displaced) {
-                    if (verdict.fillsEmptySlot) upgrades.push({ pos, fa: best, faRank, emptySlot: true, gap: (rankedAtPos[pos] || 0) + 1 - (faRank || 0) });
-                    return;
+                    return verdict.fillsEmptySlot ? { pos, fa: best, faRank, emptySlot: true, gap: (rankedAtPos[pos] || 0) + 1 - (faRank || 0) } : null;
                 }
                 const out = verdict.displaced;
                 const outPos = getPos(out.cleanName) !== 'UNK' ? getPos(out.cleanName) : out.pos;
                 const gap = outPos === pos
                     ? upgradeGap({ faRank, faTier: tierOf(best.cleanName), benchRank: posRankOf(out.cleanName), benchTier: tierOf(out.cleanName), rankedAtPos: rankedAtPos[pos] || 0 })
                     : upgradeGap({ faRank: flexRankOf(best.cleanName), faTier: flexTierOf(best.cleanName), benchRank: flexRankOf(out.cleanName), benchTier: flexTierOf(out.cleanName), rankedAtPos: rankedFlex });
-                if (gap) upgrades.push({ pos, fa: best, faRank, bench: out, benchPos: outPos, benchRank: posRankOf(out.cleanName), gap });
-                return;
+                return gap ? { pos, fa: best, faRank, bench: out, benchPos: outPos, benchRank: posRankOf(out.cleanName), gap } : null;
             }
             const { bench } = rosterBenchmark(league, getPos, byName, pos);
-            if (!bench) return;
+            if (!bench) return null;
             const benchRank = posRankOf(bench.cleanName);
             const gap = upgradeGap({
                 faRank, faTier: tierOf(best.cleanName),
                 benchRank, benchTier: tierOf(bench.cleanName), rankedAtPos: rankedAtPos[pos] || 0
             });
-            if (gap) upgrades.push({ pos, fa: best, faRank, bench, benchPos: pos, benchRank, gap });
+            return gap ? { pos, fa: best, faRank, bench, benchPos: pos, benchRank, gap } : null;
+        };
+        FLEX_POSITIONS.forEach(pos => {
+            const atPos = findFreeAgents(basis.data, { ...options, posFilter: pos }).freeAgents;
+            // The position's best free agent, as before S34; on Weekly, past any who are too late for this week.
+            for (let i = 0; i < atPos.length && i < 10; i++) {
+                const u = upgradeFor(atPos[i], pos);
+                const st = lineupMode ? statusOf(atPos[i]) : null;
+                if (st && st.tooLateThisWeek) {
+                    if (u) late.push(u);
+                    continue;
+                }
+                if (u) upgrades.push(u);
+                return;
+            }
         });
         upgrades.sort((x, y) => y.gap - x.gap);
 
         // The line's players: the upgrades first, then the best of the rest in FLEX order, PER_LEAGUE in all.
-        const flagged = new Set(upgrades.map(u => u.fa.cleanName));
+        // Upgrades too late for this week come after the real ones, muted and not counted (S34).
+        late.sort((x, y) => y.gap - x.gap);
+        const flagged = new Set([...upgrades, ...late].map(u => u.fa.cleanName));
         const players = [
             ...upgrades.map(u => ({ fa: u.fa, upgrade: u })),
+            ...late.map(u => ({ fa: u.fa, upgrade: null, late: u })),
             ...freeAgents.filter(fa => !flagged.has(fa.cleanName)).map(fa => ({ fa, upgrade: null }))
         ].slice(0, PER_LEAGUE);
+        players.forEach(p => { p.status = statusOf(p.fa); });
 
         // Upgrades over the same player (or the same empty spot) are options for one spot, not separate moves (S12
         // round 4): they count once, and the line says so instead of repeating "over Kenny Gainwell" on each.
         upgrades.forEach(u => { u.target = u.emptySlot ? 'empty' : u.bench.cleanName; });
         const shownTargets = {};
         players.forEach(p => { if (p.upgrade) shownTargets[p.upgrade.target] = (shownTargets[p.upgrade.target] || 0) + 1; });
-        return { league, basis, freeAgents, players, posRankOf, rankedAtPos, dismissedCount: dismissed.size, upgrade: upgrades[0] || null,
+        return { league, basis, lineupMode, freeAgents, players, posRankOf, rankedAtPos, dismissedCount: dismissed.size, upgrade: upgrades[0] || null,
             upgradeCount: new Set(upgrades.map(u => u.target)).size, shownTargets, inj: (clean) => (meta[clean] && meta[clean].inj) || null };
     }
 
     const overText = (u) => (u.emptySlot ? 'fills an empty lineup spot'
         : `over ${escapeHtml(u.bench.name)} ${u.benchRank ? rankText(u.benchPos, u.benchRank) : '(unranked)'}`);
 
-    function playerHTML(a, { fa, upgrade }) {
+    function playerHTML(a, { fa, upgrade, late, status }) {
         const inj = a.inj(fa.cleanName);
-        // A shared target is said once, above the list (sharedNotes).
-        const over = upgrade && a.shownTargets[upgrade.target] === 1 ? `<span class="mls-ba-over">${overText(upgrade)}</span>` : '';
+        // A shared target is said once, above the list (sharedNotes). An upgrade too late for this week says so instead
+        // (S34): he's on waivers and plays before the claim runs.
+        const over = late ? `<span class="mls-ba-late">too late for this week</span>`
+            : upgrade && a.shownTargets[upgrade.target] === 1 ? `<span class="mls-ba-over">${overText(upgrade)}</span>` : '';
+        const muted = (late || (a.lineupMode && status && status.tooLateThisWeek)) ? ' is-late' : '';
         const dismiss = `<button type="button" class="btn-bare mls-ba-dismiss" data-action="dismissBestAvailable" data-league-id="${escapeHtml(a.league.leagueId)}" data-player="${escapeHtml(fa.cleanName)}" aria-label="Not interested in ${escapeHtml(fa.name)} (hide him here this week)" title="Not interested (hide this week)">${DISMISS_ICON}</button>`;
-        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${dismiss}${over}</li>`;
+        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}${late ? ' is-late-upgrade' : ''}${muted}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${waiverChipHTML(status)}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${dismiss}${over}</li>`;
     }
 
     // A league card's Best Available section (S12; one line of the card before). A fold: open when the league has
@@ -363,12 +392,15 @@ import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
         const leagues = State.leagues || [];
         const synced = leagues.filter(isFullyMappedLeague);
         let meta = {};
+        let drops = {};
         if (synced.length > 0) {
             // This week's projections and kickoff times too (S12 round 7): the weakest starter is picked with the
             // optimizer's rules, which need both. They used to load only with the Lineup tab, Optimize All or Sync All,
             // so the Dashboard's first answer could change after a tap that changed nothing else.
-            const [metaResult] = await Promise.allSettled([getSleeperMetaByName(), ensureLineupProjections(), refreshGameTimes()]);
+            // And each league's recent drops (S34), for Free agent or Waivers; a league whose transactions fail gets no chips.
+            const [metaResult, , , dropsResult] = await Promise.allSettled([getSleeperMetaByName(), ensureLineupProjections(), refreshGameTimes(), recentDropsFor(synced, State.currentNflWeek)]);
             if (metaResult.status === 'fulfilled') meta = metaResult.value;
+            if (dropsResult.status === 'fulfilled') drops = dropsResult.value;
             else console.warn('Best available: Sleeper player map unavailable, falling back to league/market positions.', metaResult.reason);
         }
         if (gen !== renderGen) return;
@@ -376,7 +408,10 @@ import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
         // The toolbar's part: the switch and the summary, only with a Sleeper-synced league to show.
         if (toolbar) toolbar.hidden = synced.length === 0;
         const dismissedAll = synced.length > 0 ? currentDismissed() : {};
-        const analyses = new Map(synced.map(l => [l.leagueId, analyzeLeague(l, meta, dismissedAll)]));
+        // This week's kickoffs, only when they're this week's (S34).
+        const kickoffs = State.gameTimesFetchedForWeek === State.currentNflWeek ? State.gameTimesByTeam : {};
+        const wctx = { drops, kickoffs, now: Date.now() };
+        const analyses = new Map(synced.map(l => [l.leagueId, analyzeLeague(l, meta, dismissedAll, wctx)]));
         if (summary) summary.textContent = synced.length > 0 ? summaryText([...analyses.values()]) : '';
         if (switchBox) {
             const basis = chosenBasis();

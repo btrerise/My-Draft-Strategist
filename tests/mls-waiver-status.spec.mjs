@@ -1,0 +1,175 @@
+// Free agent or Waivers (improvements S34; js/mls/scout/waiverStatus.js, recentDrops.js). Sleeper has no "on waivers"
+// flag per player, so the app works it out from the league's waiver settings (the fixture league: FAAB, 2-day clears,
+// daily waivers at 12 AM PT), its recent drops (transactions for this week and last) and this week's kickoffs. Every
+// player on Best Available's lines, Auto-Find's cards and Check a List's free agents gets "FA" or "W"; on Weekly, an
+// upgrade who's on waivers and plays before the claim runs is shown muted ("too late for this week") and not counted.
+// The rule itself is unit-tested in tests/unit/waiverStatus.test.mjs.
+//
+// The fixture: UPGRADE_CSV (Weekly) makes James Cook (BUF, a free agent) RB5 tier 3, ahead of your Derrick Henry RB8
+// tier 4: Fixture League's one upgrade (tests/mls-best-available.spec.mjs). league-transactions-drop.json: Rival dropped
+// Cook on Saturday 9/19 (16:00 UTC), so he's on waivers until Monday, after his Sunday game.
+import { readFileSync } from 'node:fs';
+import { test, expect } from '@playwright/test';
+import { openApp, expectClean, showTab, seedMls, callApp, WAIVER_RANKINGS_CSV, FIXTURE_LEAGUE_ID } from './helpers.mjs';
+
+const UPGRADE_CSV = WAIVER_RANKINGS_CSV
+    .replace('15,Derrick Henry,RB,BAL,3,7', '26,Derrick Henry,RB,BAL,4,7')
+    .replace('26,James Cook,RB,BUF,4,7', '15,James Cook,RB,BUF,3,7');
+const LEAGUE_JSON = readFileSync(new URL('./fixtures/sleeper/league.json', import.meta.url), 'utf8');
+const DROP_JSON = readFileSync(new URL('./fixtures/sleeper/league-transactions-drop.json', import.meta.url), 'utf8');
+// Sunday of week 2, 10 AM PT, before the 1:25 PM PT games.
+const SUNDAY = new Date('2026-09-20T17:00:00Z');
+const KICKOFFS = { BUF: '2026-09-20T20:25:00Z', BAL: '2026-09-20T20:25:00Z', CIN: '2026-09-20T17:00:00Z' };
+
+const leagueCard = (page, name) => page.locator('#leagueCards > .mls-lc-card').filter({ has: page.locator('.mls-lc-name', { hasText: name }) });
+const line = (page, name) => leagueCard(page, name).locator('.mls-lc-ba');
+const player = (page, name) => line(page, 'Fixture League').locator('.mls-ba-player').filter({ hasText: name });
+const upgradeCount = (page) => leagueCard(page, 'Fixture League').locator('.mls-lc-count-upgrades');
+const out = (page) => page.locator('#waiverOutput');
+// A card with nothing to do starts folded (S12): open the card, then its best available.
+async function openFold(page) {
+    const cardFold = leagueCard(page, 'Fixture League').locator('[data-action="toggleLeagueCard"]');
+    if ((await cardFold.getAttribute('aria-expanded')) === 'false') await cardFold.click();
+    const fold = line(page, 'Fixture League').locator('details.mls-ba-fold');
+    if (!(await fold.evaluate(d => d.open))) await fold.locator('summary').click();
+    await expect(fold).toHaveAttribute('open', '');
+}
+
+// One RB slot, as in mls-best-available.spec.mjs (the fixture team has one RB).
+async function oneRbSlot(page) {
+    await page.route(/api\.sleeper\.app\/v1\/league\/\d+$/, (route) => {
+        const league = JSON.parse(LEAGUE_JSON);
+        league.roster_positions.splice(league.roster_positions.indexOf('RB'), 1);
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(league) });
+    });
+}
+// This week's transactions: Cook's drop. 'error': every transactions request fails.
+async function serveTransactions(page, kind) {
+    await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/transactions\/\d+$/, (route) => {
+        if (kind === 'error') return route.fulfill({ status: 500, body: '' });
+        const week = Number(route.request().url().split('/').pop());
+        return route.fulfill({ status: 200, contentType: 'application/json', body: week === 2 ? DROP_JSON : '[]' });
+    });
+}
+// This week's kickoffs, as if ESPN had answered (the tests block ESPN).
+async function setKickoffs(page) {
+    await page.evaluate(async (k) => {
+        const { State } = await import('/js/mls/state.js');
+        State.gameTimesByTeam = { ...State.gameTimesByTeam, ...k };
+        State.gameTimesFetchedForWeek = State.currentNflWeek;
+    }, KICKOFFS);
+}
+async function setup(page, { transactions = null } = {}) {
+    const state = await openApp(page, '/lineup/');
+    await oneRbSlot(page);
+    if (transactions) await serveTransactions(page, transactions);
+    await seedMls(page);
+    await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
+    await page.setInputFiles('#weeklyFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(UPGRADE_CSV) });
+    await expect(page.locator('#rankingsPreviewOverlay')).toBeVisible();
+    await callApp(page, 'confirmRankingsPreview');
+    await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
+    return state;
+}
+
+test.describe('Lineup Strategist Free agent or Waivers', () => {
+    test('nobody dropped: every player is a free agent, the upgrade counts, and the chip explains itself', async ({ page }) => {
+        const state = await setup(page);
+        await showTab(page, 'setup');
+        await expect(upgradeCount(page)).toHaveText('1 upgrade');
+        const cook = player(page, 'James Cook');
+        await expect(cook.locator('.mls-wv-chip')).toHaveText('FA');
+        await expect(line(page, 'Fixture League').locator('.mls-wv-chip.is-w')).toHaveCount(0);
+        await expect(line(page, 'Fixture League').locator('.mls-wv-chip.is-fa')).toHaveCount(3);
+        await cook.locator('.mls-wv-chip').click();
+        await expect(page.locator('.toast-message').filter({ hasText: 'Free agent: add him now on Sleeper, no claim needed.' })).toBeVisible();
+        // The waiver settings came with the sync, and are kept on the league (so Backup / Restore has them).
+        const waivers = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_leagues')).find(l => l.leagueId === '1000000000000000001').waivers);
+        expect(waivers).toEqual({ type: 'faab', budget: 100, clearDays: 2, dayOfWeek: 2, daily: true, hour: 0, days: 5461 });
+        await expectClean(page, state);
+    });
+
+    test('game day: a waiver upgrade who plays before the claim runs is muted and not counted', async ({ page }) => {
+        const state = await setup(page, { transactions: 'drop' });
+        await page.clock.setFixedTime(SUNDAY);
+        await setKickoffs(page);
+        await showTab(page, 'lineup');
+        await showTab(page, 'setup');
+        // Cook was dropped Saturday: on waivers until Monday, after his 1:25 PM game. No upgrade this week.
+        await expect(upgradeCount(page)).toHaveText('');
+        await openFold(page);
+        const cook = player(page, 'James Cook');
+        await expect(cook).toHaveClass(/\bis-late\b/);
+        await expect(cook.locator('.mls-ba-late')).toHaveText('too late for this week');
+        await expect(cook.locator('.mls-ba-over')).toHaveCount(0);
+        await expect(cook.locator('.mls-wv-chip')).toHaveText('W');
+        await cook.locator('.mls-wv-chip').click();
+        await expect(page.locator('.toast-message').filter({ hasText: /^Waivers \(FAAB\) · runs Wed .*Too late for this week/ })).toBeVisible();
+        // Chase Brown (CIN) kicked off at 10 AM: locked on waivers until Wednesday, muted (he wasn't an upgrade, so no
+        // "too late" line). Jaxon Smith-Njigba is a free agent.
+        await expect(player(page, 'Chase Brown').locator('.mls-wv-chip')).toHaveText('W');
+        await expect(player(page, 'Chase Brown')).toHaveClass(/\bis-late\b/);
+        await expect(player(page, 'Chase Brown').locator('.mls-ba-late')).toHaveCount(0);
+        await expect(player(page, 'Jaxon Smith-Njigba').locator('.mls-wv-chip')).toHaveText('FA');
+
+        // Auto-Find and Check a List show the same chip.
+        await showTab(page, 'scout');
+        await callApp(page, 'setWaiverMode', 'auto');
+        await callApp(page, 'setWaiverCompare', 'roster');
+        await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
+        await expect(out(page).locator('.mls-scan-card').first()).toBeVisible();
+        await expect(out(page).locator('.mls-scan-card').filter({ hasText: 'James Cook' }).locator('.mls-wv-chip')).toHaveText('W');
+        await callApp(page, 'setWaiverMode', 'list');
+        await page.fill('#waiverInput', ['James Cook', 'Jaxon Smith-Njigba', 'Derrick Henry'].join('\n'));
+        await page.click('#waiverScanBtn');
+        const card = (n) => out(page).locator('.scout-result-card').filter({ hasText: n });
+        await expect(card('James Cook').locator('.mls-wv-chip')).toHaveText('W');
+        await expect(card('Jaxon Smith-Njigba').locator('.mls-wv-chip')).toHaveText('FA');
+        // Yours: no chip (the other cards mention him in their verdicts, so leave them out).
+        await expect(card('Derrick Henry').filter({ hasNotText: 'James Cook' }).filter({ hasNotText: 'Smith-Njigba' }).locator('.mls-wv-chip')).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
+    test('the same drop on ROS: shown as on waivers, still counted (ROS is about the rest of the season)', async ({ page }) => {
+        const state = await setup(page, { transactions: 'drop' });
+        await page.setInputFiles('#rosFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(UPGRADE_CSV) });
+        await callApp(page, 'confirmRankingsPreview');
+        await page.clock.setFixedTime(SUNDAY);
+        await setKickoffs(page);
+        await showTab(page, 'setup');
+        await page.locator('#bestAvailableBasis [data-basis="ros"]').click();
+        const cook = player(page, 'James Cook');
+        await expect(cook.locator('.mls-wv-chip')).toHaveText('W');
+        await expect(cook).not.toHaveClass(/\bis-late\b/);
+        await expect(upgradeCount(page)).toHaveText('1 upgrade');
+        await expectClean(page, state);
+    });
+
+    test("transactions that fail to load: no chips, the upgrade counts, and no toast", async ({ page }) => {
+        const state = await setup(page, { transactions: 'error' });
+        await page.clock.setFixedTime(SUNDAY);
+        await setKickoffs(page);
+        await showTab(page, 'lineup');
+        await showTab(page, 'setup');
+        await expect(upgradeCount(page)).toHaveText('1 upgrade');
+        await expect(player(page, 'James Cook')).toBeVisible();
+        await expect(line(page, 'Fixture League').locator('.mls-wv-chip')).toHaveCount(0);
+        // Whatever else was toasted (the upload's own message), nothing about transactions or waivers.
+        for (const t of await page.locator('.toast-message').allInnerTexts()) expect(t).not.toMatch(/transaction|waiver/i);
+        await expectClean(page, state);
+    });
+
+    test('a league synced before S34 (no waiver settings) shows no chips until its next sync', async ({ page }) => {
+        const state = await setup(page);
+        await page.evaluate(() => {
+            const leagues = JSON.parse(localStorage.getItem('mls_leagues'));
+            leagues.forEach(l => { delete l.waivers; });
+            localStorage.setItem('mls_leagues', JSON.stringify(leagues));
+        });
+        await page.reload();
+        await showTab(page, 'setup');
+        await expect(upgradeCount(page)).toHaveText('1 upgrade');
+        await expect(line(page, 'Fixture League').locator('.mls-wv-chip')).toHaveCount(0);
+        await expectClean(page, state);
+    });
+});

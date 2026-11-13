@@ -174,6 +174,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Free agent or waivers.** In Sleeper leagues, every player on the Dashboard's Best available, Auto-Find's cards
+  and Check a List's free agents now says **FA** (add him now, until his game starts) or **W** (on waivers: dropped
+  in the last day or two, or his game has started). Tap it for when the claim runs, in your time zone ("Waivers
+  (FAAB) · runs Wed 12 AM"). On Weekly, an upgrade who's on waivers and plays before the claim runs is greyed with
+  "too late for this week" and no longer counts toward the card's "1 upgrade"; the next free agent at his position is
+  checked instead. Manual leagues show neither. A league synced before this change gets the chips at its next sync.
 - **A chance to win is red when you're not favored.** On the Scoreboard's league tiles, Still in play, the Final
   Window and the Lineup tab's matchup line, "74% to win" stays green and "26% to win" is now red. Before, every chance
   was green, so a 3% long shot on a losing matchup read like good news.

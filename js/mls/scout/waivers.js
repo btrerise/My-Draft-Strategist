@@ -18,7 +18,9 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 import { isPreferredSleeperEntry } from '../players.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
-import { scoutPillMarkup, tierGapMarkup } from '../badges.js';
+import { scoutPillMarkup, tierGapMarkup, waiverChipMarkup } from '../badges.js';
+import { waiverStatus, waiverStatusText } from './waiverStatus.js';
+import { recentDropsFor } from './recentDrops.js';
 import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---
@@ -312,6 +314,11 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     }
 
     // A ranked free agent as a lineup player, with his team and injury from the Sleeper player map.
+    // The Free agent / Waivers chip for a waiverStatus answer (improvements S34); '' when the app can't tell.
+    export function waiverChipHTML(st) {
+        return st ? waiverChipMarkup(st.status, escapeHtml(waiverStatusText(st))) : '';
+    }
+
     export function freeAgentPlayer(fa, meta) {
         const m = (meta && meta[fa.cleanName]) || {};
         return { id: m.id || `fa:${fa.cleanName}`, name: fa.name, cleanName: fa.cleanName, pos: fa.pos, team: m.team || null, inj: m.inj || null };
@@ -324,11 +331,17 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     // resolveWaiverBasis), which decides which rankings lead each card's rank line.
     export async function buildWaiverContext(league) {
         let meta = {};
-        try {
-            meta = await getSleeperMetaByName();
-        } catch (e) {
-            console.warn('Waiver scan: Sleeper player map unavailable, falling back to league/market positions.', e);
-        }
+        // This league's recent drops, for Free agent or Waivers (improvements S34); {} for a league without them.
+        const [metaResult, dropsResult] = await Promise.allSettled([getSleeperMetaByName(), recentDropsFor(isFullyMappedLeague(league) ? [league] : [], State.currentNflWeek)]);
+        if (metaResult.status === 'fulfilled') meta = metaResult.value;
+        else console.warn('Waiver scan: Sleeper player map unavailable, falling back to league/market positions.', metaResult.reason);
+        const drops = dropsResult.status === 'fulfilled' ? dropsResult.value[league.leagueId] || null : null;
+        // Free agent or waivers for an unrostered player: null when the app can't tell (no chip then).
+        const waiverStatusOf = (cleanName) => {
+            const m = meta[cleanName];
+            const kickoffs = State.gameTimesFetchedForWeek === State.currentNflWeek ? State.gameTimesByTeam : {};
+            return isFullyMappedLeague(league) ? waiverStatus({ cleanName, team: m ? m.team : null }, league.waivers, drops, kickoffs, Date.now()) : null;
+        };
 
         const getPos = makeLeagueGetPos(league, meta);
 
@@ -371,7 +384,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         // Weekly files carry a FLEX list, so 'flex'; ROS files carry Overall instead, so
         // 'overall' -- "ROS Flex" isn't a number any ROS source actually publishes.
         return {
-            league, meta, getPos, evaluate, hasPlayed, lineupReady, checkIsWeekly,
+            league, meta, getPos, evaluate, hasPlayed, lineupReady, checkIsWeekly, waiverStatusOf,
             checkLabel: checkIsWeekly ? 'Wk' : seasonRankings === State.rosRankings ? rosName(false) : 'In-Season',
             // The same, written out for the notes ("using In-Season ranks"; S23, round 5).
             checkName: checkIsWeekly ? 'Weekly' : seasonRankings === State.rosRankings ? rosName(false) : 'In-Season',
@@ -689,7 +702,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
                     <span>${escapeHtml(fa.name)}</span>
                     ${teamText}
                 </div>
-                <div class="mls-player-badges-row">${injBadge}${getByeBadgeHTML(player.team)}${getGameInfoHTML(player.team, waiverOpponentPlayer(ctx, fa.cleanName, player))}${getSoSBadgeHTML(player.team, player.pos, WAIVER_SOS_OPTS)}</div>
+                <div class="mls-player-badges-row">${waiverChipHTML(ctx.waiverStatusOf(fa.cleanName))}${injBadge}${getByeBadgeHTML(player.team)}${getGameInfoHTML(player.team, waiverOpponentPlayer(ctx, fa.cleanName, player))}${getSoSBadgeHTML(player.team, player.pos, WAIVER_SOS_OPTS)}</div>
                 ${waiverRanksRowHTML(ctx, fa.cleanName, player.pos)}
                 ${shownLine ? `<div class="mls-scan-verdict">${shownLine}</div>` : ''}
             </div>

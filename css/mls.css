@@ -1808,6 +1808,20 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
     .mls-ba-sleeper { display: none; }
 }
 .mls-ba-player .inj-badge { margin-left: 0.1rem; }
+/* Free agent or Waivers (improvements S34): "FA" quiet, "W" amber, since a claim has to wait for the run. A button,
+   so a tap says when it runs (like the SoS badge). */
+.badge.mls-wv-chip { font-size: 0.62rem; padding: 1px 4px; margin-left: 4px; background: transparent; border: 1px solid #475569; color: var(--text-muted); }
+.badge.mls-wv-chip.is-w { border-color: rgba(245, 158, 11, 0.7); color: #fbbf24; background: rgba(245, 158, 11, 0.12); }
+button.mls-wv-chip { font-family: inherit; line-height: inherit; cursor: pointer; }
+.mls-ba-player .mls-wv-chip { margin-left: 0; }
+/* A waiver player too late for this week (S34): muted, not counted; an upgrade says "too late for this week". */
+.mls-ba-player.is-late { opacity: 0.55; }
+.mls-ba-player.is-late .mls-ba-name { font-weight: 400; }
+.mls-ba-late { font-size: 0.78rem; color: var(--text-muted); font-style: italic; }
+@media (max-width: 600px) {
+    .mls-ba-player.is-late-upgrade { flex-basis: 100%; }
+    .mls-ba-player.is-late-upgrade .mls-ba-late { flex-basis: 100%; padding-left: calc(14px + 0.3rem); }
+}
 .mls-ba-dismiss { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 0.1rem; border-radius: 50%; color: var(--text-muted); opacity: 0.6; cursor: pointer; }
 .mls-ba-dismiss:hover, .mls-ba-dismiss:focus-visible { opacity: 1; color: var(--text-main); background: rgba(255, 255, 255, 0.08); }
 .mls-ba-shared { margin-bottom: 0.2rem; font-size: 0.78rem; color: var(--primary-green); }
