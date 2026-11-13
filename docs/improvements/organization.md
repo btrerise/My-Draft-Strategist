@@ -20,7 +20,7 @@ Roster tab) are below with mock-ups.
 **Round 2 (section 7): room on phones.** Content sits 21 to 55px from the screen's edge on a phone because cards hold
 boxes that hold boxes. Material 3 says to run lists edge to edge on phones with 16px margins and not to box what
 dividers can separate. **Recommendation: R2** (sections on phones, one box inside cards everywhere), built as part of
-M14.
+M14. **The owner picked R2 inside M14 (2026-11-13).**
 
 ## 1. Inventory at 375px
 

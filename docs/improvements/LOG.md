@@ -11239,3 +11239,24 @@ all three Umami events** (Tab, Tool, Section).
 
 **Left over.** Draft Strategist gets no U1 card: S45 and S42 cover its Dashboard, M13 its Tracker. Option 3 (trading on
 a Team tab) stays an idea to revisit if the `Tool` event shows the Trade Analyzer used as much as waivers.
+
+### U1, round 2: room on phones (owner's question, 2026-11-13)
+
+The owner asked whether "cards in a box" (two layers of padding before any content) costs room on phones, and whether
+Material 3 helps. Measured at 375px on the real app: text in a card starts 21px from the edge (333px wide); a Lineup row
+28px (319), a Roster row 36px (303), folded sections and toggle rows 38px (299), sub-blocks inside a card (the
+Simulator's parts, the Waiver Wire's results) 55px (265). Material 3's compact margin is 16px (343). Material 3: "Don't
+force content into cards when spacing, headlines, or dividers would create a simpler visual hierarchy"; "Lists should
+extend edge-to-edge in compact windows"; "consider swapping cards for lists" on compact screens; 16dp margins. Two
+mock-ups (CSS injected into the real app; organization.md section 7, `organization/room-*.png`): **R1** one box (cards
+stay, nothing boxed inside them: rows with dividers, sub-blocks a lighter tone) and **R2** sections on phones (R1 plus,
+under 600px, full-width sections with 16px margins and Draft Strategist's player cards as list rows).
+
+**Owner's decision.** **R2, built inside M14** (surface tones and corners), which already asks for mock-ups and re-takes
+all 42 PNGs, so one visual card instead of two. M14's scope grows: under 600px `.container` loses its side padding and
+`.settings-card` its side borders, corners and shadow (16px padding, an 8px band between sections); inside cards at
+every width, rows (`.lineup-slot`, `.roster-item`, waiver results, league cards) become list rows with dividers and
+folded sections, toggle rows and sub-blocks a lighter surface tone with no border; meaningful coloured edges stay as a
+3px edge; Draft Strategist's `.player-card` becomes a list row under 600px. The exports (Lineup PNG, Export Team,
+Export Recap, all html2canvas from the DOM) keep their look at any width. After U1's cards 1 to 3; S32 need not wait
+for it.
