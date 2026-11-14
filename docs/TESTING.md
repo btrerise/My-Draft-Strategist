@@ -429,6 +429,10 @@ The card named does the item in its own session; remove the line when it's done.
   buttons; `tests/touch-targets.spec.mjs` only measures at 375px. Measure at 844x390 too, and give those buttons 48px
   areas (they're left out of the shared hit-area rule, css/base.css TOUCH TARGETS).
 
+**No Safari (WebKit) checks yet (S32, owner, 2026-11-15)**
+- Every spec runs in Chromium only, so nothing checks what iPhone and iPad users get. Proposed card **W2** (in
+  docs/improvements/LOG.md, after S32) adds a CI job running a chosen set of phone specs in Playwright's WebKit.
+
 **From the starter alert (improvements N2)**
 - **M10 (nav badges): one count for the badge and the title.** N2's alerts flash the tab title while it's hidden
   ("(1) Starter alert", `flashTitle` in js/shared/ui/notify.js); M10's badges sit on the nav bar and rail, seen while

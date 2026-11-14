@@ -12661,3 +12661,41 @@ on older Safari. Android's Chrome and Samsung Internet are Chromium, which the s
   With the clip margin removed and nothing else, `touch-targets` failed as above; with the wider box it passes.
 - **Screenshots:** all 44 pixel-identical with round 7 (rendered here). Specs run: mls-phone-rows, touch-targets,
   room-on-phones, mls-display-ranks (all pass).
+
+### Proposed card W2 — CI: a WebKit (Safari) run of the phone specs (owner asked for it, 2026-11-15; for the runbook)
+
+**Why.** Every spec and screenshot runs in Chromium only (CI and cloud sessions). That covers Chrome, Edge and Android
+(Chrome, Samsung Internet), but not Safari: every browser on an iPhone or iPad is WebKit underneath. The owner has no
+iPhone, so nothing checks the site there. S32 round 8 found a CSS property Safari lacks (`overflow-clip-margin`) doing a
+quiet job (a lock's 48px tap area) by reading the code; a WebKit run would catch that kind of thing by itself.
+Playwright ships a WebKit build that runs on Linux, close to Safari's engine (not Safari itself: no iOS chrome, no real
+touch).
+
+**Goal.** A second CI job runs a chosen set of specs in Playwright's WebKit at phone size, so a pull request that breaks
+something only Safari users would see fails before it merges.
+
+**Asks you (before building).** (1) Which specs: my suggestion is smoke, the phone-row and sheet specs
+(`mls-phone-rows`, `sheet`, `badge-legend`, `room-on-phones`), touch-targets, mls-keyboard and the export spec, about 3 to 5
+minutes, rather than all ~500 tests; (2) required (blocks merging) or advisory at first (my suggestion: advisory for a
+week or two, then required once it has been green); (3) screenshots: none in WebKit (my suggestion; its fonts and
+anti-aliasing differ, so they'd need their own baselines and double the re-take work).
+
+**In scope.**
+- `tests/playwright.config.mjs`: a `webkit-phone` project (Playwright's iPhone device: 390px, touch, WebKit), matched
+  only to the chosen specs (`testMatch`), skipped unless `WEBKIT=1` so cloud sessions and the normal `npm run check`
+  don't need the browser (cloud sessions may not install browsers: CLAUDE.md).
+- `.github/workflows/check.yml`: a separate job (or step) that installs WebKit (`npx playwright install --with-deps
+  webkit`, pinned to the repo's Playwright 1.63.0, cached) and runs `WEBKIT=1 npx playwright test --project=webkit-phone`;
+  the docs-only shortcut (W1) skips it too.
+- Run it once and fix or list what fails: real Safari gaps get fixed (or a card); test-only differences (a spec that
+  assumes Chromium behaviour) get a `test.skip` with the reason, per spec, never a blanket skip.
+- `docs/TESTING.md`: the WebKit run in "The checks" and how to run it locally on a machine that can install WebKit.
+
+**Out of scope.** Screenshots in WebKit (unless you choose them), Firefox, real-device testing, changing what the site
+supports.
+
+**Done when.** The WebKit job runs on every pull request with the chosen specs and passes; anything skipped in WebKit is
+listed with its reason; TESTING.md says how it works; LOG lists what it found.
+
+**Size and placement.** ~15k tokens; touches only `tests/` and `.github/` (no served file, no `CACHE_NAME`). Runs beside
+any card except one editing `check.yml` or `playwright.config.mjs` (e.g. a Playwright upgrade).
