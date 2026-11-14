@@ -12696,3 +12696,6 @@ Tests: `mls-faab-bid` (11 per width): the failure line; a new case where turning
 redraws Auto-Find's results. Ran check-precache, `node --test` (688), and `mls-faab-bid`, `tooltip-closed-space` and
 the neighbouring specs (with the Guide's): 189 passed. Screenshots: my last commit and this round differ only in
 `desktop/` and `phone/mls-league-guide.png` (step 8's new bullet); re-taken on CI.
+- CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 8); I opened them. Step 8's new FAAB bids
+  bullet after Pasted Lists (desktop +81 px, phone +219 px; on phones this part of the Guide paints), identical above,
+  the rest moved down.
