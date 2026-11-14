@@ -3108,9 +3108,15 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
         text-align: center;
         box-shadow: 0 0 0 2px var(--card-bg);
     }
-    /* With headshots turned off (Lineup settings), the badge stands alone, as before. */
-    body.mls-hide-headshots :is(.lineup-slot, .roster-item) .mls-row-lead { height: auto; align-items: center; }
-    body.mls-hide-headshots :is(.lineup-slot, .roster-item) .mls-row-lead :is(.slot-badge, .pos-badge) { position: static; transform: none; box-shadow: none; }
+    /* Without a photo or a lock above it, the badge stands alone in the column's middle, at the same size: with headshots
+       turned off (Lineup settings) on the Roster tab and bench rows, and an empty slot (round 4: it was the old wide pill).
+       A starter with headshots off keeps the badge at the bottom and the padlock above it, where the photo would be (round
+       4: the padlock sat on the badge). */
+    .lineup-slot.empty .mls-row-lead,
+    body.mls-hide-headshots :is(.lineup-slot, .roster-item) .mls-row-lead:not(:has(.mls-lead-lock)) { height: auto; align-items: center; }
+    .lineup-slot.empty .mls-row-lead .slot-badge,
+    body.mls-hide-headshots :is(.lineup-slot, .roster-item) .mls-row-lead:not(:has(.mls-lead-lock)) :is(.slot-badge, .pos-badge) { position: static; transform: none; box-shadow: none; }
+    body.mls-hide-headshots .mls-lead-lock .mls-lock-dot { top: 2px; left: 50%; right: auto; transform: translateX(-50%); }
 
     /* The photo and slot badge are the lock button: a 42x44px box, 48px with the hit area (css/base.css). */
     .lineup-slot .mls-lead-lock {
@@ -3175,9 +3181,9 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
    progress (amber) wins. */
 .lineup-slot.autolocked:not(.swapping) { box-shadow: inset 3px 0 0 #60a5fa; }
 
-/* The swap snackbar (Material 3's snackbar: one line and one action; js/mls/render/lineup.js showSwapSnackbar). In the
-   toast's place: bottom right on wider screens (80px up over the tab bar's height, 24px beside the rail), above the tab
-   bar with 16px margins on phones. Amber like a swapping row. Only while the Lineup tab shows. A toast that comes while
+/* The swap snackbar (Material 3's snackbar: one line and one action; js/mls/render/lineup.js showSwapSnackbar). At the
+   toast's height: bottom left on wider screens (80px up over the tab bar, 24px beside the rail), above the tab bar with
+   16px margins on phones. Amber like a swapping row. Only while the Lineup tab shows. A toast that comes while
    it's up sits above it. */
 .mls-swap-snackbar {
     position: fixed;
@@ -3216,8 +3222,13 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
     cursor: pointer;
 }
 body:has(#lineupTab.active):has(.mls-swap-snackbar:not([hidden])) .mds-toast { margin-bottom: 80px; }
-@media (max-width: 767px) {
+/* Round 4: on tablets and computers it sits at the content's start edge, bottom left (Material 3's place for a snackbar
+   on a large screen), clear of the rows' swap buttons at the right; toasts stay at the right. On phones it runs across the
+   screen above the tab bar, and the Lineup tab gets room at its foot while it shows, so the page scrolls clear of it. */
+.mls-swap-snackbar { left: calc(var(--rail-inset, 0px) + 24px); right: auto; }
+@media (max-width: 599.98px) {
     .mls-swap-snackbar { left: 16px; right: 16px; max-width: none; bottom: calc(90px + env(safe-area-inset-bottom)); }
+    body:has(.mls-swap-snackbar:not([hidden])) #lineupTab.active { padding-bottom: 96px; }
 }
 @media (min-width: 840px) {
     .has-nav-bar .mls-swap-snackbar { bottom: calc(24px + env(safe-area-inset-bottom)); }

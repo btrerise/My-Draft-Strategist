@@ -770,7 +770,7 @@ import { refreshThisWeek } from '../main.js';
             } else {
                 html += `
                 <div class="lineup-slot empty">
-                    <span class="slot-badge slot-${slotType}">${slotDisplayName(slotType)}</span>
+                    <span class="mls-row-lead"><span class="slot-badge slot-${slotType}">${slotDisplayName(slotType)}</span></span>
                     <div style="color:var(--text-muted); font-style:italic;">[ Empty Slot ]</div>
                 </div>`;
             }

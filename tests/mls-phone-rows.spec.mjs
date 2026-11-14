@@ -274,3 +274,61 @@ test('swapping on a phone: an ✕ in the swap button\'s place, and the hint in a
     await expect(snackbar).toBeHidden();
     await expectClean(page, state);
 });
+
+// Round 4 (owner, 2026-11-15, from a review as a user): with headshots off, the padlock dot sat on the slot badge; on
+// tablets and computers the swap snackbar covered the rows' swap buttons; on phones it covered the page's last 70px; an
+// empty slot's badge was the old full-size pill on phones, out of line with the others.
+const overlap = (a, b) => a.x < b.right && b.x < a.right && a.y < b.bottom && b.y < a.bottom;
+
+test('with headshots off, the padlock sits above the slot badge, not on it', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'the padlock is on phones only');
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    await page.evaluate(() => document.body.classList.add('mls-hide-headshots'));
+    for (const name of ['Josh Allen', 'Baltimore Ravens']) {
+        const r = row(page, name);
+        const [dot, slot] = await Promise.all([box(r.locator('.mls-lock-dot')), box(r.locator('.slot-badge'))]);
+        expect(overlap(dot, slot), `${name}: the padlock covers the slot badge`).toBe(false);
+        expect(dot.bottom).toBeLessThanOrEqual(slot.y);
+    }
+    await expectClean(page, state);
+});
+
+test('an empty slot\'s badge lines up with the other slot badges on a phone', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'phone rows');
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    const empty = page.locator('#optimalLineupContainer .lineup-slot.empty .slot-badge');
+    const filled = row(page, 'Derrick Henry').locator('.slot-badge'); // the same RB slot
+    const [e, f] = await Promise.all([box(empty), box(filled)]);
+    expect(Math.abs(e.w - f.w)).toBeLessThan(1);
+    expect(Math.abs((e.x + e.w / 2) - (f.x + f.w / 2))).toBeLessThan(1);
+    await expectClean(page, state);
+});
+
+for (const width of [700, 1280]) {
+    test(`at ${width}px the swap snackbar covers no swap button`, async ({ page }, info) => {
+        test.skip(info.project.name !== 'desktop', 'wider screens');
+        await page.setViewportSize({ width, height: 900 });
+        const state = await setUp(page);
+        await row(page, 'Brock Bowers').getByRole('button', { name: 'Swap Brock Bowers' }).click();
+        const bar = await box(page.locator('.mls-swap-snackbar'));
+        // Every swap button, scrolled to sit at the snackbar's height on the screen.
+        for (const btn of await page.locator('#lineupTab .swap-btn').all()) {
+            await btn.evaluate((el, y) => window.scrollBy(0, el.getBoundingClientRect().top - y), bar.y + 4);
+            expect(overlap(await box(btn), await box(page.locator('.mls-swap-snackbar'))), 'a swap button is under the snackbar').toBe(false);
+        }
+        await expectClean(page, state);
+    });
+}
+
+test('on a phone the page can scroll clear of the swap snackbar', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'phones');
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    await row(page, 'George Kittle').getByRole('button', { name: 'Swap George Kittle' }).click();
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const last = page.locator('#lineupTab > *:not([hidden])').last();
+    expect((await box(last)).bottom).toBeLessThanOrEqual((await box(page.locator('.mls-swap-snackbar'))).y);
+    await expectClean(page, state);
+});

@@ -12543,3 +12543,29 @@ above main's v2.10.9.
   mls-starter-alert, smoke, focus-ring (both widths, all pass).
 - **Re-taken on CI** (commit 66b1c30, "Screenshots re-taken on CI (1 PNGs)"): exactly desktop `mls-league-guide`; opened
   (the "+N" line reads "LOCKED, TAXI, a rank change").
+
+### S32, round 4: a review as a user; the owner took 1, 2, 3 and 5 (2026-11-15)
+
+Looked at the Lineup and Roster tabs as on a Sunday morning: Henry questionable, Lamb doubtful, Kittle out, Chase in the
+IR slot and an early team, Allen's game started, two differences from the Sleeper lineup; at 375 and 320px, with
+headshots off, at 700px and 1280px; swapping from the bottom of the bench; the details sheet. The busy phone lineup read
+well (every warning on its row, rows about 79px); five findings:
+1. **Bug: with headshots off, the padlock dot sat on the slot badge** (cut "QB", "WR", "DEF"). Now a starter keeps the
+   badge at the bottom of its column and the padlock above it, where the photo would be.
+2. **On tablets and computers the swap snackbar covered the swap buttons** (bottom right is the ⇄ column). It now sits
+   bottom left at the content's start edge (`left: calc(var(--rail-inset) + 24px)`, from 600px), Material 3's place for a
+   snackbar on a large screen; toasts stay at the right (and still lift above it where they'd meet).
+3. **Phones: the snackbar covered the page's last 70px.** While it shows, the Lineup tab gets 96px of room at its foot, so
+   anything can be scrolled clear of it.
+4. **The details sheet's sentences are the Guide's general ones** (above "Thu 8:00 PM": "When his game kicks off, then
+   whether it has started or finished"). The owner asked for it in plain terms first; not built.
+5. **An empty slot's badge was the old wide pill on phones.** It's now in the same column at the same size as the badges
+   under the photos (the empty row's badge is in `.mls-row-lead` too; its height stays as before).
+- **Specs first** (`tests/mls-phone-rows.spec.mjs`, all five failed before): with headshots off the padlock is above the
+  badge for a starter and the defence; the empty RB slot's badge has the filled RB slot's width and centre; at 700 and
+  1280px no swap button is under the snackbar, each scrolled to its height; on a phone, scrolled to the bottom mid-swap,
+  the Lineup tab ends above the snackbar.
+- **Screenshots:** against round 3 only phone `mls-league-lineup` (the empty RB slot's badge), re-taken by CI from this
+  commit. Specs run: mls-phone-rows, mls-keyboard, touch-targets, mls-lineup-row-actions, badge-legend, room-on-phones,
+  mls-lineup-needs, mls-weekly-locks, mls-headshots, export-same-everywhere, smoke, focus-ring (all pass); check-precache;
+  `node --test` 669 pass. `CACHE_NAME` stays v2.10.10 (main v2.10.9).
