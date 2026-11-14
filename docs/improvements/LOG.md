@@ -12618,3 +12618,5 @@ finish (the spot you tapped stays put and now holds the other player), the bench
   Specs run: mls-phone-rows, mls-keyboard, touch-targets, mls-lineup-row-actions, mls-lineup-needs, mls-weekly-locks,
   mls-locked-kickoff, room-on-phones, badge-legend, export-same-everywhere, smoke, focus-ring, mls-tab-redraws (all pass);
   check-precache; `node --test` 669 pass. `CACHE_NAME` stays v2.10.10 (main v2.10.9).
+- **Re-taken on CI** (commit 83da45f, "Screenshots re-taken on CI (1 PNGs)"): exactly phone `mls-league-lineup`; opened
+  (the BN badges outlined).
