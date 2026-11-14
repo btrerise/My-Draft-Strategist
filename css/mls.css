@@ -1821,6 +1821,8 @@ button.mls-faab-bid, .mls-faab-bid { font: inherit; font-size: 0.78rem; font-wei
 .mls-scan-bid { margin-top: 4px; }
 /* Too few bids near his rank (round 2): a rough guess, "≈ Bid 2–5", in the muted text colour. */
 button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted); text-decoration-color: rgba(148, 163, 184, 0.6); font-weight: 500; }
+/* While the league's history loads (round 5): the row is already there, muted, so the page doesn't jump when it arrives. */
+.mls-faab-bid.is-pending { color: var(--text-muted); text-decoration: none; cursor: default; font-weight: 500; }
 /* Desktop: "over … · waivers until … · Bid 13–21": the dot keeps the bid from running into the line before it. */
 .mls-ba-bid-sep { font-size: 0.78rem; color: var(--text-muted); }
 /* The bid's sheet (round 2): what it's based on, then what raised it (green up arrow) and lowered it (red down arrow),

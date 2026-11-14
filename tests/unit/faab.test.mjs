@@ -86,7 +86,7 @@ test('recency: a week-1 frenzy counts a quarter by week 11 (round 4)', () => {
     assert.equal(now.lines[1].text, 'Before the adjustments: 2 would have matched at least 3 in 4 of these winning bids');
     // Without the weeks every bid counts the same, and the old 50s reach the 75th percentile.
     const flat = suggestBid({ ...base, pos: 'RB', posRank: 77, bids: frenzy.map(b => ({ ...b, week: undefined })), week: 11 });
-    assert.equal(flat.lines[1].text, 'Before the adjustments: 2 would have matched about half of these winning bids, 50 about 3 in 4');
+    assert.match(flat.lines[1].text, /^Before the adjustments: 2 would have matched about half of these winning bids, 50 about 3 in 4; the top here is held to \d+/);
 });
 
 test('the top end is held to twice the bottom (or bottom + 5% of the budget), and the sheet says what it would have been (round 4)', () => {
@@ -94,7 +94,9 @@ test('the top end is held to twice the bottom (or bottom + 5% of the budget), an
     const s = suggestBid({ ...base, pos: 'RB', posRank: 77, bids: wild, left: { 1: 82, 2: 82 } });
     assert.equal(s.low, 7);
     assert.equal(s.high, 14);
-    assert.ok(s.lines.some(l => l.kind === 'note' && l.text === 'The top end is held to 14 so a few big bids don\'t stretch the range; it would have been 69'));
+    // Round 5: said on the line about the two ends, not a line of its own.
+    assert.equal(s.lines[1].text, 'Before the adjustments: 7 would have matched about half of these winning bids, 69 about 3 in 4; the top here is held to 14 so a few big bids don\'t stretch the range');
+    assert.ok(!s.lines.some(l => /would have been/.test(l.text)));
     // A bottom of 0: the top can still reach 5% of the budget.
     const zeroish = [0, 0, 0, 0, 10, 10].map((b, i) => ({ pos: 'RB', posRank: 77 + i, bid: b }));
     const z = suggestBid({ ...base, pos: 'RB', posRank: 77, bids: zeroish, left: { 1: 82, 2: 82 } });

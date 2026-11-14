@@ -12581,3 +12581,30 @@ Screenshots: my last commit and this round, rendered in the same container, diff
   F16's own runs happened to win it. Fixed in the test only: the click is now at (1275, 300), the page's right margin
   (a plain `div.container`, nothing interactive). 8 repeats of the spec at both widths: 144 passed, 0 failed (the
   mouse-only tests skip on phones, as before).
+
+### Round 5: a review as a user (owner: do 1–3 and 5; back-test B for 4 first)
+
+Keyboard (Tab to the bid, Enter opens the sheet with focus on its title, Escape returns focus to the bid) and contrast
+(the bid 11.6:1, the grey "≈" 7.6:1 on the page's background) were fine. Changed:
+1. **The phone page jumped 28px when the bids arrived** (an upgrade's bid adds a row, a moment after the lines). While a
+   FAAB league's history loads, an upgrade on waivers shows its row already, muted: "Bid …" (`.mls-faab-bid.is-pending`,
+   not a button), filled in when it arrives; if the history fails or is empty, the row goes.
+2. **"You have 63 left" came from the last sync**, stale after any waiver run. `faabHistory.js` now re-reads the league's
+   rosters with the history (one request per FAAB league per visit) and updates `league.faabLeft` in memory; on an error
+   the synced numbers stay.
+3. **Too many numbers in the sheet** ("0 … 17 about 3 in 4", "a median 17", "held to 5 … it would have been 27"): the
+   cap is now said on the line about the two ends ("…, 17 about 3 in 4; the top here is held to 5 so a few big bids
+   don't stretch the range"), and the "it would have been" line is gone (9 lines → 8).
+5. The bid's screen-reader label ends "…: what it's based on" (was "…: why").
+
+**4, back-tested (not built; the owner decides):** B raises the top end, for a player who'd start for you or fill an
+empty spot, to the median winning bid of the position's rival-bid claims. The back-test can't tell who would have
+started for the claimant, so it applies B to every claim (the worst case for cost): the top end wins 54% of rival-bid
+claims (41% now), pays a median 6.0% of the budget over the runner-up when it wins (3.5% now), and pays a median 6.0%
+when nobody else bid (2.5% now; mean 8.1% vs 4.0%).
+
+Tests: unit (17; the cap's wording on the ends line); `mls-faab-bid` (6 per width): a new case where, after a waiver run
+since the sync, a new visit shows "Bid …" in Cook's row while the history (held on its rosters request) loads, then
+"(of your 50 left)" from the fresh rosters, the row the same height. Ran check-precache, `node --test` (686),
+`mls-faab-bid`, `tooltip-closed-space` and the neighbouring specs: 157 passed. Screenshots: my last commit and this
+round, rendered in the same container, are identical (44 of 44).

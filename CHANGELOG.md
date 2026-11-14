@@ -201,7 +201,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   end is kept to about twice the bottom. With too few bids at his position it's a rough guess from every bid, shown
   greyed as **≈ Bid 2–5**. Tap it for a sheet that names the player and league and says what it's based on, what the two
   ends mean, how often others bid at his position (and what the winner paid then), what raised or lowered it, and who
-  has the most left. Nothing shows until the league has a winning bid this season.
+  has the most left. What you and the other teams have left is read fresh from Sleeper on each visit, not from your
+  last sync. Nothing shows until the league has a winning bid this season.
 - **Tooltips follow Material 3.** On a computer a tooltip you hovered stays 1.5 seconds after the mouse moves off, so
   you can finish reading it; opening another one, a click or Escape closes it at once. Tooltips have rounder corners,
   a little more room at the sides, a solid background and a softer shadow.

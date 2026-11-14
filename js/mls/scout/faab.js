@@ -187,10 +187,11 @@ export function suggestBid({ pos, posRank = null, budget, left, myRosterId, bids
     lines.push({ kind: 'note', text: money(med) === money(p75)
         ? `Before the adjustments: ${money(med)} would have matched at least 3 in 4 of these winning bids`
         : `Before the adjustments: ${money(med)} would have matched about half of these winning bids, ${money(p75)} about 3 in 4` });
+    // When the cap really cuts (a top end of 6 held to 5 isn't worth saying), it's said on the same line (round 5: a
+    // line of its own, "it would have been 27", was one number too many to reconcile).
+    if (uncapped >= high * 1.5 && uncapped > high + 1) lines[lines.length - 1].text += `; the top here is held to ${high} so a few big bids don't stretch the range`;
     const rivals = rivalsLine(withBid, pos, budget);
     if (rivals) lines.push({ kind: 'note', text: rivals });
-    // Said only when the cap really cuts (a top end of 6 held to 5 isn't worth a line).
-    if (uncapped >= high * 1.5 && uncapped > high + 1) lines.push({ kind: 'note', text: `The top end is held to ${high} so a few big bids don't stretch the range; it would have been ${uncapped}` });
     if (need === 'empty') lines.push({ kind: 'up', text: 'He\'d fill an empty starting spot' });
     else if (need === 'starts') lines.push({ kind: 'up', text: over ? `He'd start for you, over ${over}` : 'He\'d start for you' });
     else if (need === 'bench') lines.push({ kind: 'down', text: 'He wouldn\'t start for you now: a stash' });

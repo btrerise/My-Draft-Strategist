@@ -233,7 +233,7 @@ export function waiverChipMarkup(status, tip, { sample = false } = {}) {
 export function faabBidMarkup(label, data, { sample = false, rough = false } = {}) {
     const cls = `mls-faab-bid${rough ? ' is-rough' : ''}`;
     if (sample) return `<span class="${cls}">${label}</span>`;
-    return `<button type="button" class="${cls}" data-action="explainBid" data-bid="${data}" aria-label="${label}: why">${label}</button>`;
+    return `<button type="button" class="${cls}" data-action="explainBid" data-bid="${data}" aria-label="${label}: what it's based on">${label}</button>`;
 }
 // The bid sheet's arrows (round 2): what raised the bid and what lowered it.
 export const BID_UP_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;

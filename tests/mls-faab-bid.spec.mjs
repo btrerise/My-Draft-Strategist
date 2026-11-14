@@ -32,7 +32,8 @@ const out = (page) => page.locator('#waiverOutput');
 // The league (one RB slot, as in mls-best-available.spec.mjs; waiverType changes its claim type), the rosters with
 // FAAB spent, and the transactions: week 1 from `history` ('faab' | 'none' | 'error'), week 2 Cook's drop.
 // many: Rival also dropped Jaxon Smith-Njigba and Chase Brown, so more of the line is on waivers (a waiver day's look).
-async function routes(page, { history = 'faab', waiverType = 2, many = false } = {}) {
+// spent: each roster's FAAB used (a spec can change it after the sync, as a waiver run would).
+async function routes(page, { history = 'faab', waiverType = 2, many = false, spent = { 1: 37, 2: 12 } } = {}) {
     await page.route(/api\.sleeper\.app\/v1\/league\/\d+$/, (route) => {
         const league = JSON.parse(LEAGUE_JSON);
         league.roster_positions.splice(league.roster_positions.indexOf('RB'), 1);
@@ -40,7 +41,7 @@ async function routes(page, { history = 'faab', waiverType = 2, many = false } =
         return route.fulfill({ json: league });
     });
     await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/rosters$/, (route) => {
-        const rosters = JSON.parse(ROSTERS_JSON).map(r => ({ ...r, settings: { ...r.settings, waiver_budget_used: r.roster_id === 1 ? 37 : 12 } }));
+        const rosters = JSON.parse(ROSTERS_JSON).map(r => ({ ...r, settings: { ...r.settings, waiver_budget_used: spent[r.roster_id] } }));
         return route.fulfill({ json: rosters });
     });
     await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/transactions\/\d+$/, (route) => {
@@ -150,6 +151,47 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await bid.click();
         await expect(page.locator('.sheet .sheet-title')).toHaveText(/^Jaxon Smith-Njigba · ≈ Bid \d+–\d+$/);
         await expect(page.locator('.sheet .mls-faab-sheet li').nth(1)).toHaveText('Too few winning bids for a WR (1); every position this season: 5 won, 3 to 30, median 12');
+        await expectClean(page, state);
+    });
+
+    test('round 5: the bid\'s row is there while the history loads, and FAAB left is re-read with it', async ({ page }) => {
+        const spent = { 1: 37, 2: 12 };
+        const state = await setup(page, { spent });
+        await expect(player(page, 'James Cook').locator('.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        // A waiver run since the sync: you've spent 13 more. A new visit, with the history slow to answer.
+        spent[1] = 50;
+        // The rosters, which the history now reads with it, wait until the test lets them through (in the fixture the
+        // history's two weeks are also the drops' two, so the rosters are what it waits on).
+        let release;
+        const gate = new Promise(r => { release = r; });
+        await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/rosters$/, async (route) => {
+            await gate;
+            const rosters = JSON.parse(ROSTERS_JSON).map(r => ({ ...r, settings: { ...r.settings, waiver_budget_used: spent[r.roster_id] } }));
+            return route.fulfill({ json: rosters });
+        });
+        await page.reload();
+        await expect(player(page, 'James Cook')).toBeVisible();
+        // The page's own try at ESPN's kickoffs fails (the tests block ESPN) and clears them; set them after it.
+        await expect.poll(() => page.evaluate(async () => (await import('/js/mls/state.js')).State.gameTimesFetchedForWeek)).toBeNull();
+        await page.waitForTimeout(300);
+        await page.evaluate(async (k) => {
+            const { State } = await import('/js/mls/state.js');
+            State.gameTimesByTeam = { ...State.gameTimesByTeam, ...k };
+            State.gameTimesFetchedForWeek = State.currentNflWeek;
+        }, KICKOFFS);
+        await showTab(page, 'lineup');
+        await showTab(page, 'setup');
+        const cook = player(page, 'James Cook');
+        const pending = cook.locator('.mls-faab-bid.is-pending');
+        await expect(pending).toHaveText('Bid …');
+        const before = await cook.boundingBox();
+        release();
+        // Then the bid, from the rosters read with the history: 50 left now, not the sync's 63.
+        await expect(cook.locator('button.mls-faab-bid')).toHaveText(/^Bid \d+–\d+ \(of your 50 left\)$/);
+        await expect(pending).toHaveCount(0);
+        const after = await cook.boundingBox();
+        // The row didn't change height, so nothing below it moved.
+        expect(Math.round(after.height)).toBe(Math.round(before.height));
         await expectClean(page, state);
     });
 

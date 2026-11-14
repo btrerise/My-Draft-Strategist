@@ -4,10 +4,11 @@
 //   - weeks that are over (two or more back) are kept in IndexedDB, as just the winning bids (a few hundred bytes a
 //     week): they don't change, and a later visit reads only the recent weeks;
 //   - this week's and last week's come from the drops fetch (scout/recentDrops.js), which already reads them;
+//   - each team's FAAB left is re-read from the rosters with it (round 5: the last sync can be from before the last run);
 //   - a few requests at a time, cached for the visit.
 // On an error that league gets null: no bid, no toast (a hint, like the waiver chips).
 import { normalizeName } from '../../shared/names.js';
-import { getSleeperPlayerMap, getSleeperTransactions } from '../../shared/api/sleeper.js';
+import { getSleeperLeagueRosters, getSleeperPlayerMap, getSleeperTransactions } from '../../shared/api/sleeper.js';
 import { cacheData, getCachedData } from '../../shared/storage/idb.js';
 import { recentDropsFor, recentTransactionList } from './recentDrops.js';
 import { faabLeftFrom, suggestBid, winningBids } from './faab.js';
@@ -59,7 +60,12 @@ async function load(league, week) {
     try {
         await recentDropsFor([league], week); // this week's and last week's lists, read once for the visit
         const weeks = Array.from({ length: week }, (_, i) => i + 1);
-        const [perWeek, map] = await Promise.all([Promise.all(weeks.map(w => weekBids(league, w, week))), getSleeperPlayerMap()]);
+        // The rosters too (round 5): each team's FAAB left changes at every waiver run, and the last sync can be from before
+        // the last run. Kept on the league in memory (the next save or sync stores it); on an error the synced numbers stay.
+        const [perWeek, map, rosters] = await Promise.all([Promise.all(weeks.map(w => weekBids(league, w, week))), getSleeperPlayerMap(),
+            limited(() => getSleeperLeagueRosters(league.leagueId)).catch(() => null)]);
+        const fresh = faabLeftFrom(rosters, league.waivers.budget);
+        if (fresh) league.faabLeft = fresh;
         const bids = [];
         perWeek.forEach((list, i) => list.forEach(({ p, b, r }) => {
             const pl = map && map[p];
