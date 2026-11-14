@@ -21,7 +21,8 @@ export const isFaabLeague = (l) => !!(l && l.waivers && l.waivers.type === 'faab
     && l.leagueId && !String(l.leagueId).startsWith('manual_'));
 
 // The IndexedDB entry for a finished week's winning bids (the LineupStrategistDB cache, js/shared/storage/idb.js).
-export const faabWeekCacheKey = (leagueId, week) => `faab_bids_${leagueId}_${week}`;
+// v2 (round 4): each bid also carries how many others bid on him ({ p, b, r }); v1 entries ({ p, b }) are left unread.
+export const faabWeekCacheKey = (leagueId, week) => `faab_bids2_${leagueId}_${week}`;
 
 let active = 0;
 const waiting = [];
@@ -49,7 +50,7 @@ async function weekBids(league, w, week) {
     }
     let list = recentTransactionList(league.leagueId, w);
     if (list === undefined) list = await limited(() => getSleeperTransactions(league.leagueId, w));
-    const bids = winningBids([list]).map(b => ({ p: b.playerId, b: b.bid }));
+    const bids = winningBids([list]).map(b => ({ p: b.playerId, b: b.bid, r: b.rivals }));
     if (settled) cacheData(key, bids).catch(() => {});
     return bids;
 }
@@ -60,12 +61,12 @@ async function load(league, week) {
         const weeks = Array.from({ length: week }, (_, i) => i + 1);
         const [perWeek, map] = await Promise.all([Promise.all(weeks.map(w => weekBids(league, w, week))), getSleeperPlayerMap()]);
         const bids = [];
-        perWeek.flat().forEach(({ p, b }) => {
+        perWeek.forEach((list, i) => list.forEach(({ p, b, r }) => {
             const pl = map && map[p];
             if (!pl) return;
             const name = pl.position === 'DEF' ? null : (pl.first_name ? normalizeName(`${pl.first_name} ${pl.last_name}`) : null);
-            bids.push({ cleanName: name, pos: pl.position || null, bid: b });
-        });
+            bids.push({ cleanName: name, pos: pl.position || null, bid: b, week: weeks[i], rivals: typeof r === 'number' ? r : null });
+        }));
         return bids;
     } catch (e) {
         console.warn(`Couldn't read ${league.name || league.leagueId}'s FAAB history; no suggested bids there.`, e);
@@ -102,7 +103,7 @@ export function suggestBidFor(league, { pos, posRank, need, over = null }, posRa
     if (!history) return null;
     const budget = league.waivers.budget;
     const left = league.faabLeft || null;
-    const bids = history.map(b => ({ pos: b.pos, posRank: b.cleanName && posRankOf ? posRankOf(b.cleanName) : null, bid: b.bid }));
+    const bids = history.map(b => ({ pos: b.pos, posRank: b.cleanName && posRankOf ? posRankOf(b.cleanName) : null, bid: b.bid, week: b.week, rivals: b.rivals }));
     return suggestBid({
         pos, posRank, budget, left, myRosterId: league.rosterId, bids,
         kind: league.leagueType || 'redraft', week: Number(week) || null, lastWeek: league.lastWeek || 17,

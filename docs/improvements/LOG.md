@@ -12340,3 +12340,41 @@ passed. Screenshots: my last commit and this round, rendered in the same contain
 - CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 3); I opened them. Desktop: the legend
   line's new wording, one line longer (+21 px), everything below moved down by that. Phone: +21 px, identical where it
   paints (the legend is in the blank lower part, M17's capture cut).
+
+### Round 4: a review as a user on the owner's real leagues (owner: make the recommended changes for 1–4)
+
+I ran the app on the owner's 21 Sleeper leagues (read-only: a local copy, Sleeper and ESPN fetched through curl,
+Sleeper's own position ranks uploaded as a stand-in Weekly set) and back-tested the model against the claims that
+really happened (each claim's suggestion from the bids won before it).
+- **Seen:** Saturday's Dashboard had one bid in 15 FAAB leagues (most upgrades were free agents): correct. Cards in ~0.5 s,
+  bids a few seconds later through the curl relay. On Auto-Find in Legends of the Pocket every one of ~40 cards had a
+  bid (a waiver day), Out / Bye / IR ones halved as stashes: left as is (owner).
+- **1. Wild or generic numbers.** RB77 (a deep backup) got "Bid 8–69 (of your 82 left)": week 1 of the owner's dynasty
+  leagues was a rookie frenzy (Claiborne 50, Randall 44, Heidenreich 31), and those players rank deep today. Every QB
+  from QB28 to QB57 got "Bid 3–14" (too few QB bids near any of them). **Changed:** no hard band; every winning bid at
+  his position counts, weighted by how close the player ranks to him today (fully within `NEAR` = 6 spots, fading to a
+  tenth by 30 or unranked) and by how recent (last 3 weeks fully, 4–6 weeks back half, older a quarter); weighted
+  median and 75th percentile. The top end is held to twice the bottom or the bottom plus 5% of the budget, whichever is
+  more (twice alone made a bottom of 0 cap everything at 1); the sheet says what it would have been when the cap cuts
+  by half again or more. Legends of the Pocket's RB77: "Bid 1–3".
+- **2. (The back-test.)** 73% of winning claims had no other bidder; the top end overpays those by a median 2.5% of the
+  budget and beats only ~41% of the rival-bid ones (before and after this round: the weighting and cap tighten the
+  ranges, 90% now within 5% of the budget, without changing that). Today's rank barely predicts which claims get rival
+  bids (21–44% at every rank). So, **3:**
+- **3. How often others bid,** from the league's failed claims (`winningBids` counts failed claims on the same player
+  in the same run, within 10 minutes, as `rivals`): "Others bid on 8 of 24 TE claims here; when they did, the winner
+  paid a median 17" (every position when his has too few). The IndexedDB key is now `faab_bids2_…` (each bid carries
+  `r`); the old `faab_bids_…` entries are left unread.
+- **4. "10 teams can outbid 11"** said little: when more than half the other teams can outbid the top end, "Most left:
+  100, 98, 89 (you: 82)"; otherwise the count, as before.
+- **Left for the owner to judge:** a wanted player in a league where most claims go for 0 now reads like Michael Trigg's
+  "Bid 0–5", with "Others bid on 8 of 24 TE claims here; when they did, the winner paid a median 17" and "it would have
+  been 27" in the sheet: the sheet says when to go higher, the line doesn't. The sheet is now 9 lines and scrolls a
+  little on a phone.
+
+Tests: unit (17: the weighted base, far from the bids, QB28 vs QB57, a week-1 frenzy by week 11, the cap and its 5%
+floor, the rival-bid line three ways, a count vs the most left, `winningBids`' rivals); `mls-faab-bid`: the sheet's
+lines (the fixture's failed claim on Achane gives "Others bid on 1 of 4 RB claims here…", and "Most left: 88 (you:
+63)"). Ran check-precache, `node --test` (686), `mls-faab-bid` and the same neighbouring specs: 137 passed.
+Screenshots: my last commit and this round, rendered in the same container, differ only in `desktop/` and
+`phone/mls-league-guide.png` (the legend line's text); re-taken on CI.

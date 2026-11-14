@@ -15,20 +15,22 @@ const bids100 = [
 ];
 const base = { pos: 'WR', posRank: 34, budget: 100, left: left100, myRosterId: 1, bids: bids100, kind: 'dynasty', week: 11, lastWeek: 17 };
 
-test('the band: same position within 12 ranks, median to 75th percentile, scaled by your budget', () => {
+test('every WR bid, weighted to those ranked near him: median to 75th percentile, scaled by your budget', () => {
     const s = suggestBid(base);
-    // Comparables 4, 6, 8, 10, 15 (WR30-WR40): median 8, 75th 10; you have 63 against an average of 50 → ×1.26.
-    assert.equal(s.scope, 'band');
+    // WR30-WR40 count fully (4, 6, 8, 10, 15), WR70 and the unranked one a tenth: median 8, 75th 10; you have 63
+    // against an average of 50 → ×1.26.
+    assert.equal(s.scope, 'pos');
     assert.equal(s.low, 10);
     assert.equal(s.high, 13);
     assert.equal(s.left, 63);
     assert.equal(s.rough, false);
     // The sheet's lines: what it's based on, what raised it, the notes. Dynasty: no weeks line.
     assert.deepEqual(s.lines, [
-        { kind: 'base', text: 'Similar WRs this season (WR22–46 today): 5 won, 4 to 15, median 8' },
+        { kind: 'base', text: 'Winning bids for WRs this season, those ranked near WR34 and recent ones counting most: 7 won, 0 to 15, median 8' },
         { kind: 'note', text: 'Before the adjustments: 8 would have matched about half of these winning bids, 10 about 3 in 4' },
         { kind: 'up', text: 'You have more left than the league average (50)' },
-        { kind: 'note', text: '11 teams can outbid 13 (88, 71 and 50, … left)' },
+        // Every other team can outbid 13, so the most left instead of a count (round 4).
+        { kind: 'note', text: 'Most left: 88, 71, 50 (you: 63)' },
         { kind: 'note', text: 'Ranks are today\'s; the bids were placed earlier.' }
     ]);
     // Every other team has more than 13 left: 11.
@@ -38,7 +40,7 @@ test('the band: same position within 12 ranks, median to 75th percentile, scaled
     assert.equal(bidTitle(s, 'Rashid Shaheed'), 'Rashid Shaheed · Bid 10–13');
     assert.equal(bidTitle(s), 'Bid 10–13');
     assert.equal(bidWhere(s, 'Fixture League'), 'Fixture League · you have 63 of 100');
-    assert.match(bidTip(s), /^Suggested bid 10–13 of your 63 left \(budget 100\)\. Similar WRs/);
+    assert.match(bidTip(s), /^Suggested bid 10–13 of your 63 left \(budget 100\)\. Winning bids for WRs/);
 });
 
 test('no history: no suggestion, and it says so', () => {
@@ -58,14 +60,61 @@ test('one position missing: a TE with no bids is based on every bid (never other
     assert.equal(u.scope, 'all');
 });
 
-test('too few at his rank: the whole position, shown as a normal bid (round 3: only every position is ≈)', () => {
+test('far from the bids: still his position, the nearest counting most, shown as a normal bid', () => {
     const s = suggestBid({ ...base, posRank: 60 });
     assert.equal(s.scope, 'pos');
     assert.equal(s.rough, false);
     assert.equal(bidLabel(s).startsWith('Bid '), true);
-    assert.equal(s.lines[0].text, 'Too few bids for WRs near WR60 (1); every WR this season: 7 won, 0 to 15, median 6');
-    // Unranked: every bid at his position.
-    assert.match(suggestBid({ ...base, posRank: null }).lines[0].text, /^He isn't in your rankings; every WR this season: 7 won/);
+    // WR70's 0 now counts most (10 spots away: 0.83), the WR30s a tenth to a third: median 6.
+    assert.equal(s.lines[0].text, 'Winning bids for WRs this season, those ranked near WR60 and recent ones counting most: 7 won, 0 to 15, median 6');
+    // Unranked: every bid at his position, by recency only.
+    assert.match(suggestBid({ ...base, posRank: null }).lines[0].text, /^Winning bids for WRs this season, recent ones counting most \(he isn't in your rankings\): 7 won/);
+});
+
+test('closeness: QB28 and QB57 no longer get the same bid (round 4)', () => {
+    const qbs = [28, 29, 30, 31].map(r => ({ pos: 'QB', posRank: r, bid: 20 })).concat([55, 56, 57, 58].map(r => ({ pos: 'QB', posRank: r, bid: 1 })));
+    const hi = suggestBid({ ...base, pos: 'QB', posRank: 28, bids: qbs });
+    const lo = suggestBid({ ...base, pos: 'QB', posRank: 57, bids: qbs });
+    assert.ok(hi.low > lo.high, `${bidLabel(hi)} vs ${bidLabel(lo)}`);
+});
+
+test('recency: a week-1 frenzy counts a quarter by week 11 (round 4)', () => {
+    const frenzy = [1, 2, 3, 4].map(i => ({ pos: 'RB', posRank: 75 + i, bid: 50, week: 1 }))
+        .concat([1, 2, 3, 4].map(i => ({ pos: 'RB', posRank: 75 + i, bid: 2, week: 10 })));
+    const now = suggestBid({ ...base, pos: 'RB', posRank: 77, bids: frenzy, week: 11 });
+    // Recent bids weigh 4, the old ones 1: the 75th percentile is 2, not 50.
+    assert.equal(now.lines[1].text, 'Before the adjustments: 2 would have matched at least 3 in 4 of these winning bids');
+    // Without the weeks every bid counts the same, and the old 50s reach the 75th percentile.
+    const flat = suggestBid({ ...base, pos: 'RB', posRank: 77, bids: frenzy.map(b => ({ ...b, week: undefined })), week: 11 });
+    assert.equal(flat.lines[1].text, 'Before the adjustments: 2 would have matched about half of these winning bids, 50 about 3 in 4');
+});
+
+test('the top end is held to twice the bottom (or bottom + 5% of the budget), and the sheet says what it would have been (round 4)', () => {
+    const wild = [5, 6, 7, 8, 69, 69].map((b, i) => ({ pos: 'RB', posRank: 77 + i, bid: b }));
+    const s = suggestBid({ ...base, pos: 'RB', posRank: 77, bids: wild, left: { 1: 82, 2: 82 } });
+    assert.equal(s.low, 7);
+    assert.equal(s.high, 14);
+    assert.ok(s.lines.some(l => l.kind === 'note' && l.text === 'The top end is held to 14 so a few big bids don\'t stretch the range; it would have been 69'));
+    // A bottom of 0: the top can still reach 5% of the budget.
+    const zeroish = [0, 0, 0, 0, 10, 10].map((b, i) => ({ pos: 'RB', posRank: 77 + i, bid: b }));
+    const z = suggestBid({ ...base, pos: 'RB', posRank: 77, bids: zeroish, left: { 1: 82, 2: 82 } });
+    assert.equal(z.low, 0);
+    assert.equal(z.high, 5);
+});
+
+test('how often others bid at his position, from failed claims (round 4)', () => {
+    const withRivals = bids100.map((b, i) => ({ ...b, rivals: b.pos === 'WR' && i < 2 ? 1 : 0 }));
+    const s = suggestBid({ ...base, bids: withRivals });
+    assert.ok(s.lines.some(l => l.text === 'Others bid on 2 of 7 WR claims here; when they did, the winner paid a median 4'));
+    const none = suggestBid({ ...base, bids: bids100.map(b => ({ ...b, rivals: 0 })) });
+    assert.ok(none.lines.some(l => l.text === 'No one else has bid on any of the 7 WR claims that won here this season'));
+    // Old data without rival counts: no line.
+    assert.ok(!suggestBid(base).lines.some(l => /^Others bid|^No one else/.test(l.text)));
+});
+
+test('outbid: a count when only some teams can, the most left when most can (round 4)', () => {
+    const s = suggestBid({ ...base, left: { 1: 63, 2: 88, 3: 71, 4: 5, 5: 5, 6: 5 } });
+    assert.ok(s.lines.some(l => /^2 teams can outbid \d+ \(88 and 71 left\)$/.test(l.text)));
 });
 
 test('a budget nearly spent: never more than you have, and the factor bottoms out at 0.6', () => {
@@ -140,7 +189,8 @@ test('winningBids reads completed waiver claims with a bid; faabLeftFrom and sea
         { type: 'waiver', status: 'complete', adds: { 333: 5 }, settings: { waiver_bid: 0 } },
         { type: 'waiver', status: 'complete', adds: { 444: 5 }, settings: {} }
     ], []];
-    assert.deepEqual(winningBids(lists).map(b => [b.playerId, b.bid, b.rosterId]), [['111', 12, 3], ['333', 0, 5]]);
+    // The failed bid on 111 in the same run: one rival (round 4).
+    assert.deepEqual(winningBids(lists).map(b => [b.playerId, b.bid, b.rosterId, b.rivals]), [['111', 12, 3, 1], ['333', 0, 5, 0]]);
     assert.deepEqual(faabLeftFrom([{ roster_id: 1, settings: { waiver_budget_used: 37 } }, { roster_id: 2, settings: {} }], 100), { 1: 63, 2: 100 });
     assert.equal(faabLeftFrom(null, 100), null);
     assert.equal(seasonLastWeek({ playoff_week_start: 15, playoff_teams: 6 }), 17);

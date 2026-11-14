@@ -6,7 +6,7 @@
 // The fixture: UPGRADE_CSV makes James Cook RB5 and an upgrade over Derrick Henry (as in mls-waiver-status.spec.mjs);
 // Rival dropped him Tuesday night, so on Thursday he's on waivers (W) and still counts. league-transactions-faab.json
 // (week 1): winning bids on McCaffrey RB4 (30), Achane RB6 (12), Kyren Williams RB7 (8) and Chase Brown RB9 (20), so the
-// four within 12 ranks of Cook give median 12 and 75th percentile 20. You have 63 of 100 left, Rival 88 (average 75.5:
+// four, all within 6 spots of Cook and last week's (so each counts fully), give median 12 and 75th percentile 20. You have 63 of 100 left, Rival 88 (average 75.5:
 // ×0.83); redraft, week 2 of 17 (×1.03); he'd start for you (×1.25): 12 → 13 and 20 → 21.
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
@@ -93,11 +93,14 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expect(sheet.locator('.sheet-title')).toHaveText('James Cook · Bid 13–21');
         await expect(sheet.locator('.mls-faab-sheet li')).toHaveText([
             'Fixture League · you have 63 of 100',
-            'Similar RBs this season (RB1–17 today): 4 won, 8 to 30, median 12',
+            'Winning bids for RBs this season, those ranked near RB5 and recent ones counting most: 4 won, 8 to 30, median 12',
             'Before the adjustments: 12 would have matched about half of these winning bids, 20 about 3 in 4',
+            // Round 4: from the fixture's failed claim on Achane, in the same run as his winning one.
+            'Others bid on 1 of 4 RB claims here; when they did, the winner paid a median 12',
             'He\'d start for you, over Derrick Henry',
             'You have less left than the league average (76)',
-            '1 team can outbid 21 (88 left)',
+            // Round 4: the one other team can outbid 21, so the most left instead of a count.
+            'Most left: 88 (you: 63)',
             'Ranks are today\'s; the bids were placed earlier.'
         ]);
         await expect(sheet.locator('.mls-faab-sheet li.is-up svg')).toHaveCount(1);
