@@ -12643,3 +12643,5 @@ players ("1 IR · 1 taxi" on the TE count). Two findings, both built:
   by CI from this commit. Specs run: mls-phone-rows, export-same-everywhere, touch-targets, room-on-phones,
   mls-display-ranks, mls-rankings-change, mls-keyboard, mls-lineup-row-actions, export-flex, export-numerals,
   mls-locked-kickoff, smoke (all pass); check-precache; `node --test` 669 pass. `CACHE_NAME` stays v2.10.10 (main v2.10.9).
+- **Re-taken on CI** (commit 2315bae, "Screenshots re-taken on CI (1 PNGs)"): exactly phone `mls-league-lineup`; opened
+  (names with their dots right after, rows as before).
