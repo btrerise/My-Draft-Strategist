@@ -12620,3 +12620,26 @@ finish (the spot you tapped stays put and now holds the other player), the bench
   check-precache; `node --test` 669 pass. `CACHE_NAME` stays v2.10.10 (main v2.10.9).
 - **Re-taken on CI** (commit 83da45f, "Screenshots re-taken on CI (1 PNGs)"): exactly phone `mls-league-lineup`; opened
   (the BN badges outlined).
+
+### S32, round 7: a third review as a user; the owner took both findings (2026-11-15)
+
+Tried a superflex league ("SFLEX" fits the photo at 37px), a Sunday afternoon with a final score ("31.4 / proj 18.9",
+"Final vs MIA") and a game in progress ("Started @ PIT"), long names on a 360px phone (renamed in the fixture to
+"Christopherson Montgomery-Smith Jr." and "Marvin Harrison Jr."; they wrap on both tabs, nothing cut), a swap the slot
+can't take (the red toast explains it, the snackbar goes), Export Lineup mid-swap, and the Roster with IR and taxi
+players ("1 IR · 1 taxi" on the TE count). Two findings, both built:
+1. **Export Lineup made mid-swap drew the swapping row's amber tint and edge** (older than S32; round 3 took the hint line
+   out of the image, this was what was left). The export's clone drops `.swapping` (js/mls/trade/export.js); the page
+   keeps it.
+2. **A long name's "···" sat at the far right of its first line**, away from the name. On phones the name line is now
+   inline text (`.mls-row-name-line` block, `.player-name-wrap` inline, at the name's own size and line height so the
+   line is no taller), and the chip sits on the text's middle right after the last word, with negative margins so its
+   18px doesn't grow the line. A first try at plain inline made each name line about 2px taller with the dots high; the
+   size and margins fixed that (rows now match round 6 to within a pixel).
+- **Specs first** (both failed before): `export-same-everywhere.spec.mjs` exports at 390px before and during a swap and
+  expects the same pixels (the page keeps its swapping row); `mls-phone-rows.spec.mjs` renames Amon-Ra St. Brown to a name
+  that wraps at 360px and expects the dots on its last line, under 12px after the last word.
+- **Screenshots:** against round 6 only phone `mls-league-lineup` (names and their lines move by up to a pixel), re-taken
+  by CI from this commit. Specs run: mls-phone-rows, export-same-everywhere, touch-targets, room-on-phones,
+  mls-display-ranks, mls-rankings-change, mls-keyboard, mls-lineup-row-actions, export-flex, export-numerals,
+  mls-locked-kickoff, smoke (all pass); check-precache; `node --test` 669 pass. `CACHE_NAME` stays v2.10.10 (main v2.10.9).

@@ -3082,6 +3082,9 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 /* With nothing hidden, just three quiet dots. */
 .mls-row-more.is-dots { border-color: transparent; padding: 0 2px; min-width: 0; opacity: 0.8; }
 
+@media (max-width: 480px) {
+    .lineup-slot .mls-player-row-text .mls-row-name-line { font-size: 0.85rem; } /* .player-name-wrap's phone size */
+}
 @media (max-width: 599.98px) {
     .lineup-slot .mls-row-lead, .roster-item .mls-row-lead {
         display: flex;
@@ -3148,8 +3151,12 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
     /* The padlock dot pokes 3px above the photo: clip a little outside the row's info, not at its edge. */
     .lineup-slot .mls-player-row-info { overflow: clip; overflow-clip-margin: 6px; }
     .lineup-slot .mls-player-row-text { position: relative; flex: 1 1 auto; min-width: 0; align-self: stretch; justify-content: center; }
-    .lineup-slot .mls-row-name-line { display: flex; align-items: center; min-width: 0; }
-    .lineup-slot .mls-row-more { display: inline-flex; flex: none; position: static; margin-left: 6px; cursor: pointer; }
+    /* The name runs inline, so the "+N" / dots follow its last word, also when it wraps (round 7). */
+    /* The line takes the name's own size, so it's no taller than the name was; the chip sits on the text's middle and its
+       negative margins keep its 18px from growing the line. */
+    .lineup-slot .mls-row-name-line { display: block; min-width: 0; font-size: 0.95rem; line-height: 1.3; }
+    .lineup-slot .mls-row-name-line .player-name-wrap { display: inline; }
+    .lineup-slot .mls-row-more { display: inline-flex; position: static; margin: -4px 0 -4px 6px; vertical-align: middle; cursor: pointer; }
     /* The column spans the row's height; the area reaches the row's edges (the divider) and 2px past, so the "+N" near
        the top of a short row still has 48px above and below it. */
     .lineup-slot .mls-row-more::after { content: ''; position: absolute; top: -10px; bottom: -10px; left: 0; right: 0; z-index: 1; }

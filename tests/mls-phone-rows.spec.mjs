@@ -435,3 +435,33 @@ test('a bench row\'s BN badge has a solid outline on a phone', async ({ page }, 
     expect(style).toEqual({ border: 'rgb(100, 116, 139)', style: 'solid', color: 'rgb(203, 213, 225)' });
     await expectClean(page, state);
 });
+
+// Round 7 (owner, 2026-11-15, from a third review as a user): with a name that wraps, the "···" sat at the far right of
+// the name's first line; it follows the name's last word, as with a short name.
+test('the details button follows a long name\'s last word', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'phone rows');
+    await page.setViewportSize({ width: 360, height: 780 });
+    const state = await openApp(page, '/lineup/');
+    await page.route(/sleeper\.app\/v1\/players\/nfl$/, route => {
+        const players = fixture('players-nfl.json');
+        Object.assign(players['7547'], { first_name: 'Christopherson', last_name: 'Montgomery-Smith Jr.', full_name: 'Christopherson Montgomery-Smith Jr.' });
+        return route.fulfill({ json: players });
+    });
+    await seedMls(page);
+    await loadMlsRankings(page);
+    await showTab(page, 'lineup');
+    const r = row(page, 'Montgomery-Smith');
+    const geo = await r.evaluate(el => {
+        const name = el.querySelector('.player-name-wrap');
+        const range = document.createRange(); range.selectNodeContents(name);
+        const lines = [...range.getClientRects()];
+        const last = lines[lines.length - 1];
+        const more = el.querySelector('.mls-row-more').getBoundingClientRect();
+        return { lines: new Set(lines.map(l => Math.round(l.top))).size, gap: more.left - last.right, overlap: more.top < last.bottom && more.bottom > last.top };
+    });
+    expect(geo.lines).toBeGreaterThan(1);       // the name wraps
+    expect(geo.overlap).toBe(true);             // the dots are on its last line
+    expect(geo.gap).toBeGreaterThanOrEqual(0);
+    expect(geo.gap).toBeLessThan(12);           // right after the last word
+    await expectClean(page, state);
+});

@@ -207,7 +207,7 @@ What changed for users in each version of the two apps, in plain language. Newes
   the bottom of the screen with a Cancel button (bottom left on tablets and computers, clear of the swap buttons), so you
   see it even when you start from the bench, instead of a line above the lineup. The row you tap no longer jumps when "Unlock All" appears above the lineup, and with a keyboard, focus stays on the
   button you used instead of going back to the top of the page. A row whose game has
-  started (auto-locked) has a blue edge like its padlock; one you locked stays green.
+  started (auto-locked) has a blue edge like its padlock; one you locked stays green. Export Lineup made during a swap no longer shows the swapping row's highlight.
 
 - **Tooltips follow Material 3.** On a computer a tooltip you hovered stays 1.5 seconds after the mouse moves off, so
   you can finish reading it; opening another one, a click or Escape closes it at once. Tooltips have rounder corners,

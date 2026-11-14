@@ -81,3 +81,21 @@ test.describe('image exports are the same at 390px and 1280px', () => {
         await expectClean(page, state);
     });
 });
+
+// Improvements S32 round 7 (owner, 2026-11-15): Export Lineup made mid-swap drew the swapping row's amber highlight. The
+// image is the lineup, the same whether or not you're in the middle of a swap.
+test('Export Lineup made mid-swap is the same as without the swap', async ({ page }, info) => {
+    test.skip(info.project.name !== 'desktop', 'resizes the window itself');
+    const state = await openApp(page, '/lineup/');
+    await serveHtml2canvas(page);
+    await seedMls(page);
+    await loadMlsRankings(page);
+    await showTab(page, 'lineup');
+    const [before] = await exportAt(page, '#exportBtn', [390]);
+    await page.getByRole('button', { name: 'Swap Brock Bowers' }).click();
+    await expect(page.locator('#optimalLineupContainer .lineup-slot.swapping')).toHaveCount(1);
+    const [during] = await exportAt(page, '#exportBtn', [390]);
+    expectSameImage(during, before);
+    await expect(page.locator('#optimalLineupContainer .lineup-slot.swapping')).toHaveCount(1); // the page keeps it
+    await expectClean(page, state);
+});

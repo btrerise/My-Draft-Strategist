@@ -118,6 +118,8 @@ function splitBlendedBorders(root) {
                     // the Sleeper differences; improvements S9 round 7, S11 round 4) is a to-do list for you, not
                     // for the league chat this image gets posted in (owner's decision). The rows' badges stay.
                     clonedContainer.querySelectorAll('.lineup-needs-box, .mls-lineup-source').forEach(el => el.remove());
+                    // A swap in progress is a state of the page, not of the lineup: no amber row in the image (S32 round 7).
+                    clonedContainer.querySelectorAll('.lineup-slot.swapping').forEach(el => el.classList.remove('swapping'));
                     splitBlendedBorders(clonedContainer);
                     clonedContainer.style.width = '480px';
                     clonedContainer.style.maxWidth = 'none';
