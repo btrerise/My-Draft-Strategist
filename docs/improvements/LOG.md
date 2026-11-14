@@ -11757,3 +11757,98 @@ findings and chose **a tint** for the trade verdict (over a 3px edge or keeping 
 - **Screenshots:** none change (main's states don't run a simulation or a trade). Specs: room-on-phones,
   export-same-everywhere, export-flex, export-numerals, mls-mvp-lvp, mls-trade-impact, mls-trade-fair,
   mls-trade-verdict-held, mls-now-and-later, mls-sim (all pass).
+
+## F18 — Scoreboard: count Sleeper's auto-subs
+
+**How Sleeper reports auto-subs (checked 2026-11-12).**
+- **The setting** is `settings.max_subs` on each league (`GET /v1/league/<id>`): 0 = off, 1–3 = AutoSubs allowed per team
+  per week. Two related keys: `sub_start_time_eligibility` (1 = "Require AutoSub To Not Play Before Starter": the sub's
+  game must start at the same time as the starter's or later) and `sub_lock_if_starter_active`. In the owner's 21 leagues
+  (2026): 17 have `max_subs` 1–3 (LOOG - Chop Shop also has `sub_start_time_eligibility` 1), four have 0 (LRD Cucks,
+  2026 Late Round Charity League, Legacy Best Ball, Slow Mock Draft); `sub_lock_if_starter_active` is 0
+  everywhere.
+- **What it is** ([Sleeper help: How does Player AutoSubs work?](https://support.sleeper.com/en/articles/9731991-how-does-player-autosubs-work),
+  read in full on 2026-11-13): "If a starter is inactive, the assigned sub will automatically move into the lineup." The
+  commissioner turns it on in General League Settings → Player Auto-Subs and picks how many each team can use per week;
+  managers set a sub per starter on the Swap Player screen (mobile app only; shown on web). Both games must not have
+  started, and the sub must fit the starter's slot. "As soon as one player in the AutoSub pairing kicks off, both players
+  lock." One sub per starter; no injury tag needed. Subs show in Sleeper's team and matchup views (yours and your
+  opponent's). The page doesn't say when the swap is written. Sleeper added the start-time option later
+  ([SleeperHQ on X](https://x.com/SleeperHQ/status/1824543398432223396)). The Footballguys thread sits behind a
+  Cloudflare challenge, so it couldn't be read.
+- **The public API** ([docs.sleeper.com](https://docs.sleeper.com/)) has no auto-sub endpoint or field. A matchup entry
+  has exactly `roster_id`, `matchup_id`, `points`, `custom_points`, `starters`, `starters_points`, `players`,
+  `players_points` (every entry of the owner's 21 leagues, weeks 1–10). Rosters carry no sub assignments either (their
+  keys: `starters`, `players`, `reserve`, `taxi`, `settings`, `metadata` with notification switches, `player_map` null).
+  So nothing names a swap, and nothing says which bench player is a starter's sub before it happens.
+- **`points` is always the sum of `starters_points`**, in the same order as `starters`: 2,196 of 2,196 finished entries
+  (weeks 1–9, all 21 leagues, Best Ball included). Sleeper's app counts the sub in the team score, so once Sleeper makes the
+  swap, `starters` must already list the sub and `points` include him; the starter he replaced is a bench player.
+  Not yet confirmed on a known swap (asked the owner for one).
+- **Sleeper's own weekly recap:** not in the public API (confirmed on docs.sleeper.com: users, avatars, leagues,
+  rosters, users in a league, matchups, playoff brackets, transactions, traded picks, NFL state, drafts, picks, players,
+  trending). The runbook's answer stands.
+
+**What the app does today.** Every Scoreboard view reads Sleeper's `starters` and the tile's score is Sleeper's `points`
+(`custom_points` when a commissioner set it), fetched again when older than 2 minutes or on Refresh. No view adds up
+starters itself, except Best Ball by design (`bestBallLineup`). So after Sleeper's swap the tiles, record, Still in play,
+Root for / Against you and MVPs / LVPs / Started already count the sub. Before the swap (starter ruled out, his game not
+started) the starter is left out as Out and the sub is a bench player.
+
+**The owner's check (2026-11-13).** The mismatch the owner saw is gone when he looks again, so Sleeper's matchups catch
+up with the swap after a delay. Where a delay can come from:
+- Sleeper writing the swap (not documented; the starter has to be inactive, which is only certain at his kickoff).
+- Sleeper's CDN: `GET /v1/league/<id>/matchups/<week>` answers with `cache-control: public, s-maxage=60,
+  stale-while-revalidate=300`, so a response can be up to about 6 minutes old.
+- The app: the Scoreboard re-fetches matchups older than 2 minutes (`FRESH_MS`, thisWeek.js; Refresh forces it). Nothing
+  stores matchups across a reload (`State.lineupActualPoints` is in memory), and the service worker doesn't touch
+  cross-origin requests.
+
+**Owner's decisions (2026-11-13).** After the research the owner checked again and no longer saw the mismatch, so it was
+Sleeper's matchups catching up with the swap, not the app. Of the options offered: **1, a regression test and one shared
+rule, no visible change**. Not done:
+- The "auto-sub" mark on the sub's row (asked in the card): the API never names a swap, so the app could only mark one it
+  had seen happen between two of its own fetches. Dropped.
+- Counting the sub as live before the swap (asked in the card): the API doesn't say who anyone's sub is. Dropped.
+- Timing Sleeper's swap on a Sunday by fetching the owner's leagues around kickoff (research only): not now; auto-subs
+  aren't that common and nothing would be built on it yet.
+- A "Sleeper may auto-sub" note on an Out starter: not chosen.
+
+**What changed, and where.** No user-visible change, so no CHANGELOG line, no legend line, no screenshots.
+- `js/mls/week/playerRecap.js`: `starterIdsOf` (who counts as a team's starters: Sleeper's `starters`, or Best Ball's
+  lineup) moved here from rootFor.js, beside `bestBallLineup`, with a comment on how Sleeper reports auto-subs. The MVPs &
+  LVPs (Started, started zeros, LVPs) now use it instead of their own copy of the rule; the same result.
+  `js/mls/week/rootFor.js` re-exports it. The card asked for the function beside `summarize` in scoreboard.js; it already
+  existed in rootFor.js, and playerRecap.js is the place that avoids a circular import (rootFor.js imports
+  `bestBallLineup` from it).
+- `js/mls/week/thisWeek.js`: the tiles' and Still in play's sides read their starters with `starterIdsOf` (its own
+  `starterIds` copy removed). S36's Final Window is built from those same sides, so it follows too.
+- Totals: every tile shows Sleeper's `points` (`custom_points` when a commissioner set one). No view adds up starters
+  itself, except Best Ball by design (its lineup is picked after the games).
+- `sw.js`: `CACHE_NAME` v2.10.5 → v2.10.6 (above main's after merging S36); no file added.
+
+**Tests.**
+- `tests/fixtures/sleeper/make-fixtures.mjs`: `league-autosub.json` (Fixture League with `max_subs` 1),
+  `league-matchups-autosub.json` (CeeDee Lamb inactive, Sleeper has put Amon-Ra St. Brown in his FLEX slot: 106.0–110.0)
+  and `league2-matchups-inactive.json` (Second Fixture League, no auto-subs: Lamb started on 0.0, St. Brown's 24.0 on the
+  bench: 105.4–95.2).
+- `tests/unit/playerRecap.test.mjs`: the sub counts as started (an MVP, Started 50% (1)); the starter he replaced
+  started only where there was no sub (LVP, a started zero in one league).
+- `tests/mls-auto-sub.spec.mjs` (new, both widths; the Final Window starts folded, as in mls-mvp-lvp.spec.mjs, since
+  only Sunday night is left): the tiles are Sleeper's scores; St. Brown is in your finished
+  starters and Lamb in one league only; MVPs (St. Brown, Started 50% (1)), LVPs (Lamb, 50% (1)), Started zeros and Benched
+  booms (St. Brown named only in the league without auto-subs). And with no swap, the same lineups read as before (98.0 and
+  130.4; Lamb in 2, St. Brown on both benches).
+
+**Left over.** Nothing for the app. If Sleeper ever adds an auto-sub field to the public API, the mark and the live
+anticipation become possible.
+
+**Checked.** check-precache, `node --test` (640 pass), and after merging main (S36): `mls-auto-sub`, `mls-final-window`,
+`mls-mvp-lvp`, `mls-root-for` (and before the merge `mls-this-week`, `mls-root-kickoff-find`), all passing at both widths.
+The full suite hasn't run: it runs once, when the owner asks for the pull request.
+
+**The full suite before the pull request (2026-11-14).** `npm run check`: precache OK, `node --test` passes, 993 Playwright
+tests pass (48 skipped). Five failures: the four `visual.spec.mjs` cloud-fonts guards (MDS and MLS, both widths), which fail
+the same way on main in this container, and one `mls-rankings-change.spec.mjs` test (desktop, "chips go away on their
+own") that timed out in `waitForLoadState` under the suite's load; that spec passes 66 of 66 run alone three times. Nothing
+here touches its code.
