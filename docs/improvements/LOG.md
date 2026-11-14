@@ -12758,3 +12758,6 @@ Tests: unit (19, plus "and 2 more"), `mls-faab-bid` (11 per width) with the new 
 (688), and `mls-faab-bid`, `tooltip-closed-space` and the neighbouring specs: 189 passed. Screenshots: my last commit and
 this round differ only in `desktop/` and `phone/mls-league-guide.png` (the shorter bullet and legend line: desktop
 −128 px, phone −324 px); re-taken on CI.
+- CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 10); I opened them: step 8's shorter FAAB
+  bids bullet and the shorter legend line (desktop −107 px, phone −302 px on CI's fonts); identical above, the rest
+  moved up.
