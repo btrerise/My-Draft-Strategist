@@ -1,0 +1,488 @@
+// Phone rows on the Lineup and Roster tabs (improvements S32, the owner's choices). Under 600px the slot (or position)
+// badge sits on the lower edge of the player's photo, so the name gets the row's width. A Lineup row shows the slot, photo,
+// name, position, team, rank badge, the kickoff with its opponent, the warnings that need you (injury, BYE, the IR slot,
+// Bench / Starting in Sleeper), points and swap; LOCKED / AUTO-LOCKED, EARLY, TAXI and the rank-change chip wait behind a
+// tap on the name ("+N" counts them), which opens the row's details in the shared sheet with each badge's legend sentence
+// and a labelled lock button. The photo and slot badge lock the player; a padlock dot on the photo shows the state.
+// Tablets and computers keep today's rows.
+import { readFileSync } from 'node:fs';
+import { test, expect } from '@playwright/test';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp } from './helpers.mjs';
+
+const HENRY = '3198';
+const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/sleeper/${name}`, import.meta.url), 'utf8'));
+const row = (page, name) => page.locator('#lineupTab .lineup-slot').filter({ has: page.locator('.player-name-wrap', { hasText: name }) });
+const box = (loc) => loc.evaluate(el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom }; });
+
+// The fixture league with Derrick Henry questionable and Buffalo (Josh Allen) an early team.
+async function setUp(page) {
+    const state = await openApp(page, '/lineup/');
+    // After openApp: its catch-all for Sleeper is registered first, and the last route registered wins.
+    await page.route(/sleeper\.app\/v1\/players\/nfl$/, route => {
+        const players = fixture('players-nfl.json');
+        players[HENRY].injury_status = 'Questionable';
+        return route.fulfill({ json: players });
+    });
+    await seedMls(page);
+    await loadMlsRankings(page);
+    await page.evaluate(async () => {
+        const { State } = await import('/js/mls/state.js');
+        State.earlyTeams = ['BUF'];
+    });
+    await showTab(page, 'lineup');
+    await callApp(page, 'renderLineupUI');
+    return state;
+}
+
+test('a phone row shows the chosen set, with the rest in its details; wider screens keep today\'s rows', async ({ page }, info) => {
+    const phone = info.project.name === 'phone';
+    if (phone) await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    const allen = row(page, 'Josh Allen');
+    const henry = row(page, 'Derrick Henry');
+
+    if (!phone) {
+        // Today's row: the slot badge and photo side by side, every badge on the row, the lock at the right.
+        await expect(allen.locator('.early-badge')).toBeVisible();
+        await expect(allen.locator('.mls-row-more')).toBeHidden();
+        await expect(allen.locator('.mls-lead-lock')).toBeHidden();
+        await expect(allen.locator('.lock-btn')).toBeVisible();
+        const [slot, photo] = await Promise.all([box(allen.locator('.slot-badge')), box(allen.locator('.mls-headshot'))]);
+        expect(photo.x).toBeGreaterThanOrEqual(slot.right);
+        await expectClean(page, state);
+        return;
+    }
+
+    // The slot badge sits on the photo's lower edge, centred under it.
+    const [slot, photo] = await Promise.all([box(allen.locator('.slot-badge')), box(allen.locator('.mls-headshot'))]);
+    expect(slot.y).toBeLessThan(photo.bottom);
+    expect(slot.bottom).toBeGreaterThan(photo.bottom);
+    expect(Math.abs((slot.x + slot.w / 2) - (photo.x + photo.w / 2))).toBeLessThan(1.5);
+    // Shown: the injury, and EARLY (round 3: it says to set him first). Nothing behind the tap yet: three dots. No lock at
+    // the right.
+    await expect(henry.locator('.inj-badge')).toBeVisible();
+    await expect(henry.locator('.mls-row-more')).toHaveAttribute('aria-label', 'Details for Derrick Henry');
+    await expect(allen.locator('.early-badge')).toBeVisible();
+    await expect(allen.locator('.mls-row-more')).toHaveClass(/\bis-dots\b/);
+    await expect(allen.locator('.mls-row-more')).toHaveAttribute('aria-label', 'Details for Josh Allen');
+    await expect(allen.locator('.mls-row-lock')).toBeHidden();
+
+    // The photo and slot badge lock him: the padlock dot turns green, LOCKED joins what's behind the tap.
+    const lead = allen.getByRole('button', { name: 'Lock Josh Allen' });
+    await expect(lead).toHaveAttribute('aria-pressed', 'false');
+    await expect(lead.locator('.mls-lock-dot')).toHaveClass(/\bis-off\b/);
+    await lead.click();
+    await expect(allen).toHaveClass(/\blocked\b/);
+    await expect(allen.getByRole('button', { name: 'Lock Josh Allen' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(allen.locator('.mls-lock-dot')).toHaveClass(/\bis-on\b/);
+    await expect(allen.locator('.mls-lock-badge')).toBeHidden();
+    await expect(allen.locator('.mls-row-more')).toHaveText('+1');
+    await expect(allen.locator('.mls-row-more')).toHaveAttribute('aria-label', 'Details for Josh Allen, 1 more badge');
+
+    // A tap on his name opens the details: every badge on his row with the legend's sentence, and the lock.
+    // force: the click lands on the name's spot, where the details button's area lies over the name (the point of it).
+    await allen.locator('.player-name-wrap').click({ force: true });
+    const sheet = page.getByRole('dialog', { name: 'Josh Allen' });
+    await expect(sheet).toBeVisible();
+    const lines = sheet.locator('.badge-legend-row');
+    await expect(lines).toHaveCount(3);
+    await expect(lines.nth(0).locator('.mls-lock-badge')).toHaveText('LOCKED');
+    await expect(lines.nth(0).locator('.badge-legend-text')).toContainText('LOCKED: you locked him in that spot');
+    await expect(lines.nth(1).locator('.early-badge')).toHaveText('EARLY');
+    await expect(lines.nth(1).locator('.badge-legend-text')).toContainText('He plays before the main Sunday games');
+    await expect(lines.nth(2).locator('.mls-rank-badge')).toHaveText('Pos: #1 (T3)');
+    await expect(lines.nth(2).locator('.badge-legend-text')).toContainText('his rank at his position');
+    // The copies are text, not controls.
+    await expect(sheet.locator('.badge-legend-sample button')).toHaveCount(0);
+    // Its lock button unlocks him, closes the sheet and puts focus back on his row.
+    await sheet.getByRole('button', { name: 'Unlock' }).click();
+    await expect(page.locator('.sheet-host')).toHaveCount(0);
+    await expect(allen).not.toHaveClass(/\blocked\b/);
+    await expect(allen.locator('.mls-row-more')).toBeFocused();
+    await expect(allen.locator('.mls-row-more')).toHaveClass(/\bis-dots\b/);
+
+    // A row with nothing hidden: three quiet dots, and its details still list its badges.
+    await henry.locator('.mls-row-more').click();
+    const henrySheet = page.getByRole('dialog', { name: 'Derrick Henry' });
+    await expect(henrySheet.locator('.inj-badge')).toHaveText('Q');
+    await expect(henrySheet.getByRole('button', { name: 'Lock in this spot' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.sheet-host')).toHaveCount(0);
+    await expect(henry.locator('.mls-row-more')).toBeFocused();
+
+    await expectClean(page, state);
+});
+
+test('the details open and close from the keyboard', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'a phone row\'s details; wider screens show every badge on the row');
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    const more = row(page, 'Josh Allen').locator('.mls-row-more');
+    await more.focus();
+    await page.keyboard.press('Enter');
+    const sheet = page.getByRole('dialog', { name: 'Josh Allen' });
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator('.sheet-title')).toBeFocused();
+    // Tab stays in the sheet: the lock, the close button, the handle, and round again.
+    for (let i = 0; i < 4; i++) {
+        await page.keyboard.press('Tab');
+        expect(await page.evaluate(() => !!document.activeElement.closest('.sheet'))).toBe(true);
+    }
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.sheet-host')).toHaveCount(0);
+    await expect(more).toBeFocused();
+    // The photo's lock from the keyboard.
+    const lead = row(page, 'Josh Allen').getByRole('button', { name: 'Lock Josh Allen' });
+    await lead.focus();
+    await page.keyboard.press('Enter');
+    await expect(row(page, 'Josh Allen')).toHaveClass(/\blocked\b/);
+    await expectClean(page, state);
+});
+
+test('a Roster row puts its position badge on the photo on a phone, beside it on wider screens', async ({ page }, info) => {
+    const phone = info.project.name === 'phone';
+    if (phone) await page.setViewportSize({ width: 375, height: 812 });
+    const state = await openApp(page, '/lineup/');
+    await seedMls(page);
+    await showTab(page, 'roster');
+    const allen = page.locator('#rosterList .roster-item').filter({ hasText: 'Josh Allen' });
+    const [badge, photo] = await Promise.all([box(allen.locator('.pos-badge')), box(allen.locator('.mls-headshot'))]);
+    if (phone) {
+        expect(badge.y).toBeLessThan(photo.bottom);
+        expect(badge.bottom).toBeGreaterThan(photo.bottom);
+        expect(Math.abs((badge.x + badge.w / 2) - (photo.x + photo.w / 2))).toBeLessThan(1.5);
+    } else {
+        expect(photo.x).toBeGreaterThanOrEqual(badge.right);
+    }
+    await expectClean(page, state);
+});
+
+// Owner, after the first round: an auto-locked starter showed the blue lock twice on a phone, on the photo and at the right.
+// The right-hand override button's inline display beat the phone rule that hides it. One lock per row, on the photo.
+test('an auto-locked starter has one lock on a phone: the blue padlock on his photo', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'wider screens keep the lock at the right');
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    // Buffalo's game (Josh Allen) started an hour ago.
+    await page.evaluate(async () => {
+        const { State } = await import('/js/mls/state.js');
+        State.gameTimesByTeam = { ...State.gameTimesByTeam, BUF: Date.now() - 60 * 60 * 1000 };
+    });
+    await callApp(page, 'optimizeLineup', true);
+    const allen = row(page, 'Josh Allen');
+    await expect(allen.locator('.mls-lock-dot')).toHaveClass(/\bis-auto\b/);
+    await expect(allen.getByRole('button', { name: "Josh Allen's game has started. Override lock" })).toHaveCount(1);
+    await expect(allen.locator('.mls-row-actions [data-action="overrideAutoLock"]')).toBeHidden();
+    await expectClean(page, state);
+});
+
+// Owner, after the first round: the screen jumped when you tapped a lock or swap, because "Unlock All (1)" or the swap
+// hint appears above the rows (and goes again). The row you tapped stays where it was on the screen.
+test('the row you tap stays put when Unlock All or the swap hint comes and goes', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'measured on a phone, where the lineup is taller than the screen');
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    const top = (loc) => loc.evaluate(el => Math.round(el.getBoundingClientRect().top));
+    const tapped = async (name, action) => {
+        const r = row(page, name);
+        await r.evaluate(el => el.scrollIntoView({ block: 'center' }));
+        const before = await top(r);
+        await action(r);
+        await page.evaluate(() => new Promise(requestAnimationFrame));
+        expect(await top(row(page, name)), `${name} moved on the screen`).toBe(before);
+    };
+    // Lock: Unlock All (1) appears above the lineup. Unlock: it goes.
+    await tapped('Justin Jefferson', r => r.getByRole('button', { name: 'Lock Justin Jefferson' }).click());
+    await tapped('Justin Jefferson', r => r.getByRole('button', { name: 'Lock Justin Jefferson' }).click());
+    // Swap: the hint appears above the lineup. Cancel: it goes. From a bench row too.
+    await tapped('Brock Bowers', r => r.getByRole('button', { name: 'Swap Brock Bowers' }).click());
+    await tapped('Brock Bowers', r => r.getByRole('button', { name: 'Cancel swap of Brock Bowers' }).click());
+    await tapped('George Kittle', r => r.getByRole('button', { name: 'Swap George Kittle' }).click());
+    await tapped('George Kittle', r => r.getByRole('button', { name: 'Cancel swap of George Kittle' }).click());
+    await expectClean(page, state);
+});
+
+// Round 3 (owner, 2026-11-15): an auto-locked row's edge is blue like its padlock (a lock you set stays green), at every
+// width; on a phone the swap button turns into an ✕ the same size while you swap, so the points don't move; and the swap
+// hint is a snackbar at the bottom of the screen with a Cancel action, instead of a line above the lineup.
+test('an auto-locked row has a blue edge, a row you locked a green one', async ({ page }, info) => {
+    if (info.project.name === 'phone') await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    await page.evaluate(async () => {
+        const { State } = await import('/js/mls/state.js');
+        State.gameTimesByTeam = { ...State.gameTimesByTeam, BUF: Date.now() - 60 * 60 * 1000 };
+    });
+    await callApp(page, 'optimizeLineup', true);
+    await page.locator('#lineupTab [data-action="toggleLock"][aria-label="Lock Brock Bowers"]:visible').click();
+    const edge = (name) => row(page, name).evaluate(el => getComputedStyle(el).boxShadow);
+    expect(await edge('Josh Allen')).toContain('rgb(96, 165, 250)');
+    expect(await edge('Brock Bowers')).toContain('rgb(16, 185, 129)');
+    await expectClean(page, state);
+});
+
+test('swapping on a phone: an ✕ in the swap button\'s place, and the hint in a snackbar', async ({ page }, info) => {
+    const phone = info.project.name === 'phone';
+    if (phone) await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    const bowers = row(page, 'Brock Bowers');
+    const snackbar = page.locator('.mls-swap-snackbar');
+    await expect(snackbar).toBeHidden();
+    const [swapBefore, ptsBefore] = await Promise.all([box(bowers.locator('.swap-btn')), box(bowers.locator('.mls-pts'))]);
+    await bowers.getByRole('button', { name: 'Swap Brock Bowers' }).click();
+    const cancel = bowers.getByRole('button', { name: 'Cancel swap of Brock Bowers' });
+    await expect(cancel).toBeVisible();
+    if (phone) {
+        // The ✕, at the swap button's size and place; the points above it stay put.
+        await expect(cancel.locator('svg')).toBeVisible();
+        await expect(cancel).not.toContainText('Cancel', { useInnerText: true });
+        // (The tap may have scrolled the page, so compare places within the row's column, not on the screen.)
+        const [swapNow, ptsNow] = await Promise.all([box(cancel), box(bowers.locator('.mls-pts'))]);
+        expect([swapNow.x, swapNow.w, swapNow.h, swapNow.y - ptsNow.y]).toEqual([swapBefore.x, swapBefore.w, swapBefore.h, swapBefore.y - ptsBefore.y]);
+        expect([ptsNow.x, ptsNow.w]).toEqual([ptsBefore.x, ptsBefore.w]);
+    } else {
+        await expect(cancel).toHaveText('Cancel'); // wider screens as before
+    }
+    // The hint: a snackbar with a Cancel action, not a line above the lineup (so not in Export Lineup either).
+    await expect(snackbar).toBeVisible();
+    await expect(snackbar.locator('.mls-swap-snackbar-text')).toHaveText("Tap another player's ⇄ to swap with Brock Bowers.");
+    await expect(page.locator('#optimalLineupContainer')).not.toContainText('Tap another player');
+    if (phone) {
+        // Above the tab bar, inside the screen's margins.
+        const [bar, nav] = await Promise.all([box(snackbar), box(page.locator('.nav-bar'))]);
+        expect(bar.bottom).toBeLessThanOrEqual(nav.y);
+        expect(bar.x).toBeGreaterThanOrEqual(8);
+        expect(bar.right).toBeLessThanOrEqual(367);
+    }
+    // A toast while it's up sits above it, not on it.
+    await page.locator('#lineupTab [data-action="toggleLock"][aria-label="Lock Derrick Henry"]:visible').click();
+    const toast = page.locator('#mds-toast.show');
+    await expect(toast).toBeVisible();
+    await expect.poll(async () => (await box(toast)).bottom <= (await box(snackbar)).y).toBe(true);
+    // Leaving the tab hides it; coming back shows it again while the swap is still pending.
+    await showTab(page, 'roster');
+    await expect(snackbar).toBeHidden();
+    await showTab(page, 'lineup');
+    await expect(snackbar).toBeVisible();
+    // Its Cancel ends the swap.
+    await snackbar.getByRole('button', { name: 'Cancel' }).click();
+    await expect(snackbar).toBeHidden();
+    await expect(bowers.getByRole('button', { name: 'Swap Brock Bowers' })).toBeVisible();
+    // Completing a swap hides it too.
+    await bowers.getByRole('button', { name: 'Swap Brock Bowers' }).click();
+    await expect(snackbar).toBeVisible();
+    await row(page, 'Trey McBride').getByRole('button', { name: 'Swap Trey McBride' }).click();
+    await expect(snackbar).toBeHidden();
+    await expectClean(page, state);
+});
+
+// Round 4 (owner, 2026-11-15, from a review as a user): with headshots off, the padlock dot sat on the slot badge; on
+// tablets and computers the swap snackbar covered the rows' swap buttons; on phones it covered the page's last 70px; an
+// empty slot's badge was the old full-size pill on phones, out of line with the others.
+const overlap = (a, b) => a.x < b.right && b.x < a.right && a.y < b.bottom && b.y < a.bottom;
+
+test('with headshots off, the padlock sits above the slot badge, not on it', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'the padlock is on phones only');
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    await page.evaluate(() => document.body.classList.add('mls-hide-headshots'));
+    for (const name of ['Josh Allen', 'Baltimore Ravens']) {
+        const r = row(page, name);
+        const [dot, slot] = await Promise.all([box(r.locator('.mls-lock-dot')), box(r.locator('.slot-badge'))]);
+        expect(overlap(dot, slot), `${name}: the padlock covers the slot badge`).toBe(false);
+        expect(dot.bottom).toBeLessThanOrEqual(slot.y);
+    }
+    await expectClean(page, state);
+});
+
+test('an empty slot\'s badge lines up with the other slot badges on a phone', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'phone rows');
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    const empty = page.locator('#optimalLineupContainer .lineup-slot.empty .slot-badge');
+    const filled = row(page, 'Derrick Henry').locator('.slot-badge'); // the same RB slot
+    const [e, f] = await Promise.all([box(empty), box(filled)]);
+    expect(Math.abs(e.w - f.w)).toBeLessThan(1);
+    expect(Math.abs((e.x + e.w / 2) - (f.x + f.w / 2))).toBeLessThan(1);
+    await expectClean(page, state);
+});
+
+for (const width of [700, 1280]) {
+    test(`at ${width}px the swap snackbar covers no swap button`, async ({ page }, info) => {
+        test.skip(info.project.name !== 'desktop', 'wider screens');
+        await page.setViewportSize({ width, height: 900 });
+        const state = await setUp(page);
+        await row(page, 'Brock Bowers').getByRole('button', { name: 'Swap Brock Bowers' }).click();
+        const bar = await box(page.locator('.mls-swap-snackbar'));
+        // Every swap button, scrolled to sit at the snackbar's height on the screen.
+        for (const btn of await page.locator('#lineupTab .swap-btn').all()) {
+            await btn.evaluate((el, y) => window.scrollBy(0, el.getBoundingClientRect().top - y), bar.y + 4);
+            expect(overlap(await box(btn), await box(page.locator('.mls-swap-snackbar'))), 'a swap button is under the snackbar').toBe(false);
+        }
+        await expectClean(page, state);
+    });
+}
+
+test('on a phone the page can scroll clear of the swap snackbar', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'phones');
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    await row(page, 'George Kittle').getByRole('button', { name: 'Swap George Kittle' }).click();
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const last = page.locator('#lineupTab > *:not([hidden])').last();
+    expect((await box(last)).bottom).toBeLessThanOrEqual((await box(page.locator('.mls-swap-snackbar'))).y);
+    await expectClean(page, state);
+});
+
+// Round 5 (owner, 2026-11-15): the details sheet says what each badge means for this player first, then the Guide's
+// general sentence (which stays, word for word, under it).
+test.describe('the details say what each badge means for him', () => {
+    test.use({ timezoneId: 'America/New_York' });
+    test('injury, kickoff, lock and the Sleeper lineup, then the Guide\'s sentence', async ({ page }, info) => {
+        test.skip(info.project.name !== 'phone', 'a phone row\'s details');
+        await page.setViewportSize({ width: 375, height: 812 });
+        const state = await openApp(page, '/lineup/');
+        await page.route(/sleeper\.app\/v1\/players\/nfl$/, route => {
+            const players = fixture('players-nfl.json');
+            players[HENRY].injury_status = 'Questionable';
+            return route.fulfill({ json: players });
+        });
+        // Sleeper's lineup leaves Chase on the bench.
+        await page.route(/sleeper\.app\/v1\/league\/1000000000000000001\/rosters$/, route => {
+            const rosters = fixture('league-rosters.json');
+            rosters[0].starters = ['4984', '3198', '6794', '6786', '9493', '11604', '17', 'BAL'];
+            return route.fulfill({ json: rosters });
+        });
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            // Thursday 8:15 PM in New York; Buffalo's game started an hour ago.
+            State.gameTimesByTeam = { ...State.gameTimesByTeam, BAL: '2026-09-18T00:15:00Z', BUF: new Date(Date.now() - 3600e3).toISOString() };
+        });
+        await showTab(page, 'lineup');
+        await callApp(page, 'optimizeLineup', true);
+        const lineFor = (sheet, badge) => sheet.locator('.badge-legend-row').filter({ has: page.locator(badge) }).locator('.badge-legend-text');
+
+        await row(page, 'Derrick Henry').locator('.mls-row-more').click();
+        let sheet = page.getByRole('dialog', { name: 'Derrick Henry' });
+        await expect(lineFor(sheet, '.inj-badge').locator('.mls-details-this')).toHaveText('Questionable on Sleeper.');
+        await expect(lineFor(sheet, '.inj-badge')).toContainText('His injury status from Sleeper: questionable, doubtful, out');
+        await expect(lineFor(sheet, '.kickoff-badge').locator('.mls-details-this')).toHaveText('Kicks off Thursday at 8:15 PM.');
+        await page.keyboard.press('Escape');
+
+        await row(page, 'Josh Allen').locator('.mls-row-more').click();
+        sheet = page.getByRole('dialog', { name: 'Josh Allen' });
+        await expect(lineFor(sheet, '.mls-autolock-badge').locator('.mls-details-this')).toHaveText('His game has started, so he stays in this spot.');
+        await expect(lineFor(sheet, '.kickoff-badge').locator('.mls-details-this')).toHaveText('His game has started.');
+        await page.keyboard.press('Escape');
+
+        const chase = row(page, "Ja'Marr Chase");
+        await chase.getByRole('button', { name: "Lock Ja'Marr Chase" }).click();
+        await chase.locator('.mls-row-more').click();
+        sheet = page.getByRole('dialog', { name: "Ja'Marr Chase" });
+        await expect(lineFor(sheet, '.mls-lock-badge').locator('.mls-details-this')).toHaveText('You locked him in this spot.');
+        await expect(lineFor(sheet, '.mls-sleeper-lineup-badge').locator('.mls-details-this')).toHaveText('He\'s on your bench on Sleeper, and this lineup starts him.');
+        await expect(lineFor(sheet, '.mls-sleeper-lineup-badge')).toContainText('Change it on Sleeper to match.');
+        await page.keyboard.press('Escape');
+        await expectClean(page, state);
+    });
+});
+
+// Round 6 (owner, 2026-11-15, from a second review as a user): the snackbar on one line on wider screens (a phone on its
+// side lost a third of its height to two lines); focus stays where you were after a lock or swap redraws the lineup;
+// the bench's BN badge under the photo has a solid outline like the other slot badges.
+test('on a phone turned sideways the swap snackbar is one line', async ({ page }, info) => {
+    test.skip(info.project.name !== 'desktop', 'a landscape window');
+    await page.setViewportSize({ width: 844, height: 390 });
+    const state = await setUp(page);
+    await row(page, 'Amon-Ra St. Brown').getByRole('button', { name: 'Swap Amon-Ra St. Brown' }).click();
+    const bar = page.locator('.mls-swap-snackbar');
+    await expect(bar).toBeVisible();
+    expect((await box(bar)).h).toBeLessThan(60);
+    await expectClean(page, state);
+});
+
+test('after a lock or a swap, focus stays where you were', async ({ page }, info) => {
+    if (info.project.name === 'phone') await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    const focused = () => page.evaluate(() => {
+        const el = document.activeElement;
+        return el ? (el.getAttribute('aria-label') || el.textContent.trim()) : null;
+    });
+    // Lock from the keyboard: focus on his lock again (the photo's on a phone, the row's on wider screens).
+    await page.locator('#lineupTab [data-action="toggleLock"][aria-label="Lock Brock Bowers"]:visible').focus();
+    await page.keyboard.press('Enter');
+    await expect(row(page, 'Brock Bowers')).toHaveClass(/\blocked\b/);
+    expect(await focused()).toBe('Lock Brock Bowers');
+    // Start a swap: focus on his Cancel (the ✕ on a phone).
+    await row(page, 'Justin Jefferson').getByRole('button', { name: 'Swap Justin Jefferson' }).focus();
+    await page.keyboard.press('Enter');
+    expect(await focused()).toBe('Cancel swap of Justin Jefferson');
+    // Finish it on a bench row: focus on the swap button in the row you pressed, which now holds Jefferson.
+    await row(page, 'Amon-Ra St. Brown').getByRole('button', { name: 'Swap Amon-Ra St. Brown' }).focus();
+    await page.keyboard.press('Enter');
+    expect(await focused()).toBe('Swap Justin Jefferson');
+    expect(await page.evaluate(() => !!document.activeElement.closest('#benchContainer'))).toBe(true);
+    await expectClean(page, state);
+});
+
+test('a bench row\'s BN badge has a solid outline on a phone', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'phone rows');
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    const bn = row(page, 'Amon-Ra St. Brown').locator('.slot-badge');
+    const style = await bn.evaluate(el => { const cs = getComputedStyle(el); return { border: cs.borderTopColor, style: cs.borderTopStyle, color: cs.color }; });
+    expect(style).toEqual({ border: 'rgb(100, 116, 139)', style: 'solid', color: 'rgb(203, 213, 225)' });
+    await expectClean(page, state);
+});
+
+// Round 7 (owner, 2026-11-15, from a third review as a user): with a name that wraps, the "···" sat at the far right of
+// the name's first line; it follows the name's last word, as with a short name.
+test('the details button follows a long name\'s last word', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'phone rows');
+    await page.setViewportSize({ width: 360, height: 780 });
+    const state = await openApp(page, '/lineup/');
+    await page.route(/sleeper\.app\/v1\/players\/nfl$/, route => {
+        const players = fixture('players-nfl.json');
+        Object.assign(players['7547'], { first_name: 'Christopherson', last_name: 'Montgomery-Smith Jr.', full_name: 'Christopherson Montgomery-Smith Jr.' });
+        return route.fulfill({ json: players });
+    });
+    await seedMls(page);
+    await loadMlsRankings(page);
+    await showTab(page, 'lineup');
+    const r = row(page, 'Montgomery-Smith');
+    const geo = await r.evaluate(el => {
+        const name = el.querySelector('.player-name-wrap');
+        const range = document.createRange(); range.selectNodeContents(name);
+        const lines = [...range.getClientRects()];
+        const last = lines[lines.length - 1];
+        const more = el.querySelector('.mls-row-more').getBoundingClientRect();
+        return { lines: new Set(lines.map(l => Math.round(l.top))).size, gap: more.left - last.right, overlap: more.top < last.bottom && more.bottom > last.top };
+    });
+    expect(geo.lines).toBeGreaterThan(1);       // the name wraps
+    expect(geo.overlap).toBe(true);             // the dots are on its last line
+    expect(geo.gap).toBeGreaterThanOrEqual(0);
+    expect(geo.gap).toBeLessThan(12);           // right after the last word
+    await expectClean(page, state);
+});
+
+// Round 8: the padlock dot pokes 3px above the photo but stays inside the row's info box (which clips), so it needs no
+// overflow-clip-margin, which Safari doesn't support. Rows' info boxes stretch to the row's height (round 2).
+test('the padlock dot sits inside its row\'s box, so nothing clips it', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'phone rows');
+    const state = await setUp(page);
+    for (const width of [375, 320]) {
+        await page.setViewportSize({ width, height: 812 });
+        for (const hide of [false, true]) {
+            await page.evaluate(h => document.body.classList.toggle('mls-hide-headshots', h), hide);
+            const inside = await page.$$eval('#lineupTab .lineup-slot:not(.empty)', rows => rows.every(row => {
+                const dot = row.querySelector('.mls-lock-dot');
+                if (!dot || !dot.offsetParent) return true;
+                const d = dot.getBoundingClientRect(), box = row.querySelector('.mls-player-row-info').getBoundingClientRect();
+                return d.top >= box.top && d.bottom <= box.bottom && d.left >= box.left && d.right <= box.right;
+            }));
+            expect(inside, `${width}px, headshots ${hide ? 'off' : 'on'}`).toBe(true);
+        }
+    }
+    await expectClean(page, state);
+});

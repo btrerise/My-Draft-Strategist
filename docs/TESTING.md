@@ -413,11 +413,25 @@ The card named does the item in its own session; remove the line when it's done.
   `cubic-bezier(0.42, 1.67, 0.21, 0.90)`, Expressive's fast spatial curve: a pressed button's corners going 6 → 4px)
   and the state layer's 150ms `background-color` fade (css/base.css, STATE LAYERS, the `::before` rule). Reduce Motion keeps
   turning both off.
-- **No card yet (S32 or a Dashboard card):** the other dense spots on `ALLOW`, each with its reason there: the phone
+- **No card yet (a Dashboard card, or M16):** the other dense spots on `ALLOW`, each with its reason there: the phone
   header's menu button, the Scoreboard's lists and fold toggles (rows 2 to 6px apart), the Command Center's Edit /
   Fold all and first card, "This lineup needs you" above its fix button, the Trade Analyzer's Clear above its search,
-  the Team tab's Undo buttons, a dynasty Roster row's badge above its gap chip. S32 already takes the Lineup row's swap
-  and lock (and the Roster rows).
+  the Team tab's Undo buttons, a dynasty Roster row's badge above its gap chip. (The Lineup row's swap and lock left
+  `ALLOW` in S32.)
+
+**From S32's reviews as a user (owner, 2026-11-15)**
+- **M3 (toasts as snackbars): no toast over an open sheet.** A toast (z-index 9999) still shows on top of the shared sheet
+  (`js/shared/ui/sheet.js`) and its scrim, e.g. over a Lineup row's details on a phone. Material 3 proposal 4 already says
+  a toast waits while a dialog is open; the sheet counts as one. While S32's swap snackbar shows, a toast is lifted 80px
+  above it (`css/mls.css`, "The swap snackbar"); keep that, or fold the two into one snackbar queue.
+- **M16 (the last dense touch targets): a phone on its side.** From 600px wide the Lineup rows keep the computer layout
+  (S32 left tablets and computers unchanged), so a phone turned sideways (about 844x390) gets the ~30px swap and lock
+  buttons; `tests/touch-targets.spec.mjs` only measures at 375px. Measure at 844x390 too, and give those buttons 48px
+  areas (they're left out of the shared hit-area rule, css/base.css TOUCH TARGETS).
+
+**No Safari (WebKit) checks yet (S32, owner, 2026-11-15)**
+- Every spec runs in Chromium only, so nothing checks what iPhone and iPad users get. Proposed card **W2** (in
+  docs/improvements/LOG.md, after S32) adds a CI job running a chosen set of phone specs in Playwright's WebKit.
 
 **From the suggested FAAB bid (improvements S35)**
 - **S45 (the Settings page): move the FAAB Bids group** (`#faabSettingsGroup` in `lineup/index.html`, from the Dashboard's

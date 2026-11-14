@@ -167,7 +167,17 @@ async function expectChips(page, t, since = TUE) {
     await expect(chip(page, t, 'Amon-Ra St. Brown')).toHaveClass(/is-down/);
     await expect(chip(page, t, 'Amon-Ra St. Brown')).toHaveAttribute('title', `Down 4 spots in your ${t.label} rankings since ${since} (WR6 → WR10)`);
     await expect(page.locator(`${t.rows} .mls-move-chip`)).toHaveCount(3);
-    // A tap explains it (phones have no hover).
+    // A tap explains it (phones have no hover). On a phone's Lineup tab the chip waits in the row's details (improvements
+    // S32), which give the same explanation beside it.
+    if (t.tab === 'lineup' && test.info().project.name === 'phone') {
+        await expect(chip(page, t, 'Garrett Wilson')).toBeHidden();
+        await page.locator(t.rows).filter({ hasText: 'Garrett Wilson' }).locator('.mls-row-more').click();
+        const sheet = page.getByRole('dialog', { name: 'Garrett Wilson' });
+        await expect(sheet.locator('.badge-legend-row').filter({ has: page.locator('.mls-move-chip') }).locator('.badge-legend-text')).toHaveText(text);
+        await page.keyboard.press('Escape');
+        await expect(sheet).toHaveCount(0);
+        return;
+    }
     await chip(page, t, 'Garrett Wilson').click();
     await expect(toast(page, text)).toBeVisible();
 }

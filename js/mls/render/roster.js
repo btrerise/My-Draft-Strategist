@@ -320,8 +320,8 @@ import { KEYS } from '../../shared/storage/keys.js';
             html += `
             <div class="roster-item">
                 <div class="mls-player-row-info">
-                    <span class="badge pos-badge ${escapeHtml(p.pos)} mls-pos-badge-sizing">${escapeHtml(p.pos)}</span>
-                    ${playerHeadshotHTML(p)}
+                    <span class="mls-row-lead"><span class="badge pos-badge ${escapeHtml(p.pos)} mls-pos-badge-sizing">${escapeHtml(p.pos)}</span>
+                    ${playerHeadshotHTML(p)}</span>
                     <div class="mls-player-row-text">
                         <div class="player-name-wrap">${escapeHtml(p.name)}${byeStr}${statusBadges ? ` <span class="mls-name-badges">${statusBadges}</span>` : ''}</div>
                         <div class="mls-player-row-meta">
