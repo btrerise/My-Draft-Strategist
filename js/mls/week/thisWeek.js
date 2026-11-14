@@ -44,7 +44,7 @@ import { RECAP_SCALES, buildPlayerRecap, ownText, pointsRange, slotLabel, starte
 import { getRecapLines } from './recapLines.js';
 import { scoreboardImageHTML } from './shareImage.js';
 import { ensureHtml2Canvas } from '../../shared/ui/scriptLoader.js';
-import { useProportionalDigits } from '../../shared/ui/exportImage.js';
+import { useProportionalDigits, EXPORT_WINDOW } from '../../shared/ui/exportImage.js';
 import { canViewTransition, withViewTransition } from '../../shared/ui/viewTransition.js';
 import { showToast } from '../../shared/ui/toast.js';
 import {
@@ -1116,6 +1116,7 @@ export async function exportScoreboard() {
         const canvas = await html2canvas(card, {
             backgroundColor: '#1c2541',
             scale: 2,
+            ...EXPORT_WINDOW, // the computer layout, so a phone's image matches (improvements M17)
             onclone: (clonedDoc) => {
                 const clone = clonedDoc.getElementById('thisWeekCard');
                 if (!clone) return;

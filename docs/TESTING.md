@@ -385,8 +385,8 @@ The card named does the item in its own session; remove the line when it's done.
   in tests/touch-targets.spec.mjs (the spec must still pass), and re-take the screenshots this changes (most of both
   apps': every form and the header).
 - **M14 (surfaces and corners): no hover lift on cards.** After M2 the only lifts left on the site are cards: the
-  Tracker's player cards (`.player-card:hover`, css/mds.css: `translateY(-2px)` and a shadow), the Scout tab's result
-  cards (`.scout-result-card:hover`, css/mls.css: `translateY(-1px)`) and the guide banner (`.guide-banner:hover`,
+  Tracker's player cards (`.player-card:hover`, css/mds.css: `translateY(-2px)` and a shadow; gone under 600px since
+  improvements M17, which made them list rows there) and the guide banner (`.guide-banner:hover`,
   css/base.css: `translateY(-2px)`). Replace each lift with M14's surface-tone change (or the shared state layer if the
   card is a button). Computers only; no screenshot shows a hover.
 - **M4 (chips and segmented controls): 48px targets for the chips and segments.** On `ALLOW` in
@@ -453,6 +453,10 @@ The card named does the item in its own session; remove the line when it's done.
   Lineup tab show a past week's lineup and points (read-only) would let those tiles open it again.
 
 **Small polish, one session each**
+- `visual.spec.mjs`'s "MLS synced league tabs" shoots the Dashboard right after the sync, while Sync's button shows
+  "Synced Successfully" for 2.5s (`flashButton`); a slow run catches it back on "Sync Sleeper", changing
+  `desktop/mls-league-setup.png` (improvements M17, round 2: CI's screenshot run did once). Waiting for the flash to end
+  before that shot (or hiding the flash text in `hide-transient.css`) would end it, and re-take both widths' Dashboard PNGs.
 - The Guide's second paragraphs have no gap (improvements N2, round 6): `class="step-desc mt-2"` in both apps' Guides
   meant a 0.5rem gap, but `.step-desc` (css/base.css) comes after `.mt-2` and sets all four margins, so it never
   applies. A fix (e.g. `.step-desc.mt-2 { margin-top: var(--space-2); }`) re-takes both apps' Guide screenshots.
