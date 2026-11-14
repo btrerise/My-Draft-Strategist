@@ -12306,3 +12306,8 @@ the upgrade has a bid on Best available; Jaxon's Check a List bid is "≈", grey
 `node --test` (680) and the same specs as before plus `mls-faab-bid`: 137 passed. Screenshots: my last commit and this
 round, rendered in the same container, differ only in `desktop/` and `phone/mls-league-guide.png` (the legend line's
 new text and its "≈ Bid 2–5" sample); re-taken on CI.
+- CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 2); I opened them. Desktop: the legend row
+  now shows "W Bid 9–14 ≈ Bid 2–5" and its longer text (+21 px); above it unchanged, below it moved down. Phone: +42
+  px, identical where it paints (the legend is in the blank lower part, M17's capture cut).
+- Then merged main (S34 merged as #251, `CACHE_NAME` v2.10.8 there; this branch keeps v2.10.9). The merge adds nothing
+  this branch didn't already have, so no re-run.
