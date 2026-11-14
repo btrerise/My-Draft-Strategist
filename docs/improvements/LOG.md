@@ -12541,3 +12541,5 @@ above main's v2.10.9.
   mls-lineup-row-actions, badge-legend, room-on-phones, mls-lineup-needs, mls-locked-kickoff, mls-weekly-locks,
   mls-display-ranks, mls-headshots, mls-rankings-change, export-same-everywhere, export-flex, mls-tab-redraws,
   mls-starter-alert, smoke, focus-ring (both widths, all pass).
+- **Re-taken on CI** (commit 66b1c30, "Screenshots re-taken on CI (1 PNGs)"): exactly desktop `mls-league-guide`; opened
+  (the "+N" line reads "LOCKED, TAXI, a rank change").
