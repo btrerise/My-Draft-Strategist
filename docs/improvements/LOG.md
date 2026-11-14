@@ -12699,3 +12699,36 @@ the neighbouring specs (with the Guide's): 189 passed. Screenshots: my last comm
 - CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 8); I opened them. Step 8's new FAAB bids
   bullet after Pasted Lists (desktop +81 px, phone +219 px; on phones this part of the Guide paints), identical above,
   the rest moved down.
+
+### Round 9: plain words (owner: read it as someone with a high-school education)
+
+Every line this card shows was reread for someone without the jargon; the owner approved the rewrites, keeping
+"median" ("the middle bid was 2" for a 0–50 range read as a contradiction). What changed, in the sheet:
+- The basis is two sentences: the fact in bold ("This season, 40 RBs were won on waivers here, for 0 to 50. The median
+  bid was 2."), then how bids are weighted, not bold ("Bids on players ranked close to RB72 count most, and so do recent
+  ones.", or "He isn't in your rankings, so …", or for a rough guess "Only 1 WR has been won here, so this is a rough
+  guess."): `lines[0].sub`, drawn as `.mls-faab-sub`.
+- "Before the adjustments: 2 would have matched about half …" → "Before the changes below, a bid of 2 would have tied or
+  beaten half of these winning bids, and 5 would have tied or beaten 3 out of 4."; the cap: "We stop the top at 8 so a
+  few very high bids don't make the range too wide."
+- "Others bid on 13 of 40 RB claims here; when they did, the winner paid a median 8" → "Other teams also bid in 13 of the
+  40 RB claims here. When they did, the median winning bid was 8."; none: "In all 40 RB claims here this season, only one
+  team bid."
+- "over DJ Giddens" → "in place of DJ Giddens"; "a stash" → "He wouldn't start for you right now, so this is a bench
+  pickup and the bid is lower"; "the league average" → "the average team"; the weeks line → "Only N weeks left: FAAB you
+  don't spend is wasted when the season ends, so bid a little more"; "only a 0 bid is possible" → "so you can only bid 0".
+- "2 teams can outbid 21 (88 and 71 left)" → "2 teams have more than 21 left (88 and 71), so they could outbid you";
+  "Most left: … (you: 82)" → "Most FAAB left on other teams: … (you have 82)".
+- "Ranks are today's; the bids were placed earlier." → "Note: these bids were made earlier in the season, but players
+  are matched by today's rankings, which may have changed."
+- The Aggressive lines say "median winning bid when other teams also bid", "This range already goes that high.", and
+  "no claim in this league has had more than one bidder yet, so there's nothing to compare against."
+- Settings, the Guide, the badge legend and CHANGELOG: Conservative "a lower bid. Usually enough when no other team wants
+  him." (it was "the cheapest bid likely to win", which overstated it: about 4 in 10 when another team bids);
+  Aggressive "for a player who'd start for you, a higher bid. Wins more often when other teams bid too, but you may pay
+  more than you needed to."; the legend's "≈ and grey" line is a sentence.
+Unchanged (already clear): the bid label, "Bid 0 · none left", the toast, the status line, "Suggest FAAB Bids".
+
+Tests: unit (19) and `mls-faab-bid` (11 per width) with the new text. Ran check-precache, `node --test` (688), and
+`mls-faab-bid`, `tooltip-closed-space` and the neighbouring specs: 189 passed. Screenshots: my last commit and this
+round differ only in `desktop/` and `phone/mls-league-guide.png` (the Guide bullet and the legend line); re-taken on CI.

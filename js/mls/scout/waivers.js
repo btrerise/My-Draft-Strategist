@@ -343,7 +343,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         const icon = { up: BID_UP_ICON, down: BID_DOWN_ICON };
         const where = data.where ? `<li class="is-where"><span>${escapeHtml(data.where)}</span></li>` : '';
         const body = `<ul class="mls-faab-sheet">${where}${(data.lines || []).map(l =>
-            `<li class="is-${escapeHtml(l.kind)}">${icon[l.kind] || ''}<span>${escapeHtml(l.text)}</span></li>`).join('')}</ul>`;
+            `<li class="is-${escapeHtml(l.kind)}">${icon[l.kind] || ''}<span>${escapeHtml(l.text)}${l.sub ? ` <span class="mls-faab-sub">${escapeHtml(l.sub)}</span>` : ''}</span></li>`).join('')}</ul>`;
         openSheet({ title: data.title, body, opener: btn, className: 'mls-faab-sheet-host' });
     }
 

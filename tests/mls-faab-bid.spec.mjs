@@ -107,15 +107,15 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expect(sheet.locator('.sheet-title')).toHaveText('James Cook · Bid 13–21');
         await expect(sheet.locator('.mls-faab-sheet li')).toHaveText([
             'Fixture League · you have 63 of 100',
-            'Winning bids for RBs this season, those ranked near RB5 and recent ones counting most: 4 won, 8 to 30, median 12',
-            'Before the adjustments: 12 would have matched about half of these winning bids, 20 about 3 in 4',
+            'This season, 4 RBs were won on waivers here, for 8 to 30. The median bid was 12. Bids on players ranked close to RB5 count most, and so do recent ones.',
+            'Before the changes below, a bid of 12 would have tied or beaten half of these winning bids, and 20 would have tied or beaten 3 out of 4.',
             // Round 4: from the fixture's failed claim on Achane, in the same run as his winning one.
-            'Others bid on 1 of 4 RB claims here; when they did, the winner paid a median 12',
-            'He\'d start for you, over Derrick Henry',
-            'You have less left than the league average (76)',
+            'Other teams also bid in 1 of the 4 RB claims here. When they did, the median winning bid was 12.',
+            'He\'d start for you, in place of Derrick Henry',
+            'You have less FAAB left than the average team (76)',
             // Round 4: the one other team can outbid 21, so the most left instead of a count.
-            'Most left: 88 (you: 63)',
-            'Ranks are today\'s; the bids were placed earlier.'
+            'Most FAAB left on other teams: 88 (you have 63)',
+            'Note: these bids were made earlier in the season, but players are matched by today\'s rankings, which may have changed.'
         ]);
         await expect(sheet.locator('.mls-faab-sheet li.is-up svg')).toHaveCount(1);
         await expect(sheet.locator('.mls-faab-sheet li.is-down svg')).toHaveCount(1);
@@ -133,7 +133,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         // Its sheet names him and whom he'd replace, from the lineup check (round 3).
         await cookCard.locator('.mls-faab-bid').click();
         await expect(page.locator('.sheet .sheet-title')).toHaveText('James Cook · Bid 13–21');
-        await expect(page.locator('.sheet .mls-faab-sheet li.is-up')).toHaveText('He\'d start for you, over Derrick Henry');
+        await expect(page.locator('.sheet .mls-faab-sheet li.is-up')).toHaveText('He\'d start for you, in place of Derrick Henry');
         await page.keyboard.press('Escape');
         await expect(page.locator('.sheet')).toHaveCount(0);
         await expect(out(page).locator('.mls-faab-bid')).toHaveCount(1);
@@ -163,7 +163,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expect(bid).toHaveClass(/\bis-rough\b/);
         await bid.click();
         await expect(page.locator('.sheet .sheet-title')).toHaveText(/^Jaxon Smith-Njigba · ≈ Bid \d+–\d+$/);
-        await expect(page.locator('.sheet .mls-faab-sheet li').nth(1)).toHaveText('Too few winning bids for a WR (1); every position this season: 5 won, 3 to 30, median 12');
+        await expect(page.locator('.sheet .mls-faab-sheet li').nth(1)).toHaveText('This season, 5 players at every position were won on waivers here, for 3 to 30. The median bid was 12. Only 1 WR has been won here, so this is a rough guess.');
         await expectClean(page, state);
     });
 
@@ -250,7 +250,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         expect(conservative).toBeLessThan(40);
         await expect(bid).toHaveText(/^Bid \d+–40 \(of your 40 left\)$/);
         await bid.click();
-        await expect(page.locator('.sheet .mls-faab-sheet li.is-up').first()).toHaveText('Aggressive: the top is raised to 40, what winners paid when others bid');
+        await expect(page.locator('.sheet .mls-faab-sheet li.is-up').first()).toHaveText('Aggressive: the top is raised to 40, the median winning bid when other teams also bid');
         await expectClean(page, state);
     });
 
