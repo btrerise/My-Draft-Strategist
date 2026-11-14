@@ -173,7 +173,6 @@ async function eachLimited(items, limit, fn) {
 
 // --- Reading a matchup ---
 const pointsOf = (e) => typeof e.custom_points === 'number' ? e.custom_points : (Number(e.points) || 0);
-const starterIds = (e) => (e.starters || []).filter(id => id && id !== '0');
 
 function playerInfo(id, entry, ctx) {
     const p = ctx.playerMap[id] || {};
@@ -214,7 +213,7 @@ function leagueResult(l, matchups, meta, base) {
         : null;
     const scoreOf = (e) => { const lu = lineupOf(e); return lu ? Math.round(lu.reduce((t, id) => t + ptsOf(e, id), 0) * 100) / 100 : pointsOf(e); };
     const side = (e) => {
-        const starters = lineupOf(e) || starterIds(e);
+        const starters = lineupOf(e) || starterIdsOf(e);
         return sideSummary({
             points: scoreOf(e), bestBall,
             starters: starters.map(id => playerInfo(id, e, ctx)),

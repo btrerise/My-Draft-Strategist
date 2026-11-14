@@ -3,7 +3,7 @@
 // and the editable lines' validation.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildPlayerRecap, bestBallLineup, normalizeLines, validateLines, DEFAULT_LINES, ownText, pointsRange, startedText } from '../../js/mls/week/playerRecap.js';
+import { buildPlayerRecap, bestBallLineup, normalizeLines, validateLines, DEFAULT_LINES, ownText, pointsRange, startedText, starterIdsOf } from '../../js/mls/week/playerRecap.js';
 
 const PLAYERS = {
     chase: { name: "Ja'Marr Chase", pos: 'WR', team: 'CIN' },
@@ -281,4 +281,23 @@ test('benched booms: one entry per player, his costly benchings in each league i
     assert.equal(r.benchedBooms.filter(b => b.kind === 'cost' && b.bench.id === 'lamb').length, 1);
     assert.equal(r.benchedBooms[0].bench.id, 'lamb'); // his largest cost (23) leads
     assert.deepEqual(r.benchedBooms.map(b => b.kind), ['cost', 'boom']);
+});
+
+// Improvements F18: Sleeper's auto-subs. Once Sleeper swaps an inactive starter for his sub, the sub is in `starters` and
+// the starter on the bench; nothing else in the entry says so. The sub counts as started (MVPs, Started), the inactive
+// starter doesn't; in a league without auto-subs the inactive starter still started, on 0.
+test('auto-subs: the sub Sleeper moved into the lineup counts as started; the starter he replaced does not', () => {
+    const subbed = { starters: ['allen', 'nacua'], players: ['allen', 'lamb', 'nacua'], players_points: { allen: 20, lamb: 0, nacua: 24 } };
+    assert.deepEqual(starterIdsOf(subbed), ['allen', 'nacua']);
+    const r = recap([
+        { id: 'a', name: 'League a', bestBall: false, entry: subbed },
+        lg('b', { allen: 20, lamb: 0, nacua: 24 }, ['allen', 'lamb']), // no auto-subs: Lamb started on 0
+    ]);
+    const nacua = r.mvps.find(x => x.id === 'nacua');
+    assert.ok(nacua, 'the sub boomed where he started: an MVP');
+    assert.equal(startedText(nacua), '50% (1)');
+    assert.deepEqual(nacua.leagues.map(x => [x.id, x.started]), [['a', true], ['b', false]]);
+    const lamb = r.lvps.find(x => x.id === 'lamb');
+    assert.equal(startedText(lamb), '50% (1)'); // started only where there was no sub
+    assert.deepEqual(r.startedZeros.map(x => [x.id, x.zeroIn]), [['lamb', 1]]);
 });
