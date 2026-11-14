@@ -12337,3 +12337,6 @@ available, and Auto-Find's sheet ("over Derrick Henry"); Jaxon's Check a List bi
 so every position). Ran check-precache, `node --test` (681), `mls-faab-bid` and the same neighbouring specs: 137
 passed. Screenshots: my last commit and this round, rendered in the same container, differ only in `desktop/` and
 `phone/mls-league-guide.png` (the legend line's text); re-taken on CI.
+- CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 3); I opened them. Desktop: the legend
+  line's new wording, one line longer (+21 px), everything below moved down by that. Phone: +21 px, identical where it
+  paints (the legend is in the blank lower part, M17's capture cut).
