@@ -6,7 +6,7 @@
 // The fixture: UPGRADE_CSV makes James Cook RB5 and an upgrade over Derrick Henry (as in mls-waiver-status.spec.mjs);
 // Rival dropped him Tuesday night, so on Thursday he's on waivers (W) and still counts. league-transactions-faab.json
 // (week 1): winning bids on McCaffrey RB4 (30), Achane RB6 (12), Kyren Williams RB7 (8) and Chase Brown RB9 (20), so the
-// four within 6 ranks of Cook give median 12 and 75th percentile 20. You have 63 of 100 left, Rival 88 (average 75.5:
+// four within 12 ranks of Cook give median 12 and 75th percentile 20. You have 63 of 100 left, Rival 88 (average 75.5:
 // ×0.83); redraft, week 2 of 17 (×1.03); he'd start for you (×1.25): 12 → 13 and 20 → 21.
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
@@ -89,10 +89,13 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         // the notes. The weeks-left adjustment (×1.03) is under 5%, so it has no line.
         await cook.locator('.mls-faab-bid').click();
         const sheet = page.locator('.sheet');
-        await expect(sheet.locator('.sheet-title')).toHaveText('Bid 13–21 · you have 63 of 100');
+        // Round 3: it names the player and the league, says what the two ends mean, and whom he'd replace.
+        await expect(sheet.locator('.sheet-title')).toHaveText('James Cook · Bid 13–21');
         await expect(sheet.locator('.mls-faab-sheet li')).toHaveText([
-            'Similar RBs this season (RB1–11 today): 4 won, 8 to 30, median 12',
-            'He\'d start for you',
+            'Fixture League · you have 63 of 100',
+            'Similar RBs this season (RB1–17 today): 4 won, 8 to 30, median 12',
+            'Before the adjustments: 12 would have matched about half of these winning bids, 20 about 3 in 4',
+            'He\'d start for you, over Derrick Henry',
             'You have less left than the league average (76)',
             '1 team can outbid 21 (88 left)',
             'Ranks are today\'s; the bids were placed earlier.'
@@ -110,6 +113,12 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         const cookCard = out(page).locator('.mls-scan-card').filter({ hasText: 'James Cook' });
         await expect(cookCard).toContainText('Would Start');
         await expect(cookCard.locator('.mls-scan-bid .mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        // Its sheet names him and whom he'd replace, from the lineup check (round 3).
+        await cookCard.locator('.mls-faab-bid').click();
+        await expect(page.locator('.sheet .sheet-title')).toHaveText('James Cook · Bid 13–21');
+        await expect(page.locator('.sheet .mls-faab-sheet li.is-up')).toHaveText('He\'d start for you, over Derrick Henry');
+        await page.keyboard.press('Escape');
+        await expect(page.locator('.sheet')).toHaveCount(0);
         await expect(out(page).locator('.mls-faab-bid')).toHaveCount(1);
 
         // Check a List: the same bid on his free-agent row.
@@ -136,7 +145,8 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expect(bid).toHaveText(/^≈ Bid \d+–\d+ \(of your 63 left\)$/);
         await expect(bid).toHaveClass(/\bis-rough\b/);
         await bid.click();
-        await expect(page.locator('.sheet .mls-faab-sheet li').first()).toHaveText('Too few winning bids for a WR (1); every position this season: 5 won, 3 to 30, median 12');
+        await expect(page.locator('.sheet .sheet-title')).toHaveText(/^Jaxon Smith-Njigba · ≈ Bid \d+–\d+$/);
+        await expect(page.locator('.sheet .mls-faab-sheet li').nth(1)).toHaveText('Too few winning bids for a WR (1); every position this season: 5 won, 3 to 30, median 12');
         await expectClean(page, state);
     });
 

@@ -95,8 +95,8 @@ export const faabBidsLoaded = (leagueId) => loaded.get(leagueId);
 
 // The suggestion for one player in a league, from the loaded history; null when there's none to give (not FAAB, the
 // history isn't loaded or failed, no budgets). posRankOf: today's position rank by clean name, from the caller's
-// rankings. need: 'empty' | 'starts' | null.
-export function suggestBidFor(league, { pos, posRank, need }, posRankOf, week) {
+// rankings. need: 'empty' | 'starts' | 'bench' | null; over: whom he'd replace (a name).
+export function suggestBidFor(league, { pos, posRank, need, over = null }, posRankOf, week) {
     if (!isFaabLeague(league)) return null;
     const history = loaded.get(league.leagueId);
     if (!history) return null;
@@ -106,7 +106,7 @@ export function suggestBidFor(league, { pos, posRank, need }, posRankOf, week) {
     return suggestBid({
         pos, posRank, budget, left, myRosterId: league.rosterId, bids,
         kind: league.leagueType || 'redraft', week: Number(week) || null, lastWeek: league.lastWeek || 17,
-        need, minBid: league.waivers.minBid || 0
+        need, over, minBid: league.waivers.minBid || 0
     });
 }
 

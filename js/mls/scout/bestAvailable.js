@@ -311,7 +311,8 @@ import { faabBidsFor, faabBidsLoaded, isFaabLeague, suggestBidFor } from './faab
         players.forEach(p => {
             if (!p.upgrade || !p.status || p.status.status !== 'waivers' || p.status.tooLateThisWeek) return;
             const need = p.upgrade.emptySlot ? 'empty' : (lineupMode ? 'starts' : null);
-            p.bid = suggestBidFor(league, { pos: p.fa.pos, posRank: posRankOf(p.fa.cleanName), need }, posRankOf, wctx.week);
+            const over = need === 'starts' && p.upgrade.bench ? p.upgrade.bench.name : null;
+            p.bid = suggestBidFor(league, { pos: p.fa.pos, posRank: posRankOf(p.fa.cleanName), need, over }, posRankOf, wctx.week);
         });
         // How many were left off for this week (round 5): an empty line says that, not "everyone is rostered".
         const cantPlayCount = lineupMode ? freeAgents.filter(fa => !flagged.has(fa.cleanName) && (statusOf(fa) || {}).tooLateThisWeek).length : 0;
@@ -349,7 +350,7 @@ import { faabBidsFor, faabBidsLoaded, isFaabLeague, suggestBidFor } from './faab
             : upgrade && waiverWhen(status) ? `<span class="mls-ba-over">${waiverWhen(status, false)}</span>` : '';
         const muted = late ? ' is-late' : '';
         const dismiss = `<button type="button" class="btn-bare mls-ba-dismiss" data-action="dismissBestAvailable" data-league-id="${escapeHtml(a.league.leagueId)}" data-player="${escapeHtml(fa.cleanName)}" aria-label="Not interested in ${escapeHtml(fa.name)} (hide him here this week)" title="Not interested (hide this week)">${DISMISS_ICON}</button>`;
-        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}${late ? ' is-late-upgrade' : ''}${muted}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${playedAfterWeek(a, status) ? '' : waiverChipHTML(status)}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${late ? `${over}${dismiss}` : `${dismiss}${over}${bid && !bid.noHistory ? `<span class="mls-ba-bid-sep" aria-hidden="true">&middot;</span>${faabBidHTML(bid, { long: true })}` : ''}`}</li>`;
+        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}${late ? ' is-late-upgrade' : ''}${muted}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${playedAfterWeek(a, status) ? '' : waiverChipHTML(status)}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${late ? `${over}${dismiss}` : `${dismiss}${over}${bid && !bid.noHistory ? `<span class="mls-ba-bid-sep" aria-hidden="true">&middot;</span>${faabBidHTML(bid, { long: true, name: fa.name, league: a.league.name })}` : ''}`}</li>`;
     }
 
     // A league card's Best Available section (S12; one line of the card before). A fold: open when the league has

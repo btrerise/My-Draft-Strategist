@@ -12311,3 +12311,29 @@ new text and its "≈ Bid 2–5" sample); re-taken on CI.
   px, identical where it paints (the legend is in the blank lower part, M17's capture cut).
 - Then merged main (S34 merged as #251, `CACHE_NAME` v2.10.8 there; this branch keeps v2.10.9). The merge adds nothing
   this branch didn't already have, so no re-run.
+
+### Round 3: a third review as a user (owner: 1 = A + B, and 2, 3, 4; run at 3 AM MST)
+
+I replayed the model on the owner's 15 FAAB leagues (weeks 1–10, Sleeper's own position ranks standing in for the
+owner's rankings) and looked at Tuesday night, a dynasty league and desktop's side sheet. Tuesday night worked (the
+card's "Everyone who played … until Wed" line, and the upgrade keeps its bid). The findings and what changed:
+1. **"≈" would have been on most bids.** For each real winning claim, would ±6 ranks have found 4 other winning bids at
+   its position? 20% of the time; ±12, 39%. **A:** "≈" (greyed) only when it falls back to every position; a bid from
+   every bid at his position shows normally (the sheet still says "Too few bids for WRs near WR34 (n); every WR this
+   season"). **B:** `RANK_BAND` 6 → 12.
+2. **The sheet names who and where:** title "James Cook · Bid 13–21", then "Fixture League · you have 63 of 100"
+   (`bidTitle(s, name)`, `bidWhere(s, league)`; the callers pass the player's and league's names).
+3. **What the two ends mean**, after the basis: "Before the adjustments: 12 would have matched about half of these
+   winning bids, 20 about 3 in 4." "Matched", not "won": a winning bid is what the winner paid, not what it took to win.
+   When both ends are the same amount: "… would have matched at least 3 in 4 of these winning bids".
+4. **Whom he'd replace:** "He'd start for you, over Derrick Henry" (Best available's upgrade, Auto-Find's lineup check).
+5. (Small, no objection) **No FAAB left:** "Bid 0 · none left", never "≈".
+6. Chop Shop (guillotine, 1,000): near all-in bids for a top-20 RB match how that league bids; left as is.
+- Found in the look at the sheet: the league line sat under the sheet's header (a negative margin); fixed.
+
+Tests: unit (12: the ±12 band and its label, the whole position no longer rough, the ends' line both ways, "over …",
+"Bid 0 · none left" never ≈, the title and league line); `mls-faab-bid`: the sheet's title and seven lines from Best
+available, and Auto-Find's sheet ("over Derrick Henry"); Jaxon's Check a List bid still "≈" (one WR bid in the league,
+so every position). Ran check-precache, `node --test` (681), `mls-faab-bid` and the same neighbouring specs: 137
+passed. Screenshots: my last commit and this round, rendered in the same container, differ only in `desktop/` and
+`phone/mls-league-guide.png` (the legend line's text); re-taken on CI.

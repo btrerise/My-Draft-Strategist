@@ -1,7 +1,7 @@
 // The suggested FAAB bid (improvements S35, js/mls/scout/faab.js): the model alone, no DOM.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bidLabel, bidTip, bidTitle, faabLeftFrom, seasonLastWeek, suggestBid, winningBids } from '../../js/mls/scout/faab.js';
+import { bidLabel, bidTip, bidTitle, bidWhere, faabLeftFrom, seasonLastWeek, suggestBid, winningBids } from '../../js/mls/scout/faab.js';
 
 // A 12-team league with 100 each; you (roster 1) have 63 left, the league averages 50.
 const left100 = { 1: 63, 2: 88, 3: 71, 4: 50, 5: 45, 6: 40, 7: 40, 8: 40, 9: 40, 10: 40, 11: 40, 12: 43 };
@@ -15,7 +15,7 @@ const bids100 = [
 ];
 const base = { pos: 'WR', posRank: 34, budget: 100, left: left100, myRosterId: 1, bids: bids100, kind: 'dynasty', week: 11, lastWeek: 17 };
 
-test('the band: same position within 6 ranks, median to 75th percentile, scaled by your budget', () => {
+test('the band: same position within 12 ranks, median to 75th percentile, scaled by your budget', () => {
     const s = suggestBid(base);
     // Comparables 4, 6, 8, 10, 15 (WR30-WR40): median 8, 75th 10; you have 63 against an average of 50 → ×1.26.
     assert.equal(s.scope, 'band');
@@ -25,7 +25,8 @@ test('the band: same position within 6 ranks, median to 75th percentile, scaled 
     assert.equal(s.rough, false);
     // The sheet's lines: what it's based on, what raised it, the notes. Dynasty: no weeks line.
     assert.deepEqual(s.lines, [
-        { kind: 'base', text: 'Similar WRs this season (WR28–40 today): 5 won, 4 to 15, median 8' },
+        { kind: 'base', text: 'Similar WRs this season (WR22–46 today): 5 won, 4 to 15, median 8' },
+        { kind: 'note', text: 'Before the adjustments: 8 would have matched about half of these winning bids, 10 about 3 in 4' },
         { kind: 'up', text: 'You have more left than the league average (50)' },
         { kind: 'note', text: '11 teams can outbid 13 (88, 71 and 50, … left)' },
         { kind: 'note', text: 'Ranks are today\'s; the bids were placed earlier.' }
@@ -33,7 +34,10 @@ test('the band: same position within 6 ranks, median to 75th percentile, scaled 
     // Every other team has more than 13 left: 11.
     assert.equal(s.outbid, 11);
     assert.equal(bidLabel(s), 'Bid 10–13');
-    assert.equal(bidTitle(s), 'Bid 10–13 · you have 63 of 100');
+    // The sheet names the player and the league (round 3).
+    assert.equal(bidTitle(s, 'Rashid Shaheed'), 'Rashid Shaheed · Bid 10–13');
+    assert.equal(bidTitle(s), 'Bid 10–13');
+    assert.equal(bidWhere(s, 'Fixture League'), 'Fixture League · you have 63 of 100');
     assert.match(bidTip(s), /^Suggested bid 10–13 of your 63 left \(budget 100\)\. Similar WRs/);
 });
 
@@ -54,11 +58,12 @@ test('one position missing: a TE with no bids is based on every bid (never other
     assert.equal(u.scope, 'all');
 });
 
-test('too few at his rank: the whole position', () => {
+test('too few at his rank: the whole position, shown as a normal bid (round 3: only every position is ≈)', () => {
     const s = suggestBid({ ...base, posRank: 60 });
     assert.equal(s.scope, 'pos');
-    assert.equal(s.rough, true);
-    assert.equal(s.lines[0].text, 'Too few bids for WRs near WR60 (0); every WR this season: 7 won, 0 to 15, median 6');
+    assert.equal(s.rough, false);
+    assert.equal(bidLabel(s).startsWith('Bid '), true);
+    assert.equal(s.lines[0].text, 'Too few bids for WRs near WR60 (1); every WR this season: 7 won, 0 to 15, median 6');
     // Unranked: every bid at his position.
     assert.match(suggestBid({ ...base, posRank: null }).lines[0].text, /^He isn't in your rankings; every WR this season: 7 won/);
 });
@@ -70,7 +75,8 @@ test('a budget nearly spent: never more than you have, and the factor bottoms ou
     const none = suggestBid({ ...base, left: { ...left100, 1: 0 } });
     assert.equal(none.low, 0);
     assert.equal(none.high, 0);
-    assert.equal(bidLabel(none), 'Bid 0');
+    assert.equal(bidLabel(none), 'Bid 0 · none left');
+    assert.equal(none.rough, false, 'never ≈ with nothing left');
     assert.ok(none.reasons.some(r => /no FAAB left/.test(r)));
 });
 
@@ -92,11 +98,12 @@ test('need: he\'d start ×1.25, fills an empty spot ×1.5, a stash ×0.5', () =>
     const f = suggestBid(base).factor;
     assert.ok(Math.abs(suggestBid({ ...base, need: 'starts' }).factor - f * 1.25) < 1e-9);
     assert.ok(Math.abs(suggestBid({ ...base, need: 'empty' }).factor - f * 1.5) < 1e-9);
-    assert.deepEqual(suggestBid({ ...base, need: 'starts' }).lines[1], { kind: 'up', text: 'He\'d start for you' });
+    assert.deepEqual(suggestBid({ ...base, need: 'starts' }).lines[2], { kind: 'up', text: 'He\'d start for you' });
+    assert.deepEqual(suggestBid({ ...base, need: 'starts', over: 'Derrick Henry' }).lines[2], { kind: 'up', text: 'He\'d start for you, over Derrick Henry' });
     // A player who wouldn't start for you (Bench on Auto-Find): a stash, halved.
     const stash = suggestBid({ ...base, need: 'bench' });
     assert.ok(Math.abs(stash.factor - f * 0.5) < 1e-9);
-    assert.deepEqual(stash.lines[1], { kind: 'down', text: 'He wouldn\'t start for you now: a stash' });
+    assert.deepEqual(stash.lines[2], { kind: 'down', text: 'He wouldn\'t start for you now: a stash' });
 });
 
 test('a 1,000 budget league scales like a 100 one', () => {
@@ -139,4 +146,10 @@ test('winningBids reads completed waiver claims with a bid; faabLeftFrom and sea
     assert.equal(seasonLastWeek({ playoff_week_start: 15, playoff_teams: 6 }), 17);
     assert.equal(seasonLastWeek({ playoff_week_start: 15, playoff_teams: 4 }), 16);
     assert.equal(seasonLastWeek({ playoff_week_start: 0 }), 17);
+});
+
+test('what the two ends mean, when they are the same amount', () => {
+    const zeros = Array.from({ length: 8 }, (_, i) => ({ pos: 'WR', posRank: 30 + i, bid: 0 }));
+    const s = suggestBid({ ...base, bids: zeros });
+    assert.equal(s.lines[1].text, 'Before the adjustments: 0 would have matched at least 3 in 4 of these winning bids');
 });

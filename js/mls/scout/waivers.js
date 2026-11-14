@@ -19,7 +19,7 @@ import { normalizeName } from '../../shared/names.js';
 import { isPreferredSleeperEntry } from '../players.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { BID_DOWN_ICON, BID_UP_ICON, faabBidMarkup, scoutPillMarkup, tierGapMarkup, waiverChipMarkup } from '../badges.js';
-import { bidLabel, bidTitle } from './faab.js';
+import { bidLabel, bidTitle, bidWhere } from './faab.js';
 import { openSheet } from '../../shared/ui/sheet.js';
 import { isWeekOver, shortWhen, waiverStatus, waiverStatusText } from './waiverStatus.js';
 import { recentDropsFor } from './recentDrops.js';
@@ -326,9 +326,10 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 
     // A suggested FAAB bid (improvements S35, scout/faab.js): "Bid 9–14", or with long "Bid 9–14 (of your 63 left)";
     // a tap opens the sheet that says what it's based on. '' when there's no suggestion (not FAAB, no history yet).
-    export function faabBidHTML(s, { long = false } = {}) {
+    // name, league: the player and league the sheet names (round 3).
+    export function faabBidHTML(s, { long = false, name = '', league = '' } = {}) {
         if (!s || s.noHistory) return '';
-        const data = escapeHtml(JSON.stringify({ title: bidTitle(s), lines: s.lines }));
+        const data = escapeHtml(JSON.stringify({ title: bidTitle(s, name), where: bidWhere(s, league), lines: s.lines }));
         return faabBidMarkup(`${bidLabel(s)}${long ? ` (of your ${s.left} left)` : ''}`, data, { rough: s.rough });
     }
 
@@ -339,7 +340,8 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         try { data = JSON.parse(btn.dataset.bid || 'null'); } catch (e) { data = null; }
         if (!data) return;
         const icon = { up: BID_UP_ICON, down: BID_DOWN_ICON };
-        const body = `<ul class="mls-faab-sheet">${(data.lines || []).map(l =>
+        const where = data.where ? `<li class="is-where"><span>${escapeHtml(data.where)}</span></li>` : '';
+        const body = `<ul class="mls-faab-sheet">${where}${(data.lines || []).map(l =>
             `<li class="is-${escapeHtml(l.kind)}">${icon[l.kind] || ''}<span>${escapeHtml(l.text)}</span></li>`).join('')}</ul>`;
         openSheet({ title: data.title, body, opener: btn, className: 'mls-faab-sheet-host' });
     }
@@ -422,13 +424,14 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 
         // A suggested FAAB bid for a player on waivers who can still help this week (improvements S35), matched by his
         // Rank By position rank; raised when the lineup check says he'd start or fills an empty spot. '' otherwise.
-        const bidHTML = (cleanName, pos, verdict) => {
+        const bidHTML = (cleanName, pos, verdict, name = '') => {
             const st = waiverStatusOf(cleanName);
             if (!st || st.status !== 'waivers' || st.tooLateThisWeek) return '';
             const posRankOf = (c) => (scanDisplay[c] && scanDisplay[c].posRank) || null;
             // Would Start raises it; any other verdict (Bench, Out, Bye, ...) makes him a stash and halves it (round 2).
             const need = !verdict ? null : verdict.status === 'starts' ? (verdict.displaced ? 'starts' : 'empty') : 'bench';
-            return faabBidHTML(suggestBidFor(league, { pos, posRank: posRankOf(cleanName), need }, posRankOf, State.currentNflWeek), { long: true });
+            const over = need === 'starts' ? verdict.displaced.name : null;
+            return faabBidHTML(suggestBidFor(league, { pos, posRank: posRankOf(cleanName), need, over }, posRankOf, State.currentNflWeek), { long: true, name, league: league.name });
         };
 
         // *Cross: which number a cross-position head-to-head (FLEX slot, WR vs RB) is shown in.
@@ -758,7 +761,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
                 <div class="mls-player-badges-row">${waiverChipHTML(ctx.waiverStatusOf(fa.cleanName))}${injBadge}${getByeBadgeHTML(player.team)}${getGameInfoHTML(player.team, waiverOpponentPlayer(ctx, fa.cleanName, player))}${getSoSBadgeHTML(player.team, player.pos, WAIVER_SOS_OPTS)}</div>
                 ${waiverRanksRowHTML(ctx, fa.cleanName, player.pos)}
                 ${shownLine ? `<div class="mls-scan-verdict">${shownLine}</div>` : ''}
-                ${ctx.bidHTML ? wrapBid(ctx.bidHTML(fa.cleanName, player.pos, verdict)) : ''}
+                ${ctx.bidHTML ? wrapBid(ctx.bidHTML(fa.cleanName, player.pos, verdict, fa.name)) : ''}
             </div>
             <div class="mls-text-right">${pill}</div>
         </div>`;

@@ -264,7 +264,7 @@ import { normalizeName } from '../../shared/names.js';
                         : `<div class="scout-status mls-status-unknown mls-nowrap" title="${notYoursTitle}">Not Yours</div><div class="mls-scan-pill-stack">${pill}</div>`;
                     if (line) verdictLineHTML = `<div class="mls-scan-verdict">${line}</div>`;
                     // A suggested FAAB bid (improvements S35), in a synced FAAB league, for a player on waivers.
-                    if (knowsWholeLeague) verdictLineHTML += wrapBid(waiverCtx.bidHTML(clean, pos, row.verdict));
+                    if (knowsWholeLeague) verdictLineHTML += wrapBid(waiverCtx.bidHTML(clean, pos, row.verdict, displayName));
                 }
             }
             let rosSortRank = (rRank !== "UR") ? rRank : Infinity;

@@ -1832,6 +1832,8 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 .mls-faab-sheet .is-up > svg { color: var(--primary-green); }
 .mls-faab-sheet .is-down > svg { color: #ef4444; }
 .mls-faab-sheet .is-note { font-size: 0.85rem; color: var(--text-muted); }
+/* The league and what you have left (round 3), first, muted. */
+.mls-faab-sheet .is-where { font-size: 0.85rem; color: var(--text-muted); }
 @media (max-width: 600px) {
     /* Its own row: 8px below it so the next player's chips (their 48px areas reach up 16px) don't cover it. */
     .mls-ba-bid-sep { display: none; }
