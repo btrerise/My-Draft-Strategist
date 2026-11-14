@@ -12732,3 +12732,6 @@ Unchanged (already clear): the bid label, "Bid 0 · none left", the toast, the s
 Tests: unit (19) and `mls-faab-bid` (11 per width) with the new text. Ran check-precache, `node --test` (688), and
 `mls-faab-bid`, `tooltip-closed-space` and the neighbouring specs: 189 passed. Screenshots: my last commit and this
 round differ only in `desktop/` and `phone/mls-league-guide.png` (the Guide bullet and the legend line); re-taken on CI.
+- CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 9); I opened them: step 8's FAAB bids
+  bullet in its new words (desktop +44 px, phone +111 px) and the legend line further down; identical above, the rest
+  moved down.
