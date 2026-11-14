@@ -489,6 +489,9 @@ button.close-chip {
 /* Action Buttons within slots */
 .swap-btn { padding: 0.35rem 0.6rem; font-size: 0.8rem; }
 .lock-btn { font-size: 1.1rem; background: transparent; border: none; cursor: pointer; padding: 0 0.25rem; }
+/* The override control of an auto-locked starter (blue padlock). Its look was inline until improvements S32 round 2, which
+   kept a phone's hide rule from reaching it. */
+.lineup-slot .mls-autolock-btn { background: none; border: none; cursor: pointer; padding: 0 4px; display: inline-flex; }
 
 /* Phone sizes for the MLS-only parts of the slot rows (split from the shared block in css/base.css in 4D). */
 @media (max-width: 480px) {

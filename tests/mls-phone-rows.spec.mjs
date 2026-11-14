@@ -11,7 +11,7 @@ import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp } from
 
 const HENRY = '3198';
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/sleeper/${name}`, import.meta.url), 'utf8'));
-const row = (page, name) => page.locator('#optimalLineupContainer .lineup-slot').filter({ has: page.locator('.player-name-wrap', { hasText: name }) });
+const row = (page, name) => page.locator('#lineupTab .lineup-slot').filter({ has: page.locator('.player-name-wrap', { hasText: name }) });
 const box = (loc) => loc.evaluate(el => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height, right: r.right, bottom: r.bottom }; });
 
 // The fixture league with Derrick Henry questionable and Buffalo (Josh Allen) an early team.
@@ -152,5 +152,50 @@ test('a Roster row puts its position badge on the photo on a phone, beside it on
     } else {
         expect(photo.x).toBeGreaterThanOrEqual(badge.right);
     }
+    await expectClean(page, state);
+});
+
+// Owner, after the first round: an auto-locked starter showed the blue lock twice on a phone, on the photo and at the right.
+// The right-hand override button's inline display beat the phone rule that hides it. One lock per row, on the photo.
+test('an auto-locked starter has one lock on a phone: the blue padlock on his photo', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'wider screens keep the lock at the right');
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    // Buffalo's game (Josh Allen) started an hour ago.
+    await page.evaluate(async () => {
+        const { State } = await import('/js/mls/state.js');
+        State.gameTimesByTeam = { ...State.gameTimesByTeam, BUF: Date.now() - 60 * 60 * 1000 };
+    });
+    await callApp(page, 'optimizeLineup', true);
+    const allen = row(page, 'Josh Allen');
+    await expect(allen.locator('.mls-lock-dot')).toHaveClass(/\bis-auto\b/);
+    await expect(allen.getByRole('button', { name: "Josh Allen's game has started. Override lock" })).toHaveCount(1);
+    await expect(allen.locator('.mls-row-actions [data-action="overrideAutoLock"]')).toBeHidden();
+    await expectClean(page, state);
+});
+
+// Owner, after the first round: the screen jumped when you tapped a lock or swap, because "Unlock All (1)" or the swap
+// hint appears above the rows (and goes again). The row you tapped stays where it was on the screen.
+test('the row you tap stays put when Unlock All or the swap hint comes and goes', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'measured on a phone, where the lineup is taller than the screen');
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    const top = (loc) => loc.evaluate(el => Math.round(el.getBoundingClientRect().top));
+    const tapped = async (name, action) => {
+        const r = row(page, name);
+        await r.evaluate(el => el.scrollIntoView({ block: 'center' }));
+        const before = await top(r);
+        await action(r);
+        await page.evaluate(() => new Promise(requestAnimationFrame));
+        expect(await top(row(page, name)), `${name} moved on the screen`).toBe(before);
+    };
+    // Lock: Unlock All (1) appears above the lineup. Unlock: it goes.
+    await tapped('Justin Jefferson', r => r.getByRole('button', { name: 'Lock Justin Jefferson' }).click());
+    await tapped('Justin Jefferson', r => r.getByRole('button', { name: 'Lock Justin Jefferson' }).click());
+    // Swap: the hint appears above the lineup. Cancel: it goes. From a bench row too.
+    await tapped('Brock Bowers', r => r.getByRole('button', { name: 'Swap Brock Bowers' }).click());
+    await tapped('Brock Bowers', r => r.getByRole('button', { name: 'Cancel swap of Brock Bowers' }).click());
+    await tapped('George Kittle', r => r.getByRole('button', { name: 'Swap George Kittle' }).click());
+    await tapped('George Kittle', r => r.getByRole('button', { name: 'Cancel swap of George Kittle' }).click());
     await expectClean(page, state);
 });

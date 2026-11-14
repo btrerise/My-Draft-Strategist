@@ -188,7 +188,7 @@ What changed for users in each version of the two apps, in plain language. Newes
   Starting in Sleeper). LOCKED, EARLY, TAXI and the rank-change chip wait behind a tap on his name ("+2" says how many);
   the tap opens a sheet listing every badge on his row with what it means, and a Lock button. Tap his photo or slot
   badge to lock or unlock him: a small padlock on the photo is green when you locked him and blue once his game has
-  started. Swap is a bigger target. Starter rows are about 78px tall instead of 95 to 125. Tablets, computers and the
+  started. Swap is a bigger target, and the row you tap no longer jumps when "Unlock All" or the swap hint appears above the lineup (on every screen size). Starter rows are about 78px tall instead of 95 to 125. Tablets, computers and the
   exported lineup image are unchanged. The Guide's badge list explains the padlock and the "+2".
 
 - **Free agent or waivers.** In Sleeper leagues, every player on the Dashboard's Best available, Auto-Find's cards and

@@ -12297,3 +12297,26 @@ export-same-everywhere, mls-now-and-later, mls-waiver-status (116 pass).
 - **Re-taken on CI** (run 43566792683, commit 2b9a114, "Screenshots re-taken on CI (4 PNGs)"): exactly those four, no
   other screenshot changed. Opened: Lineup rows with the badge on the photo, the padlock dots, "···" after each name and
   points over swap; Roster rows with the position badge on the photo.
+
+### S32, round 2: one lock on an auto-locked row, and no jump on lock or swap (owner, 2026-11-14)
+
+The owner liked the result and raised two things.
+1. **An auto-locked starter showed the blue lock twice on a phone**, on the photo and at the right. A bug in round 1: the
+   right-hand override button kept its look in an inline style whose `display: inline-flex` beat PHONE ROWS' rule that
+   hides it. Its look is now the class `.mls-autolock-btn` (css/mls.css, the same declarations), so on a phone the row
+   has one lock, the blue padlock on the photo; wider screens keep it at the right as before.
+2. **The screen jumped when you tapped a lock or swap.** Locking adds "Unlock All (1)" above the rows, swapping adds the
+   swap hint, and the next tap takes them away again, so everything below moved by a line (35px at 375px) under your
+   finger. `renderLineupUI` replaces the whole lineup, so the browser's scroll anchoring had nothing to hold on to, and
+   Safari has none. Now `lineupAnchorTop` / `keepLineupAnchor` (js/mls/render/lineup.js) keep the first lineup row's
+   distance from the top of the screen across the redraw, so the rows stay put and the added line goes in above them.
+   Only when that row is above the bottom of the screen (a change below what you see moves nothing you see), and not
+   while the tab is hidden. Every width.
+- **Specs first** (`tests/mls-phone-rows.spec.mjs`, both failed before the fixes): an auto-locked starter on a phone has
+  one override control, the blue padlock (there were 2); the row you tap keeps its place on the screen through lock,
+  unlock, swap and cancel, from a starter row and a bench row (Jefferson moved 35px).
+- **Screenshots:** none change (rendered before and after in this container: all 44 pixel-identical). Specs run:
+  mls-phone-rows, mls-lineup-row-actions, touch-targets, mls-keyboard, mls-lineup-needs, mls-locked-kickoff,
+  mls-weekly-locks, room-on-phones, mls-display-ranks, export-same-everywhere, export-flex, the kickoff and FLEX specs,
+  mls-tab-redraws, mls-this-week, mls-sim, smoke (180 pass); `node --test` 669 pass. `CACHE_NAME` stays v2.10.9 (main is
+  v2.10.8).

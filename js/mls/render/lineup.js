@@ -565,6 +565,26 @@ import { refreshThisWeek } from '../main.js';
         roots.forEach(root => _rankBadgeObserver.observe(root));
     }
 
+    // Keeps what you're looking at still when the lineup is drawn again (owner, improvements S32 round 2). A lock or a swap
+    // adds or removes lines above the rows ("Unlock All (1)", the swap hint, a "needs you" item), and the whole lineup is
+    // replaced, so the browser's own scroll anchoring has nothing to hold on to (and Safari has none): the screen jumped
+    // by a line under your finger. The first row's distance from the top of the screen is kept, so every row below the
+    // changed lines stays where it was. Only when that row is above the bottom of the screen (a change below what you
+    // see moves nothing you see), and not while the tab is hidden.
+    function lineupAnchorTop(container) {
+        const first = container.querySelector('.lineup-slot');
+        if (!first || !first.offsetParent) return null;
+        const top = first.getBoundingClientRect().top;
+        return top < window.innerHeight ? top : null;
+    }
+    function keepLineupAnchor(container, before) {
+        if (before == null) return;
+        const first = container.querySelector('.lineup-slot');
+        if (!first || !first.offsetParent) return;
+        const shift = first.getBoundingClientRect().top - before;
+        if (Math.abs(shift) >= 1) window.scrollBy(0, shift);
+    }
+
     export function renderLineupUI() {
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
@@ -652,7 +672,7 @@ import { refreshThisWeek } from '../main.js';
                 // adds them to locksList, and in that case both should treat it as a manual lock.
                 let isAutoLock = p.autoLocked && !locksList.includes(p.id);
                 let lockControl = isAutoLock
-                    ? `<button class="mls-btn-sm mls-row-lock" title="Game in progress - tap to override if this is wrong" aria-label="${escapeHtml(p.name)}'s game has started. Override lock" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" data-action="overrideAutoLock" data-id="${p.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
+                    ? `<button class="mls-btn-sm mls-row-lock mls-autolock-btn" title="Game in progress - tap to override if this is wrong" aria-label="${escapeHtml(p.name)}'s game has started. Override lock" data-action="overrideAutoLock" data-id="${p.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
                     : `<button class="mls-btn-sm lock-btn mls-row-lock" style="background:none; cursor:pointer; padding:0 4px;" data-action="toggleLock" data-id="${p.id}" aria-label="Lock ${escapeHtml(p.name)}" aria-pressed="${p.isLocked ? 'true' : 'false'}">${lockIcon}</button>`;
 
                 let rankBadge = lineupRankBadge(p, rankedByRos, rankDisplay);
@@ -725,6 +745,7 @@ import { refreshThisWeek } from '../main.js';
                 </div>`;
             }
         });
+        const anchorTop = lineupAnchorTop(container);
         renderHTMLInto(container, html);
 
         let benchHTML = "";
@@ -819,6 +840,7 @@ import { refreshThisWeek } from '../main.js';
         renderHTMLInto(benchContainer, benchHTML);
         fitRankBadges([container, benchContainer]);
         watchRankBadgeWidths([container, benchContainer]);
+        keepLineupAnchor(container, anchorTop);
 
         // Keeps the Dashboard's league cards (this league's status and to-dos) in step with the lineup, while the
         // Dashboard is showing. When it's hidden the redraw waits: showing the Dashboard redraws the cards anyway
