@@ -174,7 +174,7 @@ test.describe('Lineups that need you', () => {
         // Keep Lamar on purpose: lock him.
         await page.selectOption('#headerLeagueSelect', SECOND_LEAGUE_ID);
         await showTab(page, 'lineup');
-        await page.locator('#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock Lamar Jackson"]').click();
+        await page.locator('#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock Lamar Jackson"]:visible').click();
         await expect(lineupBox(page).locator('.lineup-needs-title')).toHaveText('Nothing needs you before kickoff');
         await expect(lineupBox(page).locator('.lineup-needs-item.is-kept')).toHaveText('Lamar Jackson is Doubtful (you locked him in)');
         await expect(lineupBox(page).getByRole('button', { name: /Swap in/ })).toHaveCount(0);
@@ -293,7 +293,7 @@ test.describe('Lineups that need you', () => {
         // Keep Allen on purpose: the lineup still needs you, to set it on Sleeper.
         await page.selectOption('#headerLeagueSelect', FIXTURE_LEAGUE_ID);
         await showTab(page, 'lineup');
-        await page.locator('#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock Josh Allen"]').click();
+        await page.locator('#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock Josh Allen"]:visible').click();
         await expect(lineupBox(page).locator('.lineup-needs-title')).toHaveText('This lineup needs you: set it on Sleeper');
         await expect(lineupBox(page)).toHaveClass(/\bhas-problems\b/);
         await expect(lineupBox(page).locator('.lineup-needs-item.is-kept')).toHaveText('Josh Allen is Doubtful (you locked him in)');

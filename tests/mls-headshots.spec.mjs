@@ -77,8 +77,9 @@ test.describe('MLS headshots', () => {
         await expect(allen.locator('.mls-headshot-initials')).toHaveText('JA');
         expect(await initialsVisible(allen), 'initials show through the transparent part of the photo').toBe(false);
 
-        // The 28px phone size and the 32px desktop size both apply.
-        const size = testInfo.project.name === 'phone' ? 28 : 32;
+        // The 36px phone size (the slot or position badge sits on its lower edge since improvements S32) and the 32px
+        // desktop size both apply.
+        const size = testInfo.project.name === 'phone' ? 36 : 32;
         expect(await allen.evaluate((el) => el.getBoundingClientRect().width)).toBe(size);
 
         // Still loading: the circle stays empty rather than flashing the letters first.

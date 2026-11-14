@@ -16,7 +16,7 @@ import {
     BYE_BADGE_HTML, DISMISS_ICON, PICK_BADGE_HTML, STARTS_ICON, UPGRADE_ICON,
     WARNING_ICON, bestBallBadgeMarkup, edgeBadgeMarkup, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup, leagueStatusChipMarkup,
     ROOT_ICONS, moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, rankGapChipMarkup, rootCountBadgeMarkup, rootOfBadgeMarkup, rootShareMarkup, finalChanceMarkup, scoutPillMarkup,
-    opponentBadgeMarkup, sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, weekResultMarkup, weekStatusMarkup
+    lockDotMarkup, opponentBadgeMarkup, rowMoreMarkup, sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, weekResultMarkup, weekStatusMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
 import { openSheet } from '../shared/ui/sheet.js';
@@ -28,6 +28,22 @@ const posBadge = (pos, text = pos, extra = '') => `<span class="badge pos-badge 
 const slotBadge = (slot) => `<span class="slot-badge slot-${slot}">${slotDisplayName(slot)}</span>`;
 const pill = scoutPillMarkup;
 const moveSince = 'since Tue 9/15, 4:10 PM';
+
+// The sentences that more than one place shows: the legend below and a phone Lineup row's details (improvements S32,
+// js/mls/render/lineupDetails.js), so nothing is worded twice.
+export const MEANING = {
+    rankBadge: 'On the Lineup and Roster tabs: his rank at his position, then his FLEX rank (Overall on the Roster tab), each with its tier in parentheses.',
+    moveChip: 'He moved up or down in your latest upload of these rankings, or he\'s new to them. Tap for more. They go away at the next upload, when a Weekly set\'s week ends, or 7 days after a ROS upload.',
+    injury: 'His injury status from Sleeper: questionable, doubtful, out, or on NFL injured reserve. Check before kickoff.',
+    bye: 'His team is on bye this week.',
+    kickoff: 'When his game kicks off, then whether it has started or finished.',
+    lock: 'LOCKED: you locked him in that spot, for this NFL week. AUTO-LOCKED: his game has started, so the optimizer leaves him where he is.',
+    early: 'He plays before the main Sunday games (a team you added under Early Games), so set him first.',
+    taxi: 'On your taxi squad. He can\'t start.',
+    irSlot: 'In your IR slot on Sleeper. He can\'t start until you move him out of it there. Tap for more.',
+    sleeperLineup: 'Your lineup on Sleeper differs from this one for him. Change it on Sleeper to match.',
+    opponent: 'This week\'s opponent (vs home, @ away), colored by how tough the matchup is for his position, from your Weekly file\'s matchup rank: 1 = easiest, 32 = hardest. After the kickoff time, on Auto-Find\'s cards, and in the Opp (strength of opponent) column when you view a Weekly set\'s players. Tap for more.',
+};
 
 // [group title, [[samples HTML, meaning HTML], ...]]. "Tap for more" marks the badges that explain
 // themselves on a tap (rank-change chips, SoS, the IR slot badge; earlier owner's decisions).
@@ -56,7 +72,7 @@ const GROUPS = [
         ['<div class="tier-divider">Tier 3</div>',
             'When you view a ranking set\'s players: where the next tier of that list starts.'],
         [`<span class="badge mls-rank-badge">${rankBadgeParts(`Pos: #5${tierTag(3)}`, `Flex: #13${tierTag(3)}`)}</span>`,
-            'On the Lineup and Roster tabs: his rank at his position, then his FLEX rank (Overall on the Roster tab), each with its tier in parentheses.'],
+            MEANING.rankBadge],
         [`<span class="badge mls-rank-badge mls-rank-dual">${rankBadgeParts(`<span class="mls-nowrap">In-Season</span> WR16${tierTag(8)}`, `Dyn WR20${tierTag(6)}`)}</span>`,
             'On the Roster tab, in dynasty and keeper leagues with In-Season rankings: his position rank in each set, this season\'s first, each with its tier. Tap it (or hover on a computer) for his overall ranks.'],
         [`${tierGapMarkup('is-up', '1 tier up')} ${tierGapMarkup('is-same', 'same tier')} ${tierGapMarkup('is-down', '1 tier down')}`,
@@ -70,7 +86,7 @@ const GROUPS = [
         [moveChipMarkup('up', 8, 'Weekly rankings', moveSince, '', SAMPLE)
             + moveChipMarkup('down', 4, 'Weekly rankings', moveSince, '', SAMPLE)
             + moveChipMarkup('new', 0, 'Weekly rankings', moveSince, '', SAMPLE),
-            'He moved up or down in your latest upload of these rankings, or he\'s new to them. Tap for more. They go away at the next upload, when a Weekly set\'s week ends, or 7 days after a ROS upload.'],
+            MEANING.moveChip],
         [`<span class="mls-change-tier">T3 → T2</span>`,
             'In What changed, after you replace a ranking set: his tier moved.'],
         [trendBadgeMarkup('Added in 4,210 Sleeper leagues in the last 24 hours'),
@@ -88,20 +104,24 @@ const GROUPS = [
     ]],
     ['Availability and status', [
         [['Q', 'D', 'OUT', 'IR'].map(injuryBadgeMarkup).join(''),
-            'His injury status from Sleeper: questionable, doubtful, out, or on NFL injured reserve. Check before kickoff.'],
-        [BYE_BADGE_HTML, 'His team is on bye this week.'],
+            MEANING.injury],
+        [BYE_BADGE_HTML, MEANING.bye],
         [kickoffBadgeMarkup('Sun 1:00 PM') + kickoffBadgeMarkup('Started', true) + kickoffBadgeMarkup('Final', true),
-            'When his game kicks off, then whether it has started or finished.'],
+            MEANING.kickoff],
         [`<span class="badge mls-lock-badge">LOCKED</span><span class="badge mls-autolock-badge">AUTO-LOCKED</span>`,
-            'LOCKED: you locked him in that spot, for this NFL week. AUTO-LOCKED: his game has started, so the optimizer leaves him where he is.'],
+            MEANING.lock],
+        [lockDotMarkup('off') + lockDotMarkup('on') + lockDotMarkup('auto'),
+            'On a phone, on a starter\'s photo: open when he\'s unlocked, green when you locked him, blue when his game has started. Tap his photo or slot badge to lock or unlock him.'],
+        [rowMoreMarkup(2, SAMPLE) + rowMoreMarkup(0, SAMPLE),
+            'On a phone, after a Lineup player\'s name: how many of his badges wait in his details (LOCKED, EARLY, TAXI, a rank change). Tap his name to see every badge on his row and what it means.'],
         [`<span class="badge early-badge">EARLY</span>`,
-            'He plays before the main Sunday games (a team you added under Early Games), so set him first.'],
-        [`<span class="badge taxi-badge">TAXI</span>`, 'On your taxi squad. He can\'t start.'],
+            MEANING.early],
+        [`<span class="badge taxi-badge">TAXI</span>`, MEANING.taxi],
         [irSlotBadgeMarkup('', SAMPLE),
-            'In your IR slot on Sleeper. He can\'t start until you move him out of it there. Tap for more.'],
+            MEANING.irSlot],
         [`<span class="badge badge-rookie">R</span>`, 'A rookie.'],
         [sleeperLineupBadgeMarkup(false) + sleeperLineupBadgeMarkup(true),
-            'Your lineup on Sleeper differs from this one for him. Change it on Sleeper to match.'],
+            MEANING.sleeperLineup],
         [`<div class="lineup-needs-box has-problems"><div class="lineup-needs-title">${WARNING_ICON}<span>This lineup needs you</span></div><ul class="lineup-needs-list"><li class="lineup-needs-item is-injured">Player is Out: start Other Player instead?</li><li class="lineup-needs-item is-ir">Activate Player from IR on Sleeper before kickoff</li></ul></div>`,
             'Above your lineup: what it needs from you before kickoff, in red for an injury and purple for your IR slot, with a button to swap or find a player. Each league\'s card on the Dashboard lists the same.'],
         [pill('mls-verdict-start', 'Would Start'),
@@ -135,7 +155,7 @@ const GROUPS = [
         [sosBadgeMarkup(1, '', { compact: true, sample: true }) + sosBadgeMarkup(16, '', { compact: true, sample: true }) + sosBadgeMarkup(32, '', { compact: true, sample: true }),
             'Strength of schedule at his position, from your SoS upload: 1 = easiest, 32 = hardest, green to red. On a phone it shows a calendar and the number. Tap for more. If your file ranks 1 = hardest, turn on that switch on the Roster tab\'s SoS card.'],
         [opponentBadgeMarkup({ opp: 'KC', home: true, rank: 3 }, '', SAMPLE) + opponentBadgeMarkup({ opp: 'KC', home: false, rank: 28 }, '', SAMPLE) + opponentBadgeMarkup({ opp: 'KC', home: null, rank: 16 }, '', SAMPLE),
-            'This week\'s opponent (vs home, @ away), colored by how tough the matchup is for his position, from your Weekly file\'s matchup rank: 1 = easiest, 32 = hardest. After the kickoff time, on Auto-Find\'s cards, and in the Opp (strength of opponent) column when you view a Weekly set\'s players. Tap for more.'],
+            MEANING.opponent],
     ]],
 ];
 

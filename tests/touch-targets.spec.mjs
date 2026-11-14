@@ -20,8 +20,6 @@ test.beforeEach(({}, info) => test.skip(info.project.name !== 'phone', 'measures
 const ALLOW = [
     // Not targets of their own.
     { sel: '[data-inline-link], .mls-scoreboard-credit a, .tscore-credit a', why: "a link inside a sentence (WCAG 2.5.8's inline exception)" },
-    // Left as they are by the card.
-    { sel: '.lineup-slot .swap-btn, .lineup-slot .lock-btn', why: "the Lineup row's swap and lock, stacked on phones: S32 redoes the rows and gives them room (card M2)" },
     // Can't carry an invisible area.
     { sel: 'input:not([type=checkbox]), select, textarea', why: "text fields and selects (44 to 45px tall; Draft Strategist's header draft menu 32px) can't have an ::after; growing them changes how every form looks (LOG M2, for the owner)" },
     { sel: '.mls-lc-status > .tooltip-container, .mls-power-table td .tooltip-container', why: "League card status chips and Power Rankings cells: position: static so their tooltip is placed against the card or table, which an ::after would follow too" },

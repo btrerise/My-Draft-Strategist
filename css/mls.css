@@ -3036,3 +3036,109 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
     pointer-events: none;
 }
 .lineup-slot.taxi-row + .lineup-slot.taxi-row::before { border-top-style: dashed; }
+
+/* --- PHONE ROWS (improvements S32, the owner's choices) ---
+   Lineup and Roster rows under 600px: the slot (or position) badge sits on the bottom edge of a 36px photo, so the name
+   gets the row's width; a Lineup row shows only what you need at a glance and keeps the rest a tap away. Tablets and
+   computers keep today's rows: the lead wrapper is `display: contents` there and the phone-only controls are hidden,
+   so they lay out exactly as before (and Export Lineup, drawn at a computer's width since M17, is unchanged).
+   On a phone a Lineup row shows the slot, photo, name and bye week, position, team, rank badge, the kickoff with its
+   opponent, the warnings that need you (injury, BYE, the IR slot, Bench / Starting in Sleeper), points and swap. LOCKED /
+   AUTO-LOCKED, EARLY, TAXI and the rank-change chip wait behind the "+N" after the name, which opens the row's details
+   in the shared sheet (js/mls/render/lineupDetails.js). The photo and slot badge are the lock button (the padlock dot
+   says which state), so swap and lock each have a 48px target with room between them. */
+.mls-row-lead, .mls-row-name-line { display: contents; }
+.mls-lead-lock, .mls-row-more { display: none; }
+/* The padlock dot: on the photo on phones, and in the badge legend at any width. */
+.mls-lock-dot { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%; background: var(--card-bg); border: 1px solid var(--border); color: var(--text-muted); vertical-align: middle; }
+.mls-lock-dot.is-off svg { opacity: 0.75; }
+.mls-lock-dot.is-on { background: var(--primary-green); border-color: var(--primary-green); color: #04120b; }
+.mls-lock-dot.is-auto { background: #60a5fa; border-color: #60a5fa; color: #06101f; }
+/* The "+N" chip (and its look in the legend). */
+.mls-row-more { align-items: center; justify-content: center; min-width: 24px; height: 18px; box-sizing: border-box; padding: 0 6px; border-radius: 9px; border: 1px solid var(--border); background: none; color: var(--text-muted); font: 700 0.65rem/1 inherit; vertical-align: 2px; }
+.badge-legend-sample .mls-row-more { display: inline-flex; }
+/* With nothing hidden, just three quiet dots. */
+.mls-row-more.is-dots { border-color: transparent; padding: 0 2px; min-width: 0; opacity: 0.8; }
+
+@media (max-width: 599.98px) {
+    .lineup-slot .mls-row-lead, .roster-item .mls-row-lead {
+        display: flex;
+        position: relative;
+        flex: none;
+        width: 42px;
+        height: 44px;
+        justify-content: center;
+        align-items: flex-start;
+    }
+    .mls-row-lead .mls-headshot { width: 36px; height: 36px; }
+    .lineup-slot .mls-row-lead .slot-badge, .roster-item .mls-row-lead .pos-badge {
+        position: absolute;
+        left: 50%;
+        bottom: 0;
+        transform: translateX(-50%);
+        z-index: 1;
+        width: auto;
+        min-width: 30px;
+        margin: 0;
+        padding: 0 3px;
+        font-size: 0.58rem;
+        line-height: 1.35;
+        text-align: center;
+        box-shadow: 0 0 0 2px var(--card-bg);
+    }
+    /* With headshots turned off (Lineup settings), the badge stands alone, as before. */
+    body.mls-hide-headshots :is(.lineup-slot, .roster-item) .mls-row-lead { height: auto; align-items: center; }
+    body.mls-hide-headshots :is(.lineup-slot, .roster-item) .mls-row-lead :is(.slot-badge, .pos-badge) { position: static; transform: none; box-shadow: none; }
+
+    /* The photo and slot badge are the lock button: a 42x44px box, 48px with the hit area (css/base.css). */
+    .lineup-slot .mls-lead-lock {
+        display: block;
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        border-radius: 8px;
+        background: none;
+        color: inherit;
+        cursor: pointer;
+    }
+    .mls-lead-lock .mls-lock-dot { position: absolute; top: -3px; right: -1px; }
+
+    /* What waits behind the tap. */
+    .lineup-slot :is(.mls-lock-badge, .mls-autolock-badge, .early-badge, .taxi-badge, .mls-move-chip),
+    .lineup-slot .mls-row-lock,
+    .lineup-slot .mls-player-badges-row.is-phone-empty { display: none; }
+
+    /* The name and badge column is the details button's target: its "+N" stays small, and its area covers the column.
+       The badges in it that explain themselves on a tap (the IR slot, the opponent's strength) sit above that area. */
+    .lineup-slot .mls-player-row-info { flex: 1 1 auto; min-width: 0; align-self: stretch; }
+    /* The padlock dot pokes 3px above the photo: clip a little outside the row's info, not at its edge. */
+    .lineup-slot .mls-player-row-info { overflow: clip; overflow-clip-margin: 6px; }
+    .lineup-slot .mls-player-row-text { position: relative; flex: 1 1 auto; min-width: 0; align-self: stretch; justify-content: center; }
+    .lineup-slot .mls-row-name-line { display: flex; align-items: center; min-width: 0; }
+    .lineup-slot .mls-row-more { display: inline-flex; flex: none; position: static; margin-left: 6px; cursor: pointer; }
+    /* The column spans the row's height; the area reaches the row's edges (the divider) and 2px past, so the "+N" near
+       the top of a short row still has 48px above and below it. */
+    .lineup-slot .mls-row-more::after { content: ''; position: absolute; top: -10px; bottom: -10px; left: 0; right: 0; z-index: 1; }
+    .lineup-slot .mls-player-row-text :is(button, a[href]):not(.mls-row-more) { position: relative; z-index: 2; }
+    /* The rank badge's split parts (F6) paint in a layer of their own (clip-path), above that area; they aren't a control
+       here, so a tap on them goes to the details. */
+    .lineup-slot .mls-rank-badge { pointer-events: none; }
+
+    /* Points over the swap button, one centre line. The swap is 44x30px, 48px tall with its hit area. */
+    .lineup-slot .mls-row-actions { flex-direction: column; align-items: center; gap: 2px; padding-bottom: 2px; }
+    .lineup-slot .mls-pts { margin-right: 0; align-items: center; min-width: 0; }
+    .lineup-slot .swap-btn { position: relative; min-width: 44px; height: 30px; padding: 0 6px; font-size: 0.95rem; }
+    .lineup-slot .swap-btn::after { content: ''; position: absolute; top: -9px; bottom: -9px; left: min(0px, (100% - 48px) / 2); right: min(0px, (100% - 48px) / 2); }
+}
+
+/* A phone Lineup row's details, in the shared sheet (js/mls/render/lineupDetails.js; improvements S32). */
+.mls-details-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.25rem 0 0.75rem; }
+.mls-details-head .slot-badge { min-width: 30px; text-align: center; font-size: 0.68rem; }
+.mls-details-bye { color: var(--text-muted); font-size: 0.85rem; }
+.mls-details-list { margin: 0; }
+.mls-details-actions { margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+.mls-details-lock { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 48px; padding: 0 1rem; font-size: 0.9rem; }
+.mls-details-note, .mls-details-empty { margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-muted); }

@@ -182,6 +182,15 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Phone lineup rows show less at once.** On a phone, a player's slot (or, on the Roster tab, position) badge sits on
+  the bottom edge of his photo, so his name gets more of the row. A Lineup row shows his slot, photo, name, position,
+  team, rank, kickoff and opponent, points and swap, plus the warnings that need you (injury, bye, the IR slot, Bench or
+  Starting in Sleeper). LOCKED, EARLY, TAXI and the rank-change chip wait behind a tap on his name ("+2" says how many);
+  the tap opens a sheet listing every badge on his row with what it means, and a Lock button. Tap his photo or slot
+  badge to lock or unlock him: a small padlock on the photo is green when you locked him and blue once his game has
+  started. Swap is a bigger target. Starter rows are about 78px tall instead of 95 to 125. Tablets, computers and the
+  exported lineup image are unchanged. The Guide's badge list explains the padlock and the "+2".
+
 - **More room on phones, and nothing boxed inside a card.** Inside a card, rows (lineup, roster, waiver results, league
   cards) are plain list rows with a divider instead of boxes in the box; folded sections, toggle rows and the "needs
   you" boxes are a lighter shade with no border. The colours that mean something stay as a 3px edge: the league card's

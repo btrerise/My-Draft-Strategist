@@ -11865,3 +11865,93 @@ says). The screenshots were re-taken on CI round by round above, and CI checks t
   width; the grid (about 296px) now overflows it by 2px with this cloud image's font and fits with CI's, so on most phones
   it no longer needs a sideways scroll. As with the rank-badge check, the spec now uses a 300px window (60px too narrow);
   it passes here. It passed in this session's full suite only because of the wider font here.
+
+## S32 — Phone rows on the Lineup and Roster tabs: less at once
+
+**The owner's answers** (2026-11-14, asked before building, with real 375px renders on M17's 343px rows: the fixture's
+Henry, Chase and Nacua Lineup rows and two Roster rows, today and in three stackings, demo badges added with the app's own
+markup; a bottom sheet against the row expanding; the lock in the details against kept on the row; then two ways to put
+the lock on the slot badge):
+1. **Stacking: B, the slot (or position) badge on the photo's lower edge**, over A (badge above the photo) and C (badge
+   beside a 20px photo).
+2. **What a phone Lineup row always shows: as in the mock-ups**: slot, photo, name and bye week, position, team, rank
+   badge, the kickoff *with its opponent* (one unit, so S31's opponent colour stays), the warnings that need you (injury,
+   BYE, the IR slot, Bench / Starting in Sleeper), points and swap. Behind the tap: LOCKED / AUTO-LOCKED (the green edge
+   still says it), EARLY, TAXI (the TX slot says it) and the rank-change chip; "+N" after the name counts them.
+3. **The details: Material 3's modal bottom sheet** (M11's shared sheet), over the row expanding in place.
+4. **The lock (owner's idea): on the slot badge.** The photo and slot badge are one button that locks him (or, when his
+   game has started, runs today's override). Shown as **L2, a padlock dot on the photo's corner**: faint and open when
+   unlocked, solid green when you locked him, solid blue when auto-locked (over L1, a padlock inside the slot pill).
+   **The sheet also has a labelled lock button** (owner: yes, both).
+5. **Tablets and computers unchanged** (proposed with the questions; not objected to).
+
+**What changed and where.**
+- `js/mls/render/lineup.js`: the slot badge and photo are wrapped in `.mls-row-lead` (with the lock button on starters),
+  the name in `.mls-row-name-line` with the "+N" button after it; `phoneRowParts` counts what a phone hides and marks a
+  badge line a phone would leave empty (`is-phone-empty`). The row's lock controls get `.mls-row-lock`. The photo's lock
+  keeps the row lock's name ("Lock Josh Allen", `aria-pressed`). `js/mls/render/roster.js`: the position badge and
+  photo in `.mls-row-lead`.
+- `js/mls/badges.js`: `lockDotMarkup`, `leadLockMarkup`, `rowMoreMarkup` (one helper each, used by the rows and the
+  legend); `sleeperLineupBadgeMarkup` gets a class, `mls-sleeper-lineup-badge`, so the details can name it (no visual change).
+- `js/mls/render/lineupDetails.js` (new, precached): `openLineupDetails(opener)` opens the shared sheet titled with the
+  player's name: his slot (when it isn't just his position), position, team and bye week, then every badge on his row as
+  an inert copy (buttons become spans) with the legend's sentence, or the badge's own tap text where it has one (IR slot,
+  rank change, opponent strength), then a lock button ("Lock in this spot" / "Unlock" / "Override the lock") with a line on
+  what it does. The lock button closes the sheet, runs the same action and puts focus back on the row's "+N".
+- `js/mls/legend.js`: `MEANING`, the sentences both the legend and the details show (rank badge, rank change, injury, bye,
+  kickoff, LOCKED, EARLY, TAXI, IR slot, Sleeper lineup, opponent), so nothing is worded twice; two new legend lines, the
+  padlock dot and "+N". `js/mls/main.js`: `openLineupDetails` action (imported right after render/lineup.js, so the load
+  order doesn't move).
+- `css/mls.css`, new last sections **PHONE ROWS** and the details' styles. At every width `.mls-row-lead` and
+  `.mls-row-name-line` are `display: contents` and the phone controls are hidden, so tablets and computers lay out as
+  before. Under 600px: a 42x44px lead with a 36px photo and the badge on its lower edge (ringed in the card colour; with
+  headshots turned off the badge stands alone); the lock button covers the lead (48px with the hit area); the hidden
+  badges; the name and badge column is the details button's target (its `::after` covers the column, 10px past it, above
+  the rank badge's split parts, which pass taps through; the IR and opponent badges sit above it and still explain
+  themselves); points over a 44x30px swap with its own 48px area; the row's info clips 6px outside itself (Lineup only)
+  so the padlock dot isn't cut. `css/base.css`: the TOUCH TARGETS comment.
+- `lineup/index.html`: the Guide's Lineup step says how to lock and open the details on a phone.
+- `sw.js`: `lineupDetails.js` precached; `CACHE_NAME` v2.10.8 (main is v2.10.7).
+- Export Lineup is unchanged: it's drawn at a computer's width (M17), where the rows are as before
+  (`export-same-everywhere.spec.mjs` passes).
+
+**User-visible effect.** On a phone, a Lineup or Roster row's slot or position badge sits on the bottom of the player's
+photo, so the name has about 40px more room. Lineup rows show only what you need at a glance; LOCKED, EARLY, TAXI and
+the rank-change chip are a tap on the name away ("+2" says how many), in a bottom sheet that lists every badge on the row
+with what it means and has a Lock button. Tapping the photo or slot badge locks or unlocks the player; a padlock dot on
+the photo shows the state. Swap has a 48px target and the lock is no longer stacked under it. Starter rows are 78px tall
+(95 to 125 before), so the fixture's phone Lineup tab is 86px shorter; Roster rows are 60px (56 before). Tablets,
+computers and the exported image are unchanged. The Guide explains the padlock and the "+N".
+
+**Specs.**
+- New `tests/mls-phone-rows.spec.mjs`: on a phone the slot badge sits on the photo's lower edge, centred; the injury
+  shows, EARLY doesn't and is counted ("+1"); the photo locks him (dot green, LOCKED hidden, "+2" with its accessible
+  name); a tap on the name opens the sheet with LOCKED, EARLY and the rank badge and their legend sentences, as text;
+  Unlock there closes it, unlocks him and focuses his "+N"; a row with nothing hidden still opens, with its injury and
+  "Lock in this spot", and Escape returns focus. Keyboard: Enter opens it with focus on the title, Tab stays inside,
+  Escape closes it back to the button; Enter on the photo's lock locks him. On desktop every badge and the row's lock
+  show, the phone controls don't, and the badge sits beside the photo. Roster: badge on the photo on a phone, beside it on
+  desktop.
+- Changed: `mls-lineup-row-actions` (on a phone points over swap, no lock in that column); `touch-targets` (the swap /
+  lock `ALLOW` entry is gone: every Lineup control has its 48px now); `mls-headshots` (36px on phones);
+  `mls-display-ranks` (the split check at 270px: at 300px Henry's badge now fits on one line, as M17 found at 320px);
+  `mls-rankings-change` (on a phone's Lineup tab the chip's explanation is in the row's details); `mls-keyboard`,
+  `room-on-phones`, `mls-lineup-needs`, `mls-locked-kickoff`, `mls-weekly-locks` (click the visible lock: the row's on
+  desktop, the photo's on a phone).
+- Run here: check-precache OK; `node --test` 640 pass; Playwright: those specs plus badge-legend, export-same-everywhere,
+  export-flex, export-numerals, sheet, mls-byes, mls-roster-counts, mls-opponent-strength, focus-ring, the kickoff and
+  FLEX specs, smoke, svg-icons, tooltips-onscreen, mls-now-and-later, mls-sos, restricted-flex, mls-mvp-lvp, chevrons and
+  scroll-shadows, both widths, all pass. The full suite hasn't run (rule 7: when the pull request is asked for).
+- Two findings on the way, both fixed before the commit: the Roster's dual-rank tooltip (S24) was clipped by a first
+  version of the dot's clip margin (now Lineup only), and the rank badge's split parts took taps meant for the details.
+
+**Screenshots** (main and this branch rendered in this container, `npm run pxdiff`): exactly four change. Phone
+`mls-league-lineup` (the new rows, 86px shorter) and `mls-league-roster` (badge on the photo, 60px taller over 15 rows);
+desktop and phone `mls-league-guide` (the two legend lines and the Guide's sentence). Desktop `mls-league-lineup` and
+`mls-league-roster` are identical. The Guide's desktop PNG changes because the legend lines are required with a new
+symbol (CLAUDE.md), not because the rows changed. To be re-taken by CI before the pull request.
+
+**Left over.**
+- A rank-change chip's own tap (a toast) isn't on phone Lineup rows any more; its text is in the details. The Roster
+  and Scout tabs keep their chips.
+- In swap mode the row still says "Tap another player's ⇄"; the details sheet doesn't offer swap (not asked).

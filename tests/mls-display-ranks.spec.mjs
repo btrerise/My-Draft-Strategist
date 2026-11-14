@@ -266,8 +266,9 @@ test.describe('Lineup Strategist: the Lineup tab\'s rank badge fits its row', ()
     test('nothing is cut off; one line on desktop, two parts on phones', async ({ page }, info) => {
         // Since S24 round 14 the projection and buttons stack on phones, which gives the badge room for one line at 390px;
         // since improvements M17 (rows without their box, sections to the screen's edges) a 320px phone's row is 288px, not
-        // 264, and fits it too. A 300px window still splits it, which is what this checks.
-        if (info.project.name === 'phone') await page.setViewportSize({ width: 300, height: 844 });
+        // 264, and fits it too; since improvements S32 (the badge on the photo, the lock behind it) a 300px window fits it as
+        // well. A 270px window still splits it, which is what this checks.
+        if (info.project.name === 'phone') await page.setViewportSize({ width: 270, height: 844 });
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
         await loadMlsRankings(page, WAIVER_RANKINGS_CSV, 30);
@@ -321,7 +322,7 @@ test.describe('Lineup Strategist: the Lineup tab\'s rank badge fits its row', ()
             expect((await fit()).slack).toBeLessThanOrEqual(1);
             await page.setViewportSize({ width: 1280, height: 900 });
             await expect.poll(async () => (await fit()).lines).toBe(1);
-            await page.setViewportSize({ width: 300, height: 844 });
+            await page.setViewportSize({ width: 270, height: 844 });
             await expect.poll(async () => (await fit()).lines).toBe(2);
             // The refit runs a frame after the resize (fitRankBadges via the ResizeObserver), so wait for it.
             await expect.poll(async () => (await fit()).slack).toBeLessThanOrEqual(1);

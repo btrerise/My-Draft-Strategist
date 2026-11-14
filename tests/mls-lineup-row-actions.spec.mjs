@@ -1,10 +1,11 @@
-// Lineup tab rows on a phone (improvements S24, round 14, the owner's idea): the projection, the swap button and the lock
-// stack in a narrow column on the right, so a name like "Rhamondre Stevenson (11)" keeps the room to stay on one line.
-// Side by side they took about 100px of a 375px screen. Wider screens keep them in a row.
+// Lineup tab rows on a phone (improvements S24, round 14, the owner's idea): the projection and the swap button stack in a
+// narrow column on the right, so a name like "Rhamondre Stevenson (11)" keeps the room to stay on one line. Side by side
+// they took about 100px of a 375px screen. Wider screens keep them in a row with the lock. Since improvements S32 the
+// lock on a phone is the photo and slot badge (tests/mls-phone-rows.spec.mjs), so swap and lock each get a 48px target.
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, seedMls, loadMlsRankings } from './helpers.mjs';
 
-test('the projection, swap and lock stack on a phone and sit side by side on wider screens', async ({ page }) => {
+test('the projection and swap stack on a phone; projection, swap and lock sit side by side on wider screens', async ({ page }) => {
     const phone = test.info().project.name === 'phone';
     if (phone) await page.setViewportSize({ width: 375, height: 844 });
     const state = await openApp(page, '/lineup/');
@@ -18,12 +19,11 @@ test('the projection, swap and lock stack on a phone and sit side by side on wid
             .map(sel => row.locator(sel).first().boundingBox()));
         if (phone) {
             expect(swap.y).toBeGreaterThanOrEqual(pts.y + pts.height - 1);
-            expect(lock.y).toBeGreaterThanOrEqual(swap.y + swap.height - 1);
+            expect(lock).toBeNull(); // hidden: the photo and slot badge are the lock (S32)
             expect(actions.width).toBeLessThan(60);
-            // One centre line (round 15): the projection, swap and lock share it.
+            // One centre line (round 15): the projection and swap share it.
             const mid = (b) => b.x + b.width / 2;
             expect(Math.abs(mid(swap) - mid(pts))).toBeLessThan(1.5);
-            expect(Math.abs(mid(lock) - mid(swap))).toBeLessThan(1.5);
         } else {
             expect(Math.abs((swap.y + swap.height / 2) - (lock.y + lock.height / 2))).toBeLessThan(4);
             expect(swap.x).toBeGreaterThan(pts.x + pts.width - 1);

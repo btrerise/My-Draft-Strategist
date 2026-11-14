@@ -2728,7 +2728,8 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
    :where() keeps both at zero specificity, so a component's own position or ::after wins. Not for .rankings-card-toggle,
    whose ::after already stretches over its whole card header and whose chevron is placed against that header. Inputs and selects can't have an
    ::after; the toggle switches use ::before instead (their ::after is the handle). Left out: the Lineup row's swap and
-   lock (stacked on phones until S32: the lock's area covered the swap), and tooltip containers that are position: static
+   lock (side by side on wider screens, where nothing measures them; on phones the lock is the photo and the swap has its
+   own area, css/mls.css PHONE ROWS, improvements S32), and tooltip containers that are position: static
    on purpose (their popup is placed against the card or table, and so would the area be). tests/touch-targets.spec.mjs
    measures every tab at 375px and fails when an area covers a neighbour. */
 :where(button, a[href], summary, [role=button], [role=tab]):where(:not(.rankings-card-toggle, .skip-link, .swap-btn, .lock-btn, .mls-lc-status > .tooltip-container, .mls-power-table td .tooltip-container)) { position: relative; }

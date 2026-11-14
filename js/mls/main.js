@@ -52,6 +52,7 @@ import { rememberFairChange, setFairBasis, takeFairUndo } from './trade/fairSect
 import './render/rookies.js';
 import { loadRosterTab, setRosterPosFilter, setRosterSort } from './render/roster.js';
 import { clearLocksForNewWeek, initiateSwap, isAutoLockOverridden, optimizeLineup, overrideAutoLock, renderLineupUI, swapInSuggested, toggleLock, unlockAllPlayers } from './render/lineup.js';
+import { openLineupDetails } from './render/lineupDetails.js';
 import { checkSleeperNow, dismissLineupNeeds, findLeaguePlayers, goToLineupNeeds, openLeagueLineup, optimizeAllLineups, renderSyncLogs, reoptimizeProjectionlessLeagues, syncAllLeagues } from './render/dashboard.js';
 import { initStarterAlerts, planStarterAlerts, runStarterAlertCheck, sendTestStarterAlert, setStarterAlertLead, toggleStaleRankingsAlert, toggleStarterAlerts } from './lineup/starterAlert.js';
 import { applyDefaultFolds, foldAllLeagueCards, jumpToLeagueNeeds, renderLeagueCards, toggleLeagueCard, toggleLeaguePaid, toggleLeagueReorder, withCardsTransition } from './render/leagueCards.js';
@@ -221,6 +222,7 @@ const clickActions = {
     unlockAllPlayers() { unlockAllPlayers(); },
     overrideAutoLock() { overrideAutoLock(this.dataset.id); },
     toggleLock() { toggleLock(this.dataset.id); },
+    openLineupDetails() { openLineupDetails(this); },
     initiateSwap() { initiateSwap(this.dataset.id); },
     swapInSuggested() { swapInSuggested(this.dataset.out, this.dataset.in); },
     toggleLineupNeeds() { toggleLineupNeeds(); },

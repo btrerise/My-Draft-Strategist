@@ -13,7 +13,7 @@ import { pickForSlot } from '../lineup/flexChoice.js';
 import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, kickoffFreeze, lineupBuiltBeforeKickoff, lineupProjectionsLoaded, noteLineupOptimized, refreshLineupStats } from '../lineup/gameInfo.js';
 import { activeSeasonRankings, getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
-import { rankBadgeParts, sleeperLineupBadgeMarkup } from '../badges.js';
+import { leadLockMarkup, rankBadgeParts, rowMoreMarkup, sleeperLineupBadgeMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { showToast } from '../../shared/ui/toast.js';
@@ -520,6 +520,17 @@ import { refreshThisWeek } from '../main.js';
         return (['QB', 'K', 'DEF'].includes(p.pos) || !hasCross) ? `Pos: ${posStr}` : rankBadgeParts(`Pos: ${posStr}`, `Flex: ${crossStr}`);
     }
 
+    // What a phone row adds (improvements S32, owner's choices): the "+N" (or three dots) after the name that opens the
+    // row's details, counting the badges a phone hides (css/mls.css, PHONE ROWS), and a class on the badge line when a
+    // phone hides everything on it, so no empty line is left. Tablets and computers hide both and show every badge.
+    function phoneRowParts(p, phoneHidden, phoneShown) {
+        const n = phoneHidden.filter(Boolean).length;
+        return {
+            more: rowMoreMarkup(n, { id: p.id, name: escapeHtml(p.name) }),
+            badgesClass: phoneShown.some(Boolean) ? '' : ' is-phone-empty',
+        };
+    }
+
     // The two halves of a two-number badge, each kept whole, so on a phone the badge splits onto two lines at the
     // "|" instead of the row cutting it off (owner's choice in improvements F6). The bar is real text, so the
     // badge still reads "Pos: #5 (T3) | Flex: #13 (T3)"; .mls-rank-parts in css/mls.css hides it at a line's start.
@@ -641,8 +652,8 @@ import { refreshThisWeek } from '../main.js';
                 // adds them to locksList, and in that case both should treat it as a manual lock.
                 let isAutoLock = p.autoLocked && !locksList.includes(p.id);
                 let lockControl = isAutoLock
-                    ? `<button class="mls-btn-sm" title="Game in progress - tap to override if this is wrong" aria-label="${escapeHtml(p.name)}'s game has started. Override lock" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" data-action="overrideAutoLock" data-id="${p.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
-                    : `<button class="mls-btn-sm lock-btn" style="background:none; cursor:pointer; padding:0 4px;" data-action="toggleLock" data-id="${p.id}" aria-label="Lock ${escapeHtml(p.name)}" aria-pressed="${p.isLocked ? 'true' : 'false'}">${lockIcon}</button>`;
+                    ? `<button class="mls-btn-sm mls-row-lock" title="Game in progress - tap to override if this is wrong" aria-label="${escapeHtml(p.name)}'s game has started. Override lock" style="background:none; border:none; cursor:pointer; padding:0 4px; display:inline-flex;" data-action="overrideAutoLock" data-id="${p.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
+                    : `<button class="mls-btn-sm lock-btn mls-row-lock" style="background:none; cursor:pointer; padding:0 4px;" data-action="toggleLock" data-id="${p.id}" aria-label="Lock ${escapeHtml(p.name)}" aria-pressed="${p.isLocked ? 'true' : 'false'}">${lockIcon}</button>`;
 
                 let rankBadge = lineupRankBadge(p, rankedByRos, rankDisplay);
 
@@ -668,6 +679,12 @@ import { refreshThisWeek } from '../main.js';
                     : isAutoLock ? `<span class="badge mls-autolock-badge">AUTO-LOCKED</span>`
                     : `<span class="badge mls-lock-badge">LOCKED</span>`;
                 let badgesRow = [lockBadge, irSlotBadge, injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
+                const moveChip = rankMoveChip(rankedByRos ? 'season' : 'weekly', p.cleanName);
+                // On a phone (improvements S32) the LOCKED text, EARLY and the rank-change chip wait behind a tap on the
+                // name (the green edge and the photo's padlock still say locked); the photo and slot badge lock him.
+                const phone = phoneRowParts(p, [lockBadge, earlyTag, moveChip], [irSlotBadge, injBadge, byeBadge, kickoffBadge, sleeperWarn]);
+                const leadLock = leadLockMarkup(isAutoLock ? 'auto' : p.isLocked ? 'on' : 'off', p.id,
+                    isAutoLock ? `${escapeHtml(p.name)}'s game has started. Override lock` : `Lock ${escapeHtml(p.name)}`);
 
                 // The slot badge below already spells out the position for strict slots (RB1
                 // always holds an RB, etc), so a second colored position pill there is pure
@@ -682,14 +699,14 @@ import { refreshThisWeek } from '../main.js';
                 html += `
                 <div class="lineup-slot ${lockClass}">
                     <div class="mls-player-row-info">
-                        <span class="slot-badge slot-${slotType}">${slotDisplayName(slotType)}</span>
-                        ${playerHeadshotHTML(p)}
+                        <span class="mls-row-lead"><span class="slot-badge slot-${slotType}">${slotDisplayName(slotType)}</span>
+                        ${playerHeadshotHTML(p)}${leadLock}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${escapeHtml(p.name)}${byeStr}</div>
-                            ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
+                            <div class="mls-row-name-line"><div class="player-name-wrap">${escapeHtml(p.name)}${byeStr}</div>${phone.more}</div>
+                            ${badgesRow ? `<div class="mls-player-badges-row${phone.badgesClass}">${badgesRow}</div>` : ''}
                             <div class="mls-player-row-meta">
                                 ${plainPos}
-                                <span class="badge">${escapeHtml(p.team)}</span>${rankMoveChip(rankedByRos ? 'season' : 'weekly', p.cleanName)}
+                                <span class="badge">${escapeHtml(p.team)}</span>${moveChip}
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>
                         </div>
@@ -749,6 +766,10 @@ import { refreshThisWeek } from '../main.js';
                     sleeperWarn = sleeperLineupBadgeMarkup(true);
                 }
                 let badgesRow = [irSlotBadge, injBadge, taxiBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
+                const moveChip = rankMoveChip(rankedByRos ? 'season' : 'weekly', p.cleanName);
+                // Phone rows (improvements S32): TAXI (the TX slot says it), EARLY and the rank-change chip behind a tap.
+                // A bench IR-slot badge stays: it says why he can't start.
+                const phone = phoneRowParts(p, [taxiBadge, earlyTag, moveChip], [irSlotBadge, injBadge, byeBadge, kickoffBadge, sleeperWarn]);
                 // Bench ("BN") never reveals real position the way a strict slot badge does, so
                 // always show it as plain text here -- same reasoning as the starters block above.
                 let plainPos = `<span class="mls-plain-pos pos-text-${escapeHtml(String(p.pos).toLowerCase())}">${escapeHtml(p.pos)}</span>`;
@@ -771,14 +792,14 @@ import { refreshThisWeek } from '../main.js';
                 benchHTML += `
                 <div class="lineup-slot ${lockClass} ${p.isTaxi ? 'taxi-row' : ''}">
                     <div class="mls-player-row-info">
-                        <span class="slot-badge slot-${slotCode}">${slotCode}</span>
-                        ${playerHeadshotHTML(p)}
+                        <span class="mls-row-lead"><span class="slot-badge slot-${slotCode}">${slotCode}</span>
+                        ${playerHeadshotHTML(p)}</span>
                         <div class="mls-player-row-text">
-                            <div class="player-name-wrap">${escapeHtml(p.name)}${byeStr}</div>
-                            ${badgesRow ? `<div class="mls-player-badges-row">${badgesRow}</div>` : ''}
+                            <div class="mls-row-name-line"><div class="player-name-wrap">${escapeHtml(p.name)}${byeStr}</div>${phone.more}</div>
+                            ${badgesRow ? `<div class="mls-player-badges-row${phone.badgesClass}">${badgesRow}</div>` : ''}
                             <div class="mls-player-row-meta">
                                 ${plainPos}
-                                <span class="badge">${escapeHtml(p.team)}</span>${rankMoveChip(rankedByRos ? 'season' : 'weekly', p.cleanName)}
+                                <span class="badge">${escapeHtml(p.team)}</span>${moveChip}
                                 <span class="badge mls-rank-badge">${rankBadge}</span>
                             </div>
                         </div>

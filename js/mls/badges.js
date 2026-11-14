@@ -146,8 +146,33 @@ export function leagueStatusChipMarkup(tone, label, tip, { sample = false } = {}
 // The player's spot on Sleeper differs from this lineup: on a starter row "Bench in Sleeper",
 // on a bench row "Starting in Sleeper" (starting = true).
 export const sleeperLineupBadgeMarkup = (starting) => starting
-    ? `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; font-size: 0.65rem; margin-left: 4px;">Starting in Sleeper</span>`
-    : `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; font-size: 0.65rem; margin-left: 4px;">Bench in Sleeper</span>`;
+    ? `<span class="badge mls-sleeper-lineup-badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid #ef4444; font-size: 0.65rem; margin-left: 4px;">Starting in Sleeper</span>`
+    : `<span class="badge mls-sleeper-lineup-badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid #f59e0b; font-size: 0.65rem; margin-left: 4px;">Bench in Sleeper</span>`;
+
+// Phone Lineup rows (improvements S32). The padlock dot on the corner of a starter's photo: faint and open when he's
+// unlocked, solid green when you locked him, solid blue when his game has started (auto-locked). On a phone the photo
+// and slot badge are one button that locks him (or overrides an auto-lock); tablets and computers hide it and keep the
+// lock at the row's right. state: 'off' | 'on' | 'auto'. label: already escaped.
+const LOCK_OPEN_PATH = '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path>';
+const LOCK_SHUT_PATH = '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>';
+export const lockDotMarkup = (state) =>
+    `<span class="mls-lock-dot is-${state}"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${state === 'off' ? LOCK_OPEN_PATH : LOCK_SHUT_PATH}</svg></span>`;
+export function leadLockMarkup(state, id, label) {
+    const action = state === 'auto' ? 'overrideAutoLock' : 'toggleLock';
+    const pressed = state === 'auto' ? '' : ` aria-pressed="${state === 'on'}"`;
+    return `<button type="button" class="mls-lead-lock" data-action="${action}" data-id="${escapeHtml(String(id))}" aria-label="${label}"${pressed}>${lockDotMarkup(state)}</button>`;
+}
+// After a phone row's name: "+2" when two of its badges moved behind the tap (LOCKED, EARLY, TAXI, a rank-change chip),
+// otherwise three dots. It opens the row's details (render/lineupDetails.js); on a phone the whole name and badge column
+// is its target. name: already escaped.
+const MORE_ICON = '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>';
+export function rowMoreMarkup(n, { id = '', name = '', sample = false } = {}) {
+    const inner = n > 0 ? `+${n}` : MORE_ICON;
+    const cls = `mls-row-more${n > 0 ? '' : ' is-dots'}`;
+    if (sample) return `<span class="${cls}">${inner}</span>`;
+    const label = `Details for ${name}${n > 0 ? `, ${n} more badge${n === 1 ? '' : 's'}` : ''}`;
+    return `<button type="button" class="${cls}" data-action="openLineupDetails" data-id="${escapeHtml(String(id))}" aria-label="${label}" aria-haspopup="dialog">${inner}</button>`;
+}
 
 // --- WAIVER WIRE ASSISTANT (scout/waivers.js) ---
 // A lineup verdict ("Would Start", "Bench", "Out"...) or ownership pill. cls: mls-verdict-start / -bench /

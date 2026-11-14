@@ -44,7 +44,7 @@ test.describe('Lineup Strategist keyboard', () => {
         await showTab(page, 'lineup');
         const lineup = page.locator('#optimalLineupContainer');
 
-        await lineup.locator('.lock-btn').first().focus();
+        await lineup.locator('[data-action="toggleLock"]:visible').first().focus();
         await page.keyboard.press('Enter');
         await expect(page.locator('.toast-message').filter({ hasText: 'Josh Allen is locked' })).toBeVisible();
         await expect(lineup.locator('.mls-lock-badge')).toHaveCount(1);
