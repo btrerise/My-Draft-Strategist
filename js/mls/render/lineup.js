@@ -611,6 +611,32 @@ import { refreshThisWeek } from '../main.js';
         }
     }
 
+    // Keeps keyboard focus where you were when the lineup is drawn again (owner, improvements S32 round 6). A lock or a
+    // swap replaces every row, so the button you pressed is gone and focus fell to the page: Tab started again from the
+    // top. The same kind of control in the same row takes it back: your lock after locking, the ✕ / Cancel after starting a
+    // swap, and after finishing one the ⇄ in the row you pressed (which now holds the other player). The visible one of
+    // the row's locks (the photo's on a phone, the row's on wider screens). No scrolling.
+    const FOCUS_KINDS = {
+        initiateSwap: '.swap-btn',
+        toggleLock: '[data-action="toggleLock"], [data-action="overrideAutoLock"]',
+        overrideAutoLock: '[data-action="toggleLock"], [data-action="overrideAutoLock"]',
+        openLineupDetails: '.mls-row-more',
+    };
+    function lineupFocusSpot(roots) {
+        const el = document.activeElement;
+        const kind = el && el.dataset ? FOCUS_KINDS[el.dataset.action] : null;
+        const rowEl = kind && el.closest('.lineup-slot');
+        const root = rowEl && roots.find(r => r && r.contains(rowEl));
+        if (!root) return null;
+        return { root, index: [...root.querySelectorAll('.lineup-slot')].indexOf(rowEl), kind };
+    }
+    function restoreLineupFocus(spot) {
+        if (!spot || (document.activeElement && document.activeElement !== document.body)) return;
+        const rowEl = spot.root.querySelectorAll('.lineup-slot')[spot.index];
+        const target = rowEl && [...rowEl.querySelectorAll(spot.kind)].find(b => b.offsetParent !== null);
+        if (target) target.focus({ preventScroll: true });
+    }
+
     export function renderLineupUI() {
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
@@ -776,6 +802,7 @@ import { refreshThisWeek } from '../main.js';
             }
         });
         const anchorTop = lineupAnchorTop(container);
+        const focusSpot = lineupFocusSpot([container, benchContainer]);
         renderHTMLInto(container, html);
 
         let benchHTML = "";
@@ -871,6 +898,7 @@ import { refreshThisWeek } from '../main.js';
         fitRankBadges([container, benchContainer]);
         watchRankBadgeWidths([container, benchContainer]);
         keepLineupAnchor(container, anchorTop);
+        restoreLineupFocus(focusSpot);
 
         // Keeps the Dashboard's league cards (this league's status and to-dos) in step with the lineup, while the
         // Dashboard is showing. When it's hidden the redraw waits: showing the Dashboard redraws the cards anyway

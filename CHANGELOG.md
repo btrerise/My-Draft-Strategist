@@ -205,7 +205,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   the padlock and the "+2".
 - **Swapping and locking, on every screen size.** While you swap, "Tap another player's ⇄ to swap with …" is a bar at
   the bottom of the screen with a Cancel button (bottom left on tablets and computers, clear of the swap buttons), so you
-  see it even when you start from the bench, instead of a line above the lineup. The row you tap no longer jumps when "Unlock All" appears above the lineup. A row whose game has
+  see it even when you start from the bench, instead of a line above the lineup. The row you tap no longer jumps when "Unlock All" appears above the lineup, and with a keyboard, focus stays on the
+  button you used instead of going back to the top of the page. A row whose game has
   started (auto-locked) has a blue edge like its padlock; one you locked stays green.
 
 - **Tooltips follow Material 3.** On a computer a tooltip you hovered stays 1.5 seconds after the mouse moves off, so

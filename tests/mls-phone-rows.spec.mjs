@@ -387,3 +387,51 @@ test.describe('the details say what each badge means for him', () => {
         await expectClean(page, state);
     });
 });
+
+// Round 6 (owner, 2026-11-15, from a second review as a user): the snackbar on one line on wider screens (a phone on its
+// side lost a third of its height to two lines); focus stays where you were after a lock or swap redraws the lineup;
+// the bench's BN badge under the photo has a solid outline like the other slot badges.
+test('on a phone turned sideways the swap snackbar is one line', async ({ page }, info) => {
+    test.skip(info.project.name !== 'desktop', 'a landscape window');
+    await page.setViewportSize({ width: 844, height: 390 });
+    const state = await setUp(page);
+    await row(page, 'Amon-Ra St. Brown').getByRole('button', { name: 'Swap Amon-Ra St. Brown' }).click();
+    const bar = page.locator('.mls-swap-snackbar');
+    await expect(bar).toBeVisible();
+    expect((await box(bar)).h).toBeLessThan(60);
+    await expectClean(page, state);
+});
+
+test('after a lock or a swap, focus stays where you were', async ({ page }, info) => {
+    if (info.project.name === 'phone') await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    const focused = () => page.evaluate(() => {
+        const el = document.activeElement;
+        return el ? (el.getAttribute('aria-label') || el.textContent.trim()) : null;
+    });
+    // Lock from the keyboard: focus on his lock again (the photo's on a phone, the row's on wider screens).
+    await page.locator('#lineupTab [data-action="toggleLock"][aria-label="Lock Brock Bowers"]:visible').focus();
+    await page.keyboard.press('Enter');
+    await expect(row(page, 'Brock Bowers')).toHaveClass(/\blocked\b/);
+    expect(await focused()).toBe('Lock Brock Bowers');
+    // Start a swap: focus on his Cancel (the ✕ on a phone).
+    await row(page, 'Justin Jefferson').getByRole('button', { name: 'Swap Justin Jefferson' }).focus();
+    await page.keyboard.press('Enter');
+    expect(await focused()).toBe('Cancel swap of Justin Jefferson');
+    // Finish it on a bench row: focus on the swap button in the row you pressed, which now holds Jefferson.
+    await row(page, 'Amon-Ra St. Brown').getByRole('button', { name: 'Swap Amon-Ra St. Brown' }).focus();
+    await page.keyboard.press('Enter');
+    expect(await focused()).toBe('Swap Justin Jefferson');
+    expect(await page.evaluate(() => !!document.activeElement.closest('#benchContainer'))).toBe(true);
+    await expectClean(page, state);
+});
+
+test('a bench row\'s BN badge has a solid outline on a phone', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'phone rows');
+    await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    const bn = row(page, 'Amon-Ra St. Brown').locator('.slot-badge');
+    const style = await bn.evaluate(el => { const cs = getComputedStyle(el); return { border: cs.borderTopColor, style: cs.borderTopStyle, color: cs.color }; });
+    expect(style).toEqual({ border: 'rgb(100, 116, 139)', style: 'solid', color: 'rgb(203, 213, 225)' });
+    await expectClean(page, state);
+});

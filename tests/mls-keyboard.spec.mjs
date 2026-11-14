@@ -8,7 +8,6 @@ import { openApp, expectClean, showTab, seedMls, RANKINGS_CSV, callApp, transiti
 
 const activeTab = page => page.evaluate(() => document.querySelector('.tab-content.active')?.id);
 const blur = page => page.evaluate(() => document.activeElement && document.activeElement.blur());
-const focusedIsBody = page => page.evaluate(() => document.activeElement === document.body);
 
 test.describe('Lineup Strategist keyboard', () => {
     test('shortcuts switch tabs, Escape closes the drawer, typing in a field does not', async ({ page }) => {
@@ -48,10 +47,11 @@ test.describe('Lineup Strategist keyboard', () => {
         await page.keyboard.press('Enter');
         await expect(page.locator('.toast-message').filter({ hasText: 'Josh Allen is locked' })).toBeVisible();
         await expect(lineup.locator('.mls-lock-badge')).toHaveCount(1);
-        expect(await focusedIsBody(page)).toBe(true);
-        // The first stops are the "This lineup needs you" box above it (improvements S11): its title (which folds
+        // Focus stays on his lock after the lineup is drawn again (improvements S32 round 6; it fell to the page before).
+        await expect(page.locator(':focus')).toHaveAttribute('aria-label', 'Lock Josh Allen');
+        // The first stops above the lineup are the "This lineup needs you" box (improvements S11): its title (which folds
         // it), then the fixture's empty RB slot's Find RB. Then Unlock All.
-        await page.keyboard.press('Tab');
+        await page.locator('#optimalLineupContainer .lineup-needs-title').focus();
         await expect(page.locator(':focus')).toHaveText('This lineup needs you');
         await page.keyboard.press('Tab');
         await expect(page.locator(':focus')).toHaveText('Find RB');
@@ -66,10 +66,10 @@ test.describe('Lineup Strategist keyboard', () => {
 
         await lineup.locator('.swap-btn').first().focus();
         await page.keyboard.press('Enter');
+        await expect(page.locator(':focus')).toHaveAttribute('aria-label', 'Cancel swap of Josh Allen');
         // The hint is a snackbar at the bottom of the screen since improvements S32 round 3, with its own Cancel.
         await expect(page.locator('.mls-swap-snackbar')).toBeVisible();
         await expect(page.locator('.mls-swap-snackbar-text')).toHaveText("Tap another player's ⇄ to swap with Josh Allen.");
-        expect(await focusedIsBody(page)).toBe(true);
         await lineup.locator('.swap-btn').first().focus();
         await page.keyboard.press('Enter');
         await expect(page.locator('.mls-swap-snackbar')).toBeHidden();

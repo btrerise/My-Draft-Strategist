@@ -3116,6 +3116,9 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
     body.mls-hide-headshots :is(.lineup-slot, .roster-item) .mls-row-lead:not(:has(.mls-lead-lock)) { height: auto; align-items: center; }
     .lineup-slot.empty .mls-row-lead .slot-badge,
     body.mls-hide-headshots :is(.lineup-slot, .roster-item) .mls-row-lead:not(:has(.mls-lead-lock)) :is(.slot-badge, .pos-badge) { position: static; transform: none; box-shadow: none; }
+    /* The bench's BN under the photo: a solid outline and lighter text (round 6: grey on grey was hard to read). TX and IR
+       keep their dashed "can't start" outline. */
+    .mls-row-lead .slot-badge.slot-BN { background: var(--card-bg); border: 1px solid #64748b; color: #cbd5e1; }
     body.mls-hide-headshots .mls-lead-lock .mls-lock-dot { top: 2px; left: 50%; right: auto; transform: translateX(-50%); }
 
     /* The photo and slot badge are the lock button: a 42x44px box, 48px with the hit area (css/base.css). */
@@ -3228,6 +3231,10 @@ body:has(#lineupTab.active):has(.mls-swap-snackbar:not([hidden])) .mds-toast { m
    on a large screen), clear of the rows' swap buttons at the right; toasts stay at the right. On phones it runs across the
    screen above the tab bar, and the Lineup tab gets room at its foot while it shows, so the page scrolls clear of it. */
 .mls-swap-snackbar { left: calc(var(--rail-inset, 0px) + 24px); right: auto; }
+/* Wide enough for one line on tablets and computers (round 6: a phone on its side lost a third of its height to two). */
+@media (min-width: 600px) {
+    .mls-swap-snackbar { max-width: min(640px, calc(100vw - var(--rail-inset, 0px) - 48px)); }
+}
 @media (max-width: 599.98px) {
     .mls-swap-snackbar { left: 16px; right: 16px; max-width: none; bottom: calc(90px + env(safe-area-inset-bottom)); }
     body:has(.mls-swap-snackbar:not([hidden])) #lineupTab.active { padding-bottom: 96px; }

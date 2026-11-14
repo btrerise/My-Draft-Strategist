@@ -12590,3 +12590,31 @@ showing their own tap text.
   AUTO-LOCKED and started game, Chase's LOCKED and Bench in Sleeper, each with the Guide's sentence still under it.
 - Screenshots: none change (no baseline opens the sheet). Run: mls-phone-rows, mls-rankings-change, badge-legend, sheet,
   mls-keyboard (all pass); check-precache; `node --test` 669 pass.
+
+### S32, round 6: a second review as a user; the owner took 1, 2 and 5, and 3 and 4 as follow-ups (2026-11-15)
+
+Looked at what round 4's pass hadn't: a phone on its side (844x390), the keyboard and screen-reader order through a row
+(lock, details, swap: "Lock Derrick Henry", "Details for Derrick Henry", "Swap Derrick Henry"), a swap from start to
+finish (the spot you tapped stays put and now holds the other player), the bench's IR and taxi groups, and the sheet at
+320px (fits; round 5's first lines read well). Five findings:
+1. **A phone on its side: the swap snackbar wrapped to two lines and took a third of the 390px height.** From 600px it
+   may now be up to 640px wide (less the rail and margins), so it's one line (about 56px).
+2. **After a lock or a swap, keyboard focus fell to the page** (every row is redrawn, so the pressed button was gone; Tab
+   started again from the top). Older than S32, but each row now has three stops. `lineupFocusSpot` /
+   `restoreLineupFocus` (js/mls/render/lineup.js) give focus back to the same kind of control in the same row: your lock
+   after locking (the visible one), the ✕ / Cancel after starting a swap, and after finishing one the ⇄ in the row you
+   pressed, which now holds the other player. Only when focus was on one of those and nothing else took it; no scrolling.
+   `mls-keyboard.spec.mjs` expected focus on the page after a lock and a swap (and Tab from there into the "needs you"
+   box); it now expects the lock and the Cancel, and focuses the box's title directly.
+3. **A toast covers an open sheet** (site-wide): left for M3, which already plans "no toast over an open dialog"; a line
+   in docs/TESTING.md's Open follow-ups.
+4. **A phone on its side gets the computer rows' ~30px swap and lock** (tablets and computers were left unchanged; the
+   touch-target spec measures at 375px only): a line for M16 in Open follow-ups.
+5. **The bench's BN badge under the photo was grey on grey.** On phones it now has a solid slate outline and lighter text;
+   TX and IR keep their dashed outline.
+- **Specs first** (`tests/mls-phone-rows.spec.mjs`, all failed before): at 844x390 the snackbar is under 60px tall;
+  focus after a keyboard lock, a swap start and a swap finish (both widths); the BN badge's outline and text colour.
+- **Screenshots:** against round 5 only phone `mls-league-lineup` (the BN badges), re-taken by CI from this commit.
+  Specs run: mls-phone-rows, mls-keyboard, touch-targets, mls-lineup-row-actions, mls-lineup-needs, mls-weekly-locks,
+  mls-locked-kickoff, room-on-phones, badge-legend, export-same-everywhere, smoke, focus-ring, mls-tab-redraws (all pass);
+  check-precache; `node --test` 669 pass. `CACHE_NAME` stays v2.10.10 (main v2.10.9).
