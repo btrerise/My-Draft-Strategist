@@ -65,14 +65,19 @@ export function applyFaabSettingsToUI(hasFaab) {
 
 // The line under the switch while it's on (round 7): turning it on often changes little on the Dashboard (its bids are
 // only on upgrades on waivers; on a real Saturday, 1 in 15 FAAB leagues), so it says how many it shows and where the rest
-// are. shown: bids on the Dashboard now; loading: a league's history is still loading.
-export function updateFaabStatus({ shown = 0, loading = false } = {}) {
+// are. shown: bids on the Dashboard now; loading: a league's history is still loading; failed / total: FAAB leagues whose
+// history couldn't be read from Sleeper (round 8: it used to blame "no winning bid yet").
+export function updateFaabStatus({ shown = 0, loading = false, failed = 0, total = 0 } = {}) {
     const el = document.getElementById('faabBidsStatus');
     if (!el) return;
     const rest = 'Auto-Find and Check a List show one for every player on waivers.';
-    el.textContent = loading ? `Loading your leagues' bids… ${rest}`
+    const failedText = failed > 0 && failed >= total ? 'Couldn\'t read your leagues\' bids from Sleeper; they\'ll load on your next visit.'
+        : failed > 0 ? `Couldn't read ${failed} ${failed === 1 ? 'league\'s' : 'leagues\''} bids from Sleeper; they'll load on your next visit.` : '';
+    el.textContent = failedText && failed >= total ? failedText
+        : loading ? `Loading your leagues' bids… ${rest}`
         : shown > 0 ? `Showing ${shown} ${shown === 1 ? 'bid' : 'bids'} on the Dashboard right now (on upgrades who are on waivers). ${rest}`
         : `No bids on the Dashboard right now: they show on upgrades who are on waivers, once a league has a winning bid this season. ${rest}`;
+    if (failedText && failed < total && !loading) el.textContent += ` ${failedText}`;
 }
 
 // After Auto-Find or Check a List, once ever: when bids are off and the scan shows a player on waivers in a FAAB league.

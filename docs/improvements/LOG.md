@@ -12677,3 +12677,22 @@ Tests: unit (19: the Aggressive notes four ways); `mls-faab-bid` (the status lin
 label); `touch-targets` (the two new checks). Ran check-precache, `node --test` (688), and `mls-faab-bid`,
 `tooltip-closed-space` and the neighbouring specs: 187 passed. Screenshots: my last commit and this round, rendered in
 the same container, are identical (44 of 44; the group is folded in them).
+
+### Round 8: a review as a user (owner: yes to all three)
+
+Switching leagues on Scout (no toast in a non-FAAB league, once in a FAAB one), turning bids off and on (the Dashboard
+redraws), Backup / Restore and Factory Reset (the setting goes with them) were fine. Changed:
+1. **The Guide didn't mention it** (only the badge legend did): step 8, "Scout: Waiver Wire Assistant", has a FAAB bids
+   bullet: off until turned on in Advanced Settings, FAAB Bids; where the bids show; Conservative and Aggressive; tap
+   for what it's based on.
+2. **When Sleeper couldn't be reached, the status line blamed "no winning bid yet":** it now says "Couldn't read your
+   leagues' bids from Sleeper; they'll load on your next visit." (or "Couldn't read N leagues' bids …" after the usual
+   line when only some failed).
+3. **Changing the setting didn't touch Auto-Find's or Check a List's results already on screen:** the last scan is kept
+   (`rerunWaiverScanForFaab` in `waivers.js`) and run again when bids are turned on or off or the style changes, while
+   its results are still the ones shown.
+
+Tests: `mls-faab-bid` (11 per width): the failure line; a new case where turning bids off and on from the Dashboard
+redraws Auto-Find's results. Ran check-precache, `node --test` (688), and `mls-faab-bid`, `tooltip-closed-space` and
+the neighbouring specs (with the Guide's): 189 passed. Screenshots: my last commit and this round differ only in
+`desktop/` and `phone/mls-league-guide.png` (step 8's new bullet); re-taken on CI.

@@ -312,6 +312,31 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expect(line(page).locator('.mls-ba-player')).not.toHaveCount(0);
         await expect(line(page).locator('.mls-faab-bid')).toHaveCount(0);
         await expect(page.locator('.toast-message').filter({ hasText: /transactions|FAAB/i })).toHaveCount(0);
+        // The setting's line says why (round 8: it used to blame "no winning bid yet").
+        await expect(page.locator('#faabBidsStatus')).toHaveText('Couldn\'t read your leagues\' bids from Sleeper; they\'ll load on your next visit.');
+        await expectClean(page, state);
+    });
+
+    test('round 8: changing the setting redraws Auto-Find\'s results already on screen', async ({ page }) => {
+        const state = await setup(page);
+        await showTab(page, 'scout');
+        await callApp(page, 'setWaiverMode', 'auto');
+        await callApp(page, 'setWaiverCompare', 'lineup');
+        await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
+        const cookCard = () => out(page).locator('.mls-scan-card').filter({ hasText: 'James Cook' });
+        await expect(cookCard().locator('.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        // Off, from the Dashboard: Auto-Find's results lose their bids without another tap of Auto-Find.
+        await showTab(page, 'setup');
+        await page.locator('#faabSettingsGroup summary').click();
+        await page.locator('#faabBidsToggle').uncheck();
+        await showTab(page, 'scout');
+        await expect(cookCard()).toBeVisible();
+        await expect(cookCard().locator('.mls-faab-bid')).toHaveCount(0);
+        // On again: back.
+        await showTab(page, 'setup');
+        await page.locator('#faabBidsToggle').check();
+        await showTab(page, 'scout');
+        await expect(cookCard().locator('.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
         await expectClean(page, state);
     });
 

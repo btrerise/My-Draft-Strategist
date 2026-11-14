@@ -486,12 +486,13 @@ import { applyFaabSettingsToUI, faabBidsOn, updateFaabStatus } from './faabSetti
         });
         // Now the upgrades are known: cards with nothing to do fold (the ones you haven't folded or opened yourself).
         applyDefaultFolds();
-        // The FAAB Bids setting's line: how many bids the Dashboard shows (S35, round 7).
-        const all = [...analyses.values()].flatMap(a => a.players || []);
-        updateFaabStatus({ shown: all.filter(p => p.bid && !p.bid.noHistory).length, loading: all.some(p => p.bidPending) });
         // FAAB leagues' bid history (S35), read after the lines are up (it's up to a request per week per league): the
         // lines are drawn again with the suggested bids once it's in.
         const faabLeagues = synced.filter(isFaabLeague);
+        // The FAAB Bids setting's line: how many bids the Dashboard shows (S35, round 7; failures, round 8).
+        const all = [...analyses.values()].flatMap(a => a.players || []);
+        updateFaabStatus({ shown: all.filter(p => p.bid && !p.bid.noHistory).length, loading: all.some(p => p.bidPending),
+            failed: faabBidsOn() ? faabLeagues.filter(l => faabBidsLoaded(l.leagueId) === null).length : 0, total: faabLeagues.length });
         // Only once the week is known, and only when this read loaded something new (else it could draw again forever).
         const pending = faabBidsOn() ? faabLeagues.filter(l => faabBidsLoaded(l.leagueId) === undefined) : [];
         if (Number(State.currentNflWeek) >= 1 && pending.length > 0) {

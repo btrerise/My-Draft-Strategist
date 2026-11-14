@@ -30,7 +30,7 @@ import { explainSoS, generateSoSGrid, saveManualSoS, setSosReversed } from './so
 import { setMatchupReversed } from './opponent.js';
 import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
-import { applyWaiverScanSettingsToUI, autoFindWaiverUpgrades, openFaabBidSheet, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
+import { applyWaiverScanSettingsToUI, autoFindWaiverUpgrades, openFaabBidSheet, rerunWaiverScanForFaab, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
 import { onScoutTabShown, refreshTopAvailable, setTopAvailableView, setWaiverMode, setWaiverPos, showMoreTopAvailable } from './scout/topAvailable.js';
 import { setFaabBidsOn, setFaabStyle as chooseFaabStyle } from './scout/faabSettings.js';
 import { bestAvailableUpload, dismissBestAvailable, renderBestAvailable, restoreBestAvailable, setBestAvailableBasis, viewLeagueTopAvailable } from './scout/bestAvailable.js';
@@ -195,8 +195,8 @@ const clickActions = {
     // A suggested FAAB bid (improvements S35): what it's based on, as a toast.
     explainBid() { openFaabBidSheet(this); },
     // Suggested FAAB bids on or off, and Conservative or Aggressive (improvements S35, round 6): Best Available redraws.
-    toggleFaabBids() { setFaabBidsOn(this.checked); renderBestAvailable(); },
-    setFaabStyle() { chooseFaabStyle(this.dataset.style); renderBestAvailable(); },
+    toggleFaabBids() { setFaabBidsOn(this.checked); renderBestAvailable(); rerunWaiverScanForFaab(); },
+    setFaabStyle() { chooseFaabStyle(this.dataset.style); renderBestAvailable(); rerunWaiverScanForFaab(); },
     openRankingSetLeagues() { openRankingSetLeagues(this.dataset.type); },
     // "View" beside "Choose leagues…": the set, read-only, in the shared sheet (rankings/setView.js, improvements S30).
     viewRankingSet() { openRankingSetView(this, this.dataset.type, this.dataset.slot || null); },

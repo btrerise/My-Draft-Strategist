@@ -350,8 +350,20 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     // The one-time "Turn on" toast for suggested FAAB bids (S35, round 6), after Auto-Find or Check a List: in a synced FAAB
     // league, when the results show a player on waivers. rerun: the scan again, so the bids appear once they're on.
     export function offerFaabHint(league, outputEl, rerun) {
+        lastWaiverScan = { outputEl, rerun, marker: outputEl ? outputEl.firstElementChild : null };
         if (!isFullyMappedLeague(league)) return;
         maybeShowFaabHint({ faabLeague: isFaabLeague(league), anyWaivers: !!(outputEl && outputEl.querySelector('.mls-wv-chip.is-w')), onEnable: rerun });
+    }
+
+    // The last Auto-Find or Check a List (S35, round 8), so turning bids on or off, or changing their style, redraws
+    // results already on screen (the Dashboard redraws at once; these used to wait for the next scan).
+    let lastWaiverScan = null;
+    export function rerunWaiverScanForFaab() {
+        const last = lastWaiverScan;
+        if (!last || !last.outputEl || !last.outputEl.isConnected) return;
+        // Only while that scan's results are still the ones shown (another mode can write to the same box).
+        if (!last.marker || !last.outputEl.contains(last.marker)) return;
+        last.rerun();
     }
 
     // The bid's own line under a card's verdict (S35).
