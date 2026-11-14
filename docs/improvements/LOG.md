@@ -11808,8 +11808,31 @@ until about …"). Ran `node --test` (657), check-precache, `mls-waiver-status` 
 past-trade and touch-target specs (85 passed). No screenshot changes (the legend is unchanged, and the screenshot
 specs have no kickoffs, so no chips).
 
+### Round 4: Tuesday's upgrades (owner: make the change in S34)
+
+From the week's last game until Sleeper's week moves on (Wednesday about 12 AM PT, round 3), the Weekly checks treat
+the week as over and answer for next week:
+- `isWeekOver(kickoffs, now)` in `waiverStatus.js` (pure, unit-tested): every kickoff more than about 4 hours ago (a
+  Monday 5:15 PM PT game: from 9:15 PM PT). `waiverStatus` uses it too.
+- `lineupCheckDeps(leagueId, byName, { weekOver })`: no kickoff freeze then (no one is held in or out of your lineup by
+  a kickoff; your own locks still count). Best available passes it on Weekly; Auto-Find's `buildWaiverContext` too,
+  and there a played player isn't "Played" or filtered out of Starting Lineup any more.
+- The flag reads "No upgrade" (not "this week") once the week is over.
+- The Command Center's tooltip says it ("from Tuesday, once the week's games are over, next week's"), and now also
+  explains FA / W and "too late".
+- Not changed: byes are still this week's (`isUnavailableThisWeek` reads `State.currentNflWeek`, which is the finished
+  week until Wednesday), so on Tuesday a player on bye next week can still show as an upgrade. The rankings are
+  whatever Weekly set the league has (often last week's until you upload the new sheet).
+
+Tests: unit `isWeekOver` (Monday night during and after the game, Tuesday, no kickoffs); `mls-waiver-status`: Tuesday
+8 AM PT with Cook dropped Saturday: "1 upgrade", W, "over Derrick Henry RB8 · waivers until Wed …", the "like everyone
+who played this week" tap text, and Auto-Find's Would Start (not Played). Ran `node --test` (658), check-precache,
+`mls-waiver-status` (14) and the Best available, waiver, Scout, lineup-choice, league-card and touch-target specs (85
+passed). Screenshots: rendered with and without this round in this container, all 44 identical (the tooltip is
+hidden in them).
+
 ### Left over
-- **Tuesday's "No upgrade this week"** (round 3, point 1): the fix and where it goes are the owner's call.
+- **Next week's byes on Tuesday** (round 4, above).
 - `daily_waivers_days` isn't decoded (above). If a league marks some days "Locked" or "FA", the chip can be wrong on
   those days; a session with the league's settings screen open (or Sleeper's help pages reachable) could map the bits.
 - Sleeper's state week may move to the next week before Wednesday's run; then this week's kickoffs are next week's and

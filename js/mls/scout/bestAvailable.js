@@ -91,7 +91,7 @@ import { isDraftPickName } from '../trade/valueCurve.js';
 import { applyDefaultFolds, showTab, switchActiveLeague } from '../main.js';
 import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
 import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
-import { shortWhen, waiverStatus } from './waiverStatus.js';
+import { isWeekOver, shortWhen, waiverStatus } from './waiverStatus.js';
 import { recentDropsFor } from './recentDrops.js';
 import { waiverChipHTML } from './waivers.js';
 
@@ -229,7 +229,10 @@ import { waiverChipHTML } from './waivers.js';
         //   - ROS: your weakest rostered player there (Check a List's Whole Roster benchmark).
         // Either way upgradeGap decides: a better tier when both are tiered, else 3+ spots.
         const lineupMode = basis.type === 'weekly';
-        const deps = lineupMode ? lineupCheckDeps(league.leagueId, byName) : null;
+        // Once the week's games are over (Tuesday until Wednesday's run), Weekly asks about next week: no kickoff holds
+        // anyone in or out of your lineup or the free agent out of it (round 4: every player had kicked off, so the
+        // card said "No upgrade this week" just when claims are set).
+        const deps = lineupMode ? lineupCheckDeps(league.leagueId, byName, { weekOver: isWeekOver(wctx.kickoffs, wctx.now) }) : null;
         const starters = lineupMode ? bestLineup(league.reqs, league.roster, { ...deps, getPos }) : [];
         const flexTierOf = (clean) => {
             const r = byName[clean];
@@ -307,7 +310,7 @@ import { waiverChipHTML } from './waivers.js';
         upgrades.forEach(u => { u.target = u.emptySlot ? 'empty' : u.bench.cleanName; });
         const shownTargets = {};
         players.forEach(p => { if (p.upgrade) shownTargets[p.upgrade.target] = (shownTargets[p.upgrade.target] || 0) + 1; });
-        return { league, basis, lineupMode, freeAgents, players, posRankOf, rankedAtPos, dismissedCount: dismissed.size, upgrade: upgrades[0] || null, lateCount: late.length,
+        return { league, basis, lineupMode, weekOver: lineupMode && isWeekOver(wctx.kickoffs, wctx.now), freeAgents, players, posRankOf, rankedAtPos, dismissedCount: dismissed.size, upgrade: upgrades[0] || null, lateCount: late.length,
             upgradeCount: new Set(upgrades.map(u => u.target)).size, shownTargets, inj: (clean) => (meta[clean] && meta[clean].inj) || null };
     }
 
@@ -351,7 +354,8 @@ import { waiverChipHTML } from './waivers.js';
             source = sourceLabel(basis);
             // Weekly says "this week", and how many upgrades are too late for it (round 2), so a greyed upgrade beside
             // "No upgrade" isn't a contradiction.
-            if (!upgrade) flag = `<span class="mls-ba-flag">${basis.type === 'weekly' ? `No upgrade this week${a.lateCount ? ` &middot; ${a.lateCount} too late` : ''}` : 'No upgrade'}</span>`;
+            // Not "this week" once its games are over (round 4): the question is next week's then.
+            if (!upgrade) flag = `<span class="mls-ba-flag">${basis.type === 'weekly' && !a.weekOver ? `No upgrade this week${a.lateCount ? ` &middot; ${a.lateCount} too late` : ''}` : 'No upgrade'}</span>`;
             if (a.players.length > 0) {
                 const notes = Object.entries(a.shownTargets).filter(([, n]) => n > 1).map(([target, n]) => {
                     const u = a.players.find(p => p.upgrade && p.upgrade.target === target).upgrade;

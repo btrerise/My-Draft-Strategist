@@ -76,6 +76,14 @@ export function nextWeeklyRun(waivers, after) {
     return zonedTime(today.y, today.m, today.d + 7, hour, WAIVER_TZ);
 }
 
+// The week's games are over: every kickoff is more than a game's length ago (kickoffs: { team: ISO or ms }). From then
+// until Sleeper's week moves on (Wednesday about 12 AM PT, with the weekly run; LOG S34 round 3) the claims you make
+// are for next week, so the Weekly checks stop holding kickoffs against anyone (round 4). False without kickoffs.
+export function isWeekOver(kickoffs, now) {
+    const all = Object.values(kickoffs || {}).map(toMs).filter(v => v != null);
+    return all.length > 0 && Math.max(...all) + GAME_LENGTH < now;
+}
+
 const toMs = (v) => (v == null ? null : (typeof v === 'number' ? v : (Number.isFinite(Date.parse(v)) ? Date.parse(v) : null)));
 
 // player: { cleanName, team }. waivers: league.waivers (waiverSettingsFrom). drops: { cleanName: dropped at (ms) },
@@ -90,8 +98,7 @@ export function waiverStatus(player, waivers, drops, kickoffs, now) {
     if (!kickoffs || Object.keys(kickoffs).length === 0) return null;
     const claimType = waivers.type;
     const ko = toMs(kickoffs && player.team ? kickoffs[player.team] : null);
-    const allKickoffs = Object.values(kickoffs || {}).map(toMs).filter(v => v != null);
-    const weekOver = allKickoffs.length > 0 && Math.max(...allKickoffs) + GAME_LENGTH < now;
+    const weekOver = isWeekOver(kickoffs, now);
 
     let clearsAt = null;
     let reason = null;

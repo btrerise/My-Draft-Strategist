@@ -19,7 +19,7 @@ import { normalizeName } from '../../shared/names.js';
 import { isPreferredSleeperEntry } from '../players.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { scoutPillMarkup, tierGapMarkup, waiverChipMarkup } from '../badges.js';
-import { shortWhen, waiverStatus, waiverStatusText } from './waiverStatus.js';
+import { isWeekOver, shortWhen, waiverStatus, waiverStatusText } from './waiverStatus.js';
 import { recentDropsFor } from './recentDrops.js';
 import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 
@@ -295,14 +295,16 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     // same fields optimizeLineup reads; the derived display ranks keep the same order within each
     // group, so verdicts and shown numbers agree), that league's locks and kickoff auto-locks, and
     // this week's byes and hard-outs. Shared with the Dashboard's Best Available card.
-    export function lineupCheckDeps(leagueId, byName) {
+    // weekOver (improvements S34, round 4): the week's games are over, so the check is about next week and no kickoff
+    // holds anyone in or out (your own locks still count).
+    export function lineupCheckDeps(leagueId, byName, { weekOver = false } = {}) {
         const locks = State.lockedPlayersMap[leagueId] || [];
         const league = (State.leagues || []).find(l => l.leagueId === leagueId) || null;
         // Once his game has kicked off, a player stays where he is on Sleeper (kickoffFreeze, the optimizer's rule):
         // locked in if he started, unable to start if he didn't. Before S12 round 3 every kicked-off player counted as
         // locked in, bench players too, so the Dashboard's fresh best lineup put a benched Thursday player in it.
         // A lock gives way only to a kickoff that left him on your Sleeper bench, as in the optimizer (improvements F7).
-        const freeze = (p) => kickoffFreeze(league, p);
+        const freeze = (p) => (weekOver ? null : kickoffFreeze(league, p));
         return {
             rankOf: (p) => byName[p.cleanName] || null,
             isLocked: (p) => (locks.includes(p.id) && freeze(p) !== 'out') || freeze(p) === 'in',
@@ -360,20 +362,23 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         if (!State.manualStartersMap[State.activeLeagueId]) optimizeLineup(false);
         const currentStarters = savedStarters(State.activeLeagueId);
         const lineupReady = currentStarters.length > 0 && checkRankings.length > 0;
-        const deps = lineupCheckDeps(State.activeLeagueId, checkByName);
+        // Tuesday (round 4): once the week's games are over, Would Start is about next week, so kickoffs don't count.
+        const kickoffsNow = State.gameTimesFetchedForWeek === State.currentNflWeek ? State.gameTimesByTeam : null;
+        const weekOver = isWeekOver(kickoffsNow, Date.now());
+        const deps = lineupCheckDeps(State.activeLeagueId, checkByName, { weekOver });
 
         // Cheap "his game already kicked off" test -- no lineup simulation needed, so the scan
         // can filter these out before applying the Show Top limit rather than after.
         const hasPlayed = (fa) => {
             const m = meta[fa.cleanName];
-            return !!(m && m.team && hasKickedOff({ team: m.team }));
+            return !weekOver && !!(m && m.team && hasKickedOff({ team: m.team }));
         };
 
         const evaluate = (fa) => {
             const player = freeAgentPlayer(fa, meta);
             let verdict = null;
             if (!player.team && meta[fa.cleanName]) verdict = { status: 'noTeam' };
-            else if (hasKickedOff(player)) verdict = { status: 'kickedOff' };
+            else if (!weekOver && hasKickedOff(player)) verdict = { status: 'kickedOff' };
             else if (lineupReady) {
                 // On waivers, and his game is before the claim runs (improvements S34, round 2): he can't start for you
                 // this week, whatever the lineup check would say, so it agrees with the Dashboard's Best available.

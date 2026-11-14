@@ -174,6 +174,32 @@ test.describe('Lineup Strategist Free agent or Waivers', () => {
         await expectClean(page, state);
     });
 
+    test('Tuesday, every game over: the upgrade counts again (claims are for next week), W everywhere', async ({ page }) => {
+        const state = await setup(page, { transactions: 'drop' });
+        // Tue 9/22, 8 AM PT: week 2's last game (Sunday 1:25 PM PT here) is long over; Sleeper's week moves on Wednesday.
+        await page.clock.setFixedTime(new Date('2026-09-22T15:00:00Z'));
+        await setKickoffs(page);
+        await showTab(page, 'lineup');
+        await showTab(page, 'setup');
+        // Round 4: before, every player had kicked off, so nobody "would start" and the card said "No upgrade this week".
+        await expect(upgradeCount(page)).toHaveText('1 upgrade');
+        const cook = player(page, 'James Cook');
+        await expect(cook).not.toHaveClass(/\bis-late\b/);
+        await expect(cook.locator('.mls-wv-chip')).toHaveText('W');
+        await expect(cook.locator('.mls-ba-over')).toHaveText(/^over Derrick Henry RB8 · waivers until Wed [\d:]+ [AP]M$/);
+        await cook.locator('.mls-wv-chip').click();
+        await expect(page.locator('.toast-message').filter({ hasText: /^On waivers until Wed [\d:]+ [AP]M \(FAAB\), like everyone who played this week\.$/ })).toBeVisible();
+        // Auto-Find agrees: Would Start, not Played.
+        await showTab(page, 'scout');
+        await callApp(page, 'setWaiverMode', 'auto');
+        await callApp(page, 'setWaiverCompare', 'lineup');
+        await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
+        const cookCard = out(page).locator('.mls-scan-card').filter({ hasText: 'James Cook' });
+        await expect(cookCard).toContainText('Would Start');
+        await expect(cookCard).not.toContainText('Played');
+        await expectClean(page, state);
+    });
+
     test('the same drop on ROS: shown as on waivers, still counted (ROS is about the rest of the season)', async ({ page }) => {
         const state = await setup(page, { transactions: 'drop' });
         await page.setInputFiles('#rosFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(UPGRADE_CSV) });

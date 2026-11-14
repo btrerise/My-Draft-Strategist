@@ -2,7 +2,7 @@
 // for this week. Times are 2026's week 10: Thu Nov 12 to Mon Nov 16 (Pacific standard time, UTC-8).
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { nextWeeklyRun, shortWhen, waiverSettingsFrom, waiverStatus, waiverStatusText } from '../../js/mls/scout/waiverStatus.js';
+import { isWeekOver, nextWeeklyRun, shortWhen, waiverSettingsFrom, waiverStatus, waiverStatusText } from '../../js/mls/scout/waiverStatus.js';
 
 const PT = (s) => Date.parse(`${s}-08:00`); // a Pacific (standard time) wall clock
 const H = 3600 * 1000;
@@ -46,6 +46,16 @@ describe('nextWeeklyRun', () => {
     });
     test('across the end of daylight saving time (Nov 1, 2026)', () => {
         assert.equal(nextWeeklyRun(faab2, Date.parse('2026-10-30T12:00:00-07:00')), PT('2026-11-04T00:00:00'));
+    });
+});
+
+describe('isWeekOver', () => {
+    test('about four hours after the last kickoff; never without kickoffs', () => {
+        assert.equal(isWeekOver(kickoffs, PT('2026-11-16T20:00:00')), false); // Monday night, game on
+        assert.equal(isWeekOver(kickoffs, PT('2026-11-16T21:30:00')), true);  // after the Monday game
+        assert.equal(isWeekOver(kickoffs, PT('2026-11-17T10:00:00')), true);  // Tuesday
+        assert.equal(isWeekOver({}, PT('2026-11-17T10:00:00')), false);
+        assert.equal(isWeekOver(null, PT('2026-11-17T10:00:00')), false);
     });
 });
 
