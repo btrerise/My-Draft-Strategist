@@ -12648,3 +12648,7 @@ non-FAAB league (no group, no toast). Ran check-precache, `node --test` (687), a
 and the neighbouring specs (with Backup, key migration, badge legend, smoke, touch targets): 187 passed. Screenshots: my
 last commit and this round differ only in `desktop/` and `phone/mls-league-setup.png` (the FAAB Bids row in Advanced
 Settings) and `desktop/` and `phone/mls-league-guide.png` (the legend line); re-taken on CI.
+- CI re-took the four (commit "Screenshots re-taken on CI (4 PNGs)" after round 6); I opened them. `mls-league-setup`
+  (both widths): the new folded "FAAB Bids · Off" row between Notifications and Add Player Manually (+49 px), identical
+  above, the rest moved down. `desktop/mls-league-guide.png`: the legend line one line longer (+21 px).
+  `phone/mls-league-guide.png`: identical where it paints (+63 px in the blank lower part, M17's capture cut).
