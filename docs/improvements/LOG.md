@@ -11769,7 +11769,12 @@ Brown (played) gone and three players on the line with one greyed, Auto-Find's T
 Lineup) and Check a List's; `mls-best-available`'s Weekly flag reads "No upgrade this week". Ran `node --test` (656),
 check-precache, and `mls-waiver-status`, `mls-best-available`, the five other waiver and Scout specs,
 `mls-display-ranks`, `mls-opponent-strength`, `touch-targets` (71 passed). Screenshots: the Guide's legend again
-(`desktop/` and `phone/mls-league-guide.png`), re-taken on CI.
+(`desktop/` and `phone/mls-league-guide.png`), re-taken on CI (commit "Screenshots re-taken on CI (2 PNGs)" after
+round 2). I opened both: the only change is the Out / Bye / Played row gaining a red "Too Late" pill and its text the
+waivers clause (phone +21 px, desktop the same height: its second row of pills was already there); elsewhere at most
+1-level anti-aliasing noise. Then merged main (F18, which took `CACHE_NAME` v2.10.6, so S34 is v2.10.7), regenerated
+the fixtures (F18's `league-autosub.json` gains the waiver settings), and re-ran `mls-auto-sub`, `mls-this-week`,
+`mls-mvp-lvp`, `mls-waiver-status`, `mls-best-available` (96 passed) and `node --test` (657).
 
 ### Left over
 - `daily_waivers_days` isn't decoded (above). If a league marks some days "Locked" or "FA", the chip can be wrong on
