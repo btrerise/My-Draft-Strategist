@@ -26,7 +26,9 @@
 // content the Power Rankings cells use.
 (function initTooltips() {
   let tipSeq = 0;
-  const TRIGGER = '.tooltip-icon, .tooltip-container[data-tt-self]';
+  // T-Score's column headers (.table-header-tooltip: the header text is the trigger, its tooltip a direct child) joined
+  // in improvements F16, round 4: before, they opened on hover only, so phones and the keyboard never saw them.
+  const TRIGGER = '.tooltip-icon, .tooltip-container[data-tt-self], .table-header-tooltip';
   const noop = () => {};
 
   const textFor = trigger => {
@@ -78,7 +80,7 @@
       if (!c.querySelector('.tooltip-icon') && c.querySelector(':scope > .tooltip-text')) c.setAttribute('data-tt-self', '');
       else c.setAttribute('data-tt-skip', '');
     });
-    document.querySelectorAll(`.tooltip-icon:not([data-tt]), .tooltip-container[data-tt-self]:not([data-tt])`).forEach(enhance);
+    document.querySelectorAll(`.tooltip-icon:not([data-tt]), .tooltip-container[data-tt-self]:not([data-tt]), .table-header-tooltip:not([data-tt])`).forEach(enhance);
   }
 
   // Slides a tooltip back inside the window. Measured with any earlier shift undone, once it's open: a closed tooltip
@@ -105,13 +107,24 @@
       text.style.setProperty('--tt-maxh', `${Math.max(room, 160)}px`);
       text.classList.add('tt-scroll');
     }
+    // Inside the window, and inside a box that scrolls sideways around it (T-Score's tables, improvements F16 round 4),
+    // which would otherwise cut off a tooltip near its visible edge.
+    let minX = MARGIN, maxX = vw - MARGIN;
+    for (let el = text.parentElement; el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+      const ox = getComputedStyle(el).overflowX;
+      if (ox === 'visible') continue;
+      const c = el.getBoundingClientRect();
+      minX = Math.max(minX, c.left + 4);
+      maxX = Math.min(maxX, c.right - 4);
+      break;
+    }
     let dx = 0;
-    if (r.left < MARGIN) dx = MARGIN - r.left;
-    else if (r.right > vw - MARGIN) dx = (vw - MARGIN) - r.right;
+    if (r.left < minX) dx = minX - r.left;
+    else if (r.right > maxX) dx = Math.max(maxX - r.right, minX - r.left);
     if (dx) text.style.setProperty('--tt-dx', `${Math.round(dx)}px`);
   }
   const tipsOf = (el) => {
-    const container = el.closest && el.closest('.tooltip-container, .tooltip');
+    const container = el.closest && el.closest('.tooltip-container, .tooltip, .table-header-tooltip');
     return container ? container.querySelectorAll(':scope > .tooltip-text, :scope > .tooltip-icon + .tooltip-text') : [];
   };
 

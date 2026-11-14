@@ -12340,3 +12340,36 @@ round 2's render (the tooltips are closed in them). `CACHE_NAME` stays v2.10.9 (
 - The 1.5s hover linger (`LINGER_MS` in `js/shared/ui/tooltips.js`) is M3's tooltip timing, not a motion token: leave it.
 - Reduce Motion: the tooltips have no rule of their own yet; if M3 adds a site-wide reduced-motion rule, the 4px slide
   should go with it (the fade can stay).
+
+### F16, round 4: T-Score's column headers on phones and the keyboard (owner, 2026-11-14)
+
+**Why.** Found in round 3: `.table-header-tooltip` wasn't a trigger for `js/shared/ui/tooltips.js`, so the column-header
+tooltips opened on a mouse's hover only. A phone never showed them, and the keyboard couldn't reach them.
+
+**What changed.**
+- `js/shared/ui/tooltips.js`: `.table-header-tooltip` joins `TRIGGER`, `enhanceAll` and `tipsOf`. Each header gets
+  `tabindex="0"`, `role="button"` and `aria-describedby` pointing at its tooltip (its own text, "RZ TGTS", names it), so
+  it behaves like the (i)s: a tap toggles it, a tap elsewhere closes it, Tab shows it, Enter or Space toggles it, Escape
+  hides it. The headers don't sort or do anything else on a click.
+- `place` now keeps a tooltip inside the nearest ancestor that scrolls or clips sideways, as well as the window (4px in
+  from its edges). T-Score's tables scroll sideways in `.data-table-wrapper`, and on a phone 15 header tooltips near the
+  wrapper's visible edge were cut off by it. It also applies to the shared tooltip, which only moves when it would
+  otherwise be cut off.
+- `css/tscore.css`: the header tooltip opens on `:focus-visible` and `.mobile-visible` (keeping its own centring, which
+  the shared `.mobile-visible` rule's `transform` would undo), hides when dismissed while hovered, and takes `place`'s
+  `translate: var(--tt-dx)`.
+- docs/TESTING.md: the Open follow-up from round 3 is removed (done); the Tooltips convention mentions the headers and
+  the scroll-box rule. CHANGELOG: a line under Draft Strategist (T-Score's lines go there).
+
+**Tests.** `tooltip-closed-space.spec.mjs` adds: at 375px and 1280px, every visible column header on every T-Score tab
+tapped in turn (more than 20): its tooltip shows inside the window and inside its table's scroll box, screen readers get
+its text, and a second tap hides it. Before the `place` change it failed on phones with 15 "cut off by its table". On
+desktop: Tab shows a header's tooltip (role button), Escape hides it, Enter shows it again. `touch-targets` and
+`focus-ring` pass for T-Score with the headers now counted as buttons. Screenshots: all 44 identical to round 3's render.
+A phone screenshot by hand: "RZ TGTS", the last column of Values, opens "Red Zone Targets" slid left inside the table.
+
+**Checked.** check-precache OK; `node --test` passes; Playwright `tooltip-closed-space`, `tooltips-onscreen`,
+`touch-targets`, `focus-ring`, `smoke`, `support`, `mls-keyboard`, `tscore-inseason`, `tscore-refresh` at both widths: all pass.
+`CACHE_NAME` stays v2.10.9 (main is v2.10.8).
+
+**Left over.** Nothing for this round.

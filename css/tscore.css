@@ -77,6 +77,8 @@
     transition: opacity 0.2s ease, visibility 0.2s ease, display 0.2s allow-discrete;
     /* Improvements M3: M3's motion tokens here too (see the shared tooltip in css/base.css). */
     pointer-events: none;
+    /* Slid back inside the window by js/shared/ui/tooltips.js (place), as the shared tooltip is. */
+    translate: var(--tt-dx, 0px) 0;
 }
 
 /* Hover Trigger (and the 1.5s linger after the mouse leaves: css/base.css, tt-linger) */
@@ -86,6 +88,20 @@
     opacity: 1;
     @starting-style { opacity: 0; }
 }
+
+/* A tap or the keyboard opens it too (improvements F16, round 4): the header is a tooltip trigger in
+   js/shared/ui/tooltips.js (Tab shows it, Enter or Space toggles it, Escape hides it, a tap toggles it). The shared
+   .mobile-visible rule (css/base.css) shows it; this keeps the header tooltip's own centring and fade. */
+.table-header-tooltip:focus-visible .tooltip-text:not(.tt-dismissed),
+.table-header-tooltip .tooltip-text.mobile-visible {
+    display: block;
+    visibility: visible;
+    opacity: 1;
+    @starting-style { opacity: 0 !important; }
+}
+.table-header-tooltip .tooltip-text.mobile-visible { transform: translateX(-50%) !important; }
+.table-header-tooltip.align-right .tooltip-text.mobile-visible { transform: none !important; }
+.table-header-tooltip:hover .tooltip-text.tt-dismissed:not(.mobile-visible) { display: none; }
 
 /* Right-side Column Alignment (Prevents horizontal scrolling & right-edge clipping) */
 .table-header-tooltip.align-right .tooltip-text {

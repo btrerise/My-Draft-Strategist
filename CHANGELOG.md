@@ -20,6 +20,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   a little more room at the sides, a solid background and a softer shadow.
 - **T-Score's column headers.** The short explanations under a column's name (RZ TGTS: "Red Zone Targets") are a small
   light label with dark text, as Material 3 draws a short tooltip, and stay 1.5 seconds after the mouse moves off.
+- **T-Score's column headers work on phones and the keyboard.** Tap a column's name to see what it means, tap again to
+  close; with a keyboard, Tab to it to see it and Escape to hide it. Before, only a mouse could open them. One near the
+  table's edge opens inside the table instead of being cut off.
 - **No empty space under short pages.** A closed tooltip (the (i) notes and badge explanations) no longer takes room
   on the page, so a short page ends where its content does. Tooltips look and open as before.
 

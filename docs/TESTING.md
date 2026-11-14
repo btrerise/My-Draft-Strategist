@@ -306,6 +306,8 @@ shot and S10 took four runs for 14.)
   way needs both. `tooltip-closed-space.spec.mjs` measures every tab of the three pages with and without tooltips.
   A tooltip the mouse opened lingers 1.5s after the pointer leaves (`tt-linger`, Material 3), ended at once by another
   tooltip, a click or Escape; a rule that hides a tooltip with its own `display`/`visibility` needs a `.tt-linger` line.
+  T-Score's column headers (`.table-header-tooltip`) are triggers too (round 4): tap, Tab, Enter, Escape. `place` keeps
+  a tooltip inside the window and inside the nearest box that scrolls sideways around it (T-Score's tables).
 - **Touch targets, focus and press feedback** (improvements M2, Material 3): `css/base.css`'s last section gives every
   button, link, summary and `role=button` an invisible `::after` that grows it to 48x48px where it's smaller, one
   `:focus-visible` ring (2px green, 2px gap; text fields on their own border), and a `::before` state layer for hover
@@ -352,10 +354,6 @@ done or dropped, remove its line here in the same change. Background for each is
   blank page, so the badge legend isn't checked on phones any more. Before M17 the full 24,384px painted. Likely
   Chromium's limit for one full-page capture after M17's layout change; a fix is to shoot the Guide in two parts (or
   the legend on its own) in `visual.spec.mjs`, or find what M17 made too tall to paint.
-
-- **T-Score's column-header tooltips open on hover only** (improvements F16, round 3). `.table-header-tooltip` isn't a
-  trigger for `js/shared/ui/tooltips.js`, so a tap or the keyboard can't open them, and a phone never shows them. Making
-  the header text a trigger (`data-tt-self`-style, focusable, Enter and Escape) would bring them in line with the (i)s.
 
 **Needs the owner's decision first**
 - Manual leagues can't be dynasty (improvements S23, round 12). They have no league type, so they always count as

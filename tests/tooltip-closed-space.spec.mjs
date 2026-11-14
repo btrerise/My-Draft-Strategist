@@ -190,4 +190,57 @@ test.describe('Tooltips still open as before', () => {
         await expect(tip).toBeHidden({ timeout: 3000 });
         await expectClean(page, state);
     });
+
+    // Round 4: T-Score's column headers open on a tap and from the keyboard, not just a mouse's hover. Every header on
+    // every tab, tapped in turn: its tooltip shows, sits inside the window and inside its table's scroll box (which
+    // would cut it off), and screen readers get its text.
+    test('T-Score\'s column headers open on a tap, inside the window and their table', async ({ page }) => {
+        await at375(page);
+        const state = await openApp(page, '/t-score/');
+        const bad = [];
+        let tapped = 0;
+        for (const tab of TSCORE_TABS) {
+            await showTScoreTab(page, tab);
+            const heads = page.locator(`#${tab} .table-header-tooltip`);
+            for (let i = 0; i < await heads.count(); i++) {
+                const head = heads.nth(i);
+                if (!(await head.isVisible())) continue;
+                await head.scrollIntoViewIfNeeded();
+                await head.click();
+                const tip = head.locator('.tooltip-text');
+                await expect(tip).toBeVisible();
+                tapped++;
+                const r = await tip.evaluate(t => {
+                    const b = t.getBoundingClientRect(), w = t.closest('.data-table-wrapper')?.getBoundingClientRect();
+                    return { l: b.left, r: b.right, vw: document.documentElement.clientWidth, wl: w?.left, wr: w?.right, wb: w?.bottom, b: b.bottom, text: t.textContent.trim().slice(0, 30) };
+                });
+                if (r.l < -0.5 || r.r > r.vw + 0.5) bad.push(`${tab}: off screen ${Math.round(r.l)}..${Math.round(r.r)}: ${r.text}`);
+                if (r.wl !== undefined && (r.l < r.wl - 0.5 || r.r > r.wr + 0.5 || r.b > r.wb + 0.5)) bad.push(`${tab}: cut off by its table: ${r.text}`);
+                await expect(head).toHaveAccessibleDescription(r.text.length ? new RegExp('^' + r.text.slice(0, 12).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) : /./);
+                await head.click();
+                await expect(tip).toBeHidden();
+            }
+        }
+        expect(tapped).toBeGreaterThan(20);
+        expect(bad).toEqual([]);
+        await expectClean(page, state);
+    });
+
+    test('T-Score\'s column headers: Tab shows one, Escape hides it', async ({ page }) => {
+        test.skip(test.info().project.name === 'phone', 'a keyboard');
+        const state = await openApp(page, '/t-score/');
+        await showTScoreTab(page, 'top50Tab');
+        const head = page.locator('#top50Tab .table-header-tooltip').first();
+        await head.focus();
+        await page.keyboard.press('Shift+Tab');
+        await page.keyboard.press('Tab');
+        await expect(head).toBeFocused();
+        await expect(head).toHaveAttribute('role', 'button');
+        await expect(head.locator('.tooltip-text')).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(head.locator('.tooltip-text')).toBeHidden();
+        await page.keyboard.press('Enter');
+        await expect(head.locator('.tooltip-text')).toBeVisible();
+        await expectClean(page, state);
+    });
 });
