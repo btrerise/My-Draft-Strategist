@@ -12262,3 +12262,20 @@ league-week (1.6 MB, 150 requests for all 15 over 10 weeks).
 - Screenshots: the S34 base and this branch, rendered in the same container (`visual.spec.mjs`, `RENDER_ENV=any`), differ
   only in `desktop/` and `phone/mls-league-guide.png`: the legend's new "W Bid 9–14" line (desktop +103 px, phone
   +252 px). Re-taken on CI with `[update screenshots: …]`.
+- CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)"); I opened them. Desktop: the new "W Bid 9–14" row
+  under "too late for this week" (+103 px); above it identical apart from 1-level anti-aliasing in one line near the top;
+  below it the rest of the legend moved down by that height, its text a sub-pixel off (as in S34), then identical.
+  Phone: +229 px, identical where it paints (the legend sits in the screenshot's blank lower part, the M17 capture cut
+  in Open follow-ups).
+
+### Not done here, and left over
+- **The full suite** (`npm ci && npm run check`) hasn't run: per CLAUDE.md it runs once, when the owner asks for the pull
+  request, which should come after S34 merges and this branch is updated to main (then re-check `CACHE_NAME`).
+- **The weights are a first guess** (±6 ranks, median–75th, the 0.6–1.5 budget clamp, ×1.25 / ×1.5 need, up to ×1.5 by
+  the last week). A back-test like S34's round 8 (would the suggested low end have won each real claim?) could tune
+  them; the owner's transactions are in Sleeper's public API.
+- **Ranks are today's**, not when a bid was placed: a player who broke out after a cheap claim makes his band look
+  cheap. The tap text says so. Losing bids (failed claims) and how contested a player was aren't used.
+- **IndexedDB entries never expire**; they're a few hundred bytes per league-week, keyed by league id (a new season is a
+  new league id). Factory Reset's IndexedDB handling covers the whole database.
+- Top Available and the All Leagues search show no bid (they show no W chip either, S34's owner choice).
