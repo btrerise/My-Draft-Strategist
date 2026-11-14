@@ -143,6 +143,22 @@ const matchups3 = rosters3.map(r => {
     return { roster_id: r.roster_id, matchup_id: 1, points, starters, players: r.players, players_points, starters_points: starters.map(id => live1[id] ?? 0) };
 });
 
+// Sleeper's auto-subs (improvements F18, tests/mls-auto-sub.spec.mjs): CeeDee Lamb (6786, your FLEX) is inactive. In
+// Fixture League, which has auto-subs on (settings.max_subs), Sleeper has moved your sub Amon-Ra St. Brown (7547, DET)
+// into Lamb's slot: `starters` lists St. Brown, `points` counts his 24.0, and Lamb is on the bench with 0. Second Fixture
+// League has no auto-subs, so Lamb stays in FLEX on 0.0 and St. Brown's 24.0 is on the bench. Everything else is live1 /
+// live2. Sleeper's matchups never name the swap (docs/improvements/LOG.md, F18).
+const withLineup = (base, pts, swap = {}) => base.map(m => {
+    const starters = m.starters.map(id => swap[id] || id);
+    const players_points = Object.fromEntries(m.players.map(id => [id, pts[id] ?? 0]));
+    const starters_points = starters.map(id => pts[id] ?? 0);
+    const points = Math.round(starters_points.reduce((t, v) => t + v, 0) * 100) / 100;
+    return { ...m, starters, points, players_points, starters_points };
+});
+const leagueAutoSub = { ...league, settings: { ...league.settings, max_subs: 1 } };
+const matchupsAutoSub = withLineup(matchups, { ...live1, 6786: 0, 7547: 24 }, { 6786: '7547' });
+const matchups2Inactive = withLineup(matchups, { ...live2, 6786: 0, 7547: 24 });
+
 // Sleeper's stats for week 2 as the Scoreboard's MVPs & LVPs read them (improvements S22, round 8: one Boom / Bust verdict
 // per player on half-PPR points, the same in every league). Set apart from the leagues' own points on purpose: Lamb's 25.0
 // in Second Fixture League is 18.0 in half PPR (no boom), Allen 25.0 and Chase 21.0 are booms. A player whose game hasn't
@@ -194,6 +210,9 @@ const out = {
     'league3.json': league3,
     'league3-rosters.json': rosters3,
     'league3-matchups.json': matchups3,
+    'league-autosub.json': leagueAutoSub,
+    'league-matchups-autosub.json': matchupsAutoSub,
+    'league2-matchups-inactive.json': matchups2Inactive,
     'user.json': USERS[0],
     'user-leagues.json': [league],
     'trending-add.json': trendingAdd,
