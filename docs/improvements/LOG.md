@@ -11919,3 +11919,48 @@ the pull request.
 
 **Left over.** Nothing for this card. F19 (shorter tooltips) can start: it edits the same shared tooltip. A tooltip
 opened some new way (a new CSS open state) needs `display: block` and the `@starting-style`, as docs/TESTING.md says.
+
+### F16, round 2: tooltips checked against Material 3 Expressive (owner, 2026-11-14)
+
+**Ask.** The owner asked whether the tooltips follow Material 3 Expressive. m3.material.io's tooltip Guidelines, Specs and
+Accessibility pages were read in headless Chromium, and a throwaway spec (not committed) measured all 59 distinct
+tooltips on every tab of both apps and T-Score at 1280px. Verdict: they are M3 *rich* tooltips (explanations, opened by
+a click and kept open), and role, screen-reader text, keyboard, one-at-a-time and staying on screen already match.
+Off: (1) length (median 24 words, 18 over 40, 6 over 80, up to 324; no bullets) and (4) few subheads: F19's job;
+(2) no 1.5s linger after the mouse leaves; (3) shape and spacing (8px corners, 12px padding all round, a heavy shadow,
+see-through blur); (5) the click-to-keep tooltips also open on hover, which M3 reserves for transient ones: kept on
+purpose, it's useful on a computer; (6) motion: no motion tokens yet, the M3 card's job. Expressive itself changes
+shape and motion, not tooltips. **The owner chose to do (2) and (3) now.**
+
+**What changed.**
+- (2) `js/shared/ui/tooltips.js`: a `pointerout` from a mouse (not touch) that leaves a shown tooltip's host adds
+  `tt-linger` for 1.5s. Hovering another tooltip's host, keyboard focus on a trigger, any click or tap (`closeAll`) and
+  Escape end every linger at once, so only one tooltip shows at a time; Escape that only ended a linger doesn't reach a
+  dialog behind it. `css/base.css`: `.tt-linger` shows like the open states (also for T-Score's column headers,
+  `.table-header-tooltip`); `css/mls.css`: Power Rankings' cell tooltips (their own display: none rule) take it too.
+  Phones are unchanged: a tap opens, the next tap closes.
+- (3) `css/base.css`: the shared tooltip has 12px corners (M3 shape "medium"), 12px top / 16px sides / 8px bottom
+  padding, an opaque `rgb(15, 23, 42)` (was 95% with an 8px background blur) and elevation level 2's shadow
+  (`0 1px 2px rgba(0,0,0,.3), 0 2px 6px 2px rgba(0,0,0,.15)`; was `0 10px 25px rgba(0,0,0,.5)`). Colour and text size
+  unchanged (M14 brings the surface tokens).
+- One exception: at 480px and under, a wide tooltip (`tt-wide`, the window's width) keeps 12px sides. With 16px the
+  Scoreboard header's 197-word tip lost its last line at 375px and scrolled inside (16px over), which the owner reported
+  in S27; once F19 shortens it, the exception can go.
+- T-Score's column-header tooltips (`css/tscore.css`) are short labels, which M3 calls *plain* tooltips (4px corners,
+  8px padding, 24px tall, an inverse light box). They got the linger only; their look is left for the owner (below).
+- `CACHE_NAME` stays v2.10.8 (above main's v2.10.7). CHANGELOG: a line under each app. docs/TESTING.md's Tooltips line.
+
+**Tests.** `tooltip-closed-space.spec.mjs` adds: after the mouse leaves, the Scoreboard tip is still shown at 0.9s and
+gone by 3s; Escape ends a linger; on the Lineup tab hovering a second (i) hides the first at once, and a click ends the
+second's linger; and the computed corners, padding, background and no blur. **Screenshots:** all 44 identical to round
+1's render here (tooltips are closed in every baseline), so nothing to re-take.
+
+**Checked.** check-precache OK; `node --test` 640 pass; Playwright `tooltip-closed-space`, `tooltips-onscreen`, `smoke`,
+`touch-targets`, `mls-keyboard`, `focus-ring`, `badge-legend`, `mls-this-week`, `mls-past-trade`, `mls-trade-impact`,
+`mls-league-cards`, `mls-final-window`, `room-on-phones` at both widths: all pass.
+
+**Left over.**
+- F19: shorten the long tooltips with a subhead and bullets (M3's rich tooltip), then drop the 12px phone exception.
+- For the owner: T-Score's column headers as M3 plain tooltips (a light box with dark text, 4px corners), or kept dark
+  like the rest.
+- The M3 card (motion tokens): the tooltips' 0.2s fade and 4px slide should use them.

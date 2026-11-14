@@ -115,7 +115,34 @@
     return container ? container.querySelectorAll(':scope > .tooltip-text, :scope > .tooltip-icon + .tooltip-text') : [];
   };
 
+  // Material 3 (improvements F16, round 2): a tooltip the mouse opened stays 1.5s after the pointer leaves its trigger,
+  // so it can be read while the mouse moves on; opening another, a tap or click, or Escape ends it at once. Mouse only:
+  // phones open tooltips with a tap and close them with the next one. T-Score's column headers linger too.
+  const LINGER_MS = 1500;
+  const HOVER_HOST = '.tooltip-container, .tooltip, .table-header-tooltip';
+  const lingerTimers = new WeakMap();
+  function endLinger(except) {
+    document.querySelectorAll('.tooltip-text.tt-linger').forEach(t => {
+      if (except && except.contains(t)) return;
+      clearTimeout(lingerTimers.get(t));
+      t.classList.remove('tt-linger');
+    });
+  }
+  document.addEventListener('pointerout', e => {
+    if (e.pointerType !== 'mouse' || !e.target.closest) return;
+    const host = e.target.closest(HOVER_HOST);
+    if (!host || (e.relatedTarget && host.contains(e.relatedTarget))) return;
+    host.querySelectorAll(':scope > .tooltip-text, :scope > .tooltip-icon + .tooltip-text').forEach(t => {
+      if (t.classList.contains('mobile-visible') || t.classList.contains('tt-dismissed')) return;
+      if (getComputedStyle(t).visibility !== 'visible') return; // it wasn't showing (e.g. hidden by a narrow rule)
+      clearTimeout(lingerTimers.get(t));
+      t.classList.add('tt-linger');
+      lingerTimers.set(t, setTimeout(() => t.classList.remove('tt-linger'), LINGER_MS));
+    });
+  }, true);
+
   function closeAll(except) {
+    endLinger(null);
     document.querySelectorAll('.tooltip-text.mobile-visible').forEach(t => {
       if (t !== except) t.classList.remove('mobile-visible');
     });
@@ -158,9 +185,14 @@
       e.stopPropagation();
       toggle(trigger);
     } else if (e.key === 'Escape') {
+      const lingering = document.querySelector('.tooltip-text.tt-linger');
+      endLinger(null);
       const open = document.querySelectorAll('.tooltip-text.mobile-visible');
       const focusedText = onTrigger ? textFor(trigger) : null;
-      if (open.length === 0 && !(focusedText && !focusedText.classList.contains('tt-dismissed'))) return;
+      if (open.length === 0 && !(focusedText && !focusedText.classList.contains('tt-dismissed'))) {
+        if (lingering) e.stopPropagation();
+        return;
+      }
       closeAll(null);
       if (focusedText) focusedText.classList.add('tt-dismissed');
       // Only this Escape: keep it from also closing a menu or dialog behind the tooltip.
@@ -169,9 +201,14 @@
   }, true);
 
   // Hover (a mouse) and keyboard focus show a tooltip through CSS; place it as that starts.
-  document.addEventListener('mouseover', e => { tipsOf(e.target).forEach(place); }, true);
+  // A tooltip starting to show ends any other's linger, so only one is open at a time.
+  document.addEventListener('mouseover', e => {
+    const host = e.target.closest && e.target.closest(HOVER_HOST);
+    if (host) endLinger(host);
+    tipsOf(e.target).forEach(place);
+  }, true);
   document.addEventListener('focusin', e => {
-    if (e.target.matches && e.target.matches(TRIGGER)) place(textFor(e.target));
+    if (e.target.matches && e.target.matches(TRIGGER)) { endLinger(null); place(textFor(e.target)); }
   }, true);
 
   // Leaving a trigger resets it, so the next visit (focus or tap) starts from "closed".

@@ -72,7 +72,7 @@
     pointer-events: none;
 }
 
-/* Hover Trigger */
+/* Hover Trigger (and the 1.5s linger after the mouse leaves: css/base.css, tt-linger) */
 .table-header-tooltip:hover .tooltip-text {
     visibility: visible;
     opacity: 1;

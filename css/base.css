@@ -1286,13 +1286,15 @@ label.toggle-title,
    aria-describedby reads a hidden element. */
 .tooltip .tooltip-text, .tooltip-container .tooltip-text { 
     display: none; visibility: hidden; width: 260px; 
-    background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);
-    color: #f1f5f9; text-align: left; border-radius: 8px; padding: 12px; 
+    /* Material 3's rich tooltip (improvements F16, round 2): an opaque surface (no see-through blur), 12px corners
+       (shape "medium"), 12px top, 8px bottom and 16px side padding, and elevation level 2's shadow. */
+    background: rgb(15, 23, 42);
+    color: #f1f5f9; text-align: left; border-radius: 12px; padding: 12px 16px 8px; 
     position: absolute; z-index: 1001; top: calc(100% + 8px); right: -10px; 
     opacity: 0; transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
     transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease, display 0.2s allow-discrete;
     font-size: 0.85rem; font-weight: 400; 
-    border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+    border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15); 
     pointer-events: none; line-height: 1.5;
     transform: translateY(-4px);
     /* Kept inside the window (improvements S19, round 7): never wider than it, and slid sideways by --tt-dx, which
@@ -1332,7 +1334,20 @@ label.toggle-title,
 /* A long tooltip opens wider, and scrolls inside if it still runs past the window's bottom (js/shared/ui/tooltips.js,
    place; improvements S27 round 2). Set each time one is about to show, from its own length. */
 .tooltip .tooltip-text.tt-wide, .tooltip-container .tooltip-text.tt-wide { width: 480px; }
+/* On a phone a wide one fills the window, and M3's 16px sides cost the Scoreboard's 197-word tip its last line (it would
+   scroll inside at 375px): keep 12px there until F19 shortens it (improvements F16, round 2). */
+@media (max-width: 480px) {
+    .tooltip .tooltip-text.tt-wide, .tooltip-container .tooltip-text.tt-wide { padding-left: 12px; padding-right: 12px; }
+}
 .tooltip .tooltip-text.tt-scroll, .tooltip-container .tooltip-text.tt-scroll { max-height: var(--tt-maxh, 60vh); overflow-y: auto; overscroll-behavior: contain; pointer-events: auto; }
+
+/* Lingering after the mouse leaves (Material 3: a hovered tooltip stays 1.5s after the pointer leaves its trigger;
+   improvements F16, round 2). js/shared/ui/tooltips.js adds tt-linger as a mouse pointer leaves a shown tooltip's
+   trigger and takes it off after 1.5s, or at once when another tooltip opens, on any tap or click, or on Escape. */
+.tooltip .tooltip-text.tt-linger, .tooltip-container .tooltip-text.tt-linger,
+.table-header-tooltip .tooltip-text.tt-linger {
+    display: block; visibility: visible; opacity: 1; transform: translateY(0);
+}
 
 /* Mobile tap-to-toggle class */
 .tooltip-text.mobile-visible {

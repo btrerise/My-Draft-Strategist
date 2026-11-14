@@ -304,6 +304,8 @@ shot and S10 took four runs for 14.)
   A closed tooltip is `display: none` (improvements F16), so it takes no room; its open states set `display: block`
   with an `@starting-style` for the fade, and `place` measures it after it opens. A rule that opens a tooltip some new
   way needs both. `tooltip-closed-space.spec.mjs` measures every tab of the three pages with and without tooltips.
+  A tooltip the mouse opened lingers 1.5s after the pointer leaves (`tt-linger`, Material 3), ended at once by another
+  tooltip, a click or Escape; a rule that hides a tooltip with its own `display`/`visibility` needs a `.tt-linger` line.
 - **Touch targets, focus and press feedback** (improvements M2, Material 3): `css/base.css`'s last section gives every
   button, link, summary and `role=button` an invisible `::after` that grows it to 48x48px where it's smaller, one
   `:focus-visible` ring (2px green, 2px gap; text fields on their own border), and a `::before` state layer for hover

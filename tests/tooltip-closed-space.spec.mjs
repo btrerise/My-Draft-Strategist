@@ -110,8 +110,18 @@ test.describe('Tooltips still open as before', () => {
         await expect(tip).toBeVisible();
         // Placed as the hover starts: the long Scoreboard tip opens wider.
         await expect(tip).toHaveClass(/\btt-wide\b/);
+        // Material 3 (round 2): it stays 1.5s after the mouse leaves, then fades.
         await page.mouse.move(0, 0);
-        await expect(tip).toBeHidden();
+        await page.waitForTimeout(900);
+        await expect(tip).toBeVisible();
+        await expect(tip).toHaveClass(/\btt-linger\b/);
+        await expect(tip).toBeHidden({ timeout: 3000 });
+        // Escape ends a linger at once.
+        await icon.hover();
+        await page.mouse.move(0, 0);
+        await expect(tip).toHaveClass(/\btt-linger\b/);
+        await page.keyboard.press('Escape');
+        await expect(tip).not.toHaveClass(/\btt-linger\b/);
         await icon.focus();
         await page.keyboard.press('Shift+Tab');
         await page.keyboard.press('Tab');
@@ -119,6 +129,43 @@ test.describe('Tooltips still open as before', () => {
         await expect(tip).toBeVisible();
         await page.keyboard.press('Escape');
         await expect(tip).toBeHidden();
+        await expectClean(page, state);
+    });
+
+    test('one at a time: hovering another ends the first one\'s linger; a click ends it too', async ({ page }) => {
+        test.skip(test.info().project.name === 'phone', 'a mouse');
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await showTab(page, 'lineup');
+        const icons = page.locator('#lineupTab .tooltip-icon:visible');
+        expect(await icons.count()).toBeGreaterThanOrEqual(2);
+        const [a, b] = [icons.nth(0), icons.nth(1)];
+        const tipA = a.locator('xpath=following-sibling::*[1]');
+        const tipB = b.locator('xpath=following-sibling::*[1]');
+        await a.hover();
+        await expect(tipA).toBeVisible();
+        await b.hover();
+        await expect(tipB).toBeVisible();
+        await expect(tipA).not.toHaveClass(/\btt-linger\b/);
+        await expect(tipA).toBeHidden();
+        await page.mouse.move(0, 0);
+        await expect(tipB).toHaveClass(/\btt-linger\b/);
+        await page.mouse.click(2, 300);
+        await expect(tipB).not.toHaveClass(/\btt-linger\b/);
+        await expect(tipB).toBeHidden();
+        await expectClean(page, state);
+    });
+
+    // Material 3's rich tooltip (round 2): 12px corners; 12px top, 16px sides, 8px bottom; an opaque surface; a light shadow.
+    test('looks like Material 3\'s rich tooltip', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await showTab(page, 'scoreboard');
+        const style = await page.locator('#thisWeekCard .mls-week-head .tooltip-text').evaluate(t => {
+            const cs = getComputedStyle(t);
+            return { radius: cs.borderRadius, pad: cs.padding, bg: cs.backgroundColor, blur: cs.backdropFilter };
+        });
+        expect(style).toEqual({ radius: '12px', pad: '12px 16px 8px', bg: 'rgb(15, 23, 42)', blur: 'none' });
         await expectClean(page, state);
     });
 });
