@@ -12188,3 +12188,67 @@ out of the repo: it reads the owner's league data.)
   the "game started" lock isn't seen on Tuesday (drops still are). Small: nothing is "too late" then anyway.
 - Top Available and the All Leagues search have no chip (owner's choice); `waiverChipHTML` and `ctx.waiverStatusOf`
   are ready if wanted. S35 (FAAB bids) can reuse `recentDrops.js`'s fetch and `league.waivers.budget`.
+
+## S35 — A suggested FAAB bid
+
+Built on S34's branch (`claude/nifty-clarke-p7owoj`, not merged when this started; owner's choice "2", 2026-11-14).
+When S34 merges, this branch is updated to main and `CACHE_NAME` re-checked.
+
+**User-visible effect.** In Sleeper FAAB leagues, a player on waivers (S34's **W**) on the Dashboard's **Best
+available**, on **Auto-Find**'s cards and on **Check a List**'s free agents shows a suggested bid in the W chip's amber,
+dotted-underlined: **Bid 13–21**. An upgrade's line adds "(of your 63 left)" (its own row on phones, under "over …";
+Auto-Find and Check a List show it on a line under the verdict). A tap shows a toast: "Suggested bid 13–21 of your 63
+left (budget 100). Winning bids this season for an RB ranked 1–11 today: 4, median 12, top 30 (today's ranks; the bids
+were placed earlier). You have 63 left, the league averages 76: ×0.83 · 16 weeks left: ×1.03 · he'd start for you:
+×1.25. 1 team can outbid 21." Free agents get no bid (no claim needed); nor do players too late for this week, players
+in non-FAAB or manual leagues, or any league with no winning bid yet this season. On the Dashboard the bids appear a
+moment after the lines (the history loads after them). The Guide's legend has a line for it.
+
+**What the owner's leagues showed (weeks 1–10 of 2026, 15 FAAB leagues: 2 redraft, 1 guillotine, 12 dynasty).** About
+1,600 winning claims; 73% had a single bidder; the median winning bid is 0–2% of the budget in every league; players
+ranked high today went for much more (RB top 24: median ~28%; WR top 24: ~8%). Rosters carry
+`settings.waiver_budget_used` (the other name doesn't exist); `waiver_bid_min` is 0 or absent. Transactions are ~10 KB a
+league-week (1.6 MB, 150 requests for all 15 over 10 weeks).
+
+**Owner's decisions (sketch at 375px, 2026-11-14): "mostly as proposed", with two changes.**
+1. **Where:** Best available's lines and the Waiver Wire's rows (Auto-Find, Check a List), W players in FAAB leagues
+   only. The Dashboard loads every FAAB league's history after the chips; finished weeks kept in IndexedDB.
+2. **Model** (all as a share of the budget): comparable winning bids = same position, ranked within **±6** today (owner;
+   I proposed ±12); median to 75th percentile; widening below 4 comparables to the whole position, then the same ranks at
+   any position, then every claim (the tap text says which). × your left / league average left (0.6–1.5). × weeks left
+   up to 1.5 in the last week for redraft, **keeper (owner: like redraft)** and guillotine; dynasty flat. × 1.25 if he'd
+   start, × 1.5 if he fills an empty spot. Whole numbers, never above what you have; the top at least 1% of the budget
+   (at least 1) above the bottom, since most bids are 0 and a tie loses on waiver order.
+3. **A range.**
+4. **Top bidders:** in the tap text only ("2 teams can outbid 14").
+
+### What changed, and where
+- `js/mls/scout/faab.js` (new, pure): `winningBids`, `seasonLastWeek` (playoff start + rounds, else 17), `faabLeftFrom`,
+  `suggestBid` → `{ low, high, left, budget, scope, factor, outbid, reasons }` or `{ noHistory }`, `bidLabel`, `bidTip`.
+- `js/mls/scout/faabHistory.js` (new): `faabBidsFor(leagues, week)`: weeks 1 to now per FAAB league, 6 requests at a
+  time across leagues, cached for the visit; weeks two or more back kept in IndexedDB (`faab_bids_<league>_<week>` in
+  LineupStrategistDB's existing `sleeperData` store, as just `[{ p, b }]`; no new store, no localStorage key); this week's
+  and last week's reused from S34's drops fetch (`recentDrops.js` now keeps the raw lists: `recentTransactionList`).
+  `suggestBidFor(league, { pos, posRank, need }, posRankOf, week)` maps past bids to today's ranks with the caller's
+  rankings. On an error: null, a console warning, no bid, no toast.
+- `js/mls/leagues/sync.js`: `league.faabLeft` ({ rosterId: left }, FAAB leagues) and `league.lastWeek`; on the league
+  object, so Backup / Restore carries them. `waiverSettingsFrom` adds `minBid`.
+- `js/mls/scout/bestAvailable.js` (bids on W players, need from the upgrade; re-draws when the history arrives),
+  `waivers.js` (`faabBidHTML`, `wrapBid`, `ctx.bidHTML` by Rank By's position rank and the lineup verdict), `engine.js`
+  (Check a List), `badges.js` `faabBidMarkup`, `main.js` `explainBid` (a toast, like the chips), `css/mls.css`,
+  `js/mls/legend.js` (one line), `sw.js` (two new files; `CACHE_NAME` v2.10.9, above S34's v2.10.8; main is v2.10.7).
+
+### Tests
+- `tests/unit/faab.test.mjs` (11): the band, no history, one position missing (a TE: all positions near his rank; an
+  unranked TE: every bid), too few at his rank, a budget nearly spent and empty, weeks left (dynasty flat, redraft and
+  keeper up to ×1.5), need, a 1,000 budget league scaling like a 100 one, mostly-zero bids, missing inputs, the readers.
+- `tests/mls-faab-bid.spec.mjs` (4, both widths) with `fixtures/sleeper/league-transactions-faab.json` (from
+  `make-fixtures.mjs`: four RB bids near Cook, a failed bid that doesn't count, a WR claim, a free-agent add): the bid on
+  Best available, the tap text, the stored budgets, Auto-Find and Check a List; no history (no bid); history failing (no
+  bid, no toast); a non-FAAB league (W, no bid).
+- `mls-waiver-status.spec.mjs` and `unit/waiverStatus.test.mjs`: the stored waiver settings now include `minBid: 0`.
+- Found while running the neighbouring specs: before Sleeper's week is known, `faabBidsFor` returns at once, so Best
+  available drew itself again and again (12 specs timed out with a busy page). Now it reads the history only once the
+  week is known, and draws again only when that read loaded something. Then check-precache, `node --test` (680) and
+  `mls-faab-bid` with the Best available, waiver, Scout, past-trade, league-card, auto-sub, Backup, key-migration, badge
+  legend, smoke and touch-target specs: 135 passed.

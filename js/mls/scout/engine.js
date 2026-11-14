@@ -7,7 +7,7 @@ import { posRankTag, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, rankingIndex } from '../helpers.js';
 import { ensureSleeperPosByName, findClosestRankedName, sleeperPosByName } from '../players.js';
-import { getSleeperMetaByName, buildWaiverContext, pastedRosterVerdict, resolveWaiverBasis, waiverCompareText, waiverDerivedNotes, waiverChipHTML, waiverRanksRowHTML, waiverVerdictParts, WAIVER_SOS_OPTS } from './waivers.js';
+import { getSleeperMetaByName, buildWaiverContext, pastedRosterVerdict, resolveWaiverBasis, waiverCompareText, waiverDerivedNotes, waiverChipHTML, waiverRanksRowHTML, waiverVerdictParts, WAIVER_SOS_OPTS, wrapBid } from './waivers.js';
 import { getSoSBadgeHTML } from '../sos.js';
 import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js';
 import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
@@ -263,6 +263,8 @@ import { normalizeName } from '../../shared/names.js';
                         ? `<div class="scout-status status-avail mls-nowrap">Free Agent</div><div class="mls-scan-pill-stack">${pill}</div>`
                         : `<div class="scout-status mls-status-unknown mls-nowrap" title="${notYoursTitle}">Not Yours</div><div class="mls-scan-pill-stack">${pill}</div>`;
                     if (line) verdictLineHTML = `<div class="mls-scan-verdict">${line}</div>`;
+                    // A suggested FAAB bid (improvements S35), in a synced FAAB league, for a player on waivers.
+                    if (knowsWholeLeague) verdictLineHTML += wrapBid(waiverCtx.bidHTML(clean, pos, row.verdict));
                 }
             }
             let rosSortRank = (rRank !== "UR") ? rRank : Infinity;

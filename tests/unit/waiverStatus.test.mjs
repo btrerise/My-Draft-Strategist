@@ -28,7 +28,7 @@ describe('waiverSettingsFrom', () => {
         assert.equal(faab2.type, 'faab');
         assert.equal(rolling1.type, 'rolling');
         assert.equal(waiverSettingsFrom({ waiver_type: 1 }).type, 'reverse');
-        assert.deepEqual(faab2, { type: 'faab', budget: 100, clearDays: 2, dayOfWeek: 2, daily: false, hour: 0, days: 5461 });
+        assert.deepEqual(faab2, { type: 'faab', budget: 100, minBid: 0, clearDays: 2, dayOfWeek: 2, daily: false, hour: 0, days: 5461 });
     });
     test('null without waiver settings', () => {
         assert.equal(waiverSettingsFrom(null), null);

@@ -9,6 +9,15 @@ import { getSleeperPlayerMap, getSleeperTransactions } from '../../shared/api/sl
 
 const PARALLEL = 8; // leagues fetched at once (two requests each; round 5: 4 made 20 leagues take 1 to 3 s)
 const cache = new Map(); // leagueId -> { key, promise }
+// The raw transaction lists read for drops, { leagueId: { week: list } }, so the FAAB history (scout/faabHistory.js,
+// improvements S35) reuses this week's and last week's instead of asking Sleeper again.
+const rawLists = new Map();
+
+// This visit's transactions for a league's week, if the drops fetch read them (else undefined).
+export function recentTransactionList(leagueId, week) {
+    const byWeek = rawLists.get(leagueId);
+    return byWeek ? byWeek[week] : undefined;
+}
 
 // { cleanName: dropped at (ms) } from Sleeper transactions: the latest completed drop of each player. A guillotine
 // league's cut (type 'chopped', round 6) is { at, chopped: true }: those players clear at the next weekly run, whatever
@@ -33,7 +42,12 @@ const eligible = (league) => !!(league && league.waivers && league.leagueId && !
 function load(league, week) {
     const weeks = [week, week - 1].filter(w => w >= 1);
     return Promise.all([Promise.all(weeks.map(w => getSleeperTransactions(league.leagueId, w))), getSleeperPlayerMap()])
-        .then(([lists, map]) => dropsFromTransactions(lists, map))
+        .then(([lists, map]) => {
+            const byWeek = {};
+            weeks.forEach((w, i) => { byWeek[w] = lists[i]; });
+            rawLists.set(league.leagueId, byWeek);
+            return dropsFromTransactions(lists, map);
+        })
         .catch(e => {
             console.warn(`Couldn't read ${league.name || league.leagueId}'s transactions; no waiver chips there.`, e);
             return null;

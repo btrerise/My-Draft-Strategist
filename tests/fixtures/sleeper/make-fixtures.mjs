@@ -201,6 +201,19 @@ const failedClaim = { transaction_id: '3000000000000000002', type: 'waiver', sta
 const cookDrop = { transaction_id: '3000000000000000003', type: 'free_agent', status: 'complete', leg: 2, roster_ids: [2],
     adds: null, drops: { 8138: 2 }, draft_picks: [], created: Date.parse('2026-09-19T16:00:00Z'), status_updated: Date.parse('2026-09-19T16:00:00Z') };
 
+// FAAB claims in week 1 (improvements S35, tests/mls-faab-bid.spec.mjs): winning bids on four RBs ranked near James
+// Cook (RB5 in the spec's rankings: McCaffrey 30, Achane 12, Kyren Williams 8, Chase Brown 20), a losing bid that doesn't
+// count, a WR claim and a free-agent add with no bid. The fixture league has a 100 budget.
+const faabClaim = (n, pid, roster, bid, status = 'complete') => ({ transaction_id: `30000000000000001${n}`, type: 'waiver', status, leg: 1,
+    roster_ids: [roster], adds: { [pid]: roster }, drops: null, draft_picks: [], settings: { waiver_bid: bid },
+    created: Date.parse('2026-09-15T20:00:00Z'), status_updated: Date.parse('2026-09-16T07:05:00Z') });
+const faabClaims = [
+    faabClaim(10, '4034', 2, 30), faabClaim(11, '9226', 2, 12), faabClaim(12, '9226', 1, 40, 'failed'),
+    faabClaim(13, '8150', 1, 8), faabClaim(14, '9224', 2, 20), faabClaim(15, '10229', 1, 3),
+    { transaction_id: '3000000000000000116', type: 'free_agent', status: 'complete', leg: 1, roster_ids: [1], adds: { 9997: 1 },
+        drops: null, draft_picks: [], created: Date.parse('2026-09-17T20:00:00Z'), status_updated: Date.parse('2026-09-17T20:00:00Z') },
+];
+
 const out = {
     'players-nfl.json': players,
     'league.json': league,
@@ -211,6 +224,7 @@ const out = {
     'league-transactions.json': [],
     'league-transactions-trade.json': [tradeTx, failedClaim],
     'league-transactions-drop.json': [cookDrop],
+    'league-transactions-faab.json': faabClaims,
     'league-rosters-traded.json': rostersTraded,
     'league-matchups-live.json': withPoints(live1),
     'league-matchups-final.json': withPoints({ ...live1, 6794: 20 }),

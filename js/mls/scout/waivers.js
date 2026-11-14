@@ -18,9 +18,11 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 import { isPreferredSleeperEntry } from '../players.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
-import { scoutPillMarkup, tierGapMarkup, waiverChipMarkup } from '../badges.js';
+import { faabBidMarkup, scoutPillMarkup, tierGapMarkup, waiverChipMarkup } from '../badges.js';
+import { bidLabel, bidTip } from './faab.js';
 import { isWeekOver, shortWhen, waiverStatus, waiverStatusText } from './waiverStatus.js';
 import { recentDropsFor } from './recentDrops.js';
+import { faabBidsFor, suggestBidFor } from './faabHistory.js';
 import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---
@@ -321,6 +323,16 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         return st ? waiverChipMarkup(st.status, escapeHtml(waiverStatusText(st))) : '';
     }
 
+    // A suggested FAAB bid (improvements S35, scout/faab.js): "Bid 9–14", or with long "Bid 9–14 (of your 63 left)";
+    // a tap says what it's based on. '' when there's no suggestion (not FAAB, no history yet).
+    export function faabBidHTML(s, { long = false } = {}) {
+        if (!s || s.noHistory) return '';
+        return faabBidMarkup(`${bidLabel(s)}${long ? ` (of your ${s.left} left)` : ''}`, escapeHtml(bidTip(s)));
+    }
+
+    // The bid's own line under a card's verdict (S35).
+    export const wrapBid = (html) => (html ? `<div class="mls-scan-bid">${html}</div>` : '');
+
     export function freeAgentPlayer(fa, meta) {
         const m = (meta && meta[fa.cleanName]) || {};
         return { id: m.id || `fa:${fa.cleanName}`, name: fa.name, cleanName: fa.cleanName, pos: fa.pos, team: m.team || null, inj: m.inj || null };
@@ -334,7 +346,9 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     export async function buildWaiverContext(league) {
         let meta = {};
         // This league's recent drops, for Free agent or Waivers (improvements S34); {} for a league without them.
-        const [metaResult, dropsResult] = await Promise.allSettled([getSleeperMetaByName(), recentDropsFor(isFullyMappedLeague(league) ? [league] : [], State.currentNflWeek)]);
+        // And a FAAB league's bid history (improvements S35), for the suggested bid; a failure only leaves the bid out.
+        const mapped = isFullyMappedLeague(league) ? [league] : [];
+        const [metaResult, dropsResult] = await Promise.allSettled([getSleeperMetaByName(), recentDropsFor(mapped, State.currentNflWeek), faabBidsFor(mapped, State.currentNflWeek)]);
         if (metaResult.status === 'fulfilled') meta = metaResult.value;
         else console.warn('Waiver scan: Sleeper player map unavailable, falling back to league/market positions.', metaResult.reason);
         const drops = dropsResult.status === 'fulfilled' ? dropsResult.value[league.leagueId] || null : null;
@@ -390,12 +404,23 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         };
 
         const scan = resolveWaiverBasis();
+        const scanDisplay = scan && scan.basis === 'ros' ? (scan.season ? buildRankDisplayIndex(scan.rankings, getPos) : rosDisplay) : wkDisplay;
+
+        // A suggested FAAB bid for a player on waivers who can still help this week (improvements S35), matched by his
+        // Rank By position rank; raised when the lineup check says he'd start or fills an empty spot. '' otherwise.
+        const bidHTML = (cleanName, pos, verdict) => {
+            const st = waiverStatusOf(cleanName);
+            if (!st || st.status !== 'waivers' || st.tooLateThisWeek) return '';
+            const posRankOf = (c) => (scanDisplay[c] && scanDisplay[c].posRank) || null;
+            const need = verdict && verdict.status === 'starts' ? (verdict.displaced ? 'starts' : 'empty') : null;
+            return faabBidHTML(suggestBidFor(league, { pos, posRank: posRankOf(cleanName), need }, posRankOf, State.currentNflWeek), { long: true });
+        };
 
         // *Cross: which number a cross-position head-to-head (FLEX slot, WR vs RB) is shown in.
         // Weekly files carry a FLEX list, so 'flex'; ROS files carry Overall instead, so
         // 'overall' -- "ROS Flex" isn't a number any ROS source actually publishes.
         return {
-            league, meta, getPos, evaluate, hasPlayed, lineupReady, checkIsWeekly, waiverStatusOf,
+            league, meta, getPos, evaluate, hasPlayed, lineupReady, checkIsWeekly, waiverStatusOf, bidHTML,
             checkLabel: checkIsWeekly ? 'Wk' : seasonRankings === State.rosRankings ? rosName(false) : 'In-Season',
             // The same, written out for the notes ("using In-Season ranks"; S23, round 5).
             checkName: checkIsWeekly ? 'Weekly' : seasonRankings === State.rosRankings ? rosName(false) : 'In-Season',
@@ -403,7 +428,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
             checkCross: checkIsWeekly ? 'flex' : 'overall',
             wkDisplay, rosDisplay, rosByName,
             scan,
-            scanDisplay: scan && scan.basis === 'ros' ? (scan.season ? buildRankDisplayIndex(scan.rankings, getPos) : rosDisplay) : wkDisplay,
+            scanDisplay,
             scanCross: scan && scan.basis === 'ros' ? 'overall' : 'flex'
         };
     }
@@ -718,6 +743,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
                 <div class="mls-player-badges-row">${waiverChipHTML(ctx.waiverStatusOf(fa.cleanName))}${injBadge}${getByeBadgeHTML(player.team)}${getGameInfoHTML(player.team, waiverOpponentPlayer(ctx, fa.cleanName, player))}${getSoSBadgeHTML(player.team, player.pos, WAIVER_SOS_OPTS)}</div>
                 ${waiverRanksRowHTML(ctx, fa.cleanName, player.pos)}
                 ${shownLine ? `<div class="mls-scan-verdict">${shownLine}</div>` : ''}
+                ${ctx.bidHTML ? wrapBid(ctx.bidHTML(fa.cleanName, player.pos, verdict)) : ''}
             </div>
             <div class="mls-text-right">${pill}</div>
         </div>`;

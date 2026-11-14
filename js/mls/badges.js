@@ -225,3 +225,11 @@ export function waiverChipMarkup(status, tip, { sample = false } = {}) {
     if (sample) return `<span class="${cls}">${inner}</span>`;
     return `<button type="button" class="${cls}" data-action="explainWaiver" data-tip="${tip}" title="${tip}" aria-label="${tip}">${inner}</button>`;
 }
+
+// --- A SUGGESTED FAAB BID (improvements S35; scout/waivers.js faabBidHTML) ---
+// "Bid 9–14" after a W chip in a FAAB league (Best available, Auto-Find, Check a List); an upgrade's line says "(of your
+// 63 left)" too. Tap for what it's based on. label: plain text; tip: escaped.
+export function faabBidMarkup(label, tip, { sample = false } = {}) {
+    if (sample) return `<span class="mls-faab-bid">${label}</span>`;
+    return `<button type="button" class="mls-faab-bid" data-action="explainBid" data-tip="${tip}" title="${tip}" aria-label="${label}: ${tip}">${label}</button>`;
+}

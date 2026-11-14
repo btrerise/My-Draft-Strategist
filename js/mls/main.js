@@ -191,6 +191,8 @@ const clickActions = {
     explainSoS() { explainSoS(this); },
     // The Free agent / Waivers chip (improvements S34): its tip as a toast, like SoS.
     explainWaiver() { explainSoS(this); },
+    // A suggested FAAB bid (improvements S35): what it's based on, as a toast.
+    explainBid() { explainSoS(this); },
     openRankingSetLeagues() { openRankingSetLeagues(this.dataset.type); },
     // "View" beside "Choose leagues…": the set, read-only, in the shared sheet (rankings/setView.js, improvements S30).
     viewRankingSet() { openRankingSetView(this, this.dataset.type, this.dataset.slot || null); },
