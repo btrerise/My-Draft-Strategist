@@ -1818,6 +1818,8 @@ button.mls-wv-chip { font-family: inherit; line-height: inherit; cursor: pointer
 .mls-ba-player.is-late { opacity: 0.55; }
 .mls-ba-player.is-late .mls-ba-name { font-weight: 400; }
 .mls-ba-late { font-size: 0.78rem; color: var(--text-muted); font-style: italic; }
+/* An upgrade on waivers: until when, on his own line, in the W chip's amber (round 3). */
+.mls-ba-wv-when { color: #fbbf24; white-space: nowrap; }
 @media (max-width: 600px) {
     .mls-ba-player.is-late-upgrade { flex-basis: 100%; }
     .mls-ba-player.is-late-upgrade .mls-ba-late { flex-basis: 100%; padding-left: calc(14px + 0.3rem); order: 1; }

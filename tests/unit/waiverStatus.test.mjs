@@ -57,9 +57,12 @@ describe('waiverStatus', () => {
         assert.equal(st.kickoff, Date.parse(kickoffs.DAL));
     });
 
-    test('no transactions (null drops) or no settings: no answer', () => {
+    test('no transactions (null drops), no settings, or no kickoff times: no answer', () => {
         assert.equal(waiverStatus(dowdle, faab2, null, kickoffs, PT('2026-11-14T12:00:00')), null);
         assert.equal(waiverStatus(dowdle, null, {}, kickoffs, PT('2026-11-14T12:00:00')), null);
+        // Round 3: without kickoffs a Sunday-afternoon "add now" could be wrong, so no chip at all.
+        assert.equal(waiverStatus(dowdle, faab2, {}, null, PT('2026-11-15T14:00:00')), null);
+        assert.equal(waiverStatus(dowdle, faab2, {}, {}, PT('2026-11-15T14:00:00')), null);
     });
 
     test('dropped yesterday in a 2-day league: waivers, clears 2 days after the drop', () => {
@@ -138,6 +141,9 @@ describe('waiverStatusText', () => {
         assert.equal(waiverStatusText(locked, tz), 'On waivers until Wed 12 AM (FAAB). Dropped Sat 8 AM; locked at his Sun 10 AM kickoff. Too late for this week.');
         const clock = waiverStatus(dowdle, rolling1, { ricodowdle: PT('2026-11-12T17:08:00') }, kickoffs, PT('2026-11-13T12:00:00'));
         assert.equal(waiverStatusText(clock, tz), 'On waivers until about Fri 5:08 PM (rolling). Dropped Thu 5:08 PM.');
+        // Tuesday, every game over (round 3: "His game has started" read oddly then).
+        const tue = waiverStatus(dowdle, faab2, {}, kickoffs, PT('2026-11-17T10:00:00'));
+        assert.equal(waiverStatusText(tue, tz), 'On waivers until Wed 12 AM (FAAB), like everyone who played this week.');
         const free = waiverStatus(dowdle, faab2, {}, kickoffs, PT('2026-11-14T12:00:00'));
         assert.equal(waiverStatusText(free, tz), 'Free agent: add now, until his Sun 10 AM kickoff.');
         assert.equal(waiverStatusText({ status: 'free', kickoff: null }, tz), 'Free agent: add now, no claim needed.');

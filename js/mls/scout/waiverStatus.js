@@ -85,6 +85,9 @@ const toMs = (v) => (v == null ? null : (typeof v === 'number' ? v : (Number.isF
 // kickoff, claimType }. reason: 'dropped' | 'played' (waivers) or null (free agent).
 export function waiverStatus(player, waivers, drops, kickoffs, now) {
     if (!player || !waivers || !drops) return null;
+    // No kickoff times (ESPN's scoreboard didn't load): the app can't tell who has played, and a wrong "add now" is worse
+    // than no chip (round 3), so no answer, as when the transactions fail.
+    if (!kickoffs || Object.keys(kickoffs).length === 0) return null;
     const claimType = waivers.type;
     const ko = toMs(kickoffs && player.team ? kickoffs[player.team] : null);
     const allKickoffs = Object.values(kickoffs || {}).map(toMs).filter(v => v != null);
@@ -111,9 +114,9 @@ export function waiverStatus(player, waivers, drops, kickoffs, now) {
             if (run >= dropClears) { clearsAt = run; atRun = true; }
         }
     }
-    if (clearsAt == null) return { status: 'free', clearsAt: null, tooLateThisWeek: false, reason: null, atRun, kickoff: ko, claimType };
+    if (clearsAt == null) return { status: 'free', clearsAt: null, tooLateThisWeek: false, reason: null, atRun, weekOver, kickoff: ko, claimType };
     const tooLateThisWeek = !weekOver && ko != null && ko < clearsAt;
-    return { status: 'waivers', clearsAt, tooLateThisWeek, reason, atRun, kickoff: ko, droppedAt: reason === 'dropped' ? dropped : null, claimType };
+    return { status: 'waivers', clearsAt, tooLateThisWeek, reason, atRun, weekOver, kickoff: ko, droppedAt: reason === 'dropped' ? dropped : null, claimType };
 }
 
 // "Wed 12 AM", "Sat 5 PM", "Sun 1:25 PM", in the viewer's time zone (tz for tests).
@@ -139,6 +142,9 @@ export function waiverStatusText(st, tz) {
     const head = `On waivers until ${st.atRun ? '' : 'about '}${shortWhen(st.clearsAt, tz)} (${type}).`;
     const dropped = st.droppedAt != null ? `Dropped ${shortWhen(st.droppedAt, tz)}` : null;
     let why;
+    // Once the week's games are over everyone who played is on waivers until the run (round 3: "His game has started"
+    // read oddly on a Tuesday).
+    if (st.reason === 'played' && st.weekOver) return `On waivers until ${shortWhen(st.clearsAt, tz)} (${type}), like everyone who played this week.`;
     if (st.reason === 'played') why = 'His game has started.';
     else if (st.atRun && st.kickoff != null) why = `${dropped || 'Dropped lately'}; locked at his ${shortWhen(st.kickoff, tz)} kickoff.`;
     else why = `${dropped || 'Dropped lately'}.`;

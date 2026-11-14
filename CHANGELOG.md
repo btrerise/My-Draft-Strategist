@@ -180,8 +180,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   until Wed 12 AM (FAAB). His game has started."). On Weekly, an upgrade who's on waivers and plays before the
   claim runs is greyed with "too late for this week", no longer counts toward the card's "1 upgrade" (the card reads
   "No upgrade this week · 1 too late"), and the next free agent at his position is checked instead; players who can't
-  play for you this week drop off the line. Auto-Find and Check a List agree: such a player reads **Too Late** instead of Would Start. Manual
-  leagues show neither chip. A league synced before this change gets the chips at its next sync.
+  play for you this week drop off the line. Auto-Find and Check a List agree: such a player reads **Too Late** instead of Would Start. An upgrade
+  on waivers says until when on its own line ("over Derrick Henry RB8 · waivers until about Thu 10 PM"). Manual
+  leagues show neither chip, and no chip shows while the week's kickoff times haven't loaded. A league synced before this change gets the chips at its next sync.
 - **A chance to win is red when you're not favored.** On the Scoreboard's league tiles, Still in play, the Final
   Window and the Lineup tab's matchup line, "74% to win" stays green and "26% to win" is now red. Before, every chance
   was green, so a 3% long shot on a losing matchup read like good news.

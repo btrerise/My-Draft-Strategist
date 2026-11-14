@@ -91,7 +91,7 @@ import { isDraftPickName } from '../trade/valueCurve.js';
 import { applyDefaultFolds, showTab, switchActiveLeague } from '../main.js';
 import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
 import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
-import { waiverStatus } from './waiverStatus.js';
+import { shortWhen, waiverStatus } from './waiverStatus.js';
 import { recentDropsFor } from './recentDrops.js';
 import { waiverChipHTML } from './waivers.js';
 
@@ -313,13 +313,19 @@ import { waiverChipHTML } from './waivers.js';
 
     const overText = (u) => (u.emptySlot ? 'fills an empty lineup spot'
         : `over ${escapeHtml(u.bench.name)} ${u.benchRank ? rankText(u.benchPos, u.benchRank) : '(unranked)'}`);
+    // An upgrade on waivers says until when on his own line (round 3): it's the one time the timing changes what you do
+    // (put in a claim, or wait and add him). "· waivers until about Thu 10 PM".
+    // Alone (lead: false) when the "over …" is said once above the list for upgrades sharing a target.
+    const waiverWhen = (st, lead = true) => (st && st.status === 'waivers' && !st.tooLateThisWeek
+        ? `${lead ? ' ' : ''}<span class="mls-ba-wv-when">${lead ? '&middot; ' : ''}waivers until ${st.atRun ? '' : 'about '}${escapeHtml(shortWhen(st.clearsAt))}</span>` : '');
 
     function playerHTML(a, { fa, upgrade, late, status }) {
         const inj = a.inj(fa.cleanName);
         // A shared target is said once, above the list (sharedNotes). An upgrade too late for this week says so instead
         // (S34): he's on waivers and plays before the claim runs.
         const over = late ? `<span class="mls-ba-late">too late for this week</span>`
-            : upgrade && a.shownTargets[upgrade.target] === 1 ? `<span class="mls-ba-over">${overText(upgrade)}</span>` : '';
+            : upgrade && a.shownTargets[upgrade.target] === 1 ? `<span class="mls-ba-over">${overText(upgrade)}${waiverWhen(status)}</span>`
+            : upgrade && waiverWhen(status) ? `<span class="mls-ba-over">${waiverWhen(status, false)}</span>` : '';
         const muted = late ? ' is-late' : '';
         const dismiss = `<button type="button" class="btn-bare mls-ba-dismiss" data-action="dismissBestAvailable" data-league-id="${escapeHtml(a.league.leagueId)}" data-player="${escapeHtml(fa.cleanName)}" aria-label="Not interested in ${escapeHtml(fa.name)} (hide him here this week)" title="Not interested (hide this week)">${DISMISS_ICON}</button>`;
         return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}${late ? ' is-late-upgrade' : ''}${muted}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${waiverChipHTML(status)}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${late ? `${over}${dismiss}` : `${dismiss}${over}`}</li>`;
@@ -413,8 +419,8 @@ import { waiverChipHTML } from './waivers.js';
         // The toolbar's part: the switch and the summary, only with a Sleeper-synced league to show.
         if (toolbar) toolbar.hidden = synced.length === 0;
         const dismissedAll = synced.length > 0 ? currentDismissed() : {};
-        // This week's kickoffs, only when they're this week's (S34).
-        const kickoffs = State.gameTimesFetchedForWeek === State.currentNflWeek ? State.gameTimesByTeam : {};
+        // This week's kickoffs, only when they're this week's (S34); none, no chips (round 3).
+        const kickoffs = State.gameTimesFetchedForWeek === State.currentNflWeek ? State.gameTimesByTeam : null;
         const wctx = { drops, kickoffs, now: Date.now() };
         const analyses = new Map(synced.map(l => [l.leagueId, analyzeLeague(l, meta, dismissedAll, wctx)]));
         if (summary) summary.textContent = synced.length > 0 ? summaryText([...analyses.values()]) : '';

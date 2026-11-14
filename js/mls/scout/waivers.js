@@ -339,7 +339,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         // Free agent or waivers for an unrostered player: null when the app can't tell (no chip then).
         const waiverStatusOf = (cleanName) => {
             const m = meta[cleanName];
-            const kickoffs = State.gameTimesFetchedForWeek === State.currentNflWeek ? State.gameTimesByTeam : {};
+            const kickoffs = State.gameTimesFetchedForWeek === State.currentNflWeek ? State.gameTimesByTeam : null;
             return isFullyMappedLeague(league) ? waiverStatus({ cleanName, team: m ? m.team : null }, league.waivers, drops, kickoffs, Date.now()) : null;
         };
 

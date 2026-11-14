@@ -11776,7 +11776,40 @@ waivers clause (phone +21 px, desktop the same height: its second row of pills w
 the fixtures (F18's `league-autosub.json` gains the waiver settings), and re-ran `mls-auto-sub`, `mls-this-week`,
 `mls-mvp-lvp`, `mls-waiver-status`, `mls-best-available` (96 passed) and `node --test` (657).
 
+### Round 3: a second review as a user (owner: do 2–4, and check Sleeper's week)
+
+I tried Thursday after a Tuesday-night drop, Sunday at 3 PM and Tuesday with every game over, in Eastern time.
+Thursday and Sunday were right. The owner asked for three changes, and a check on point 1:
+1. **Not done here: Tuesday says "No upgrade this week".** Tuesday night is when people set claims, but S5's Weekly
+   rule asks "would he start?" and every game this week has kicked off, so nobody can start. It's the upgrade rule
+   (out of this card's scope); the owner asked first for a check of when Sleeper's week changes.
+   - **Sleeper's week flips on Wednesday at about 12 AM PT, with the weekly run, not on Tuesday.** Every transaction
+     carries the week (`leg`) it was filed in. In the owner's 10 leagues (weeks 7–10, ~900 moves): week 7 ran from
+     Wed 10/21 12:14 AM PT to Tue 10/27 11:44 PM PT, week 8 from Wed 10/28 12:13 AM PT to Tue 11/03 11:23 PM PT, week 9
+     from Wed 11/04 12:20 AM PT to Wed 11/11 12:11 AM PT, week 10 from Wed 11/11 12:11 AM PT. Sleeper doesn't document
+     the state endpoint's rollover (a web search found only "use display_week"); `state/nfl` read week 10 on Fri 11/13.
+     So on Tuesday the app's week is the finished one, and its kickoffs are all in the past.
+   - Two scheduled checks of `state/nfl` (Tue 11/17 8:30 PM PT and Wed 11/18 1 AM PT) confirm the endpoint flips with
+     `leg`; their readings go here.
+   - What it means for a fix: from the week's last game until Wednesday's run, the Weekly check could ignore kickoff
+     locks (the week is over, and the claims are for next week). Left for the owner to place (here or its own card).
+2. **Tuesday's text:** "On waivers until Wed 3 AM (FAAB), like everyone who played this week." instead of "His game
+   has started." (`waiverStatus` returns `weekOver`).
+3. **An upgrade on waivers says until when** on its own line, in the W chip's amber: "over Derrick Henry RB8 ·
+   waivers until about Thu 10 PM" (or "waivers until Wed 12 AM" when it's the weekly run). Not for a too-late one
+   (his line says that).
+4. **No kickoff times, no chips.** If ESPN's scoreboard doesn't load, the app can't tell who has played, and "add
+   now" could be wrong on a Sunday afternoon: `waiverStatus` returns null, as when the transactions fail. So the
+   specs that block ESPN show no chips again: `mls-waiver-flex-unranked`'s pinned texts are back to main's.
+
+Tests: unit (no kickoffs → null, the Tuesday text); `mls-waiver-status`: no chips until kickoffs are set, then FA
+and the kickoff in the tap text; a Tuesday-night drop checked Thursday (W, counted, "over Derrick Henry RB8 · waivers
+until about …"). Ran `node --test` (657), check-precache, `mls-waiver-status` (12) and the waiver, Scout, Dashboard,
+past-trade and touch-target specs (85 passed). No screenshot changes (the legend is unchanged, and the screenshot
+specs have no kickoffs, so no chips).
+
 ### Left over
+- **Tuesday's "No upgrade this week"** (round 3, point 1): the fix and where it goes are the owner's call.
 - `daily_waivers_days` isn't decoded (above). If a league marks some days "Locked" or "FA", the chip can be wrong on
   those days; a session with the league's settings screen open (or Sleeper's help pages reachable) could map the bits.
 - Sleeper's state week may move to the next week before Wednesday's run; then this week's kickoffs are next week's and

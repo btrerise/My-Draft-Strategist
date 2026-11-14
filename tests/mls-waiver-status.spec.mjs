@@ -77,15 +77,44 @@ test.describe('Lineup Strategist Free agent or Waivers', () => {
         const state = await setup(page);
         await showTab(page, 'setup');
         await expect(upgradeCount(page)).toHaveText('1 upgrade');
+        // No kickoff times yet (the tests block ESPN): the app can't tell who has played, so no chips (round 3).
+        await expect(line(page, 'Fixture League').locator('.mls-ba-player')).toHaveCount(3);
+        await expect(line(page, 'Fixture League').locator('.mls-wv-chip')).toHaveCount(0);
+        await setKickoffs(page);
+        await showTab(page, 'lineup');
+        await showTab(page, 'setup');
         const cook = player(page, 'James Cook');
         await expect(cook.locator('.mls-wv-chip')).toHaveText('FA');
         await expect(line(page, 'Fixture League').locator('.mls-wv-chip.is-w')).toHaveCount(0);
         await expect(line(page, 'Fixture League').locator('.mls-wv-chip.is-fa')).toHaveCount(3);
         await cook.locator('.mls-wv-chip').click();
-        await expect(page.locator('.toast-message').filter({ hasText: 'Free agent: add now, no claim needed.' })).toBeVisible();
+        await expect(page.locator('.toast-message').filter({ hasText: /^Free agent: add now, until his Sun [\d:]+ [AP]M kickoff\.$/ })).toBeVisible();
         // The waiver settings came with the sync, and are kept on the league (so Backup / Restore has them).
         const waivers = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_leagues')).find(l => l.leagueId === '1000000000000000001').waivers);
         expect(waivers).toEqual({ type: 'faab', budget: 100, clearDays: 2, dayOfWeek: 2, daily: true, hour: 0, days: 5461 });
+        await expectClean(page, state);
+    });
+
+    test('dropped Tuesday night, checked Thursday: on waivers until before his game, so still counted, and it says until when', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await oneRbSlot(page);
+        // Cook dropped Tue 9/15 at 7 PM PT: in a 2-day league he clears about Thu 7 PM PT (Fri 2 AM in the tests' UTC), well before Sunday.
+        await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/transactions\/\d+$/, (route) => route.fulfill({ json: route.request().url().endsWith('/2')
+            ? [{ transaction_id: '1', type: 'free_agent', status: 'complete', leg: 2, adds: null, drops: { 8138: 2 }, status_updated: Date.parse('2026-09-16T02:00:00Z') }] : [] }));
+        await page.clock.setFixedTime(new Date('2026-09-17T15:00:00Z'));
+        await seedMls(page);
+        await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
+        await page.setInputFiles('#weeklyFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(UPGRADE_CSV) });
+        await callApp(page, 'confirmRankingsPreview');
+        await setKickoffs(page);
+        await showTab(page, 'lineup');
+        await showTab(page, 'setup');
+        await expect(upgradeCount(page)).toHaveText('1 upgrade');
+        const cook = player(page, 'James Cook');
+        await expect(cook).not.toHaveClass(/\bis-late\b/);
+        await expect(cook.locator('.mls-wv-chip')).toHaveText('W');
+        // Round 3: the upgrade's own line says until when, so the card's to-do is complete without a tap.
+        await expect(cook.locator('.mls-ba-over')).toHaveText(/^over Derrick Henry RB8 · waivers until about (Thu|Fri) [\d:]+ [AP]M$/);
         await expectClean(page, state);
     });
 
