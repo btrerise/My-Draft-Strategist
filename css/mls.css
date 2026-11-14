@@ -567,8 +567,7 @@ button.close-chip {
 /* --- MATCHUP SIMULATOR (MONTE CARLO) RESULTS --- */
 /* Markup for this comes from js/mls/sim/ui.js's worker.onmessage handler. */
 .simulation-card {
-    background: var(--bg-card, #151d33);
-    border: 1px solid var(--border);
+    background: var(--surface-inset); /* inside the Simulator's card: one shade lighter, no border (improvements M17) */
     border-radius: 8px;
     padding: 1.25rem;
 }
@@ -868,9 +867,11 @@ button.close-chip {
     border-radius: 8px;
     padding: 1rem 1.25rem;
     margin-bottom: 0.75rem;
-    border: 1px solid var(--border);
-    background: var(--card-bg);
+    background: var(--surface-inset);
 }
+/* The verdict is a tint, not a frame (improvements M17, owner's choice): .verdict-* below give the colour, as a background
+   only. The same for the side-by-side tiles (.mls-trade-tile). */
+.trade-verdict-banner, .mls-trade-tile { border: 0; }
 
 /* Your Rankings and Market Consensus side by side from tablet width up (improvements S19, round 9). */
 .trade-verdict-pair { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 0.75rem; }
@@ -982,7 +983,7 @@ button.close-chip {
 /* Trade Analyzer -- how your team changes, under the verdict (improvements S14, js/mls/trade/lineupSection.js).
    Sleeper leagues reuse the Power Rankings table and its tooltips (.mls-power-table); manual leagues list the
    starters who change, slot, name and rank on one line, names kept whole. */
-.mls-trade-impact { border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); padding: 0.85rem 1rem; margin-bottom: 1rem; }
+.mls-trade-impact { border-radius: 8px; background: var(--surface-inset); padding: 0.85rem 1rem; margin-bottom: 1rem; } /* lighter, no border (M17) */
 .mls-trade-impact-head { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
 .mls-trade-impact-via { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
 .mls-trade-impact-summary { font-size: 0.85rem; color: var(--text-main); margin: 0.45rem 0 0.5rem; line-height: 1.45; }
@@ -1013,7 +1014,7 @@ button.close-chip {
 /* Trade Analyzer -- "To make it fair" under a lopsided verdict (improvements S19, js/mls/trade/fairSection.js): the gap
    and up to three suggestions, one per line on phones with names kept whole and Add at the right edge; two columns from
    tablet width up, like the trade's two sides. */
-.mls-trade-fair { border: 1px solid var(--border); border-radius: 8px; background: var(--card-bg); padding: 0.85rem 1rem; margin-bottom: 1rem; }
+.mls-trade-fair { border-radius: 8px; background: var(--surface-inset); padding: 0.85rem 1rem; margin-bottom: 1rem; } /* lighter, no border (M17) */
 .mls-trade-fair-head { font-size: 0.92rem; font-weight: 600; color: var(--text-main); }
 .mls-trade-fair-via, .mls-trade-fair-note { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem; line-height: 1.45; }
 .mls-trade-fair-list { list-style: none; margin: 0.4rem 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1.5rem; }
@@ -1154,7 +1155,7 @@ button.close-chip {
 .verdict-favor-them .trade-verdict-result { color: #fca5a5; }
 
 /* No verdict (improvements S19, round 11): a name that matches no player, or a market total missing a piece. */
-.verdict-incomplete { border-color: var(--border); background: var(--card-bg); }
+.verdict-incomplete { border-color: var(--border); background: var(--surface-inset); }
 .verdict-incomplete .trade-verdict-result { color: var(--text-muted); }
 
 .mls-stat-value { color: #fde047; }
@@ -2638,14 +2639,14 @@ button.ir-slot-badge { font-family: inherit; line-height: inherit; cursor: point
     .mls-trade-tile-diff { grid-area: diff; }
     .mls-trade-tile-totals { grid-area: totals; margin-top: 0.1rem; }
 }
-.mls-trade-market-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.15rem 0.6rem; margin-bottom: 0.6rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: transparent; font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.mls-trade-market-strip { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.15rem 0.6rem; margin-bottom: 0.6rem; padding: 0.4rem 0.6rem; border: 0; border-left: 3px solid var(--border); border-radius: 0 8px 8px 0; background: var(--surface-inset); font-size: 0.78rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 /* Round 13 (owner: round 4 over-corrected, the line read as a footnote): a slim bar with its verdict's color on the left
    edge and a faint tint, the verdict word larger. Still one line and below your two tiles in weight. */
 .mls-trade-market-strip { border-left-width: 3px; }
 .mls-trade-market-strip.verdict-fair { border-color: var(--border); border-left-color: var(--dart-border); background: rgba(59, 130, 246, 0.05); }
 .mls-trade-market-strip.verdict-favor-you { border-color: var(--border); border-left-color: var(--target-border); background: rgba(16, 185, 129, 0.05); }
 .mls-trade-market-strip.verdict-favor-them { border-color: var(--border); border-left-color: var(--avoid-border); background: rgba(239, 68, 68, 0.05); }
-.mls-trade-market-strip.verdict-incomplete { border-color: var(--border); background: transparent; }
+.mls-trade-market-strip.verdict-incomplete { border-color: var(--border); background: var(--surface-inset); }
 .mls-trade-market-strip-label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7rem; }
 .mls-trade-market-strip-result { font-weight: 800; font-size: 0.95rem; }
 .mls-trade-market-strip.verdict-favor-you .mls-trade-market-strip-result { color: var(--primary-green); }
@@ -2683,7 +2684,7 @@ button.ir-slot-badge { font-family: inherit; line-height: inherit; cursor: point
    pointer, which ended the hover and flickered. min-width: 0 keeps the row's width as it was. */
 .mls-player-row-info:has(.mls-rank-dual-tip) { overflow: visible; min-width: 0; }
 /* The notes under the Now / Long-term tiles, in one quiet box (S24, round 8). */
-.mls-trade-tile-notes { margin-bottom: 0.6rem; padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-radius: 8px; background: rgba(0, 0, 0, 0.15); }
+.mls-trade-tile-notes { margin-bottom: 0.6rem; padding: 0.5rem 0.7rem; border-radius: 8px; background: var(--surface-inset); }
 .mls-trade-tile-notes .trade-verdict-note { margin: 0; font-size: 0.8rem; text-align: left; }
 .mls-trade-tile-notes .trade-verdict-note + .trade-verdict-note { margin-top: 0.3rem; }
 /* Which card a note is about (round 17): the card's totals and the note's start carry the same mark (*, †, ‡). */

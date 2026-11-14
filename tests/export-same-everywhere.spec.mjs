@@ -1,6 +1,6 @@
 // The image exports look the same on every device (improvements M17). html2canvas draws from a clone of the page as wide
 // as the window, so before M17 an Export Lineup made on a phone came out 348px wide in the phone layout and one made on a
-// computer 480px in the card's: different files for the same lineup. Each export now lays its clone out at a computer's
+// computer 480px in the card's: different files for the same lineup. Export Trade is checked too (round 6). Each export now lays its clone out at a computer's
 // width (EXPORT_WINDOW, js/shared/ui/exportImage.js) and pins the exported element to 480px, so the framed card with
 // flat rows is what every device saves. html2canvas is served from tests/node_modules (the 1.4.1 the pages load), as in
 // export-flex.spec.mjs.
@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMds, seedMls, loadMlsRankings } from './helpers.mjs';
+import { openApp, expectClean, showTab, callApp, seedMds, seedMls, loadMlsRankings } from './helpers.mjs';
 
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
 const { PNG } = createRequire(import.meta.url)(here('./node_modules/playwright-core/lib/utilsBundle.js'));
@@ -52,6 +52,21 @@ test.describe('image exports are the same at 390px and 1280px', () => {
         await loadMlsRankings(page);
         await showTab(page, 'lineup');
         const [phone, computer] = await exportAt(page, '#exportBtn', [390, 1280]);
+        expectSameImage(phone, computer);
+        await expectClean(page, state);
+    });
+
+    test('Export Trade', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await serveHtml2canvas(page);
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await showTab(page, 'scout');
+        await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson']);
+        await callApp(page, 'setTradePlayers', 'give', ['Derrick Henry']);
+        await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
+        await expect(page.locator('#exportTradeBtn')).toBeVisible();
+        const [phone, computer] = await exportAt(page, '#exportTradeBtn', [390, 1280]);
         expectSameImage(phone, computer);
         await expectClean(page, state);
     });

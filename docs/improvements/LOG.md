@@ -11733,3 +11733,27 @@ park the mouse) showed the rest. Three findings, all built:
 - Specs run: room-on-phones, export-same-everywhere, mls-lineup-row-actions, mls-display-ranks, touch-targets (24 pass).
 - **Re-taken on CI** (commit 32c9f30, "Screenshots re-taken on CI (13 PNGs)"): exactly those 13; opened (the league
   card's amber edge outside its content, the denser Tracker).
+
+### M17, round 6: a third review as a user; tool results; the verdict as a tint (owner, 2026-11-14)
+
+Rendered what the screenshots never show (waiver results, a Matchup Simulator run, an analysed trade, a 700px tablet).
+Waiver results and the tablet were fine; the tool results still boxed things inside their card. The owner took all three
+findings and chose **a tint** for the trade verdict (over a 3px edge or keeping its frame).
+- **Matchup Simulator:** `.simulation-card` is `--surface-inset` with no border.
+- **Trade Analyzer:** `.mls-trade-fair` ("To make it fair"), `.mls-trade-impact` ("Power Rankings after the trade") and
+  `.mls-trade-tile-notes` are `--surface-inset` with no border. The verdict (`.trade-verdict-banner`, and the dynasty
+  side-by-side `.mls-trade-tile`) loses its frame and keeps its `.verdict-*` tint (green favors you, red favors them,
+  blue fair; incomplete is `--surface-inset`). The market strip keeps its 3px edge, without the frame, on square left
+  corners. Export Trade draws from these, so its image follows.
+- **Spec:** `room-on-phones.spec.mjs` analyses a trade and runs a simulation, then checks nothing inside a card is framed
+  (on the old CSS it names the verdict, To make it fair and Power Rankings after the trade). `export-same-everywhere`
+  adds Export Trade at 390 and 1280px.
+- **A regression from round 5, found here:** Export Lineup made on a phone no longer matched one made on a computer. The
+  rows' dividers became a `::before` in round 5, and html2canvas turns a pseudo-element into an element with the live
+  page's computed width, so on a phone the image's dividers stopped at the phone's row width. Round 5 hadn't re-run the
+  export spec after that change. `fitClonedPseudoElements` (js/shared/ui/exportImage.js), called in Export Lineup's and
+  Export Team's onclone, lets a stretched pseudo-element take its width from its offsets again; the two images are
+  pixel-identical once more. (Export Trade and Export Recap draw their own markup without these rows.)
+- **Screenshots:** none change (main's states don't run a simulation or a trade). Specs: room-on-phones,
+  export-same-everywhere, export-flex, export-numerals, mls-mvp-lvp, mls-trade-impact, mls-trade-fair,
+  mls-trade-verdict-held, mls-now-and-later, mls-sim (all pass).

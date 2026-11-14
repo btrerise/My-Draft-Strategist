@@ -192,7 +192,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   phone as on a computer, in the site's current look. Advanced Settings is one list with dividers instead of separate
   strips, and the Danger Zone's red edge is a straight stripe. On phones Setup Progress runs to the screen's edges like a
   section; banners and the matchup strip keep their frame. A locked or swapping lineup row's content now lines up with the rows around it
-  (its coloured edge sits outside the content), and rows show a clearer tone under the mouse.
+  (its coloured edge sits outside the content), and rows show a clearer tone under the mouse. The Matchup Simulator's
+  results and the Trade Analyzer's "To make it fair" and "Power Rankings after the trade" are a lighter shade instead of
+  boxes in the card, and the trade verdict is a green, red or blue tint without a frame (Export Trade too).
 
 - **A chance to win is red when you're not favored.** On the Scoreboard's league tiles, Still in play, the Final
   Window and the Lineup tab's matchup line, "74% to win" stays green and "26% to win" is now red. Before, every chance

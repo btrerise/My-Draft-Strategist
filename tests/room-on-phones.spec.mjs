@@ -73,6 +73,19 @@ test.describe('room on phones', () => {
         await expect(result).toBeVisible();
         expect((await content(result)).width).toBe(343);
         expect(await page.evaluate(BOXES_IN_CARDS), 'boxes inside cards with waiver results').toEqual([]);
+
+        // A tool's results (round 6): an analysed trade (the verdict a tint, To make it fair and Power Rankings after the
+        // trade a lighter shade) and a Matchup Simulator run.
+        await callApp(page, 'setTradePlayers', 'get', ['Bijan Robinson']);
+        await callApp(page, 'setTradePlayers', 'give', ['Derrick Henry']);
+        await page.locator('[data-action="runScout"][data-scout-type="trade"]').click();
+        await expect(page.locator('#tradeOutput .trade-verdict-banner, #tradeOutput .mls-trade-tile').first()).toBeVisible();
+        await expect(page.locator('#tradeOutput [data-trade-impact]')).toBeVisible();
+        expect(await page.evaluate(BOXES_IN_CARDS), 'boxes inside cards with a trade analysed').toEqual([]);
+        await showTab(page, 'lineup');
+        await page.click('#run-sim-btn');
+        await expect(page.locator('#monte-carlo-results .simulation-card')).toBeVisible({ timeout: 20000 });
+        expect(await page.evaluate(BOXES_IN_CARDS), 'boxes inside cards with a simulation').toEqual([]);
         await expectClean(page, state);
     });
 

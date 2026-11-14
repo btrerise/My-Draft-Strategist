@@ -23,3 +23,16 @@ export function useProportionalDigits(root) {
 // exported element to a fixed width (480px). An image made at 390px matches one made at 1280px pixel for pixel
 // (tests/export-same-everywhere.spec.mjs).
 export const EXPORT_WINDOW = Object.freeze({ windowWidth: 1280, windowHeight: 900 });
+
+// html2canvas turns each ::before / ::after into a real element and copies its computed style from the live page,
+// including its used width in px. A pseudo-element stretched between `left` and `right` (the list rows' dividers,
+// css/mls.css) then keeps the live page's width: on a phone the image's dividers stopped at the phone's row width. Call
+// this from an export's onclone, after EXPORT_WINDOW's wider clone is laid out: each such element gets its width from
+// its two offsets again (improvements M17, round 6).
+export function fitClonedPseudoElements(root) {
+    if (!root) return;
+    root.querySelectorAll('html2canvaspseudoelement').forEach(el => {
+        const s = el.style;
+        if (s.position === 'absolute' && s.left && s.right && s.left !== 'auto' && s.right !== 'auto') s.width = 'auto';
+    });
+}

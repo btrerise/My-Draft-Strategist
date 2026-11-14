@@ -7,7 +7,7 @@ import { getActiveLeague } from '../helpers.js';
 import { showToast } from '../../shared/ui/toast.js';
 import { flashButton } from '../../shared/ui/flashButton.js';
 import { ensureHtml2Canvas } from '../../shared/ui/scriptLoader.js';
-import { useProportionalDigits, EXPORT_WINDOW } from '../../shared/ui/exportImage.js';
+import { useProportionalDigits, EXPORT_WINDOW, fitClonedPseudoElements } from '../../shared/ui/exportImage.js';
 
 // The FLEX, SFLEX, W/T and W/R slot badges draw a blended border with two background layers: the dark fill
 // clipped to the padding box over the gradient clipped to the border box (css/mls.css, --*-blend in
@@ -107,6 +107,7 @@ function splitBlendedBorders(root) {
                 const clonedContainer = clonedDoc.getElementById('optimalLineupContainer');
                 if (clonedContainer) {
                     useProportionalDigits(clonedContainer); // no gaps after numbers in the image (S19, round 12)
+                    fitClonedPseudoElements(clonedContainer); // the rows' dividers span the image, not a phone's row (M17)
                     // Headshots stay out of the exported image: Sleeper's CDN doesn't allow
                     // cross-origin canvas reads, so html2canvas would leave them blank anyway,
                     // and keeping third-party photos out of a PNG that gets passed around
