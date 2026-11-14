@@ -12711,3 +12711,5 @@ round by round above. Main hasn't moved since round 3's merge (F16); `CACHE_NAME
   round 8 changed (`overflow: clip` with its margin back to the default clip, 3px wider). Rendered here, round 8 had been
   pixel-identical; CI's renderer draws those edges a shade differently. Not a flake (every starter row, the same column),
   so CI re-takes that one PNG from this commit, as for any intended change.
+- **Re-taken on CI** (commit b0653a6, "Screenshots re-taken on CI (1 PNGs)"): exactly phone `mls-league-lineup`, and
+  pixel-identical to the failed run's own render of it (so the difference was deterministic, not a flake).
