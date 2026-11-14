@@ -7,7 +7,10 @@ import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab } from './helpers.mjs';
 
 test('a wide table shows the scroll shadow until you reach its end, including one shown after load', async ({ page }) => {
-    await page.setViewportSize({ width: 360, height: 800 });
+    // Narrow enough that the grid (about 296px wide) can't fit. Since improvements M17 (sections to the screen's edges,
+    // no boxes inside cards) a folded section on a 360px phone is about 30px wider, and the grid just fits there with
+    // CI's fonts, so a 300px window is used (60px too narrow).
+    await page.setViewportSize({ width: 300, height: 800 });
     const state = await openApp(page, '/lineup/');
     await showTab(page, 'roster');
     const wrapper = page.locator('.sos-table-wrapper');

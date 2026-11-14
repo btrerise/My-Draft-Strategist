@@ -11860,3 +11860,8 @@ Main moved (F18, #249) and was merged in: only LOG conflicted (both entries kept
 check-precache OK, `node --test` 640 pass, Playwright 1,000 passed, 54 skipped, 4 failed. The 4 are `visual.spec.mjs`'s
 environment check (this cloud image's fonts differ from CI's; it fails before any screenshot is taken, as docs/TESTING.md
 says). The screenshots were re-taken on CI round by round above, and CI checks them on the pull request.
+- **CI on the pull request (#250):** 1,008 passed, 2 failed: `scroll-shadows.spec.mjs` (both widths) expects Lineup
+  Strategist's SoS grid to overflow its folded section on a 360px screen. This card gave that section about 30px more
+  width; the grid (about 296px) now overflows it by 2px with this cloud image's font and fits with CI's, so on most phones
+  it no longer needs a sideways scroll. As with the rank-badge check, the spec now uses a 300px window (60px too narrow);
+  it passes here. It passed in this session's full suite only because of the wider font here.
