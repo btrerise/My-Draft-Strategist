@@ -11852,3 +11852,11 @@ tests pass (48 skipped). Five failures: the four `visual.spec.mjs` cloud-fonts g
 the same way on main in this container, and one `mls-rankings-change.spec.mjs` test (desktop, "chips go away on their
 own") that timed out in `waitForLoadState` under the suite's load; that spec passes 66 of 66 run alone three times. Nothing
 here touches its code.
+
+### M17: merged with main (F18) and the full suite before the pull request (2026-11-14)
+
+Main moved (F18, #249) and was merged in: only LOG conflicted (both entries kept); F18 changed no screenshots;
+`CACHE_NAME` v2.10.7, above main's v2.10.6. `npm ci && npm run check` once, as the owner asked for the pull request:
+check-precache OK, `node --test` 640 pass, Playwright 1,000 passed, 54 skipped, 4 failed. The 4 are `visual.spec.mjs`'s
+environment check (this cloud image's fonts differ from CI's; it fails before any screenshot is taken, as docs/TESTING.md
+says). The screenshots were re-taken on CI round by round above, and CI checks them on the pull request.
