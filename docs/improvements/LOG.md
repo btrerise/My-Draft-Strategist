@@ -11641,3 +11641,9 @@ anticipation become possible.
 **Checked.** check-precache, `node --test` (640 pass), and after merging main (S36): `mls-auto-sub`, `mls-final-window`,
 `mls-mvp-lvp`, `mls-root-for` (and before the merge `mls-this-week`, `mls-root-kickoff-find`), all passing at both widths.
 The full suite hasn't run: it runs once, when the owner asks for the pull request.
+
+**The full suite before the pull request (2026-11-14).** `npm run check`: precache OK, `node --test` passes, 993 Playwright
+tests pass (48 skipped). Five failures: the four `visual.spec.mjs` cloud-fonts guards (MDS and MLS, both widths), which fail
+the same way on main in this container, and one `mls-rankings-change.spec.mjs` test (desktop, "chips go away on their
+own") that timed out in `waitForLoadState` under the suite's load; that spec passes 66 of 66 run alone three times. Nothing
+here touches its code.
