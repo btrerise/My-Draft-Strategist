@@ -81,7 +81,7 @@ describe('waiverStatus', () => {
         const st = waiverStatus(dowdle, faab2, { ricodowdle: drop }, kickoffs, PT('2026-11-13T12:00:00'));
         assert.equal(st.status, 'waivers');
         assert.equal(st.reason, 'dropped');
-        assert.equal(st.clearsAt, drop + 48 * H);       // Sat 5:08 PM, before his Sunday game
+        assert.equal(st.clearsAt, drop + 47 * H);       // Sat 4:08 PM (an hour short of 2 days, round 8), before his Sunday game
         assert.equal(st.tooLateThisWeek, false);
         assert.equal(st.claimType, 'faab');
     });
@@ -178,7 +178,8 @@ describe('round 7: each league\'s daily schedule, from the owner\'s Sleeper sett
         assert.deepEqual([MON, TUE, WED, THU, FRI, SAT, SUN].map(d => dayCode(FL, d)), [2, 2, 1, 1, 1, 1, 3]);
         assert.deepEqual([MON, TUE, WED, THU, FRI, SAT, SUN].map(d => dayCode(LP, d)), [2, 2, 1, 1, 1, 1, 0]);
         assert.deepEqual([MON, TUE, WED, THU, FRI, SAT, SUN].map(d => dayCode(RD, d)), [0, 1, 1, 1, 1, 0, 0]);
-        assert.equal(dayCode(faab2, MON), 0); // weekly waivers: free agency every day
+        // Weekly waivers: Monday and Tuesday are waiver days for everyone, the rest free agency (round 8).
+        assert.deepEqual([MON, TUE, WED, SUN].map(d => dayCode(faab2, d)), [1, 1, 0, 0]);
     });
 
     test('LRD Cucks: a waiver day Monday, free agents Wednesday after 12 AM PT, and Sunday', () => {
@@ -194,7 +195,7 @@ describe('round 7: each league\'s daily schedule, from the owner\'s Sleeper sett
         const fri = PT('2026-11-13T13:40:00');
         const st = waiverStatus({ cleanName: 'malikwashington', team: 'KC' }, LRD, { malikwashington: fri }, kickoffs, PT('2026-11-13T18:00:00'));
         assert.equal(st.status, 'waivers');
-        assert.equal(st.clearsAt, fri + 24 * H);
+        assert.equal(st.clearsAt, fri + 23 * H); // an hour short of the day (round 8)
         assert.equal(waiverStatus(nobody, LRD, { malikwashington: fri }, kickoffs, PT('2026-11-13T18:00:00')).status, 'free');
     });
 
@@ -236,6 +237,27 @@ describe('round 7: each league\'s daily schedule, from the owner\'s Sleeper sett
     });
 });
 
+describe('round 8: back-tested against ~590 real adds and claims', () => {
+    test('a weekly-waiver league: Monday is a waiver day for everyone, a bye-week player too, claims run Wednesday', () => {
+        const st = waiverStatus({ cleanName: 'pittsburghsteelers', team: 'PIT' }, faab2, {}, kickoffs, PT('2026-11-16T19:29:00'));
+        assert.equal(st.status, 'waivers');
+        assert.equal(st.reason, 'waiverDay');
+        assert.equal(st.clearsAt, PT('2026-11-18T00:00:00'));
+    });
+    test('a waiver day\'s run after his kickoff: he locks at kickoff, until Wednesday (Tyson Bagent, Monday night)', () => {
+        const managers = waiverSettingsFrom({ waiver_type: 2, waiver_clear_days: 1, waiver_day_of_week: 2, daily_waivers: 1, daily_waivers_hour: 0, daily_waivers_days: 5460 });
+        const st = waiverStatus({ cleanName: 'tysonbagent', team: 'NYG' }, managers, {}, kickoffs, PT('2026-11-16T07:48:00'));
+        assert.equal(st.reason, 'waiverDay');
+        assert.equal(st.clearsAt, PT('2026-11-18T00:00:00')); // not Tuesday's 12 AM run
+        assert.equal(st.tooLateThisWeek, true);
+    });
+    test('a 12:11 AM drop in a 1-day daily league makes the next day\'s 12 AM run (Kimani Vidal)', () => {
+        const fnb = waiverSettingsFrom({ waiver_type: 2, waiver_clear_days: 1, waiver_day_of_week: 2, daily_waivers: 1, daily_waivers_hour: 0, daily_waivers_days: 10581 });
+        const st = waiverStatus({ cleanName: 'kimanividal', team: 'KC' }, fnb, { kimanividal: PT('2026-11-18T00:11:00') }, kickoffs, PT('2026-11-18T00:20:00'));
+        assert.equal(st.clearsAt, PT('2026-11-19T00:00:00'));
+    });
+});
+
 describe('waiverStatusText', () => {
     const tz = 'America/Los_Angeles';
     test('the chip tap texts: short, "too late" once', () => {
@@ -245,7 +267,7 @@ describe('waiverStatusText', () => {
         const locked = waiverStatus(dowdle, faab2, { ricodowdle: PT('2026-11-14T08:00:00') }, kickoffs, PT('2026-11-14T12:00:00'));
         assert.equal(waiverStatusText(locked, tz), 'On waivers until Wed 12 AM (FAAB). Dropped Sat 8 AM; locked at his Sun 10 AM kickoff. Too late for this week.');
         const clock = waiverStatus(dowdle, rolling1, { ricodowdle: PT('2026-11-12T17:08:00') }, kickoffs, PT('2026-11-13T12:00:00'));
-        assert.equal(waiverStatusText(clock, tz), 'On waivers until about Fri 5:08 PM (rolling). Dropped Thu 5:08 PM.');
+        assert.equal(waiverStatusText(clock, tz), 'On waivers until about Fri 4:08 PM (rolling). Dropped Thu 5:08 PM.');
         // Tuesday, every game over (round 3: "His game has started" read oddly then).
         const tue = waiverStatus(dowdle, faab2, {}, kickoffs, PT('2026-11-17T10:00:00'));
         assert.equal(waiverStatusText(tue, tz), 'On waivers until Wed 12 AM (FAAB), like everyone who played this week.');

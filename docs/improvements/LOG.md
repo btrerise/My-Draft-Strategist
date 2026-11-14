@@ -12148,7 +12148,38 @@ Best available, waiver, Scout, past-trade, auto-sub, league-card, Backup and tou
 Screenshots: the Guide's W line, re-taken on CI. I opened both: desktop differs only in the W line's text (same height); phone is 42px taller,
 all inside its blank lower part (the M17 capture cut in Open follow-ups), identical where it paints.
 
+### Round 8: back-testing the rule against the owner's real adds and claims (a fifth review)
+
+I replayed weeks 7–10 of 16 of the owner's leagues (Sleeper transactions, ESPN kickoffs) through `waiverStatus`:
+for every free-agent add, would the app have said FA just before it; for every waiver claim, would it have said W
+when the claim was placed, with "until" within an hour of when the claim actually ran. About 590 events. (Script kept
+out of the repo: it reads the owner's league data.)
+- **First run: 17 mismatches.** Fixed from what they showed:
+  - **Weekly-waiver leagues lock everyone Monday and Tuesday.** No free-agent add on a Monday or Tuesday in League of
+    Ordinary Gentlemen, How I Met Your Punter or Chop Shop (87 on other days); claims placed then, a bye week's defense
+    too, ran Wednesday 12 AM. `dayCode` now gives a weekly league Waivers on Monday and Tuesday (claims at the after-games
+    time) and Free Agency otherwise.
+  - **A drop clears about an hour short of the full days:** 1-day drops were claimed or added 23 h 04 to 23 h 49 later,
+    2-day ones 47 h 04 to 47 h 10. So a 12:11 AM drop makes the next day's 12 AM run (Kimani Vidal, Friday Night
+    Beverages), which drop + 24 h missed by a day. Now drop + N days − 1 h ("about").
+  - **A waiver day's run after his kickoff:** Tyson Bagent, claimed Monday morning in Managers of the Round Table
+    (Monday a Waivers day) before a Monday-night game, ran Wednesday, not at Tuesday's 12 AM run: he locked at kickoff.
+    Now a player on waivers by the day's schedule whose game starts before the next run clears after the after-games
+    time, as a dropped one already did.
+- **After: 8 mismatches of ~590 (98.6%).** Two claims placed in the first minutes of a run that still made it (12:01 AM
+  into a 12:00 run); three players dropped in week 6, before the data starts (their drop clocks are invisible); one
+  player who has since changed teams (the back-test uses today's team); and LRD Cucks' Seth McGowan, added as a free
+  agent 6.5 h after a drop in a 1-day league, twice (unexplained; perhaps a player dropped the day he was added goes
+  straight back to free agency, not checked).
+- Tests: unit (29): a weekly league's Monday (a bye-week defense, claims Wednesday), Bagent's Monday-night lock, Vidal's
+  12:11 AM drop; the drop-clock expectations an hour shorter. Spec: the "nobody dropped" case moves to Thursday (the
+  tests' clock is a Tuesday, now a waiver day), and Tuesday's player with no game keeps a W. Ran `node --test` (669),
+  check-precache and the Best available, waiver, Scout, past-trade, league-card and touch-target specs (77 passed). No
+  screenshot changes.
+
 ### Left over
+- **Seth McGowan's quick re-add** (round 8): if a pattern shows (a player dropped the day he was added skipping
+  waivers), add it to the rule.
 - **A short gap on a cold Dashboard** (round 5, point 2): if it matters, the count could wait for the chips.
 - **Next week's byes on Tuesday** (round 4, above).
 - `daily_waivers_days` isn't decoded (above). If a league marks some days "Locked" or "FA", the chip can be wrong on

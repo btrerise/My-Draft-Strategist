@@ -68,8 +68,12 @@ function zonedTime(y, m, d, h, tz) {
 // daily_waivers_days): two bits a day, read from the low end Sunday, Saturday, Friday ... Monday.
 // 0 Free Agency, 1 Waivers, 2 Locked, 3 Waivers until the run hour, then Free Agency. Weekly-waiver leagues: 0.
 export const DAY_FA = 0, DAY_WAIVERS = 1, DAY_LOCKED = 2, DAY_WAIVERS_THEN_FA = 3;
+// A weekly-waiver league (daily_waivers 0) is Free Agency Wednesday to Sunday and Waivers Monday and Tuesday, claims
+// running at the after-games time (round 8: no free-agent add on a Monday or Tuesday in the owner's three weekly
+// leagues, 87 on other days; claims placed then, a bye week's defense too, ran Wednesday 12 AM).
 export function dayCode(waivers, wd) {
-    if (!waivers || !waivers.daily || num(waivers.days) === null) return DAY_FA;
+    if (waivers && !waivers.daily) return wd === 1 || wd === 2 ? DAY_WAIVERS : DAY_FA;
+    if (!waivers || num(waivers.days) === null) return DAY_FA;
     return (waivers.days >> (2 * ((7 - wd) % 7))) & 3;
 }
 
@@ -180,7 +184,9 @@ export function waiverStatus(player, waivers, drops, kickoffs, now) {
     }
     const dropClears = dropped == null ? null
         : chopped ? (afterGamesAt(waivers, dropped) ?? nextRunAt(waivers, dropped))
-        : waivers.clearDays > 0 ? dropped + waivers.clearDays * DAY : null;
+        // Sleeper clears a drop about an hour short of the full days (round 8: 1-day drops claimed or added 23 h 04 to
+        // 23 h 49 after, 2-day drops 47 h 04 to 47 h 10), so a 12:11 AM drop makes the next day's 12 AM run.
+        : waivers.clearDays > 0 ? dropped + waivers.clearDays * DAY - HOUR : null;
     if (dropClears != null && dropClears > now && (hold == null || dropClears > hold)) {
         hold = dropClears; reason = 'dropped';
         // Still on waivers at his kickoff: he locks then, until the after-games time.
@@ -204,6 +210,12 @@ export function waiverStatus(player, waivers, drops, kickoffs, now) {
         clearsAt = nextRunAt(waivers, now);
         atRun = true;
         if (clearsAt == null) return null;
+        // His game starts before that run: he locks at kickoff, until the after-games time (round 8: Tyson Bagent,
+        // claimed Monday morning before a Monday-night game, ran Wednesday 12 AM, not at Tuesday's 12 AM run).
+        if (ko != null && ko > now && clearsAt > ko) {
+            const ag = afterGamesAt(waivers, ko);
+            if (ag != null) clearsAt = Math.max(clearsAt, openAt(waivers, ag).at);
+        }
     }
     const tooLateThisWeek = !weekOver && ko != null && ko < clearsAt;
     return { status: 'waivers', clearsAt, tooLateThisWeek, reason, atRun, weekOver, kickoff: ko, droppedAt: reason === 'dropped' ? dropped : null, chopped: reason === 'dropped' && chopped, claimType };

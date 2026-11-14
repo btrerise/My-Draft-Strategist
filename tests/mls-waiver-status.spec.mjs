@@ -80,6 +80,9 @@ test.describe('Lineup Strategist Free agent or Waivers', () => {
         // No kickoff times yet (the tests block ESPN): the app can't tell who has played, so no chips (round 3).
         await expect(line(page, 'Fixture League').locator('.mls-ba-player')).toHaveCount(3);
         await expect(line(page, 'Fixture League').locator('.mls-wv-chip')).toHaveCount(0);
+        // Thursday 9/17, 8 AM PT: a free-agency day in this weekly-waiver league (Monday and Tuesday are waiver days for
+        // everyone, round 8; the tests' clock is otherwise a Tuesday).
+        await page.clock.setFixedTime(new Date('2026-09-17T15:00:00Z'));
         await setKickoffs(page);
         await showTab(page, 'lineup');
         await showTab(page, 'setup');
@@ -187,11 +190,12 @@ test.describe('Lineup Strategist Free agent or Waivers', () => {
         await expect(cook).not.toHaveClass(/\bis-late\b/);
         await expect(cook.locator('.mls-ba-over')).toHaveText(/^over Derrick Henry RB8 · waivers until Wed [\d:]+ [AP]M$/);
         // Round 5: one line instead of a W on everyone who played (Cook, BUF; Chase Brown, CIN). Jaxon Smith-Njigba has
-        // no game in this fixture's kickoffs, so he's still a free agent and keeps his FA.
+        // no game in this fixture's kickoffs; Tuesday is a waiver day for everyone in a weekly-waiver league (round 8),
+        // so he keeps his own W.
         await openFold(page);
         await expect(line(page, 'Fixture League').locator('.mls-ba-wv-note')).toHaveText(/^Everyone who played this week is on waivers until Wed [\d:]+ [AP]M\.$/);
         await expect(cook.locator('.mls-wv-chip')).toHaveCount(0);
-        await expect(player(page, 'Jaxon Smith-Njigba').locator('.mls-wv-chip')).toHaveText('FA');
+        await expect(player(page, 'Jaxon Smith-Njigba').locator('.mls-wv-chip')).toHaveText('W');
         // Auto-Find agrees: Would Start, not Played.
         await showTab(page, 'scout');
         await callApp(page, 'setWaiverMode', 'auto');
