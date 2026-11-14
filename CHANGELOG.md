@@ -15,6 +15,9 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **No empty space under short pages.** A closed tooltip (the (i) notes and badge explanations) no longer takes room
+  on the page, so a short page ends where its content does. Tooltips look and open as before.
+
 - **More room on phones.** On a phone the Tracker's players are list rows across the screen with a divider between
   them, instead of separate cards with gaps, and every section runs to the screen's edges with 16px margins (an 8px
   band of the page colour between sections). The Tracker is about 260px shorter, and the Draft Board's grid still runs to
@@ -181,6 +184,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 ## Lineup Strategist
 
 ### Unreleased
+
+- **No empty space under short pages.** A closed tooltip (the (i) notes and badge explanations) no longer takes room
+  on the page, so a short page ends where its content does: before kickoff the Scoreboard on a computer lost about
+  116px of blank space at the bottom. Tooltips look and open as before.
 
 - **More room on phones, and nothing boxed inside a card.** Inside a card, rows (lineup, roster, waiver results, league
   cards) are plain list rows with a divider instead of boxes in the box; folded sections, toggle rows and the "needs

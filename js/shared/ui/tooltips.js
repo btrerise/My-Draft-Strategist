@@ -81,9 +81,10 @@
     document.querySelectorAll(`.tooltip-icon:not([data-tt]), .tooltip-container[data-tt-self]:not([data-tt])`).forEach(enhance);
   }
 
-  // Slides a tooltip back inside the window. Measured with any earlier shift undone; a hidden tooltip still has its
-  // box (visibility: hidden), so this works before it fades in. CSS applies --tt-dx with `translate`, which doesn't
-  // touch the fade's `transform`.
+  // Slides a tooltip back inside the window. Measured with any earlier shift undone, once it's open: a closed tooltip
+  // is display: none (improvements F16, so it takes no room on the page) and has no box. It's measured in the same task
+  // that opens it, so it never paints unplaced. CSS applies --tt-dx with `translate`, which doesn't touch the fade's
+  // `transform`.
   // A long one (improvements S27 round 2, the owner: the Scoreboard's header tip, ~900px tall at 260px wide, ran past the
   // bottom of the page) opens wider, up to 480px or the window's width, so it's shorter; if it still doesn't fit
   // between its top and the window's bottom, it scrolls inside (and takes taps and the wheel while it's open).
@@ -129,9 +130,10 @@
     // "already open" and close it instead.
     const open = text.classList.contains('mobile-visible') ||
       (trigger.matches(':focus-visible') && !text.classList.contains('tt-dismissed'));
-    if (!open) place(text);
     text.classList.toggle('mobile-visible', !open);
     text.classList.toggle('tt-dismissed', open);
+    // Placed once it's open: a closed tooltip is display: none (improvements F16), so it has no box to measure before.
+    if (!open) place(text);
   }
 
   document.addEventListener('click', e => {

@@ -11865,3 +11865,55 @@ says). The screenshots were re-taken on CI round by round above, and CI checks t
   width; the grid (about 296px) now overflows it by 2px with this cloud image's font and fits with CI's, so on most phones
   it no longer needs a sideways scroll. As with the rank-badge check, the spec now uses a 300px window (60px too narrow);
   it passes here. It passed in this session's full suite only because of the wider font here.
+
+## F16 — Closed tooltips stop taking up space
+
+**Why.** Found in S28's checks (S28, "Left over"): the shared tooltip (`js/shared/ui/tooltips.js`, its rules in
+`css/base.css`) was `visibility: hidden` while closed but still laid out, absolutely positioned under its trigger. A long
+one (the Scoreboard header's (i)) hung below a short page and added empty scroll: before kickoff the Scoreboard on a
+computer ended 116px below its last card. Needs F11 (merged, #232).
+
+**What changed.**
+- `css/base.css`, TOOLTIPS: a closed `.tooltip-text` is `display: none`; each open state (hover, keyboard focus, a
+  self-trigger's focus, the tap class `.mobile-visible`) sets `display: block` and a nested `@starting-style` (opacity 0,
+  translateY(-4px)) so the fade-in still runs. A second `transition` line adds `display 0.2s allow-discrete`, so the
+  fade-out still runs too; browsers that don't know `allow-discrete` drop that line and keep the first (they show and
+  hide without the fade-out; older ones without `@starting-style` also open without the fade). The dismissed-on-hover
+  rule sets `display: none`. Of the two options on the card, `position: absolute` within its anchor was already the case
+  and is exactly what spilled; `display: none` is the one that takes it out of the page's scroll size.
+- `js/shared/ui/tooltips.js`: `toggle` sets `mobile-visible` first and then calls `place` (a display: none tooltip has no
+  box to measure). Same task, so it never paints unplaced. Hover and keyboard focus already placed it from `mouseover` /
+  `focusin`, by which time the hover/focus style applies, so they needed no change (the spec checks the long Scoreboard
+  tip still opens wider on hover). Power Rankings' cell tooltips were already `display: none` while closed
+  (`css/mls.css`), so `place` returned early for them on a tap; it now measures them too, and only moves one that would
+  cross the window's edge (none does in `tooltips-onscreen.spec.mjs`).
+- Screen readers: unchanged. `aria-describedby` reads a hidden element's text (the spec checks the Scoreboard (i)'s
+  accessible description while closed); icon-only status markers take their name from `textContent` at load.
+- T-Score's table-header tooltips have their own rule (`css/tscore.css`, `.table-header-tooltip`) and don't use the shared
+  one; they sit at the top of their tables and add no room (the spec measures every T-Score tab), so left as they are.
+- `sw.js`: `CACHE_NAME` v2.10.7 → v2.10.8 (no file added). CHANGELOG: a line under each app. docs/TESTING.md's Tooltips
+  convention: closed is `display: none`; a new way of opening one needs `display: block` and the `@starting-style`.
+
+**User-visible effect.** No blank space below short pages: the pre-kickoff Scoreboard on a computer ends at its last
+card (116px shorter). Tooltips look, open, fade and sit exactly as before, on tap, hover and keyboard.
+
+**Tests.** `tests/tooltip-closed-space.spec.mjs` (new, both widths, phones at 375px): every tab of Lineup Strategist,
+Draft Strategist and T-Score measured with and without its tooltips in layout (scroll height and width must match), and
+the pre-kickoff Scoreboard on its own. On main it fails on desktop: "scoreboard: 116px taller (943 → 1059)". It also
+checks a tap opens the Scoreboard's (i) with its opacity transition running, placed (wider, inside the window), and a
+second tap hides it; and on desktop that hover and keyboard focus open it and Escape closes it. At 375px main has no
+extra room on these tabs (the pages are taller than the hanging tips), so the failure there is desktop only.
+
+**Screenshots.** Main and this branch rendered in this container and compared (`npm run pxdiff`): one PNG changes,
+- `desktop/mls-league-scoreboard.png`: 1280×1059 → 1280×943. The top 943 rows are identical; main's extra 116 rows
+  were plain page background (the closed tip hanging below the page).
+The other 43 are identical. Re-taken by CI (`[update screenshots: ...]` in the commit message).
+
+**Checked.** check-precache OK; `node --test` 640 pass; Playwright: `tooltip-closed-space`, `tooltips-onscreen`, `smoke`,
+`touch-targets`, `focus-ring`, `badge-legend`, `mls-keyboard`, `mls-this-week`, `mls-final-window`, `mls-mvp-lvp`,
+`mls-league-cards`, `mls-lineup-needs`, `mls-now-and-later`, `mls-past-trade`, `mls-root-for`, `mls-trade-fair`,
+`mls-trade-impact`, `room-on-phones`, `support` at both widths: all pass. The full suite runs once, when the owner asks for
+the pull request.
+
+**Left over.** Nothing for this card. F19 (shorter tooltips) can start: it edits the same shared tooltip. A tooltip
+opened some new way (a new CSS open state) needs `display: block` and the `@starting-style`, as docs/TESTING.md says.
