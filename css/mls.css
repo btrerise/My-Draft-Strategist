@@ -2283,7 +2283,8 @@ button.mls-wv-chip { font-family: inherit; line-height: inherit; cursor: pointer
 .mls-power-table .tooltip-container .mls-power-tooltip { display: none; width: 220px; font-weight: normal; z-index: 1005; text-align: left; }
 .mls-power-table .tooltip-container:hover .mls-power-tooltip,
 .mls-power-table .tooltip-container:focus-visible .mls-power-tooltip,
-.mls-power-table .tooltip-container .mls-power-tooltip.mobile-visible { display: block; }
+.mls-power-table .tooltip-container .mls-power-tooltip.mobile-visible,
+.mls-power-table .tooltip-container .mls-power-tooltip.tt-linger { display: block; }
 /* Dismissed with Escape or a second tap/press (see initTooltips in js/shared/ui/tooltips.js). */
 .mls-power-table .tooltip-container:hover .mls-power-tooltip.tt-dismissed:not(.mobile-visible),
 .mls-power-table .tooltip-container:focus-visible .mls-power-tooltip.tt-dismissed:not(.mobile-visible) { display: none; }

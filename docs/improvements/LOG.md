@@ -12195,3 +12195,189 @@ Not run again (rule 7); CI runs it on the pull request.
   the "game started" lock isn't seen on Tuesday (drops still are). Small: nothing is "too late" then anyway.
 - Top Available and the All Leagues search have no chip (owner's choice); `waiverChipHTML` and `ctx.waiverStatusOf`
   are ready if wanted. S35 (FAAB bids) can reuse `recentDrops.js`'s fetch and `league.waivers.budget`.
+
+## F16 — Closed tooltips stop taking up space
+
+**Why.** Found in S28's checks (S28, "Left over"): the shared tooltip (`js/shared/ui/tooltips.js`, its rules in
+`css/base.css`) was `visibility: hidden` while closed but still laid out, absolutely positioned under its trigger. A long
+one (the Scoreboard header's (i)) hung below a short page and added empty scroll: before kickoff the Scoreboard on a
+computer ended 116px below its last card. Needs F11 (merged, #232).
+
+**What changed.**
+- `css/base.css`, TOOLTIPS: a closed `.tooltip-text` is `display: none`; each open state (hover, keyboard focus, a
+  self-trigger's focus, the tap class `.mobile-visible`) sets `display: block` and a nested `@starting-style` (opacity 0,
+  translateY(-4px)) so the fade-in still runs. A second `transition` line adds `display 0.2s allow-discrete`, so the
+  fade-out still runs too; browsers that don't know `allow-discrete` drop that line and keep the first (they show and
+  hide without the fade-out; older ones without `@starting-style` also open without the fade). The dismissed-on-hover
+  rule sets `display: none`. Of the two options on the card, `position: absolute` within its anchor was already the case
+  and is exactly what spilled; `display: none` is the one that takes it out of the page's scroll size.
+- `js/shared/ui/tooltips.js`: `toggle` sets `mobile-visible` first and then calls `place` (a display: none tooltip has no
+  box to measure). Same task, so it never paints unplaced. Hover and keyboard focus already placed it from `mouseover` /
+  `focusin`, by which time the hover/focus style applies, so they needed no change (the spec checks the long Scoreboard
+  tip still opens wider on hover). Power Rankings' cell tooltips were already `display: none` while closed
+  (`css/mls.css`), so `place` returned early for them on a tap; it now measures them too, and only moves one that would
+  cross the window's edge (none does in `tooltips-onscreen.spec.mjs`).
+- Screen readers: unchanged. `aria-describedby` reads a hidden element's text (the spec checks the Scoreboard (i)'s
+  accessible description while closed); icon-only status markers take their name from `textContent` at load.
+- T-Score's table-header tooltips have their own rule (`css/tscore.css`, `.table-header-tooltip`) and don't use the shared
+  one; they sit at the top of their tables and add no room (the spec measures every T-Score tab), so left as they are.
+- `sw.js`: `CACHE_NAME` v2.10.7 → v2.10.8, then v2.10.9 after merging main (S34, which took v2.10.8); no file added. CHANGELOG: a line under each app. docs/TESTING.md's Tooltips
+  convention: closed is `display: none`; a new way of opening one needs `display: block` and the `@starting-style`.
+
+**User-visible effect.** No blank space below short pages: the pre-kickoff Scoreboard on a computer ends at its last
+card (116px shorter). Tooltips look, open, fade and sit exactly as before, on tap, hover and keyboard.
+
+**Tests.** `tests/tooltip-closed-space.spec.mjs` (new, both widths, phones at 375px): every tab of Lineup Strategist,
+Draft Strategist and T-Score measured with and without its tooltips in layout (scroll height and width must match), and
+the pre-kickoff Scoreboard on its own. On main it fails on desktop: "scoreboard: 116px taller (943 → 1059)". It also
+checks a tap opens the Scoreboard's (i) with its opacity transition running, placed (wider, inside the window), and a
+second tap hides it; and on desktop that hover and keyboard focus open it and Escape closes it. At 375px main has no
+extra room on these tabs (the pages are taller than the hanging tips), so the failure there is desktop only.
+
+**Screenshots.** Main and this branch rendered in this container and compared (`npm run pxdiff`): one PNG changes,
+- `desktop/mls-league-scoreboard.png`: 1280×1059 → 1280×943. The top 943 rows are identical; main's extra 116 rows
+  were plain page background (the closed tip hanging below the page).
+The other 43 are identical. Re-taken by CI (`[update screenshots: ...]` in the commit message; the workflow committed
+exactly that PNG). With CI's fonts it goes 1280×1016 → 1280×929: the top 929 rows are identical to the old baseline and
+the 87 rows dropped were plain page background. Opened: the page now ends at its footer credit line.
+
+**Checked.** check-precache OK; `node --test` 640 pass; Playwright: `tooltip-closed-space`, `tooltips-onscreen`, `smoke`,
+`touch-targets`, `focus-ring`, `badge-legend`, `mls-keyboard`, `mls-this-week`, `mls-final-window`, `mls-mvp-lvp`,
+`mls-league-cards`, `mls-lineup-needs`, `mls-now-and-later`, `mls-past-trade`, `mls-root-for`, `mls-trade-fair`,
+`mls-trade-impact`, `room-on-phones`, `support` at both widths: all pass. The full suite runs once, when the owner asks for
+the pull request.
+
+**Left over.** Nothing for this card. F19 (shorter tooltips) can start: it edits the same shared tooltip. A tooltip
+opened some new way (a new CSS open state) needs `display: block` and the `@starting-style`, as docs/TESTING.md says.
+
+### F16, round 2: tooltips checked against Material 3 Expressive (owner, 2026-11-14)
+
+**Ask.** The owner asked whether the tooltips follow Material 3 Expressive. m3.material.io's tooltip Guidelines, Specs and
+Accessibility pages were read in headless Chromium, and a throwaway spec (not committed) measured all 59 distinct
+tooltips on every tab of both apps and T-Score at 1280px. Verdict: they are M3 *rich* tooltips (explanations, opened by
+a click and kept open), and role, screen-reader text, keyboard, one-at-a-time and staying on screen already match.
+Off: (1) length (median 24 words, 18 over 40, 6 over 80, up to 324; no bullets) and (4) few subheads: F19's job;
+(2) no 1.5s linger after the mouse leaves; (3) shape and spacing (8px corners, 12px padding all round, a heavy shadow,
+see-through blur); (5) the click-to-keep tooltips also open on hover, which M3 reserves for transient ones: kept on
+purpose, it's useful on a computer; (6) motion: no motion tokens yet, the M3 card's job. Expressive itself changes
+shape and motion, not tooltips. **The owner chose to do (2) and (3) now.**
+
+**What changed.**
+- (2) `js/shared/ui/tooltips.js`: a `pointerout` from a mouse (not touch) that leaves a shown tooltip's host adds
+  `tt-linger` for 1.5s. Hovering another tooltip's host, keyboard focus on a trigger, any click or tap (`closeAll`) and
+  Escape end every linger at once, so only one tooltip shows at a time; Escape that only ended a linger doesn't reach a
+  dialog behind it. `css/base.css`: `.tt-linger` shows like the open states (also for T-Score's column headers,
+  `.table-header-tooltip`); `css/mls.css`: Power Rankings' cell tooltips (their own display: none rule) take it too.
+  Phones are unchanged: a tap opens, the next tap closes.
+- (3) `css/base.css`: the shared tooltip has 12px corners (M3 shape "medium"), 12px top / 16px sides / 8px bottom
+  padding, an opaque `rgb(15, 23, 42)` (was 95% with an 8px background blur) and elevation level 2's shadow
+  (`0 1px 2px rgba(0,0,0,.3), 0 2px 6px 2px rgba(0,0,0,.15)`; was `0 10px 25px rgba(0,0,0,.5)`). Colour and text size
+  unchanged (M14 brings the surface tokens).
+- One exception: at 480px and under, a wide tooltip (`tt-wide`, the window's width) keeps 12px sides. With 16px the
+  Scoreboard header's 197-word tip lost its last line at 375px and scrolled inside (16px over), which the owner reported
+  in S27; once F19 shortens it, the exception can go.
+- T-Score's column-header tooltips (`css/tscore.css`) are short labels, which M3 calls *plain* tooltips (4px corners,
+  8px padding, 24px tall, an inverse light box). They got the linger only; their look is left for the owner (below).
+- `CACHE_NAME` v2.10.9, above main's v2.10.8 (S34). CHANGELOG: a line under each app. docs/TESTING.md's Tooltips line.
+
+**Tests.** `tooltip-closed-space.spec.mjs` adds: after the mouse leaves, the Scoreboard tip is still shown at 0.9s and
+gone by 3s; Escape ends a linger; on the Lineup tab hovering a second (i) hides the first at once, and a click ends the
+second's linger; and the computed corners, padding, background and no blur. **Screenshots:** all 44 identical to round
+1's render here (tooltips are closed in every baseline), so nothing to re-take.
+
+**Checked.** check-precache OK; `node --test` 640 pass; Playwright `tooltip-closed-space`, `tooltips-onscreen`, `smoke`,
+`touch-targets`, `mls-keyboard`, `focus-ring`, `badge-legend`, `mls-this-week`, `mls-past-trade`, `mls-trade-impact`,
+`mls-league-cards`, `mls-final-window`, `room-on-phones` at both widths: all pass.
+
+**Left over.**
+- F19: shorten the long tooltips with a subhead and bullets (M3's rich tooltip), then drop the 12px phone exception.
+- For the owner: T-Score's column headers as M3 plain tooltips (a light box with dark text, 4px corners), or kept dark
+  like the rest.
+- The M3 card (motion tokens): the tooltips' 0.2s fade and 4px slide should use them.
+
+### F16, round 3: T-Score's column headers as M3 plain tooltips, and notes for F19 and M3 (owner, 2026-11-14)
+
+**The owner's choice.** T-Score's column-header tooltips become Material 3 *plain* tooltips (they name a column in a few
+words), and the cards that follow (F19, M3) get notes.
+
+**What changed.** `css/tscore.css`, `.table-header-tooltip .tooltip-text`: the inverse surface, a light `#e5e7eb` box
+with `#111827` text (was a dark navy box), 4px corners (was 6px), 4px 8px padding with at least 24px height, no border or
+shadow (M3's elevation 0; was a heavy shadow). Closed it's `display: none` like the shared tooltip, with the fade kept by
+`@starting-style` and `display ... allow-discrete`. Text, size, placement (centered below, right-aligned on the last
+columns) and the round-2 linger unchanged. CHANGELOG: a line under Draft Strategist, where T-Score's lines go.
+`tooltip-closed-space.spec.mjs` adds a desktop test on the Top 50 tab: hidden until hovered, then the computed corners,
+colours, no shadow and 24px minimum height, and the linger after the mouse leaves. Screenshots: all 44 identical to
+round 2's render (the tooltips are closed in them). `CACHE_NAME` stays v2.10.9 (main is v2.10.8).
+
+**Found, not changed** (in docs/TESTING.md's Open follow-ups): these header tooltips open on hover only. They aren't
+`js/shared/ui/tooltips.js` triggers, so a tap or the keyboard can't open them and phones never show them.
+
+#### For F19 (shorter tooltips, bullets)
+
+- Material 3's rich tooltip is the target for the (i)s: an optional one-line subhead, short supporting text, and no
+  critical information that exists only in the tooltip (it's easy to miss). Round 2's inventory, measured at 1280px with
+  the test data: 59 distinct tooltips, 27 on an (i), 26 on a badge or cell, 6 T-Score headers; median 24 words, 18 over
+  40, 6 over 80. Longest: Top Available (Scout, 324 words), the League Command Center (Dashboard, 267), the Scoreboard
+  header (197), Power Rankings (97), Optimize Lineup (94), FLEX Kickoff Optimization (88). None has a list; 26 have a bold
+  title (Power Rankings cells, the position-room chips).
+- The shared tooltip is `display: none` while closed (F16), so a `<ul>` inside it needs no layout work, and
+  `aria-describedby` still reads it. Its padding is now 12px top, 16px sides, 8px bottom: lists need their own spacing.
+- **Delete the 12px phone exception** in `css/base.css` (`@media (max-width: 480px)` under the `tt-wide` rule) once the
+  Scoreboard tip is short enough to fit a 375px screen with 16px sides; `tooltips-onscreen.spec.mjs` ("a long tooltip
+  opens wider and fits the window") checks it.
+- T-Score's column headers are M3 *plain* tooltips: keep them to a few words (M3: avoid wrapping to several lines). The
+  In-Season tab's "Label" header (about 20 words) is the longest.
+- Specs that match tooltip text: `tooltip-closed-space.spec.mjs` checks the Scoreboard (i)'s accessible description
+  starts "Your matchup in every Sleeper league"; update it if that opening changes.
+
+#### For M3 (toasts, Sync All's progress, Expressive's motion)
+
+- The tooltips' motion is plain `0.2s ease` with a 4px slide: `css/base.css` (the shared tooltip's two `transition`
+  lines and the `@starting-style` lines in its open states) and `css/tscore.css` (the header tooltip). Both carry an
+  "Improvements M3" comment where the tokens go. M3's effects curve fits a fade (no overshoot); keep
+  `display 0.2s allow-discrete` (or the token's duration) so the fade-out still runs, and keep the first plain
+  `transition` line as the fallback for browsers that don't know `allow-discrete`.
+- The 1.5s hover linger (`LINGER_MS` in `js/shared/ui/tooltips.js`) is M3's tooltip timing, not a motion token: leave it.
+- Reduce Motion: the tooltips have no rule of their own yet; if M3 adds a site-wide reduced-motion rule, the 4px slide
+  should go with it (the fade can stay).
+
+### F16, round 4: T-Score's column headers on phones and the keyboard (owner, 2026-11-14)
+
+**Why.** Found in round 3: `.table-header-tooltip` wasn't a trigger for `js/shared/ui/tooltips.js`, so the column-header
+tooltips opened on a mouse's hover only. A phone never showed them, and the keyboard couldn't reach them.
+
+**What changed.**
+- `js/shared/ui/tooltips.js`: `.table-header-tooltip` joins `TRIGGER`, `enhanceAll` and `tipsOf`. Each header gets
+  `tabindex="0"`, `role="button"` and `aria-describedby` pointing at its tooltip (its own text, "RZ TGTS", names it), so
+  it behaves like the (i)s: a tap toggles it, a tap elsewhere closes it, Tab shows it, Enter or Space toggles it, Escape
+  hides it. The headers don't sort or do anything else on a click.
+- `place` now keeps a tooltip inside the nearest ancestor that scrolls or clips sideways, as well as the window (4px in
+  from its edges). T-Score's tables scroll sideways in `.data-table-wrapper`, and on a phone 15 header tooltips near the
+  wrapper's visible edge were cut off by it. It also applies to the shared tooltip, which only moves when it would
+  otherwise be cut off.
+- `css/tscore.css`: the header tooltip opens on `:focus-visible` and `.mobile-visible` (keeping its own centring, which
+  the shared `.mobile-visible` rule's `transform` would undo), hides when dismissed while hovered, and takes `place`'s
+  `translate: var(--tt-dx)`.
+- docs/TESTING.md: the Open follow-up from round 3 is removed (done); the Tooltips convention mentions the headers and
+  the scroll-box rule. CHANGELOG: a line under Draft Strategist (T-Score's lines go there).
+
+**Tests.** `tooltip-closed-space.spec.mjs` adds: at 375px and 1280px, every visible column header on every T-Score tab
+tapped in turn (more than 20): its tooltip shows inside the window and inside its table's scroll box, screen readers get
+its text, and a second tap hides it. Before the `place` change it failed on phones with 15 "cut off by its table". On
+desktop: Tab shows a header's tooltip (role button), Escape hides it, Enter shows it again. `touch-targets` and
+`focus-ring` pass for T-Score with the headers now counted as buttons. Screenshots: all 44 identical to round 3's render.
+A phone screenshot by hand: "RZ TGTS", the last column of Values, opens "Red Zone Targets" slid left inside the table.
+
+**Checked.** check-precache OK; `node --test` passes; Playwright `tooltip-closed-space`, `tooltips-onscreen`,
+`touch-targets`, `focus-ring`, `smoke`, `support`, `mls-keyboard`, `tscore-inseason`, `tscore-refresh` at both widths: all pass.
+`CACHE_NAME` stays v2.10.9 (main is v2.10.8).
+
+**Left over.** Nothing for this round.
+
+### F16: the full suite before the pull request (2026-11-14, 3 AM Phoenix, as the owner scheduled)
+
+Main hadn't moved since the S34 merge (`CACHE_NAME` v2.10.9, above main's v2.10.8). `npm ci && npm run check` once:
+check-precache OK (173 precached), `node --test` 669 pass, Playwright 1,036 passed, 58 skipped, 4 failed in 25.8 minutes.
+The 4 are `visual.spec.mjs`'s environment check (MDS and MLS, both widths): this cloud image's fonts differ from CI's, so
+it stops before any screenshot, as on main here. The one changed screenshot (`desktop/mls-league-scoreboard.png`) was
+re-taken on CI in round 1, and CI checks every screenshot on the pull request.

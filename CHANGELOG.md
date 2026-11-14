@@ -15,6 +15,17 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Tooltips follow Material 3.** On a computer a tooltip you hovered stays 1.5 seconds after the mouse moves off, so
+  you can finish reading it; opening another one, a click or Escape closes it at once. Tooltips have rounder corners,
+  a little more room at the sides, a solid background and a softer shadow.
+- **T-Score's column headers.** The short explanations under a column's name (RZ TGTS: "Red Zone Targets") are a small
+  light label with dark text, as Material 3 draws a short tooltip, and stay 1.5 seconds after the mouse moves off.
+- **T-Score's column headers work on phones and the keyboard.** Tap a column's name to see what it means, tap again to
+  close; with a keyboard, Tab to it to see it and Escape to hide it. Before, only a mouse could open them. One near the
+  table's edge opens inside the table instead of being cut off.
+- **No empty space under short pages.** A closed tooltip (the (i) notes and badge explanations) no longer takes room
+  on the page, so a short page ends where its content does. Tooltips look and open as before.
+
 - **More room on phones.** On a phone the Tracker's players are list rows across the screen with a divider between
   them, instead of separate cards with gaps, and every section runs to the screen's edges with 16px margins (an 8px
   band of the page colour between sections). The Tracker is about 260px shorter, and the Draft Board's grid still runs to
@@ -182,6 +193,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Tooltips follow Material 3.** On a computer a tooltip you hovered stays 1.5 seconds after the mouse moves off, so
+  you can finish reading it; opening another one, a click or Escape closes it at once. Tooltips have rounder corners,
+  a little more room at the sides, a solid background and a softer shadow.
+- **No empty space under short pages.** A closed tooltip (the (i) notes and badge explanations) no longer takes room
+  on the page, so a short page ends where its content does: before kickoff the Scoreboard on a computer lost about
+  116px of blank space at the bottom. Tooltips look and open as before.
 - **Free agent or waivers.** In Sleeper leagues, every player on the Dashboard's Best available, Auto-Find's cards and
   Check a List's free agents now says **FA** (add him now, until his game starts) or **W** (on waivers: dropped in the
   last day or two, cut in a guillotine league, his game has started, or it's a waiver day in that league's Custom
