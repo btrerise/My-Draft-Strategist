@@ -12277,5 +12277,6 @@ league-week (1.6 MB, 150 requests for all 15 over 10 weeks).
 - **Ranks are today's**, not when a bid was placed: a player who broke out after a cheap claim makes his band look
   cheap. The tap text says so. Losing bids (failed claims) and how contested a player was aren't used.
 - **IndexedDB entries never expire**; they're a few hundred bytes per league-week, keyed by league id (a new season is a
-  new league id). Factory Reset's IndexedDB handling covers the whole database.
+  new league id). Factory Reset doesn't clear IndexedDB (true of the week-stats cache in the same store too;
+  `keys.js` calls both databases re-fetchable caches).
 - Top Available and the All Leagues search show no bid (they show no W chip either, S34's owner choice).
