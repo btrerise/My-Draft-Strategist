@@ -11907,7 +11907,9 @@ extra room on these tabs (the pages are taller than the hanging tips), so the fa
 **Screenshots.** Main and this branch rendered in this container and compared (`npm run pxdiff`): one PNG changes,
 - `desktop/mls-league-scoreboard.png`: 1280×1059 → 1280×943. The top 943 rows are identical; main's extra 116 rows
   were plain page background (the closed tip hanging below the page).
-The other 43 are identical. Re-taken by CI (`[update screenshots: ...]` in the commit message).
+The other 43 are identical. Re-taken by CI (`[update screenshots: ...]` in the commit message; the workflow committed
+exactly that PNG). With CI's fonts it goes 1280×1016 → 1280×929: the top 929 rows are identical to the old baseline and
+the 87 rows dropped were plain page background. Opened: the page now ends at its footer credit line.
 
 **Checked.** check-precache OK; `node --test` 640 pass; Playwright: `tooltip-closed-space`, `tooltips-onscreen`, `smoke`,
 `touch-targets`, `focus-ring`, `badge-legend`, `mls-keyboard`, `mls-this-week`, `mls-final-window`, `mls-mvp-lvp`,
