@@ -11854,7 +11854,8 @@ Tried several leagues on Tuesday, Monday evening, slow Sleeper answers with 20 l
 Tests: `mls-waiver-status` (16): the Tuesday case expects the line and no chip on played players (FA kept for a
 player with no game), and a Monday-evening case checks the empty line. Ran `node --test` (658), check-precache and the
 Best available, waiver, Scout, past-trade, league-card, lineup-choice, touch-target, smoke and Guide specs (87 passed).
-Screenshots: the Guide's W line (`desktop/` and `phone/mls-league-guide.png`), re-taken on CI.
+Screenshots: the Guide's W line (`desktop/` and `phone/mls-league-guide.png`), re-taken on CI; I opened both: the
+FA / W explanation is one sentence longer (phone +42 px, desktop +21 px), identical above it, the rest moved down.
 
 ### Left over
 - **A short gap on a cold Dashboard** (round 5, point 2): if it matters, the count could wait for the chips.
