@@ -465,3 +465,24 @@ test('the details button follows a long name\'s last word', async ({ page }, inf
     expect(geo.gap).toBeLessThan(12);           // right after the last word
     await expectClean(page, state);
 });
+
+// Round 8: the padlock dot pokes 3px above the photo but stays inside the row's info box (which clips), so it needs no
+// overflow-clip-margin, which Safari doesn't support. Rows' info boxes stretch to the row's height (round 2).
+test('the padlock dot sits inside its row\'s box, so nothing clips it', async ({ page }, info) => {
+    test.skip(info.project.name !== 'phone', 'phone rows');
+    const state = await setUp(page);
+    for (const width of [375, 320]) {
+        await page.setViewportSize({ width, height: 812 });
+        for (const hide of [false, true]) {
+            await page.evaluate(h => document.body.classList.toggle('mls-hide-headshots', h), hide);
+            const inside = await page.$$eval('#lineupTab .lineup-slot:not(.empty)', rows => rows.every(row => {
+                const dot = row.querySelector('.mls-lock-dot');
+                if (!dot || !dot.offsetParent) return true;
+                const d = dot.getBoundingClientRect(), box = row.querySelector('.mls-player-row-info').getBoundingClientRect();
+                return d.top >= box.top && d.bottom <= box.bottom && d.left >= box.left && d.right <= box.right;
+            }));
+            expect(inside, `${width}px, headshots ${hide ? 'off' : 'on'}`).toBe(true);
+        }
+    }
+    await expectClean(page, state);
+});

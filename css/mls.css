@@ -3147,9 +3147,9 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 
     /* The name and badge column is the details button's target: its "+N" stays small, and its area covers the column.
        The badges in it that explain themselves on a tap (the IR slot, the opponent's strength) sit above that area. */
-    .lineup-slot .mls-player-row-info { flex: 1 1 auto; min-width: 0; align-self: stretch; }
-    /* The padlock dot pokes 3px above the photo: clip a little outside the row's info, not at its edge. */
-    .lineup-slot .mls-player-row-info { overflow: clip; overflow-clip-margin: 6px; }
+    /* 3px wider on the left with the content where it was, so the photo's lock keeps its whole 48px area inside this box,
+       which clips (round 8; overflow-clip-margin did this before, and Safari doesn't support it). */
+    .lineup-slot .mls-player-row-info { flex: 1 1 auto; min-width: 0; align-self: stretch; margin-left: -3px; padding-left: 3px; }
     .lineup-slot .mls-player-row-text { position: relative; flex: 1 1 auto; min-width: 0; align-self: stretch; justify-content: center; }
     /* The name runs inline, so the "+N" / dots follow its last word, also when it wraps (round 7). */
     /* The line takes the name's own size, so it's no taller than the name was; the chip sits on the text's middle and its

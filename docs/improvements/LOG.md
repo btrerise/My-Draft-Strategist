@@ -12645,3 +12645,19 @@ players ("1 IR · 1 taxi" on the TE count). Two findings, both built:
   mls-locked-kickoff, smoke (all pass); check-precache; `node --test` 669 pass. `CACHE_NAME` stays v2.10.10 (main v2.10.9).
 - **Re-taken on CI** (commit 2315bae, "Screenshots re-taken on CI (1 PNGs)"): exactly phone `mls-league-lineup`; opened
   (names with their dots right after, rows as before).
+
+### S32, round 8: nothing that needs Safari's missing features (owner, 2026-11-15)
+
+The owner has no iPhone, and this container has only Chromium, so instead of a Safari check on a device: S32's CSS and JS
+searched for features Safari lacks. One mattered: `overflow-clip-margin` (round 1), which let a Lineup row's info box clip
+6px outside itself. Measured now, the padlock dot sits at least 6px inside that box at 375 and 320px, headshots on or off
+(the box stretches to the row's height since round 2), but the photo's lock's 48px tap area reached 3px left of the box,
+and the clip margin was what kept that part: without it `touch-targets.spec.mjs` failed (the lock's left edge). On
+Safari the lock would have had about a 45px area. Now the box is 3px wider on the left with its content where it was
+(`margin-left: -3px; padding-left: 3px`) and the clip margin is gone, so the lock's whole area is inside the box in every
+browser. Otherwise: `:has()` (Safari 15.4+) is fine; `@starting-style` (Safari 17.5+) only drops the snackbar's slide-in
+on older Safari. Android's Chrome and Samsung Internet are Chromium, which the specs run.
+- **Spec:** `mls-phone-rows.spec.mjs`, every padlock dot inside its row's info box at 375 and 320px, headshots on and off.
+  With the clip margin removed and nothing else, `touch-targets` failed as above; with the wider box it passes.
+- **Screenshots:** all 44 pixel-identical with round 7 (rendered here). Specs run: mls-phone-rows, touch-targets,
+  room-on-phones, mls-display-ranks (all pass).
