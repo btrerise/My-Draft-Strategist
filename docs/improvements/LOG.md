@@ -12569,3 +12569,4 @@ well (every warning on its row, rows about 79px); five findings:
   commit. Specs run: mls-phone-rows, mls-keyboard, touch-targets, mls-lineup-row-actions, badge-legend, room-on-phones,
   mls-lineup-needs, mls-weekly-locks, mls-headshots, export-same-everywhere, smoke, focus-ring (all pass); check-precache;
   `node --test` 669 pass. `CACHE_NAME` stays v2.10.10 (main v2.10.9).
+- **Re-taken on CI** (commit 1c904e5, "Screenshots re-taken on CI (1 PNGs)"): exactly phone `mls-league-lineup`.
