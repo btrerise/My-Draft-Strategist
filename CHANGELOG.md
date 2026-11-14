@@ -186,7 +186,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Tuesday's upgrades are next week's.** Once the week's last game is over, the Dashboard's Weekly upgrades and
   Auto-Find's Would Start stop treating every player as already played, so on Tuesday, when you set waiver claims,
   the card shows the upgrade ("1 upgrade · over Derrick Henry RB8 · waivers until Wed 3 AM") instead of "No upgrade
-  this week". A league synced before this change gets the chips at its next sync.
+  this week". One line says "Everyone who played this week is on waivers until Wed 3 AM" instead of a W on each of
+  them, and a line left empty because everyone else has played says so (it used to say they were all rostered). A league synced before this change gets the chips at its next sync.
 - **A chance to win is red when you're not favored.** On the Scoreboard's league tiles, Still in play, the Final
   Window and the Lineup tab's matchup line, "74% to win" stays green and "26% to win" is now red. Before, every chance
   was green, so a 3% long shot on a losing matchup read like good news.

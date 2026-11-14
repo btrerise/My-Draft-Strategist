@@ -7,7 +7,7 @@
 import { normalizeName } from '../../shared/names.js';
 import { getSleeperPlayerMap, getSleeperTransactions } from '../../shared/api/sleeper.js';
 
-const PARALLEL = 4; // leagues fetched at once (two requests each)
+const PARALLEL = 8; // leagues fetched at once (two requests each; round 5: 4 made 20 leagues take 1 to 3 s)
 const cache = new Map(); // leagueId -> { key, promise }
 
 // { cleanName: dropped at (ms) } from Sleeper transactions: the latest completed drop of each player.

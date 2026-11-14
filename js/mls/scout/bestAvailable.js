@@ -91,7 +91,7 @@ import { isDraftPickName } from '../trade/valueCurve.js';
 import { applyDefaultFolds, showTab, switchActiveLeague } from '../main.js';
 import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
 import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
-import { isWeekOver, shortWhen, waiverStatus } from './waiverStatus.js';
+import { isWeekOver, nextWeeklyRun, shortWhen, waiverStatus } from './waiverStatus.js';
 import { recentDropsFor } from './recentDrops.js';
 import { waiverChipHTML } from './waivers.js';
 
@@ -304,13 +304,19 @@ import { waiverChipHTML } from './waivers.js';
                 .map(fa => ({ fa, upgrade: null }))
         ].slice(0, PER_LEAGUE);
         players.forEach(p => { p.status = statusOf(p.fa); });
+        // How many were left off for this week (round 5): an empty line says that, not "everyone is rostered".
+        const cantPlayCount = lineupMode ? freeAgents.filter(fa => !flagged.has(fa.cleanName) && (statusOf(fa) || {}).tooLateThisWeek).length : 0;
+        // Once the week's games are over, everyone who played is on waivers until the weekly run (round 5): one line
+        // says so, instead of a W on each of them.
+        const weekOver = isWeekOver(wctx.kickoffs, wctx.now);
+        const runAt = weekOver && league.waivers && wctx.drops && wctx.drops[league.leagueId] ? nextWeeklyRun(league.waivers, wctx.now) : null;
 
         // Upgrades over the same player (or the same empty spot) are options for one spot, not separate moves (S12
         // round 4): they count once, and the line says so instead of repeating "over Kenny Gainwell" on each.
         upgrades.forEach(u => { u.target = u.emptySlot ? 'empty' : u.bench.cleanName; });
         const shownTargets = {};
         players.forEach(p => { if (p.upgrade) shownTargets[p.upgrade.target] = (shownTargets[p.upgrade.target] || 0) + 1; });
-        return { league, basis, lineupMode, weekOver: lineupMode && isWeekOver(wctx.kickoffs, wctx.now), freeAgents, players, posRankOf, rankedAtPos, dismissedCount: dismissed.size, upgrade: upgrades[0] || null, lateCount: late.length,
+        return { league, basis, lineupMode, weekOver, runAt, cantPlayCount, freeAgents, players, posRankOf, rankedAtPos, dismissedCount: dismissed.size, upgrade: upgrades[0] || null, lateCount: late.length,
             upgradeCount: new Set(upgrades.map(u => u.target)).size, shownTargets, inj: (clean) => (meta[clean] && meta[clean].inj) || null };
     }
 
@@ -322,6 +328,9 @@ import { waiverChipHTML } from './waivers.js';
     const waiverWhen = (st, lead = true) => (st && st.status === 'waivers' && !st.tooLateThisWeek
         ? `${lead ? ' ' : ''}<span class="mls-ba-wv-when">${lead ? '&middot; ' : ''}waivers until ${st.atRun ? '' : 'about '}${escapeHtml(shortWhen(st.clearsAt))}</span>` : '');
 
+    // On waivers only because he played, after the week's games (round 5): the card's one line covers him.
+    const playedAfterWeek = (a, st) => !!(a.runAt && st && st.status === 'waivers' && st.reason === 'played');
+
     function playerHTML(a, { fa, upgrade, late, status }) {
         const inj = a.inj(fa.cleanName);
         // A shared target is said once, above the list (sharedNotes). An upgrade too late for this week says so instead
@@ -331,7 +340,7 @@ import { waiverChipHTML } from './waivers.js';
             : upgrade && waiverWhen(status) ? `<span class="mls-ba-over">${waiverWhen(status, false)}</span>` : '';
         const muted = late ? ' is-late' : '';
         const dismiss = `<button type="button" class="btn-bare mls-ba-dismiss" data-action="dismissBestAvailable" data-league-id="${escapeHtml(a.league.leagueId)}" data-player="${escapeHtml(fa.cleanName)}" aria-label="Not interested in ${escapeHtml(fa.name)} (hide him here this week)" title="Not interested (hide this week)">${DISMISS_ICON}</button>`;
-        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}${late ? ' is-late-upgrade' : ''}${muted}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${waiverChipHTML(status)}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${late ? `${over}${dismiss}` : `${dismiss}${over}`}</li>`;
+        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}${late ? ' is-late-upgrade' : ''}${muted}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${playedAfterWeek(a, status) ? '' : waiverChipHTML(status)}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${late ? `${over}${dismiss}` : `${dismiss}${over}`}</li>`;
     }
 
     // A league card's Best Available section (S12; one line of the card before). A fold: open when the league has
@@ -361,7 +370,11 @@ import { waiverChipHTML } from './waivers.js';
                     const u = a.players.find(p => p.upgrade && p.upgrade.target === target).upgrade;
                     return `<div class="mls-ba-shared">${n} options for one spot: ${u.emptySlot ? 'each fills an empty lineup spot' : `each ${overText(u)}`}</div>`;
                 }).join('');
-                body = `${notes}<ol class="mls-ba-players">${a.players.map(p => playerHTML(a, p)).join('')}</ol>`;
+                const runNote = a.players.some(p => playedAfterWeek(a, p.status))
+                    ? `<div class="mls-ba-wv-note">Everyone who played this week is on waivers until ${escapeHtml(shortWhen(a.runAt))}.</div>` : '';
+                body = `${runNote}${notes}<ol class="mls-ba-players">${a.players.map(p => playerHTML(a, p)).join('')}</ol>`;
+            } else if (a.cantPlayCount > 0) {
+                body = `<div class="mls-ba-empty">Everyone else available has played this week (or can't be added before his game).</div>`;
             } else if (a.dismissedCount > 0) {
                 body = `<div class="mls-ba-empty">Every other ranked RB, WR and TE is rostered in this league.</div>`;
             } else {

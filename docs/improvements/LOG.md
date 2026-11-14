@@ -11831,7 +11831,33 @@ who played this week" tap text, and Auto-Find's Would Start (not Played). Ran `n
 passed). Screenshots: rendered with and without this round in this container, all 44 identical (the tooltip is
 hidden in them).
 
+### Round 5: a third review as a user (owner: do all three)
+
+Tried several leagues on Tuesday, Monday evening, slow Sleeper answers with 20 leagues, and the Guide's entry.
+1. **Monday evening's empty line was wrong** (from round 2): with every free agent's game played and the Monday game
+   still to come, it said "Every RB, WR and TE in its Weekly rankings (25 ranked) is already rostered in this league."
+   Now: "Everyone else available has played this week (or can't be added before his game)." (`cantPlayCount`).
+2. **The chips came after the lines.** The Dashboard draws before Sleeper's week is known, so its first lines had no
+   chips, and their count didn't yet know who's on waivers (on a Sunday a too-late "1 upgrade" could show for a moment).
+   Measured with 20 leagues on a phone (Playwright, Sleeper's answers delayed): lines at ~0.9 s; chips at 1.8 s with
+   250 ms answers and 3.5 s with 600 ms. Now the drops are read as soon as the week is known
+   (`refreshCurrentNflWeek` in `state.js` calls `recentDropsFor`; cached, so the Dashboard reuses it), 8 leagues at a
+   time instead of 4: chips at 1.3 s and 2.4 s, lines unchanged. Opening straight onto the Dashboard both start at
+   about the same moment, so a short gap remains there; opening another tab first, they're ready. Data: ~6 KB per
+   league-week in the owner's leagues (~250 KB for 21 leagues).
+3. **Tuesday: one line instead of a W on everyone who played.** After the week's last game, the card says
+   "Everyone who played this week is on waivers until Wed 3 AM." above its players, in the W chip's amber, and those
+   players lose their chip (a player with no game, or one dropped lately, keeps his). The upgrade keeps "· waivers until
+   Wed 3 AM" on its line. Auto-Find and Check a List are unchanged (one card per player, so a W there is fine). The
+   Guide's W line says it.
+
+Tests: `mls-waiver-status` (16): the Tuesday case expects the line and no chip on played players (FA kept for a
+player with no game), and a Monday-evening case checks the empty line. Ran `node --test` (658), check-precache and the
+Best available, waiver, Scout, past-trade, league-card, lineup-choice, touch-target, smoke and Guide specs (87 passed).
+Screenshots: the Guide's W line (`desktop/` and `phone/mls-league-guide.png`), re-taken on CI.
+
 ### Left over
+- **A short gap on a cold Dashboard** (round 5, point 2): if it matters, the count could wait for the chips.
 - **Next week's byes on Tuesday** (round 4, above).
 - `daily_waivers_days` isn't decoded (above). If a league marks some days "Locked" or "FA", the chip can be wrong on
   those days; a session with the league's settings screen open (or Sleeper's help pages reachable) could map the bits.

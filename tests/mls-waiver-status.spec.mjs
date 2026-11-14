@@ -52,12 +52,12 @@ async function serveTransactions(page, kind) {
     });
 }
 // This week's kickoffs, as if ESPN had answered (the tests block ESPN).
-async function setKickoffs(page) {
+async function setKickoffs(page, kickoffs = KICKOFFS) {
     await page.evaluate(async (k) => {
         const { State } = await import('/js/mls/state.js');
         State.gameTimesByTeam = { ...State.gameTimesByTeam, ...k };
         State.gameTimesFetchedForWeek = State.currentNflWeek;
-    }, KICKOFFS);
+    }, kickoffs);
 }
 async function setup(page, { transactions = null } = {}) {
     const state = await openApp(page, '/lineup/');
@@ -174,7 +174,7 @@ test.describe('Lineup Strategist Free agent or Waivers', () => {
         await expectClean(page, state);
     });
 
-    test('Tuesday, every game over: the upgrade counts again (claims are for next week), W everywhere', async ({ page }) => {
+    test('Tuesday, every game over: the upgrade counts again (claims are for next week), one line for the waivers', async ({ page }) => {
         const state = await setup(page, { transactions: 'drop' });
         // Tue 9/22, 8 AM PT: week 2's last game (Sunday 1:25 PM PT here) is long over; Sleeper's week moves on Wednesday.
         await page.clock.setFixedTime(new Date('2026-09-22T15:00:00Z'));
@@ -185,10 +185,13 @@ test.describe('Lineup Strategist Free agent or Waivers', () => {
         await expect(upgradeCount(page)).toHaveText('1 upgrade');
         const cook = player(page, 'James Cook');
         await expect(cook).not.toHaveClass(/\bis-late\b/);
-        await expect(cook.locator('.mls-wv-chip')).toHaveText('W');
         await expect(cook.locator('.mls-ba-over')).toHaveText(/^over Derrick Henry RB8 · waivers until Wed [\d:]+ [AP]M$/);
-        await cook.locator('.mls-wv-chip').click();
-        await expect(page.locator('.toast-message').filter({ hasText: /^On waivers until Wed [\d:]+ [AP]M \(FAAB\), like everyone who played this week\.$/ })).toBeVisible();
+        // Round 5: one line instead of a W on everyone who played (Cook, BUF; Chase Brown, CIN). Jaxon Smith-Njigba has
+        // no game in this fixture's kickoffs, so he's still a free agent and keeps his FA.
+        await openFold(page);
+        await expect(line(page, 'Fixture League').locator('.mls-ba-wv-note')).toHaveText(/^Everyone who played this week is on waivers until Wed [\d:]+ [AP]M\.$/);
+        await expect(cook.locator('.mls-wv-chip')).toHaveCount(0);
+        await expect(player(page, 'Jaxon Smith-Njigba').locator('.mls-wv-chip')).toHaveText('FA');
         // Auto-Find agrees: Would Start, not Played.
         await showTab(page, 'scout');
         await callApp(page, 'setWaiverMode', 'auto');
@@ -197,6 +200,20 @@ test.describe('Lineup Strategist Free agent or Waivers', () => {
         const cookCard = out(page).locator('.mls-scan-card').filter({ hasText: 'James Cook' });
         await expect(cookCard).toContainText('Would Start');
         await expect(cookCard).not.toContainText('Played');
+        await expectClean(page, state);
+    });
+
+    test('Monday night: everyone else has played, and the line says so (not "everyone is rostered")', async ({ page }) => {
+        const state = await setup(page);
+        // Mon 9/21, 4 PM PT: every free agent's game was Sunday; the week's last game (NYG, 5:15 PM PT) is still to come.
+        await page.clock.setFixedTime(new Date('2026-09-21T23:00:00Z'));
+        const sunday = '2026-09-20T17:00:00Z';
+        await setKickoffs(page, { BUF: sunday, BAL: sunday, CIN: sunday, SEA: sunday, DET: sunday, NYG: '2026-09-22T00:15:00Z' });
+        await showTab(page, 'lineup');
+        await showTab(page, 'setup');
+        await openFold(page);
+        await expect(line(page, 'Fixture League').locator('.mls-ba-player')).toHaveCount(0);
+        await expect(line(page, 'Fixture League').locator('.mls-ba-empty')).toHaveText("Everyone else available has played this week (or can't be added before his game).");
         await expectClean(page, state);
     });
 
