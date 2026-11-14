@@ -12564,3 +12564,9 @@ lines (the fixture's failed claim on Achane gives "Others bid on 1 of 4 RB claim
 63)"). Ran check-precache, `node --test` (686), `mls-faab-bid` and the same neighbouring specs: 137 passed.
 Screenshots: my last commit and this round, rendered in the same container, differ only in `desktop/` and
 `phone/mls-league-guide.png` (the legend line's text); re-taken on CI.
+- Then merged main (F16, #252, which took `CACHE_NAME` v2.10.9, so S35 is v2.10.10; CHANGELOG and LOG conflicts were
+  two new entries in the same place, both kept). Re-ran check-precache, `node --test` (686) and the same specs plus
+  F16's `tooltip-closed-space`: 154 passed, 1 failed: `tooltip-closed-space`'s "linger … a click ends it too" on
+  desktop. It fails 3 runs in 6 on main alone in this container (a flaky F16 test, not this card's; told the owner).
+  Main and this branch, rendered in the same container, differ only in `desktop/` and `phone/mls-league-guide.png`
+  (S35's legend line); re-taken on CI.
