@@ -12706,3 +12706,8 @@ any card except one editing `check.yml` or `playwright.config.mjs` (e.g. a Playw
 Playwright 1,060 passed, 72 skipped, 4 failed. The 4 are `visual.spec.mjs`'s environment check (this cloud image's fonts
 differ from CI's; it fails before any screenshot is taken, as docs/TESTING.md says); the screenshots were re-taken on CI
 round by round above. Main hasn't moved since round 3's merge (F16); `CACHE_NAME` v2.10.10, above main's v2.10.9.
+- **CI on the pull request (#253, run 43646713520):** 1,069 passed, 1 failed: phone `mls-league-lineup.png`, 447 pixels,
+  at most 9/255 in any channel, in the photo-and-badge column and around the "···" of the Lineup rows, which is the box
+  round 8 changed (`overflow: clip` with its margin back to the default clip, 3px wider). Rendered here, round 8 had been
+  pixel-identical; CI's renderer draws those edges a shade differently. Not a flake (every starter row, the same column),
+  so CI re-takes that one PNG from this commit, as for any intended change.
