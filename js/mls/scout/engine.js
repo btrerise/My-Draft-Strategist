@@ -7,7 +7,7 @@ import { posRankTag, tierTag } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, rankingIndex } from '../helpers.js';
 import { ensureSleeperPosByName, findClosestRankedName, sleeperPosByName } from '../players.js';
-import { getSleeperMetaByName, buildWaiverContext, pastedRosterVerdict, resolveWaiverBasis, waiverCompareText, waiverDerivedNotes, waiverRanksRowHTML, waiverVerdictParts, WAIVER_SOS_OPTS } from './waivers.js';
+import { getSleeperMetaByName, buildWaiverContext, pastedRosterVerdict, resolveWaiverBasis, waiverCompareText, waiverDerivedNotes, waiverChipHTML, waiverRanksRowHTML, waiverVerdictParts, WAIVER_SOS_OPTS } from './waivers.js';
 import { getSoSBadgeHTML } from '../sos.js';
 import { isFullyMappedLeague, runAllLeaguesSearch } from './allLeaguesSearch.js';
 import { getMarketValue, isDraftPickName, rankToTradeValue } from '../trade/valueCurve.js';
@@ -248,6 +248,8 @@ import { normalizeName } from '../../shared/names.js';
                 const meta = waiverCtx.meta[clean];
                 sosBadge = getSoSBadgeHTML(meta && meta.team, pos, WAIVER_SOS_OPTS);
                 if (!owner) {
+                    // Free agent or Waivers (improvements S34), in a synced league.
+                    if (knowsWholeLeague) sosBadge += waiverChipHTML(waiverCtx.waiverStatusOf(clean));
                     let row = waiverCtx.evaluate({ name: displayName, cleanName: clean, pos });
                     let { pill, line } = waiverVerdictParts(waiverCtx, row);
                     if (waiverMode === 'roster' && waiverCtx.scan) {

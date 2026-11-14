@@ -118,7 +118,8 @@ async function flexRankTheRest(page) {
     await page.waitForLoadState('networkidle');
 }
 
-// Pinned from main before the fix: the same players, in the same order, with the same verdicts and pills.
+// Pinned from main before the fix: the same players, in the same order, with the same verdicts and pills. (No Free
+// agent / Waivers chip: the tests block ESPN, so there are no kickoff times, and S34 shows no chip without them.)
 const BEFORE = {
     autoLineup: [
         'WR Jaxon Smith-Njigba SEA Wk Pos: WR20 (T5)Wk Flex: #5ROS: UR Replaces CeeDee Lamb (your FLEX) Would Start',

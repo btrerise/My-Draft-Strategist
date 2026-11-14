@@ -214,3 +214,14 @@ export const rootShareMarkup = (share) => {
     const pct = Math.max(0, Math.min(100, Math.round(Number(share) || 0)));
     return `<span class="badge mls-root-share"><span class="mls-root-share-bar" aria-hidden="true"><span style="width:${pct}%"></span></span>Your stake: ${pct}%</span>`;
 };
+
+// --- FREE AGENT OR WAIVERS (improvements S34; scout/waivers.js waiverChipHTML) ---
+// "FA" on a free agent, "W" on a player on waivers (owner's choice: a chip on both), after the rank chip in the
+// Dashboard's Best available and on Auto-Find's and Check a List's cards. Tap for when the claim runs. tip: escaped.
+export function waiverChipMarkup(status, tip, { sample = false } = {}) {
+    const free = status === 'free';
+    const cls = `badge mls-wv-chip ${free ? 'is-fa' : 'is-w'}`;
+    const inner = free ? 'FA' : 'W';
+    if (sample) return `<span class="${cls}">${inner}</span>`;
+    return `<button type="button" class="${cls}" data-action="explainWaiver" data-tip="${tip}" title="${tip}" aria-label="${tip}">${inner}</button>`;
+}
