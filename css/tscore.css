@@ -36,8 +36,12 @@
     border-bottom: 1px dotted var(--text-muted);
 }
 
-/* Tooltip Popup Bubble */
+/* Tooltip Popup Bubble: Material 3's *plain* tooltip, since these name a column in a few words (improvements F16,
+   round 3; the owner's choice): the inverse surface (a light box, dark text, on the dark page), 4px corners (shape
+   "extra small"), 8px padding, at least 24px tall, and no border or shadow (elevation 0). The app's (i) tooltips are
+   M3's *rich* tooltip instead (css/base.css). Closed it's display: none, like the shared tooltip, so it takes no room. */
 .table-header-tooltip .tooltip-text {
+    display: none;
     visibility: hidden;
     position: absolute;
     z-index: 999;
@@ -61,22 +65,43 @@
     text-transform: none; /* Keeps original casing without forcing layout-breaking uppercase */
     
     /* Styling */
-    background: rgba(15, 23, 42, 0.98);
-    color: #f1f5f9;
-    padding: 8px 12px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+    background: #e5e7eb;
+    color: #111827;
+    padding: 4px 8px;
+    min-height: 24px;
+    border-radius: 4px;
+    border: 0;
+    box-shadow: none;
     opacity: 0;
     transition: opacity 0.2s ease, visibility 0.2s ease;
+    transition: opacity 0.2s ease, visibility 0.2s ease, display 0.2s allow-discrete;
+    /* Improvements M3: M3's motion tokens here too (see the shared tooltip in css/base.css). */
     pointer-events: none;
+    /* Slid back inside the window by js/shared/ui/tooltips.js (place), as the shared tooltip is. */
+    translate: var(--tt-dx, 0px) 0;
 }
 
-/* Hover Trigger */
+/* Hover Trigger (and the 1.5s linger after the mouse leaves: css/base.css, tt-linger) */
 .table-header-tooltip:hover .tooltip-text {
+    display: block;
     visibility: visible;
     opacity: 1;
+    @starting-style { opacity: 0; }
 }
+
+/* A tap or the keyboard opens it too (improvements F16, round 4): the header is a tooltip trigger in
+   js/shared/ui/tooltips.js (Tab shows it, Enter or Space toggles it, Escape hides it, a tap toggles it). The shared
+   .mobile-visible rule (css/base.css) shows it; this keeps the header tooltip's own centring and fade. */
+.table-header-tooltip:focus-visible .tooltip-text:not(.tt-dismissed),
+.table-header-tooltip .tooltip-text.mobile-visible {
+    display: block;
+    visibility: visible;
+    opacity: 1;
+    @starting-style { opacity: 0 !important; }
+}
+.table-header-tooltip .tooltip-text.mobile-visible { transform: translateX(-50%) !important; }
+.table-header-tooltip.align-right .tooltip-text.mobile-visible { transform: none !important; }
+.table-header-tooltip:hover .tooltip-text.tt-dismissed:not(.mobile-visible) { display: none; }
 
 /* Right-side Column Alignment (Prevents horizontal scrolling & right-edge clipping) */
 .table-header-tooltip.align-right .tooltip-text {

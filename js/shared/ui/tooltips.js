@@ -26,7 +26,9 @@
 // content the Power Rankings cells use.
 (function initTooltips() {
   let tipSeq = 0;
-  const TRIGGER = '.tooltip-icon, .tooltip-container[data-tt-self]';
+  // T-Score's column headers (.table-header-tooltip: the header text is the trigger, its tooltip a direct child) joined
+  // in improvements F16, round 4: before, they opened on hover only, so phones and the keyboard never saw them.
+  const TRIGGER = '.tooltip-icon, .tooltip-container[data-tt-self], .table-header-tooltip';
   const noop = () => {};
 
   const textFor = trigger => {
@@ -78,12 +80,13 @@
       if (!c.querySelector('.tooltip-icon') && c.querySelector(':scope > .tooltip-text')) c.setAttribute('data-tt-self', '');
       else c.setAttribute('data-tt-skip', '');
     });
-    document.querySelectorAll(`.tooltip-icon:not([data-tt]), .tooltip-container[data-tt-self]:not([data-tt])`).forEach(enhance);
+    document.querySelectorAll(`.tooltip-icon:not([data-tt]), .tooltip-container[data-tt-self]:not([data-tt]), .table-header-tooltip:not([data-tt])`).forEach(enhance);
   }
 
-  // Slides a tooltip back inside the window. Measured with any earlier shift undone; a hidden tooltip still has its
-  // box (visibility: hidden), so this works before it fades in. CSS applies --tt-dx with `translate`, which doesn't
-  // touch the fade's `transform`.
+  // Slides a tooltip back inside the window. Measured with any earlier shift undone, once it's open: a closed tooltip
+  // is display: none (improvements F16, so it takes no room on the page) and has no box. It's measured in the same task
+  // that opens it, so it never paints unplaced. CSS applies --tt-dx with `translate`, which doesn't touch the fade's
+  // `transform`.
   // A long one (improvements S27 round 2, the owner: the Scoreboard's header tip, ~900px tall at 260px wide, ran past the
   // bottom of the page) opens wider, up to 480px or the window's width, so it's shorter; if it still doesn't fit
   // between its top and the window's bottom, it scrolls inside (and takes taps and the wheel while it's open).
@@ -104,17 +107,55 @@
       text.style.setProperty('--tt-maxh', `${Math.max(room, 160)}px`);
       text.classList.add('tt-scroll');
     }
+    // Inside the window, and inside a box that scrolls sideways around it (T-Score's tables, improvements F16 round 4),
+    // which would otherwise cut off a tooltip near its visible edge.
+    let minX = MARGIN, maxX = vw - MARGIN;
+    for (let el = text.parentElement; el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+      const ox = getComputedStyle(el).overflowX;
+      if (ox === 'visible') continue;
+      const c = el.getBoundingClientRect();
+      minX = Math.max(minX, c.left + 4);
+      maxX = Math.min(maxX, c.right - 4);
+      break;
+    }
     let dx = 0;
-    if (r.left < MARGIN) dx = MARGIN - r.left;
-    else if (r.right > vw - MARGIN) dx = (vw - MARGIN) - r.right;
+    if (r.left < minX) dx = minX - r.left;
+    else if (r.right > maxX) dx = Math.max(maxX - r.right, minX - r.left);
     if (dx) text.style.setProperty('--tt-dx', `${Math.round(dx)}px`);
   }
   const tipsOf = (el) => {
-    const container = el.closest && el.closest('.tooltip-container, .tooltip');
+    const container = el.closest && el.closest('.tooltip-container, .tooltip, .table-header-tooltip');
     return container ? container.querySelectorAll(':scope > .tooltip-text, :scope > .tooltip-icon + .tooltip-text') : [];
   };
 
+  // Material 3 (improvements F16, round 2): a tooltip the mouse opened stays 1.5s after the pointer leaves its trigger,
+  // so it can be read while the mouse moves on; opening another, a tap or click, or Escape ends it at once. Mouse only:
+  // phones open tooltips with a tap and close them with the next one. T-Score's column headers linger too.
+  const LINGER_MS = 1500;
+  const HOVER_HOST = '.tooltip-container, .tooltip, .table-header-tooltip';
+  const lingerTimers = new WeakMap();
+  function endLinger(except) {
+    document.querySelectorAll('.tooltip-text.tt-linger').forEach(t => {
+      if (except && except.contains(t)) return;
+      clearTimeout(lingerTimers.get(t));
+      t.classList.remove('tt-linger');
+    });
+  }
+  document.addEventListener('pointerout', e => {
+    if (e.pointerType !== 'mouse' || !e.target.closest) return;
+    const host = e.target.closest(HOVER_HOST);
+    if (!host || (e.relatedTarget && host.contains(e.relatedTarget))) return;
+    host.querySelectorAll(':scope > .tooltip-text, :scope > .tooltip-icon + .tooltip-text').forEach(t => {
+      if (t.classList.contains('mobile-visible') || t.classList.contains('tt-dismissed')) return;
+      if (getComputedStyle(t).visibility !== 'visible') return; // it wasn't showing (e.g. hidden by a narrow rule)
+      clearTimeout(lingerTimers.get(t));
+      t.classList.add('tt-linger');
+      lingerTimers.set(t, setTimeout(() => t.classList.remove('tt-linger'), LINGER_MS));
+    });
+  }, true);
+
   function closeAll(except) {
+    endLinger(null);
     document.querySelectorAll('.tooltip-text.mobile-visible').forEach(t => {
       if (t !== except) t.classList.remove('mobile-visible');
     });
@@ -129,9 +170,10 @@
     // "already open" and close it instead.
     const open = text.classList.contains('mobile-visible') ||
       (trigger.matches(':focus-visible') && !text.classList.contains('tt-dismissed'));
-    if (!open) place(text);
     text.classList.toggle('mobile-visible', !open);
     text.classList.toggle('tt-dismissed', open);
+    // Placed once it's open: a closed tooltip is display: none (improvements F16), so it has no box to measure before.
+    if (!open) place(text);
   }
 
   document.addEventListener('click', e => {
@@ -156,9 +198,14 @@
       e.stopPropagation();
       toggle(trigger);
     } else if (e.key === 'Escape') {
+      const lingering = document.querySelector('.tooltip-text.tt-linger');
+      endLinger(null);
       const open = document.querySelectorAll('.tooltip-text.mobile-visible');
       const focusedText = onTrigger ? textFor(trigger) : null;
-      if (open.length === 0 && !(focusedText && !focusedText.classList.contains('tt-dismissed'))) return;
+      if (open.length === 0 && !(focusedText && !focusedText.classList.contains('tt-dismissed'))) {
+        if (lingering) e.stopPropagation();
+        return;
+      }
       closeAll(null);
       if (focusedText) focusedText.classList.add('tt-dismissed');
       // Only this Escape: keep it from also closing a menu or dialog behind the tooltip.
@@ -167,9 +214,14 @@
   }, true);
 
   // Hover (a mouse) and keyboard focus show a tooltip through CSS; place it as that starts.
-  document.addEventListener('mouseover', e => { tipsOf(e.target).forEach(place); }, true);
+  // A tooltip starting to show ends any other's linger, so only one is open at a time.
+  document.addEventListener('mouseover', e => {
+    const host = e.target.closest && e.target.closest(HOVER_HOST);
+    if (host) endLinger(host);
+    tipsOf(e.target).forEach(place);
+  }, true);
   document.addEventListener('focusin', e => {
-    if (e.target.matches && e.target.matches(TRIGGER)) place(textFor(e.target));
+    if (e.target.matches && e.target.matches(TRIGGER)) { endLinger(null); place(textFor(e.target)); }
   }, true);
 
   // Leaving a trigger resets it, so the next visit (focus or tap) starts from "closed".
