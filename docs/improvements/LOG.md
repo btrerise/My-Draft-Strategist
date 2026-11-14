@@ -12570,3 +12570,7 @@ Screenshots: my last commit and this round, rendered in the same container, diff
   desktop. It fails 3 runs in 6 on main alone in this container (a flaky F16 test, not this card's; told the owner).
   Main and this branch, rendered in the same container, differ only in `desktop/` and `phone/mls-league-guide.png`
   (S35's legend line); re-taken on CI.
+- CI re-took both against main's baselines (commit "Screenshots re-taken on CI (2 PNGs)" after the F16 merge); I opened
+  them. Desktop: identical to main above the legend; the new "W Bid 9–14 ≈ Bid 2–5" row with round 4's text
+  (+145 px), the rest moved down. Phone: identical to main where it paints (+314 px in the blank lower part, M17's
+  capture cut).
