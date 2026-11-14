@@ -12381,3 +12381,335 @@ check-precache OK (173 precached), `node --test` 669 pass, Playwright 1,036 pass
 The 4 are `visual.spec.mjs`'s environment check (MDS and MLS, both widths): this cloud image's fonts differ from CI's, so
 it stops before any screenshot, as on main here. The one changed screenshot (`desktop/mls-league-scoreboard.png`) was
 re-taken on CI in round 1, and CI checks every screenshot on the pull request.
+
+## S32 — Phone rows on the Lineup and Roster tabs: less at once
+
+**The owner's answers** (2026-11-14, asked before building, with real 375px renders on M17's 343px rows: the fixture's
+Henry, Chase and Nacua Lineup rows and two Roster rows, today and in three stackings, demo badges added with the app's own
+markup; a bottom sheet against the row expanding; the lock in the details against kept on the row; then two ways to put
+the lock on the slot badge):
+1. **Stacking: B, the slot (or position) badge on the photo's lower edge**, over A (badge above the photo) and C (badge
+   beside a 20px photo).
+2. **What a phone Lineup row always shows: as in the mock-ups**: slot, photo, name and bye week, position, team, rank
+   badge, the kickoff *with its opponent* (one unit, so S31's opponent colour stays), the warnings that need you (injury,
+   BYE, the IR slot, Bench / Starting in Sleeper), points and swap. Behind the tap: LOCKED / AUTO-LOCKED (the green edge
+   still says it), EARLY, TAXI (the TX slot says it) and the rank-change chip; "+N" after the name counts them.
+3. **The details: Material 3's modal bottom sheet** (M11's shared sheet), over the row expanding in place.
+4. **The lock (owner's idea): on the slot badge.** The photo and slot badge are one button that locks him (or, when his
+   game has started, runs today's override). Shown as **L2, a padlock dot on the photo's corner**: faint and open when
+   unlocked, solid green when you locked him, solid blue when auto-locked (over L1, a padlock inside the slot pill).
+   **The sheet also has a labelled lock button** (owner: yes, both).
+5. **Tablets and computers unchanged** (proposed with the questions; not objected to).
+
+**What changed and where.**
+- `js/mls/render/lineup.js`: the slot badge and photo are wrapped in `.mls-row-lead` (with the lock button on starters),
+  the name in `.mls-row-name-line` with the "+N" button after it; `phoneRowParts` counts what a phone hides and marks a
+  badge line a phone would leave empty (`is-phone-empty`). The row's lock controls get `.mls-row-lock`. The photo's lock
+  keeps the row lock's name ("Lock Josh Allen", `aria-pressed`). `js/mls/render/roster.js`: the position badge and
+  photo in `.mls-row-lead`.
+- `js/mls/badges.js`: `lockDotMarkup`, `leadLockMarkup`, `rowMoreMarkup` (one helper each, used by the rows and the
+  legend); `sleeperLineupBadgeMarkup` gets a class, `mls-sleeper-lineup-badge`, so the details can name it (no visual change).
+- `js/mls/render/lineupDetails.js` (new, precached): `openLineupDetails(opener)` opens the shared sheet titled with the
+  player's name: his slot (when it isn't just his position), position, team and bye week, then every badge on his row as
+  an inert copy (buttons become spans) with the legend's sentence, or the badge's own tap text where it has one (IR slot,
+  rank change, opponent strength), then a lock button ("Lock in this spot" / "Unlock" / "Override the lock") with a line on
+  what it does. The lock button closes the sheet, runs the same action and puts focus back on the row's "+N".
+- `js/mls/legend.js`: `MEANING`, the sentences both the legend and the details show (rank badge, rank change, injury, bye,
+  kickoff, LOCKED, EARLY, TAXI, IR slot, Sleeper lineup, opponent), so nothing is worded twice; two new legend lines, the
+  padlock dot and "+N". `js/mls/main.js`: `openLineupDetails` action (imported right after render/lineup.js, so the load
+  order doesn't move).
+- `css/mls.css`, new last sections **PHONE ROWS** and the details' styles. At every width `.mls-row-lead` and
+  `.mls-row-name-line` are `display: contents` and the phone controls are hidden, so tablets and computers lay out as
+  before. Under 600px: a 42x44px lead with a 36px photo and the badge on its lower edge (ringed in the card colour; with
+  headshots turned off the badge stands alone); the lock button covers the lead (48px with the hit area); the hidden
+  badges; the name and badge column is the details button's target (its `::after` covers the column, 10px past it, above
+  the rank badge's split parts, which pass taps through; the IR and opponent badges sit above it and still explain
+  themselves); points over a 44x30px swap with its own 48px area; the row's info clips 6px outside itself (Lineup only)
+  so the padlock dot isn't cut. `css/base.css`: the TOUCH TARGETS comment.
+- `lineup/index.html`: the Guide's Lineup step says how to lock and open the details on a phone.
+- `sw.js`: `lineupDetails.js` precached; `CACHE_NAME` v2.10.9 (main is v2.10.8, after S34 merged in; see below).
+- Export Lineup is unchanged: it's drawn at a computer's width (M17), where the rows are as before
+  (`export-same-everywhere.spec.mjs` passes).
+
+**User-visible effect.** On a phone, a Lineup or Roster row's slot or position badge sits on the bottom of the player's
+photo, so the name has about 40px more room. Lineup rows show only what you need at a glance; LOCKED, EARLY, TAXI and
+the rank-change chip are a tap on the name away ("+2" says how many), in a bottom sheet that lists every badge on the row
+with what it means and has a Lock button. Tapping the photo or slot badge locks or unlocks the player; a padlock dot on
+the photo shows the state. Swap has a 48px target and the lock is no longer stacked under it. Starter rows are 78px tall
+(95 to 125 before), so the fixture's phone Lineup tab is 86px shorter; Roster rows are 60px (56 before). Tablets,
+computers and the exported image are unchanged. The Guide explains the padlock and the "+N".
+
+**Specs.**
+- New `tests/mls-phone-rows.spec.mjs`: on a phone the slot badge sits on the photo's lower edge, centred; the injury
+  shows, EARLY doesn't and is counted ("+1"); the photo locks him (dot green, LOCKED hidden, "+2" with its accessible
+  name); a tap on the name opens the sheet with LOCKED, EARLY and the rank badge and their legend sentences, as text;
+  Unlock there closes it, unlocks him and focuses his "+N"; a row with nothing hidden still opens, with its injury and
+  "Lock in this spot", and Escape returns focus. Keyboard: Enter opens it with focus on the title, Tab stays inside,
+  Escape closes it back to the button; Enter on the photo's lock locks him. On desktop every badge and the row's lock
+  show, the phone controls don't, and the badge sits beside the photo. Roster: badge on the photo on a phone, beside it on
+  desktop.
+- Changed: `mls-lineup-row-actions` (on a phone points over swap, no lock in that column); `touch-targets` (the swap /
+  lock `ALLOW` entry is gone: every Lineup control has its 48px now); `mls-headshots` (36px on phones);
+  `mls-display-ranks` (the split check at 270px: at 300px Henry's badge now fits on one line, as M17 found at 320px);
+  `mls-rankings-change` (on a phone's Lineup tab the chip's explanation is in the row's details); `mls-keyboard`,
+  `room-on-phones`, `mls-lineup-needs`, `mls-locked-kickoff`, `mls-weekly-locks` (click the visible lock: the row's on
+  desktop, the photo's on a phone).
+- Run here: check-precache OK; `node --test` 640 pass; Playwright: those specs plus badge-legend, export-same-everywhere,
+  export-flex, export-numerals, sheet, mls-byes, mls-roster-counts, mls-opponent-strength, focus-ring, the kickoff and
+  FLEX specs, smoke, svg-icons, tooltips-onscreen, mls-now-and-later, mls-sos, restricted-flex, mls-mvp-lvp, chevrons and
+  scroll-shadows, both widths, all pass. The full suite hasn't run (rule 7: when the pull request is asked for).
+- Two findings on the way, both fixed before the commit: the Roster's dual-rank tooltip (S24) was clipped by a first
+  version of the dot's clip margin (now Lineup only), and the rank badge's split parts took taps meant for the details.
+
+**Screenshots** (main and this branch rendered in this container, `npm run pxdiff`): exactly four change. Phone
+`mls-league-lineup` (the new rows, 86px shorter) and `mls-league-roster` (badge on the photo, 60px taller over 15 rows);
+desktop and phone `mls-league-guide` (the two legend lines and the Guide's sentence). Desktop `mls-league-lineup` and
+`mls-league-roster` are identical. The Guide's desktop PNG changes because the legend lines are required with a new
+symbol (CLAUDE.md), not because the rows changed. To be re-taken by CI before the pull request.
+
+**Left over.**
+- A rank-change chip's own tap (a toast) isn't on phone Lineup rows any more; its text is in the details. The Roster
+  and Scout tabs keep their chips.
+- In swap mode the row still says "Tap another player's ⇄"; the details sheet doesn't offer swap (not asked).
+
+### S32: merged with main (S34) before the first push (2026-11-14)
+
+Main moved (S34, #251) during the card: CHANGELOG, LOG and `js/mls/legend.js`'s import list conflicted (both kept);
+`CACHE_NAME` v2.10.9, above main's v2.10.8. Rendered again against the new main: the same four PNGs change (desktop and
+phone `mls-league-guide`, phone `mls-league-lineup` and `mls-league-roster`), and this merge commit asks CI to re-take
+them. After the merge: check-precache OK, `node --test` 669 pass, Playwright mls-phone-rows, mls-lineup-row-actions,
+touch-targets, badge-legend, mls-rankings-change, mls-display-ranks, mls-headshots, mls-keyboard, room-on-phones,
+export-same-everywhere, mls-now-and-later, mls-waiver-status (116 pass).
+- **Re-taken on CI** (run 43566792683, commit 2b9a114, "Screenshots re-taken on CI (4 PNGs)"): exactly those four, no
+  other screenshot changed. Opened: Lineup rows with the badge on the photo, the padlock dots, "···" after each name and
+  points over swap; Roster rows with the position badge on the photo.
+
+### S32, round 2: one lock on an auto-locked row, and no jump on lock or swap (owner, 2026-11-14)
+
+The owner liked the result and raised two things.
+1. **An auto-locked starter showed the blue lock twice on a phone**, on the photo and at the right. A bug in round 1: the
+   right-hand override button kept its look in an inline style whose `display: inline-flex` beat PHONE ROWS' rule that
+   hides it. Its look is now the class `.mls-autolock-btn` (css/mls.css, the same declarations), so on a phone the row
+   has one lock, the blue padlock on the photo; wider screens keep it at the right as before.
+2. **The screen jumped when you tapped a lock or swap.** Locking adds "Unlock All (1)" above the rows, swapping adds the
+   swap hint, and the next tap takes them away again, so everything below moved by a line (35px at 375px) under your
+   finger. `renderLineupUI` replaces the whole lineup, so the browser's scroll anchoring had nothing to hold on to, and
+   Safari has none. Now `lineupAnchorTop` / `keepLineupAnchor` (js/mls/render/lineup.js) keep the first lineup row's
+   distance from the top of the screen across the redraw, so the rows stay put and the added line goes in above them.
+   Only when that row is above the bottom of the screen (a change below what you see moves nothing you see), and not
+   while the tab is hidden. Every width.
+- **Specs first** (`tests/mls-phone-rows.spec.mjs`, both failed before the fixes): an auto-locked starter on a phone has
+  one override control, the blue padlock (there were 2); the row you tap keeps its place on the screen through lock,
+  unlock, swap and cancel, from a starter row and a bench row (Jefferson moved 35px).
+- **Screenshots:** none change (rendered before and after in this container: all 44 pixel-identical). Specs run:
+  mls-phone-rows, mls-lineup-row-actions, touch-targets, mls-keyboard, mls-lineup-needs, mls-locked-kickoff,
+  mls-weekly-locks, room-on-phones, mls-display-ranks, export-same-everywhere, export-flex, the kickoff and FLEX specs,
+  mls-tab-redraws, mls-this-week, mls-sim, smoke (180 pass); `node --test` 669 pass. `CACHE_NAME` stays v2.10.9 (main is
+  v2.10.8).
+
+### S32, round 3: a blue edge for auto-locks, an ✕ while swapping, EARLY on the row, the swap snackbar (owner, 2026-11-15)
+
+From my review as a user after round 2; the owner took all four ("I'd like all these changes, snackbar suggestion
+included"). Main moved first (F16, #252) and was merged in: CHANGELOG and LOG conflicted (both kept); `CACHE_NAME` v2.10.10,
+above main's v2.10.9.
+1. **Auto-locked rows have a blue edge**, like the padlock dot and the override control; a lock you set stays green, and a
+   swap in progress (amber) wins. At every width (wider screens have the blue override control too). `autolocked` on the
+   row (js/mls/render/lineup.js), `.lineup-slot.autolocked:not(.swapping)` (css/mls.css).
+2. **While swapping, an ✕ in the swap button's place on phones** (`SWAP_CANCEL_HTML`: the word and an icon; phones show the
+   icon, wider screens the word, as before). The phone swap button is a fixed 44x30px, so the points above it don't move.
+   Its accessible name stays "Cancel swap of …".
+3. **EARLY is back on the phone row** (it says to set him first) and no longer counts in "+N". The legend's "+N" line now
+   lists LOCKED, TAXI and a rank change.
+4. **The swap hint is a snackbar** (Material 3: one line and one action). `#swapSnackbar` in lineup/index.html, inside
+   `#mainApp` (for its Cancel's `data-action="cancelSwap"`) but outside the tabs, since a tab's transform would pin a fixed
+   element to the tab. `showSwapSnackbar` fills it on each render while a swap is pending and hides it otherwise;
+   `cancelSwap` is the ✕'s action and puts focus on that player's swap button. It sits in the toast's place (above the tab
+   bar with 16px margins on phones, bottom right on wider screens, 24px from the bottom beside the rail), amber like a
+   swapping row, only while the Lineup tab shows; a toast that comes while it's up is lifted 80px above it (it can be two
+   lines, 69px). The toast itself (js/shared/ui/toast.js) didn't fit: it hides on a timer, holds one message at a time,
+   and swaps and locks show their own toasts meanwhile. The line above the lineup is gone, so Export Lineup can't draw it
+   (it could before, mid-swap).
+- **Specs first** (`tests/mls-phone-rows.spec.mjs`, failing before the changes): an auto-locked row's edge is blue and a
+  locked one's green, both widths; on a phone the swapping row's button shows the ✕ at the same size and place relative to
+  its points (wider screens: "Cancel"); the snackbar shows the hint, isn't in the lineup, sits above the tab bar inside the
+  margins, keeps a toast above it, hides on another tab and comes back, and its Cancel or a finished swap hides it. The
+  first test now expects EARLY on the row and "+1" after a lock. `mls-keyboard.spec.mjs` reads the hint from the snackbar.
+- **Screenshots:** against round 2 only desktop `mls-league-guide` changes (the "+N" legend line; the phone Guide's
+  legend sits in its blank lower half, a TESTING.md follow-up since M17), re-taken by CI from this commit. Against main the
+  same four as round 1 differ. No baseline swaps, auto-locks or has an early team, so the other changes show in none.
+- Run: check-precache OK, `node --test` 669 pass, Playwright mls-phone-rows, mls-keyboard, touch-targets,
+  mls-lineup-row-actions, badge-legend, room-on-phones, mls-lineup-needs, mls-locked-kickoff, mls-weekly-locks,
+  mls-display-ranks, mls-headshots, mls-rankings-change, export-same-everywhere, export-flex, mls-tab-redraws,
+  mls-starter-alert, smoke, focus-ring (both widths, all pass).
+- **Re-taken on CI** (commit 66b1c30, "Screenshots re-taken on CI (1 PNGs)"): exactly desktop `mls-league-guide`; opened
+  (the "+N" line reads "LOCKED, TAXI, a rank change").
+
+### S32, round 4: a review as a user; the owner took 1, 2, 3 and 5 (2026-11-15)
+
+Looked at the Lineup and Roster tabs as on a Sunday morning: Henry questionable, Lamb doubtful, Kittle out, Chase in the
+IR slot and an early team, Allen's game started, two differences from the Sleeper lineup; at 375 and 320px, with
+headshots off, at 700px and 1280px; swapping from the bottom of the bench; the details sheet. The busy phone lineup read
+well (every warning on its row, rows about 79px); five findings:
+1. **Bug: with headshots off, the padlock dot sat on the slot badge** (cut "QB", "WR", "DEF"). Now a starter keeps the
+   badge at the bottom of its column and the padlock above it, where the photo would be.
+2. **On tablets and computers the swap snackbar covered the swap buttons** (bottom right is the ⇄ column). It now sits
+   bottom left at the content's start edge (`left: calc(var(--rail-inset) + 24px)`, from 600px), Material 3's place for a
+   snackbar on a large screen; toasts stay at the right (and still lift above it where they'd meet).
+3. **Phones: the snackbar covered the page's last 70px.** While it shows, the Lineup tab gets 96px of room at its foot, so
+   anything can be scrolled clear of it.
+4. **The details sheet's sentences are the Guide's general ones** (above "Thu 8:00 PM": "When his game kicks off, then
+   whether it has started or finished"). The owner asked for it in plain terms first; not built.
+5. **An empty slot's badge was the old wide pill on phones.** It's now in the same column at the same size as the badges
+   under the photos (the empty row's badge is in `.mls-row-lead` too; its height stays as before).
+- **Specs first** (`tests/mls-phone-rows.spec.mjs`, all five failed before): with headshots off the padlock is above the
+  badge for a starter and the defence; the empty RB slot's badge has the filled RB slot's width and centre; at 700 and
+  1280px no swap button is under the snackbar, each scrolled to its height; on a phone, scrolled to the bottom mid-swap,
+  the Lineup tab ends above the snackbar.
+- **Screenshots:** against round 3 only phone `mls-league-lineup` (the empty RB slot's badge), re-taken by CI from this
+  commit. Specs run: mls-phone-rows, mls-keyboard, touch-targets, mls-lineup-row-actions, badge-legend, room-on-phones,
+  mls-lineup-needs, mls-weekly-locks, mls-headshots, export-same-everywhere, smoke, focus-ring (all pass); check-precache;
+  `node --test` 669 pass. `CACHE_NAME` stays v2.10.10 (main v2.10.9).
+- **Re-taken on CI** (commit 1c904e5, "Screenshots re-taken on CI (1 PNGs)"): exactly phone `mls-league-lineup`.
+
+### S32, round 5: the details say what each badge means for him (owner, 2026-11-15: "Yes", after round 4's point 4 in plain terms)
+
+Under a badge the sheet showed only the Guide's general sentence for that kind of badge (above "Thu 8:00 PM": "When his
+game kicks off, then whether it has started or finished"; above "Q": every injury status). Now a first line says what it
+means for this player, in the main text colour, and the Guide's sentence follows unchanged (so the Guide is still the one
+place its wording lives). `thisLine` / `kickoffLine` in js/mls/render/lineupDetails.js, `.mls-details-this` in css/mls.css:
+- injury: "Questionable on Sleeper." / "Doubtful on Sleeper." / "Out on Sleeper: he won't play." / "On NFL injured
+  reserve." / "Suspended." / PUP / NFI, else "Sleeper lists him as …";
+- kickoff: "Kicks off Thursday at 8:15 PM, at PIT." (the opponent when the row has the plain one), "His game has
+  started.", "His game is over.";
+- LOCKED: "You locked him in this spot."; AUTO-LOCKED: "His game has started, so he stays in this spot.";
+- Bench in Sleeper: "He's on your bench on Sleeper, and this lineup starts him."; Starting in Sleeper: "He starts on
+  Sleeper, and this lineup benches him."
+Bye, EARLY and TAXI are already about him in the Guide; the IR slot, a rank change and the opponent's strength keep
+showing their own tap text.
+- **Spec first** (`tests/mls-phone-rows.spec.mjs`, New York time; failed before): Henry's Q and kickoff, Allen's
+  AUTO-LOCKED and started game, Chase's LOCKED and Bench in Sleeper, each with the Guide's sentence still under it.
+- Screenshots: none change (no baseline opens the sheet). Run: mls-phone-rows, mls-rankings-change, badge-legend, sheet,
+  mls-keyboard (all pass); check-precache; `node --test` 669 pass.
+
+### S32, round 6: a second review as a user; the owner took 1, 2 and 5, and 3 and 4 as follow-ups (2026-11-15)
+
+Looked at what round 4's pass hadn't: a phone on its side (844x390), the keyboard and screen-reader order through a row
+(lock, details, swap: "Lock Derrick Henry", "Details for Derrick Henry", "Swap Derrick Henry"), a swap from start to
+finish (the spot you tapped stays put and now holds the other player), the bench's IR and taxi groups, and the sheet at
+320px (fits; round 5's first lines read well). Five findings:
+1. **A phone on its side: the swap snackbar wrapped to two lines and took a third of the 390px height.** From 600px it
+   may now be up to 640px wide (less the rail and margins), so it's one line (about 56px).
+2. **After a lock or a swap, keyboard focus fell to the page** (every row is redrawn, so the pressed button was gone; Tab
+   started again from the top). Older than S32, but each row now has three stops. `lineupFocusSpot` /
+   `restoreLineupFocus` (js/mls/render/lineup.js) give focus back to the same kind of control in the same row: your lock
+   after locking (the visible one), the ✕ / Cancel after starting a swap, and after finishing one the ⇄ in the row you
+   pressed, which now holds the other player. Only when focus was on one of those and nothing else took it; no scrolling.
+   `mls-keyboard.spec.mjs` expected focus on the page after a lock and a swap (and Tab from there into the "needs you"
+   box); it now expects the lock and the Cancel, and focuses the box's title directly.
+3. **A toast covers an open sheet** (site-wide): left for M3, which already plans "no toast over an open dialog"; a line
+   in docs/TESTING.md's Open follow-ups.
+4. **A phone on its side gets the computer rows' ~30px swap and lock** (tablets and computers were left unchanged; the
+   touch-target spec measures at 375px only): a line for M16 in Open follow-ups.
+5. **The bench's BN badge under the photo was grey on grey.** On phones it now has a solid slate outline and lighter text;
+   TX and IR keep their dashed outline.
+- **Specs first** (`tests/mls-phone-rows.spec.mjs`, all failed before): at 844x390 the snackbar is under 60px tall;
+  focus after a keyboard lock, a swap start and a swap finish (both widths); the BN badge's outline and text colour.
+- **Screenshots:** against round 5 only phone `mls-league-lineup` (the BN badges), re-taken by CI from this commit.
+  Specs run: mls-phone-rows, mls-keyboard, touch-targets, mls-lineup-row-actions, mls-lineup-needs, mls-weekly-locks,
+  mls-locked-kickoff, room-on-phones, badge-legend, export-same-everywhere, smoke, focus-ring, mls-tab-redraws (all pass);
+  check-precache; `node --test` 669 pass. `CACHE_NAME` stays v2.10.10 (main v2.10.9).
+- **Re-taken on CI** (commit 83da45f, "Screenshots re-taken on CI (1 PNGs)"): exactly phone `mls-league-lineup`; opened
+  (the BN badges outlined).
+
+### S32, round 7: a third review as a user; the owner took both findings (2026-11-15)
+
+Tried a superflex league ("SFLEX" fits the photo at 37px), a Sunday afternoon with a final score ("31.4 / proj 18.9",
+"Final vs MIA") and a game in progress ("Started @ PIT"), long names on a 360px phone (renamed in the fixture to
+"Christopherson Montgomery-Smith Jr." and "Marvin Harrison Jr."; they wrap on both tabs, nothing cut), a swap the slot
+can't take (the red toast explains it, the snackbar goes), Export Lineup mid-swap, and the Roster with IR and taxi
+players ("1 IR · 1 taxi" on the TE count). Two findings, both built:
+1. **Export Lineup made mid-swap drew the swapping row's amber tint and edge** (older than S32; round 3 took the hint line
+   out of the image, this was what was left). The export's clone drops `.swapping` (js/mls/trade/export.js); the page
+   keeps it.
+2. **A long name's "···" sat at the far right of its first line**, away from the name. On phones the name line is now
+   inline text (`.mls-row-name-line` block, `.player-name-wrap` inline, at the name's own size and line height so the
+   line is no taller), and the chip sits on the text's middle right after the last word, with negative margins so its
+   18px doesn't grow the line. A first try at plain inline made each name line about 2px taller with the dots high; the
+   size and margins fixed that (rows now match round 6 to within a pixel).
+- **Specs first** (both failed before): `export-same-everywhere.spec.mjs` exports at 390px before and during a swap and
+  expects the same pixels (the page keeps its swapping row); `mls-phone-rows.spec.mjs` renames Amon-Ra St. Brown to a name
+  that wraps at 360px and expects the dots on its last line, under 12px after the last word.
+- **Screenshots:** against round 6 only phone `mls-league-lineup` (names and their lines move by up to a pixel), re-taken
+  by CI from this commit. Specs run: mls-phone-rows, export-same-everywhere, touch-targets, room-on-phones,
+  mls-display-ranks, mls-rankings-change, mls-keyboard, mls-lineup-row-actions, export-flex, export-numerals,
+  mls-locked-kickoff, smoke (all pass); check-precache; `node --test` 669 pass. `CACHE_NAME` stays v2.10.10 (main v2.10.9).
+- **Re-taken on CI** (commit 2315bae, "Screenshots re-taken on CI (1 PNGs)"): exactly phone `mls-league-lineup`; opened
+  (names with their dots right after, rows as before).
+
+### S32, round 8: nothing that needs Safari's missing features (owner, 2026-11-15)
+
+The owner has no iPhone, and this container has only Chromium, so instead of a Safari check on a device: S32's CSS and JS
+searched for features Safari lacks. One mattered: `overflow-clip-margin` (round 1), which let a Lineup row's info box clip
+6px outside itself. Measured now, the padlock dot sits at least 6px inside that box at 375 and 320px, headshots on or off
+(the box stretches to the row's height since round 2), but the photo's lock's 48px tap area reached 3px left of the box,
+and the clip margin was what kept that part: without it `touch-targets.spec.mjs` failed (the lock's left edge). On
+Safari the lock would have had about a 45px area. Now the box is 3px wider on the left with its content where it was
+(`margin-left: -3px; padding-left: 3px`) and the clip margin is gone, so the lock's whole area is inside the box in every
+browser. Otherwise: `:has()` (Safari 15.4+) is fine; `@starting-style` (Safari 17.5+) only drops the snackbar's slide-in
+on older Safari. Android's Chrome and Samsung Internet are Chromium, which the specs run.
+- **Spec:** `mls-phone-rows.spec.mjs`, every padlock dot inside its row's info box at 375 and 320px, headshots on and off.
+  With the clip margin removed and nothing else, `touch-targets` failed as above; with the wider box it passes.
+- **Screenshots:** all 44 pixel-identical with round 7 (rendered here). Specs run: mls-phone-rows, touch-targets,
+  room-on-phones, mls-display-ranks (all pass).
+
+### Proposed card W2 — CI: a WebKit (Safari) run of the phone specs (owner asked for it, 2026-11-15; for the runbook)
+
+**Why.** Every spec and screenshot runs in Chromium only (CI and cloud sessions). That covers Chrome, Edge and Android
+(Chrome, Samsung Internet), but not Safari: every browser on an iPhone or iPad is WebKit underneath. The owner has no
+iPhone, so nothing checks the site there. S32 round 8 found a CSS property Safari lacks (`overflow-clip-margin`) doing a
+quiet job (a lock's 48px tap area) by reading the code; a WebKit run would catch that kind of thing by itself.
+Playwright ships a WebKit build that runs on Linux, close to Safari's engine (not Safari itself: no iOS chrome, no real
+touch).
+
+**Goal.** A second CI job runs a chosen set of specs in Playwright's WebKit at phone size, so a pull request that breaks
+something only Safari users would see fails before it merges.
+
+**Asks you (before building).** (1) Which specs: my suggestion is smoke, the phone-row and sheet specs
+(`mls-phone-rows`, `sheet`, `badge-legend`, `room-on-phones`), touch-targets, mls-keyboard and the export spec, about 3 to 5
+minutes, rather than all ~500 tests; (2) required (blocks merging) or advisory at first (my suggestion: advisory for a
+week or two, then required once it has been green); (3) screenshots: none in WebKit (my suggestion; its fonts and
+anti-aliasing differ, so they'd need their own baselines and double the re-take work).
+
+**In scope.**
+- `tests/playwright.config.mjs`: a `webkit-phone` project (Playwright's iPhone device: 390px, touch, WebKit), matched
+  only to the chosen specs (`testMatch`), skipped unless `WEBKIT=1` so cloud sessions and the normal `npm run check`
+  don't need the browser (cloud sessions may not install browsers: CLAUDE.md).
+- `.github/workflows/check.yml`: a separate job (or step) that installs WebKit (`npx playwright install --with-deps
+  webkit`, pinned to the repo's Playwright 1.63.0, cached) and runs `WEBKIT=1 npx playwright test --project=webkit-phone`;
+  the docs-only shortcut (W1) skips it too.
+- Run it once and fix or list what fails: real Safari gaps get fixed (or a card); test-only differences (a spec that
+  assumes Chromium behaviour) get a `test.skip` with the reason, per spec, never a blanket skip.
+- `docs/TESTING.md`: the WebKit run in "The checks" and how to run it locally on a machine that can install WebKit.
+
+**Out of scope.** Screenshots in WebKit (unless you choose them), Firefox, real-device testing, changing what the site
+supports.
+
+**Done when.** The WebKit job runs on every pull request with the chosen specs and passes; anything skipped in WebKit is
+listed with its reason; TESTING.md says how it works; LOG lists what it found.
+
+**Size and placement.** ~15k tokens; touches only `tests/` and `.github/` (no served file, no `CACHE_NAME`). Runs beside
+any card except one editing `check.yml` or `playwright.config.mjs` (e.g. a Playwright upgrade).
+
+### S32: the full suite before the pull request (2026-11-15)
+
+`npm ci && npm run check` once, as the owner asked for the pull request: check-precache OK, `node --test` 669 pass,
+Playwright 1,060 passed, 72 skipped, 4 failed. The 4 are `visual.spec.mjs`'s environment check (this cloud image's fonts
+differ from CI's; it fails before any screenshot is taken, as docs/TESTING.md says); the screenshots were re-taken on CI
+round by round above. Main hasn't moved since round 3's merge (F16); `CACHE_NAME` v2.10.10, above main's v2.10.9.
+- **CI on the pull request (#253, run 43646713520):** 1,069 passed, 1 failed: phone `mls-league-lineup.png`, 447 pixels,
+  at most 9/255 in any channel, in the photo-and-badge column and around the "···" of the Lineup rows, which is the box
+  round 8 changed (`overflow: clip` with its margin back to the default clip, 3px wider). Rendered here, round 8 had been
+  pixel-identical; CI's renderer draws those edges a shade differently. Not a flake (every starter row, the same column),
+  so CI re-takes that one PNG from this commit, as for any intended change.
+- **Re-taken on CI** (commit b0653a6, "Screenshots re-taken on CI (1 PNGs)"): exactly phone `mls-league-lineup`, and
+  pixel-identical to the failed run's own render of it (so the difference was deterministic, not a flake).

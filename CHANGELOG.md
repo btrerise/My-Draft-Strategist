@@ -193,6 +193,22 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Phone lineup rows show less at once.** On a phone, a player's slot (or, on the Roster tab, position) badge sits on
+  the bottom edge of his photo, so his name gets more of the row. A Lineup row shows his slot, photo, name, position,
+  team, rank, kickoff and opponent, points and swap, plus what needs you (injury, bye, the IR slot, Bench or Starting
+  in Sleeper, EARLY). LOCKED, TAXI and the rank-change chip wait behind a tap on his name ("+2" says how many); the tap
+  opens a sheet listing every badge on his row with what it means for him ("Questionable on Sleeper.", "Kicks off
+  Thursday at 8:15 PM.") and the Guide's explanation, and a Lock button. Tap his photo or slot badge to
+  lock or unlock him: a small padlock on the photo is green when you locked him and blue once his game has started.
+  Swap is a bigger target, and while you swap it turns into an ✕ in the same place. Starter rows are about 78px tall
+  instead of 95 to 125. Tablets, computers and the exported lineup image are unchanged. The Guide's badge list explains
+  the padlock and the "+2".
+- **Swapping and locking, on every screen size.** While you swap, "Tap another player's ⇄ to swap with …" is a bar at
+  the bottom of the screen with a Cancel button (bottom left on tablets and computers, clear of the swap buttons), so you
+  see it even when you start from the bench, instead of a line above the lineup. The row you tap no longer jumps when "Unlock All" appears above the lineup, and with a keyboard, focus stays on the
+  button you used instead of going back to the top of the page. A row whose game has
+  started (auto-locked) has a blue edge like its padlock; one you locked stays green. Export Lineup made during a swap no longer shows the swapping row's highlight.
+
 - **Tooltips follow Material 3.** On a computer a tooltip you hovered stays 1.5 seconds after the mouse moves off, so
   you can finish reading it; opening another one, a click or Escape closes it at once. Tooltips have rounder corners,
   a little more room at the sides, a solid background and a softer shadow.

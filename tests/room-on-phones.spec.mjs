@@ -47,7 +47,7 @@ test.describe('room on phones', () => {
         const row = page.locator('#optimalLineupContainer .lineup-slot:not(.locked):not(.swapping)').first();
         expect(await content(row)).toEqual({ x: 16, width: 343 });
         // A locked row's 3px edge sits outside its content, so its name lines up with the rows around it (round 5).
-        await page.locator('#optimalLineupContainer .lineup-slot .lock-btn').first().click();
+        await page.locator('#optimalLineupContainer .lineup-slot [data-action="toggleLock"]:visible').first().click();
         const locked = page.locator('#optimalLineupContainer .lineup-slot.locked').first();
         await expect(locked).toBeVisible();
         const nameX = (loc) => loc.locator('.player-name-wrap').first().evaluate((el) => Math.round(el.getBoundingClientRect().x));

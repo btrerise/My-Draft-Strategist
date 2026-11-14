@@ -34,7 +34,7 @@ async function setKickoffs(page, times) {
 const starterRows = (page) => page.locator('#optimalLineupContainer .lineup-slot').evaluateAll(rows => rows.map(r =>
     `${r.querySelector('.slot-badge').textContent.trim()} ${(r.querySelector('.player-name-wrap')?.textContent || '').replace(/\s*\(\d+\)$/, '').trim()}`));
 
-const LOCK_LAMB = '#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock CeeDee Lamb"]';
+const LOCK_LAMB = '#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock CeeDee Lamb"]:visible';
 
 async function setUp(page) {
     const state = await openApp(page, '/lineup/');
@@ -58,7 +58,7 @@ test.describe('FLEX Kickoff Optimization with a player you locked (F13)', () => 
             'QB Josh Allen', 'RB Derrick Henry', 'RB Jahmyr Gibbs', "WR Ja'Marr Chase", 'WR Justin Jefferson',
             'TE Brock Bowers', 'FLEX CeeDee Lamb', 'K Justin Tucker', 'DEF Baltimore Ravens',
         ]);
-        await expect(page.locator('#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock CeeDee Lamb"]')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock CeeDee Lamb"]:visible')).toHaveAttribute('aria-pressed', 'true');
         await expectClean(page, state);
     });
 

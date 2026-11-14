@@ -9,7 +9,7 @@ const lockBadges = (page) => page.locator('#optimalLineupContainer .mls-lock-bad
 
 async function lockAllen(page) {
     await showTab(page, 'lineup');
-    await page.locator('#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock Josh Allen"]').click();
+    await page.locator('#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock Josh Allen"]:visible').click();
     await expect(lockBadges(page)).toHaveCount(1);
 }
 
@@ -33,7 +33,7 @@ test.describe('Locks last one NFL week', () => {
         expect(lockCount(after.locks)).toBe(0);
         await showTab(page, 'lineup');
         await expect(lockBadges(page)).toHaveCount(0);
-        await expect(page.locator('#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock Josh Allen"]')).toHaveAttribute('aria-pressed', 'false');
+        await expect(page.locator('#optimalLineupContainer [data-action="toggleLock"][aria-label="Lock Josh Allen"]:visible')).toHaveAttribute('aria-pressed', 'false');
         await expectClean(page, state);
     });
 
