@@ -184,14 +184,15 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 - **Free agent or waivers.** In Sleeper leagues, every player on the Dashboard's Best available, Auto-Find's cards and
   Check a List's free agents now says **FA** (add him now, until his game starts) or **W** (on waivers: dropped in the
-  last day or two, cut in a guillotine league, or his game has started). Tap it for when the claim runs, in your time
-  zone ("On waivers until Wed 12 AM (FAAB). His game has started."). On Weekly, an upgrade who's on waivers and plays
-  before the claim runs is greyed with "too late for this week", no longer counts toward the card's "1 upgrade" (the
-  card reads "No upgrade this week · 1 too late"), and the next free agent at his position is checked instead; players
-  who can't play for you this week drop off the line. Auto-Find and Check a List agree: such a player reads **Too
-  Late** instead of Would Start. An upgrade on waivers says until when on its own line ("over Derrick Henry RB8 ·
-  waivers until about Thu 10 PM"). Manual leagues show neither chip, and no chip shows while the week's kickoff times
-  haven't loaded. A league synced before this change gets the chips at its next sync.
+  last day or two, cut in a guillotine league, his game has started, or it's a waiver day in that league's Custom
+  Daily Waivers). Tap it for when the claim runs, in your time zone ("On waivers until Wed 12 AM (FAAB). His game has
+  started."). On Weekly, an upgrade who's on waivers and plays before the claim runs is greyed with "too late for this
+  week", no longer counts toward the card's "1 upgrade" (the card reads "No upgrade this week · 1 too late"), and the
+  next free agent at his position is checked instead; players who can't play for you this week drop off the line.
+  Auto-Find and Check a List agree: such a player reads **Too Late** instead of Would Start. An upgrade on waivers
+  says until when on its own line ("over Derrick Henry RB8 · waivers until about Thu 10 PM"). Manual leagues show
+  neither chip, and no chip shows while the week's kickoff times haven't loaded. A league synced before this change
+  gets the chips at its next sync.
 - **Tuesday's upgrades are next week's.** Once the week's last game is over, the Dashboard's Weekly upgrades and
   Auto-Find's Would Start stop treating every player as already played, so on Tuesday, when you set waiver claims, the
   card shows the upgrade ("1 upgrade · over Derrick Henry RB8 · waivers until Wed 3 AM") instead of "No upgrade this

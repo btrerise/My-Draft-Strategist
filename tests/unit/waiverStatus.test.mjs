@@ -2,13 +2,14 @@
 // for this week. Times are 2026's week 10: Thu Nov 12 to Mon Nov 16 (Pacific standard time, UTC-8).
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { isWeekOver, nextWeeklyRun, shortWhen, waiverSettingsFrom, waiverStatus, waiverStatusText } from '../../js/mls/scout/waiverStatus.js';
+import { dayCode, isWeekOver, modeAt, nextRunAt, nextWeeklyRun, shortWhen, waiverSettingsFrom, waiverStatus, waiverStatusText } from '../../js/mls/scout/waiverStatus.js';
 
 const PT = (s) => Date.parse(`${s}-08:00`); // a Pacific (standard time) wall clock
 const H = 3600 * 1000;
 
-// A FAAB league with daily waivers at 12 AM and 2-day clears (most of the owner's leagues).
-const faab2 = waiverSettingsFrom({ waiver_type: 2, waiver_budget: 100, waiver_clear_days: 2, waiver_day_of_week: 2, daily_waivers: 1, daily_waivers_hour: 0, daily_waivers_days: 5461 });
+// A FAAB league with weekly waivers and 2-day clears (like League of Ordinary Gentlemen): free agents every day except
+// recent drops and players whose game has started.
+const faab2 = waiverSettingsFrom({ waiver_type: 2, waiver_budget: 100, waiver_clear_days: 2, waiver_day_of_week: 2, daily_waivers: 0, daily_waivers_hour: 0, daily_waivers_days: 5461 });
 // Rolling waivers, weekly only, 1-day clears.
 const rolling1 = waiverSettingsFrom({ waiver_type: 0, waiver_budget: 100, waiver_clear_days: 1, waiver_day_of_week: 2, daily_waivers: 0, daily_waivers_hour: 0 });
 // Daily waivers at 9 AM (REDRAFT Late Round Board of Directors).
@@ -27,7 +28,7 @@ describe('waiverSettingsFrom', () => {
         assert.equal(faab2.type, 'faab');
         assert.equal(rolling1.type, 'rolling');
         assert.equal(waiverSettingsFrom({ waiver_type: 1 }).type, 'reverse');
-        assert.deepEqual(faab2, { type: 'faab', budget: 100, clearDays: 2, dayOfWeek: 2, daily: true, hour: 0, days: 5461 });
+        assert.deepEqual(faab2, { type: 'faab', budget: 100, clearDays: 2, dayOfWeek: 2, daily: false, hour: 0, days: 5461 });
     });
     test('null without waiver settings', () => {
         assert.equal(waiverSettingsFrom(null), null);
@@ -158,6 +159,80 @@ describe('round 6: real cases from the owner\'s leagues', () => {
     test('waiver_day_of_week 0 (Gridiron Best Ball): the weekly run is still Wednesday', () => {
         const gridiron = waiverSettingsFrom({ waiver_type: 0, waiver_clear_days: 0, waiver_day_of_week: 0, daily_waivers: 1, daily_waivers_hour: 0, daily_waivers_days: 10581 });
         assert.equal(nextWeeklyRun(gridiron, PT('2026-11-15T14:00:00')), PT('2026-11-18T00:00:00'));
+    });
+});
+
+describe('round 7: each league\'s daily schedule, from the owner\'s Sleeper settings screens', () => {
+    // Week 10, 2026: Fri 11/13 ... Wed 11/18. "1 AM MST" on Sleeper's screens is 12 AM PT.
+    const daily = (days, hour, clear) => waiverSettingsFrom({ waiver_type: 2, waiver_budget: 100, waiver_clear_days: clear, waiver_day_of_week: 2, daily_waivers: 1, daily_waivers_hour: hour, daily_waivers_days: days });
+    const LRD = daily(6140, 0, 1);   // Mon, Tue Waivers; Wed-Sat Waivers until 1 AM MST, then FA; Sun FA
+    const FL = daily(10583, 0, 2);   // Mon, Tue Locked; Wed-Sat Waivers; Sun Waivers until 1 AM MST, then FA
+    const LP = daily(10580, 9, 1);   // Mon, Tue Locked; Wed-Sat Waivers; Sun Free Agency (runs at 9 AM PT)
+    const FNB = daily(10581, 0, 1);  // Mon, Tue Locked; every other day Waivers (Gridiron, Legacy too)
+    const RD = daily(1360, 9, 2);    // REDRAFT: Sat, Sun, Mon FA; Tue-Fri Waivers at 9 AM
+    const SUN = 0, MON = 1, TUE = 2, WED = 3, THU = 4, FRI = 5, SAT = 6;
+    const nobody = { cleanName: 'x', team: 'KC' }; // no game in these kickoffs (a bye)
+
+    test('the day codes match the three screens', () => {
+        assert.deepEqual([MON, TUE, WED, THU, FRI, SAT, SUN].map(d => dayCode(LRD, d)), [1, 1, 3, 3, 3, 3, 0]);
+        assert.deepEqual([MON, TUE, WED, THU, FRI, SAT, SUN].map(d => dayCode(FL, d)), [2, 2, 1, 1, 1, 1, 3]);
+        assert.deepEqual([MON, TUE, WED, THU, FRI, SAT, SUN].map(d => dayCode(LP, d)), [2, 2, 1, 1, 1, 1, 0]);
+        assert.deepEqual([MON, TUE, WED, THU, FRI, SAT, SUN].map(d => dayCode(RD, d)), [0, 1, 1, 1, 1, 0, 0]);
+        assert.equal(dayCode(faab2, MON), 0); // weekly waivers: free agency every day
+    });
+
+    test('LRD Cucks: a waiver day Monday, free agents Wednesday after 12 AM PT, and Sunday', () => {
+        const mon = waiverStatus(nobody, LRD, {}, kickoffs, PT('2026-11-16T10:00:00'));
+        assert.equal(mon.status, 'waivers');
+        assert.equal(mon.reason, 'waiverDay');
+        assert.equal(mon.clearsAt, PT('2026-11-17T00:00:00'));
+        assert.equal(waiverStatusText(mon, 'America/Los_Angeles'), 'On waivers until Tue 12 AM (FAAB). A waiver day in this league: every pickup is a claim.');
+        assert.equal(modeAt(LRD, PT('2026-11-18T15:00:00')), 'fa');
+        assert.equal(waiverStatus(nobody, LRD, {}, kickoffs, PT('2026-11-15T09:00:00')).status, 'free');
+        // On a free-agency day a recent drop is still a claim (the owner's note): Malik Washington, dropped Fri 1:40 PM
+        // in this 1-day league, claimed Sat 12:45 PM while others were added as free agents.
+        const fri = PT('2026-11-13T13:40:00');
+        const st = waiverStatus({ cleanName: 'malikwashington', team: 'KC' }, LRD, { malikwashington: fri }, kickoffs, PT('2026-11-13T18:00:00'));
+        assert.equal(st.status, 'waivers');
+        assert.equal(st.clearsAt, fri + 24 * H);
+        assert.equal(waiverStatus(nobody, LRD, { malikwashington: fri }, kickoffs, PT('2026-11-13T18:00:00')).status, 'free');
+    });
+
+    test('Fantasy Leftovers: Sunday is free agency after 12 AM PT; Monday is locked until Wednesday', () => {
+        assert.equal(waiverStatus(nobody, FL, {}, kickoffs, PT('2026-11-15T09:00:00')).status, 'free');
+        const mon = waiverStatus(nobody, FL, {}, kickoffs, PT('2026-11-16T12:00:00'));
+        assert.equal(mon.reason, 'locked');
+        assert.equal(mon.clearsAt, PT('2026-11-18T00:00:00'));
+        assert.equal(waiverStatusText(mon, 'America/Los_Angeles'), 'On waivers until Wed 12 AM (FAAB). Adds are locked today in this league.');
+        // Thursday: a waiver day; the next run is Friday 12 AM.
+        assert.equal(nextRunAt(FL, PT('2026-11-19T12:00:00')), PT('2026-11-20T00:00:00'));
+    });
+
+    test('Legends of the Pocket: claims at 9 AM; Saturday\'s run into Sunday\'s free agency is at 12 AM', () => {
+        assert.equal(nextRunAt(LP, PT('2026-11-13T10:00:00')), PT('2026-11-14T09:00:00')); // Fri -> Sat 9 AM
+        assert.equal(nextRunAt(LP, PT('2026-11-14T10:00:00')), PT('2026-11-15T00:00:00')); // Sat -> Sun 12 AM
+        assert.equal(waiverStatus(nobody, LP, {}, kickoffs, PT('2026-11-15T09:00:00')).status, 'free');
+        // A player who played Sunday: locked until the after-games time (Wed 12 AM), then Wednesday's 9 AM run.
+        const played = waiverStatus(dowdle, LP, {}, kickoffs, PT('2026-11-15T14:00:00'));
+        assert.equal(played.reason, 'played');
+        assert.equal(played.clearsAt, PT('2026-11-18T09:00:00'));
+    });
+
+    test('Friday Night Beverages: a Sunday-night player on Sunday afternoon is on waivers until Wednesday, too late', () => {
+        const st = waiverStatus({ cleanName: 'y', team: 'SF' }, FNB, {}, { ...kickoffs, SF: '2026-11-16T01:20:00Z' }, PT('2026-11-15T14:00:00'));
+        assert.equal(st.status, 'waivers');
+        assert.equal(st.reason, 'waiverDay');
+        assert.equal(st.clearsAt, PT('2026-11-18T00:00:00'));
+        assert.equal(st.tooLateThisWeek, true);
+    });
+
+    test('REDRAFT: Saturday is free agency; a Tuesday waiver day runs at 9 AM', () => {
+        assert.equal(waiverStatus(nobody, RD, {}, kickoffs, PT('2026-11-14T12:00:00')).status, 'free');
+        const tue = waiverStatus(nobody, RD, {}, kickoffs, PT('2026-11-17T08:00:00'));
+        assert.equal(tue.reason, 'waiverDay');
+        assert.equal(tue.clearsAt, PT('2026-11-17T09:00:00'));
+        // Friday's claims run at 12 AM Saturday, when free agency starts (REDRAFT's Saturday 12 AM claims).
+        assert.equal(nextRunAt(RD, PT('2026-11-13T10:00:00')), PT('2026-11-14T00:00:00'));
     });
 });
 

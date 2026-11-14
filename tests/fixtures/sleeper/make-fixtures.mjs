@@ -62,9 +62,10 @@ const league = {
     total_rosters: 2, draft_id: '2000000000000000001',
     roster_positions: ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'K', 'DEF', 'BN', 'BN', 'BN', 'BN', 'BN'],
     scoring_settings: { rec: 1, pass_td: 4, rush_td: 6, rec_td: 6 },
-    // Sleeper's waiver settings (improvements S34): FAAB, 2-day clears, daily waivers at 12 AM PT, as in most of the
-    // owner's leagues.
-    settings: { type: 0, playoff_week_start: 15, waiver_type: 2, waiver_budget: 100, waiver_clear_days: 2, waiver_day_of_week: 2, daily_waivers: 1, daily_waivers_hour: 0, daily_waivers_days: 5461 },
+    // Sleeper's waiver settings (improvements S34): FAAB, 2-day clears, weekly waivers (Wednesday 12 AM PT), so
+    // unrostered players are free agents except recent drops and those whose game has started. (Daily-waiver
+    // schedules: tests/mls-waiver-status.spec.mjs sets one.)
+    settings: { type: 0, playoff_week_start: 15, waiver_type: 2, waiver_budget: 100, waiver_clear_days: 2, waiver_day_of_week: 2, daily_waivers: 0, daily_waivers_hour: 0, daily_waivers_days: 5461 },
 };
 
 // Each team's Sleeper starters, filled slot by slot from its roster in order (refactor 3G), so the

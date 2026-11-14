@@ -91,7 +91,7 @@ test.describe('Lineup Strategist Free agent or Waivers', () => {
         await expect(page.locator('.toast-message').filter({ hasText: /^Free agent: add now, until his Sun [\d:]+ [AP]M kickoff\.$/ })).toBeVisible();
         // The waiver settings came with the sync, and are kept on the league (so Backup / Restore has them).
         const waivers = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_leagues')).find(l => l.leagueId === '1000000000000000001').waivers);
-        expect(waivers).toEqual({ type: 'faab', budget: 100, clearDays: 2, dayOfWeek: 2, daily: true, hour: 0, days: 5461 });
+        expect(waivers).toEqual({ type: 'faab', budget: 100, clearDays: 2, dayOfWeek: 2, daily: false, hour: 0, days: 5461 });
         await expectClean(page, state);
     });
 
@@ -214,6 +214,37 @@ test.describe('Lineup Strategist Free agent or Waivers', () => {
         await openFold(page);
         await expect(line(page, 'Fixture League').locator('.mls-ba-player')).toHaveCount(0);
         await expect(line(page, 'Fixture League').locator('.mls-ba-empty')).toHaveText("Everyone else available has played this week (or can't be added before his game).");
+        await expectClean(page, state);
+    });
+
+    test('a daily-waiver league (Friday Night Beverages\' schedule): on a waiver day every pickup is a claim', async ({ page }) => {
+        const state = await setup(page);
+        // Mon and Tue Locked, every other day Waivers at 12 AM PT (the owner's settings screens, round 7).
+        await page.evaluate(() => {
+            const leagues = JSON.parse(localStorage.getItem('mls_leagues'));
+            leagues.forEach(l => { if (l.waivers) l.waivers = { ...l.waivers, daily: true, days: 10581, hour: 0 }; });
+            localStorage.setItem('mls_leagues', JSON.stringify(leagues));
+        });
+        await page.reload();
+        await page.waitForLoadState('networkidle'); // the app re-reads Sleeper's week (and resets kickoffs) first
+        // Saturday 9/19 noon PT: a waiver day; the next run is Sunday 12 AM, before every Sunday game.
+        await page.clock.setFixedTime(new Date('2026-09-19T19:00:00Z'));
+        await setKickoffs(page);
+        await showTab(page, 'lineup');
+        await showTab(page, 'setup');
+        await expect(upgradeCount(page)).toHaveText('1 upgrade');
+        await expect(line(page, 'Fixture League').locator('.mls-wv-chip.is-fa')).toHaveCount(0);
+        await expect(line(page, 'Fixture League').locator('.mls-wv-chip.is-w')).toHaveCount(3);
+        const cook = player(page, 'James Cook');
+        await expect(cook.locator('.mls-ba-over')).toHaveText(/^over Derrick Henry RB8 · waivers until Sun [\d:]+ [AP]M$/);
+        await cook.locator('.mls-wv-chip').click();
+        await expect(page.locator('.toast-message').filter({ hasText: /^On waivers until Sun [\d:]+ [AP]M \(FAAB\)\. A waiver day in this league: every pickup is a claim\.$/ })).toBeVisible();
+        // Sunday 10 AM PT: Sunday's run has passed and Monday and Tuesday are Locked, so the next run is Wednesday,
+        // after Cook's game: too late, not counted.
+        await page.clock.setFixedTime(SUNDAY);
+        await showTab(page, 'lineup');
+        await showTab(page, 'setup');
+        await expect(upgradeCount(page)).toHaveText('');
         await expectClean(page, state);
     });
 

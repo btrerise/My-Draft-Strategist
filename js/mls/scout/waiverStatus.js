@@ -1,19 +1,21 @@
 // --- WAIVERS OR FREE AGENT (improvements S34) ---
 // Sleeper's public API has each league's waiver settings but no "on waivers" flag per player, so this works it out
-// from the rules below (checked against the owner's leagues' transactions, weeks 7-10 of 2026; sources in
-// docs/improvements/LOG.md, S34):
-//   - An unrostered player is a free agent (first come, first served) unless one of these holds.
-//   - Dropped within the league's waiver_clear_days: on waivers until about drop + that many days. Sleeper clears
-//     each dropped player on his own clock (claims landed 23 h after a drop in 1-day leagues, 47 h in 2-day ones).
-//   - His game has started this week: locked on waivers until the weekly run, the end of waiver_day_of_week
-//     (Sleeper's "Tue After Day": 2 = Tuesday, Sunday = 0, so the run is Wednesday) at daily_waivers_hour, Pacific
-//     time (Wed 12:0x AM PT in the hour-0 leagues, 9:02 AM PT where the hour is 9). No free-agent add in weeks 7-10
-//     came after that player's kickoff.
-//   - A dropped player whose clear time is after his kickoff locks at kickoff, so he clears at the weekly run.
-// tooLateThisWeek: he's on waivers and his game kicks off before he clears, so he can't play for you this week.
-// Once the week's last game is over, nothing is too late: the Wednesday run comes before next week's games.
+// (checked against the owner's leagues' transactions, weeks 7-10 of 2026, and their Sleeper settings screens; sources
+// in docs/improvements/LOG.md, S34, rounds 1, 6 and 7). All times are Pacific (Sleeper's; it shows them in the viewer's
+// zone, e.g. "1 AM MST" for 12 AM PT).
+//   - The day's schedule (daily_waivers_days, daily-waiver leagues only; round 7): each day is Free Agency (players
+//     are free agents), Waivers (every unrostered player needs a claim; claims run at daily_waivers_hour), Locked (no
+//     adds; claims wait for the next run), or Waivers until the hour, then Free Agency. A weekly-waiver league is
+//     Free Agency every day. Claims also run at 12 AM when a Free Agency day starts.
+//   - His game has started: locked until "After games waivers clear" (waiver_day_of_week: 0 None, 1 Tuesday,
+//     2 Wednesday... at 12 AM PT), then the day's schedule applies (a Waivers day: that day's run).
+//   - Dropped: on waivers for waiver_clear_days, on his own clock (23 h / 47 h in 1- and 2-day leagues), then the day's
+//     schedule. A guillotine cut (round 6) clears with the after-games run instead.
+// tooLateThisWeek: on waivers, and his game kicks off before he can be had, so he can't play for you this week. Once
+// the week's last game is over, nothing is too late: claims then are for next week.
 //
-// Pure: no DOM, no State. Loaded by bestAvailable.js and waivers.js, and by tests/unit/waiverStatus.test.mjs.
+// Pure: no DOM, no State. Loaded by bestAvailable.js, waivers.js and state.js (via recentDrops.js), and by
+// tests/unit/waiverStatus.test.mjs.
 
 export const WAIVER_TZ = 'America/Los_Angeles';
 const HOUR = 3600 * 1000;
@@ -37,7 +39,7 @@ export function waiverSettingsFrom(settings) {
         dayOfWeek: num(settings.waiver_day_of_week, 2),
         daily: settings.daily_waivers === 1,
         hour: num(settings.daily_waivers_hour, 0),
-        // Sleeper's per-day schedule for daily waivers, two bits a day. Kept as it comes (not decoded: see LOG).
+        // Sleeper's per-day schedule for daily waivers, two bits a day (dayCode below).
         days: num(settings.daily_waivers_days)
     };
 }
@@ -62,22 +64,84 @@ function zonedTime(y, m, d, h, tz) {
     return guess;
 }
 
-// The next weekly waiver run after `after` (ms): the day after waiver_day_of_week, at the run hour, Pacific time.
-export function nextWeeklyRun(waivers, after) {
-    // Sleeper's waiver_day_of_week is 2 (Tuesday, Sunday = 0) in 20 of the owner's leagues; Gridiron Best Ball has 0
-    // and its weekly claims still land Wednesday at 12:11 AM PT (round 6), so 0 means the default, Wednesday's run too.
-    // Other values are unseen; they're read as the day before the run, untested.
-    const day = num(waivers && waivers.dayOfWeek, 2);
-    const runDay = ((day === 0 ? 2 : day) + 1) % 7;
-    const hour = num(waivers && waivers.hour, 0);
-    const today = zonedParts(after, WAIVER_TZ);
-    for (let i = 0; i <= 7; i++) {
-        const day = new Date(Date.UTC(today.y, today.m - 1, today.d + i));
-        if (day.getUTCDay() !== runDay) continue;
-        const at = zonedTime(day.getUTCFullYear(), day.getUTCMonth() + 1, day.getUTCDate(), hour, WAIVER_TZ);
-        if (at > after) return at;
+// A day's code in a league's daily schedule (round 7, decoded from the owner's three Sleeper settings screens against
+// daily_waivers_days): two bits a day, read from the low end Sunday, Saturday, Friday ... Monday.
+// 0 Free Agency, 1 Waivers, 2 Locked, 3 Waivers until the run hour, then Free Agency. Weekly-waiver leagues: 0.
+export const DAY_FA = 0, DAY_WAIVERS = 1, DAY_LOCKED = 2, DAY_WAIVERS_THEN_FA = 3;
+export function dayCode(waivers, wd) {
+    if (!waivers || !waivers.daily || num(waivers.days) === null) return DAY_FA;
+    return (waivers.days >> (2 * ((7 - wd) % 7))) & 3;
+}
+
+// The PT calendar day `i` days after the one `ms` falls in: { y, m, d, wd } and its moment at hour h.
+function ptDay(ms, i) {
+    const p = zonedParts(ms, WAIVER_TZ);
+    const day = new Date(Date.UTC(p.y, p.m - 1, p.d + i));
+    const y = day.getUTCFullYear(), m = day.getUTCMonth() + 1, d = day.getUTCDate();
+    return { wd: day.getUTCDay(), at: (h) => zonedTime(y, m, d, h, WAIVER_TZ) };
+}
+
+// Free agency or waivers at a moment, by the day's schedule: 'fa' | 'waivers' | 'locked'.
+export function modeAt(waivers, t) {
+    const day = ptDay(t, 0);
+    const code = dayCode(waivers, day.wd);
+    if (code === DAY_FA) return 'fa';
+    if (code === DAY_LOCKED) return 'locked';
+    if (code === DAY_WAIVERS_THEN_FA) return t >= day.at(num(waivers.hour, 0)) ? 'fa' : 'waivers';
+    return 'waivers';
+}
+
+// "After games waivers clear": the next such moment after t (12 AM PT on the day after waiver_day_of_week), or null
+// when the league has none (waiver_day_of_week 0; Gridiron Best Ball, whose Monday and Tuesday are Locked anyway).
+export function afterGamesAt(waivers, t) {
+    const dow = num(waivers && waivers.dayOfWeek, 2);
+    if (dow === 0) return null;
+    const runDay = (dow + 1) % 7;
+    for (let i = 0; i <= 8; i++) {
+        const day = ptDay(t, i);
+        if (day.wd !== runDay) continue;
+        const at = day.at(0);
+        if (at > t) return at;
     }
-    return zonedTime(today.y, today.m, today.d + 7, hour, WAIVER_TZ);
+    return null;
+}
+
+// The next time claims run at or after t: a Waivers day's run hour, or 12 AM when a Free Agency day follows a day
+// that wasn't one. A weekly-waiver league runs only at the after-games time.
+export function nextRunAt(waivers, t) {
+    if (!waivers.daily) return afterGamesAt(waivers, t - 1);
+    const hour = num(waivers.hour, 0);
+    for (let i = 0; i <= 8; i++) {
+        const day = ptDay(t, i);
+        const code = dayCode(waivers, day.wd);
+        let at = null;
+        if (code === DAY_WAIVERS || code === DAY_WAIVERS_THEN_FA) at = day.at(hour);
+        else if (code === DAY_FA && dayCode(waivers, (day.wd + 6) % 7) !== DAY_FA) at = day.at(0);
+        if (at != null && at >= t) return at;
+    }
+    return null;
+}
+
+// When a player whose own hold (his game, his drop) ends at t can be had: at t itself on a Free Agency day (as a free
+// agent; fromRun false), else at the next run (fromRun true).
+function openAt(waivers, t) {
+    if (modeAt(waivers, t) === 'fa') return { at: t, fromRun: false };
+    const run = nextRunAt(waivers, t);
+    return run == null ? { at: t, fromRun: false } : { at: run, fromRun: true };
+}
+
+// When everyone who played this week can be had again (the Tuesday line, bestAvailable.js): the after-games time,
+// or the next run after it on a Waivers day; with no after-games setting, the next run.
+export function nextWeeklyRun(waivers, after) {
+    // From the latest after-games time (it can have passed while its run hasn't: Wednesday 8 AM in a 9 AM league).
+    let ag = afterGamesAt(waivers, after - 7 * DAY - 1);
+    if (ag == null) return nextRunAt(waivers, after);
+    for (let i = 0; i < 3; i++) {
+        const open = openAt(waivers, ag).at;
+        if (open > after) return open;
+        ag = afterGamesAt(waivers, ag);
+    }
+    return openAt(waivers, ag).at;
 }
 
 // The week's games are over: every kickoff is more than a game's length ago (kickoffs: { team: ISO or ms }). From then
@@ -104,33 +168,43 @@ export function waiverStatus(player, waivers, drops, kickoffs, now) {
     const ko = toMs(kickoffs && player.team ? kickoffs[player.team] : null);
     const weekOver = isWeekOver(kickoffs, now);
 
-    let clearsAt = null;
-    let reason = null;
-    let atRun = false; // clears at the weekly run (else on his own drop clock)
     const entry = drops[player.cleanName];
     const chopped = !!(entry && typeof entry === 'object' && entry.chopped);
     const dropped = toMs(entry && typeof entry === 'object' ? entry.at : entry);
-    // A guillotine cut clears at the next weekly run (round 6); any other drop after the league's clear days.
-    const dropClears = dropped == null ? null : chopped ? nextWeeklyRun(waivers, dropped)
-        : waivers.clearDays > 0 ? dropped + waivers.clearDays * DAY : null;
+
+    // His own hold, if any: his game (locked until the after-games time) or his drop clock (a cut: the after-games time).
+    let hold = null, reason = null;
     if (ko != null && ko <= now) {
-        // His game has started (or is over): locked until the weekly run.
-        clearsAt = nextWeeklyRun(waivers, now);
-        reason = 'played';
-        atRun = true;
-        // A later drop clock (dropped after the run's eve) keeps him on waivers longer.
-        if (dropClears != null && dropClears > clearsAt) { clearsAt = dropClears; reason = 'dropped'; atRun = false; }
-    } else if (dropClears != null && dropClears > now) {
-        reason = 'dropped';
-        atRun = chopped;
-        // Still on waivers at kickoff: he locks then, until the run after it.
-        clearsAt = dropClears;
-        if (ko != null && dropClears > ko) {
-            const run = nextWeeklyRun(waivers, ko);
-            if (run >= dropClears) { clearsAt = run; atRun = true; }
+        const ag = afterGamesAt(waivers, ko);
+        if (ag != null && ag > now) { hold = ag; reason = 'played'; }
+    }
+    const dropClears = dropped == null ? null
+        : chopped ? (afterGamesAt(waivers, dropped) ?? nextRunAt(waivers, dropped))
+        : waivers.clearDays > 0 ? dropped + waivers.clearDays * DAY : null;
+    if (dropClears != null && dropClears > now && (hold == null || dropClears > hold)) {
+        hold = dropClears; reason = 'dropped';
+        // Still on waivers at his kickoff: he locks then, until the after-games time.
+        if (ko != null && ko > now && dropClears > ko) {
+            const ag = afterGamesAt(waivers, ko);
+            if (ag != null && ag > hold) hold = ag;
         }
     }
-    if (clearsAt == null) return { status: 'free', clearsAt: null, tooLateThisWeek: false, reason: null, atRun, weekOver, kickoff: ko, claimType };
+
+    let clearsAt, atRun;
+    if (hold != null) {
+        const open = openAt(waivers, hold);
+        clearsAt = open.at;
+        // "until Wed 12 AM" for a run or the after-games time; "until about Sat 5 PM" for a drop clock.
+        atRun = open.fromRun || hold !== dropClears || chopped;
+    } else {
+        // No hold of his own: the day's schedule.
+        const mode = modeAt(waivers, now);
+        if (mode === 'fa') return { status: 'free', clearsAt: null, tooLateThisWeek: false, reason: null, atRun: false, weekOver, kickoff: ko, claimType };
+        reason = mode === 'locked' ? 'locked' : 'waiverDay';
+        clearsAt = nextRunAt(waivers, now);
+        atRun = true;
+        if (clearsAt == null) return null;
+    }
     const tooLateThisWeek = !weekOver && ko != null && ko < clearsAt;
     return { status: 'waivers', clearsAt, tooLateThisWeek, reason, atRun, weekOver, kickoff: ko, droppedAt: reason === 'dropped' ? dropped : null, chopped: reason === 'dropped' && chopped, claimType };
 }
@@ -156,12 +230,15 @@ export function waiverStatusText(st, tz) {
     }
     const type = CLAIM_TYPE_NAMES[st.claimType] || 'waivers';
     const head = `On waivers until ${st.atRun ? '' : 'about '}${shortWhen(st.clearsAt, tz)} (${type}).`;
+    // Claims run then on a waiver day; "until" reads as when he's free (round 7).
     const dropped = st.droppedAt != null ? `${st.chopped ? 'Chopped' : 'Dropped'} ${shortWhen(st.droppedAt, tz)}` : null;
     let why;
     // Once the week's games are over everyone who played is on waivers until the run (round 3: "His game has started"
     // read oddly on a Tuesday).
     if (st.reason === 'played' && st.weekOver) return `On waivers until ${shortWhen(st.clearsAt, tz)} (${type}), like everyone who played this week.`;
     if (st.reason === 'played') why = 'His game has started.';
+    else if (st.reason === 'waiverDay') why = 'A waiver day in this league: every pickup is a claim.';
+    else if (st.reason === 'locked') why = 'Adds are locked today in this league.';
     else if (st.atRun && st.kickoff != null) why = `${dropped || 'Dropped lately'}; locked at his ${shortWhen(st.kickoff, tz)} kickoff.`;
     else why = `${dropped || 'Dropped lately'}.`;
     return `${head} ${why}${st.tooLateThisWeek ? ' Too late for this week.' : ''}`;
