@@ -12373,3 +12373,11 @@ A phone screenshot by hand: "RZ TGTS", the last column of Values, opens "Red Zon
 `CACHE_NAME` stays v2.10.9 (main is v2.10.8).
 
 **Left over.** Nothing for this round.
+
+### F16: the full suite before the pull request (2026-11-14, 3 AM Phoenix, as the owner scheduled)
+
+Main hadn't moved since the S34 merge (`CACHE_NAME` v2.10.9, above main's v2.10.8). `npm ci && npm run check` once:
+check-precache OK (173 precached), `node --test` 669 pass, Playwright 1,036 passed, 58 skipped, 4 failed in 25.8 minutes.
+The 4 are `visual.spec.mjs`'s environment check (MDS and MLS, both widths): this cloud image's fonts differ from CI's, so
+it stops before any screenshot, as on main here. The one changed screenshot (`desktop/mls-league-scoreboard.png`) was
+re-taken on CI in round 1, and CI checks every screenshot on the pull request.
