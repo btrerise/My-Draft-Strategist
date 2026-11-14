@@ -12113,7 +12113,10 @@ A fourth review, of the rule itself against weeks 7–10 of 12 of the owner's le
 
 Merged main (M17, the phone restyle: 29 commits, `CACHE_NAME` v2.10.7, so S34 is v2.10.8). Both changed the Guide's
 screenshots: I took main's and CI re-takes them with S34's legend lines; main and this branch rendered in the same
-container differ only in `desktop/` and `phone/mls-league-guide.png`.
+container differ only in `desktop/` and `phone/mls-league-guide.png`. CI re-took both; I opened them. Desktop: S34's
+legend lines added, identical above them. Phone: identical, only 357px taller: since M17 that screenshot paints only
+its first 16,464px (cut mid-sentence in the Guide's section 10) and the rest is blank, on main too, so the legend
+isn't in it. Not S34's to fix; added to `docs/TESTING.md`'s Open follow-ups ("Tests").
 Tests: unit (20): the Chop Shop cut, Gridiron's day 0. Ran `node --test` (660), check-precache, `mls-waiver-status`,
 `mls-best-available`, `mls-waiver-flex-unranked`, `mls-past-trade`, `mls-scout` (44 passed). No screenshot changes.
 
