@@ -12735,3 +12735,26 @@ round differ only in `desktop/` and `phone/mls-league-guide.png` (the Guide bull
 - CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 9); I opened them: step 8's FAAB bids
   bullet in its new words (desktop +44 px, phone +111 px) and the legend line further down; identical above, the rest
   moved down.
+
+### Round 10: shorter words (owner: apply all of it)
+
+Round 9's plain words, made shorter where it lost nothing ("median" kept):
+- The sheet: "40 RBs were won on waivers this season, for 0 to 50. Median: 2." / "Players ranked near RB72, and recent
+  bids, count most." / "Before the changes below, 2 tied or beat half of these winning bids; 5 tied or beat 3 out of 4."
+  / "The top stops at 8, so a few huge bids don't stretch the range." / "13 of the 40 RB claims had other bidders. Their
+  median winning bid was 8." / "None of the 40 RB claims had a second bidder." / "He wouldn't start for you now, so the
+  bid is lower" / "Only 3 weeks left, and unspent FAAB is wasted, so bid a little more" / "2 teams have more than 21 left:
+  88 and 71" (with more than three: "…: 99, 98, 97 and 2 more") / "Note: players are matched by today's rankings, which
+  may have changed since these bids." / the three Aggressive notes.
+- Settings: "A bid range for players on waivers in FAAB leagues, from your league's bids this season. Tap a bid to see
+  why."; "Conservative: lower bids, usually enough when no one else bids. Aggressive: higher bids for players who'd start
+  for you. They win more often against other bidders, but can cost more than needed."; the status line "1 bid on the
+  Dashboard now (upgrades on waivers only). …" / "No bids on the Dashboard now: they show only on upgrades on waivers,
+  once a league has a winning bid. …".
+- The Guide's bullet (~75 words → 50) and the badge legend line (~150 → 70).
+Unchanged: the toast, the bid label, the rough-guess notes, and the lines round 9 already had short.
+
+Tests: unit (19, plus "and 2 more"), `mls-faab-bid` (11 per width) with the new text. Ran check-precache, `node --test`
+(688), and `mls-faab-bid`, `tooltip-closed-space` and the neighbouring specs: 189 passed. Screenshots: my last commit and
+this round differ only in `desktop/` and `phone/mls-league-guide.png` (the shorter bullet and legend line: desktop
+−128 px, phone −324 px); re-taken on CI.

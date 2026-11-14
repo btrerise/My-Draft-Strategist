@@ -107,15 +107,15 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expect(sheet.locator('.sheet-title')).toHaveText('James Cook · Bid 13–21');
         await expect(sheet.locator('.mls-faab-sheet li')).toHaveText([
             'Fixture League · you have 63 of 100',
-            'This season, 4 RBs were won on waivers here, for 8 to 30. The median bid was 12. Bids on players ranked close to RB5 count most, and so do recent ones.',
-            'Before the changes below, a bid of 12 would have tied or beaten half of these winning bids, and 20 would have tied or beaten 3 out of 4.',
+            '4 RBs were won on waivers this season, for 8 to 30. Median: 12. Players ranked near RB5, and recent bids, count most.',
+            'Before the changes below, 12 tied or beat half of these winning bids; 20 tied or beat 3 out of 4.',
             // Round 4: from the fixture's failed claim on Achane, in the same run as his winning one.
-            'Other teams also bid in 1 of the 4 RB claims here. When they did, the median winning bid was 12.',
+            '1 of the 4 RB claims had other bidders. Their median winning bid was 12.',
             'He\'d start for you, in place of Derrick Henry',
             'You have less FAAB left than the average team (76)',
             // Round 4: the one other team can outbid 21, so the most left instead of a count.
             'Most FAAB left on other teams: 88 (you have 63)',
-            'Note: these bids were made earlier in the season, but players are matched by today\'s rankings, which may have changed.'
+            'Note: players are matched by today\'s rankings, which may have changed since these bids.'
         ]);
         await expect(sheet.locator('.mls-faab-sheet li.is-up svg')).toHaveCount(1);
         await expect(sheet.locator('.mls-faab-sheet li.is-down svg')).toHaveCount(1);
@@ -163,7 +163,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expect(bid).toHaveClass(/\bis-rough\b/);
         await bid.click();
         await expect(page.locator('.sheet .sheet-title')).toHaveText(/^Jaxon Smith-Njigba · ≈ Bid \d+–\d+$/);
-        await expect(page.locator('.sheet .mls-faab-sheet li').nth(1)).toHaveText('This season, 5 players at every position were won on waivers here, for 3 to 30. The median bid was 12. Only 1 WR has been won here, so this is a rough guess.');
+        await expect(page.locator('.sheet .mls-faab-sheet li').nth(1)).toHaveText('5 players at every position were won on waivers this season, for 3 to 30. Median: 12. Only 1 WR has been won here, so this is a rough guess.');
         await expectClean(page, state);
     });
 
@@ -230,7 +230,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expect(cook.locator('button.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
         expect(JSON.parse(await page.evaluate(() => localStorage.getItem('mls_faab_settings')))).toMatchObject({ on: true, style: 'conservative' });
         // Round 7: the line under the switch says how many bids the Dashboard shows, and the style choice has a label.
-        await expect(page.locator('#faabBidsStatus')).toHaveText('Showing 1 bid on the Dashboard right now (on upgrades who are on waivers). Auto-Find and Check a List show one for every player on waivers.');
+        await expect(page.locator('#faabBidsStatus')).toHaveText('1 bid on the Dashboard now (upgrades on waivers only). Auto-Find and Check a List show one for every player on waivers.');
         await expect(page.locator('#faabStyleLabel')).toHaveText('Bidding style');
         await expect(page.locator('#faabStyleOptions [role="group"]')).toHaveAttribute('aria-labelledby', 'faabStyleLabel');
         await expectClean(page, state);
@@ -250,7 +250,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         expect(conservative).toBeLessThan(40);
         await expect(bid).toHaveText(/^Bid \d+–40 \(of your 40 left\)$/);
         await bid.click();
-        await expect(page.locator('.sheet .mls-faab-sheet li.is-up').first()).toHaveText('Aggressive: the top is raised to 40, the median winning bid when other teams also bid');
+        await expect(page.locator('.sheet .mls-faab-sheet li.is-up').first()).toHaveText('Aggressive: top raised to 40, the median winning bid when others bid too');
         await expectClean(page, state);
     });
 
@@ -302,7 +302,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await page.waitForLoadState('networkidle');
         await expect(line(page).locator('.mls-faab-bid')).toHaveCount(0);
         // The setting's line says why nothing shows (round 7).
-        await expect(page.locator('#faabBidsStatus')).toHaveText(/^No bids on the Dashboard right now: they show on upgrades who are on waivers, once a league has a winning bid this season\./);
+        await expect(page.locator('#faabBidsStatus')).toHaveText(/^No bids on the Dashboard now: they show only on upgrades on waivers, once a league has a winning bid\./);
         await expectClean(page, state);
     });
 

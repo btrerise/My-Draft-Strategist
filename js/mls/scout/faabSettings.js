@@ -75,8 +75,8 @@ export function updateFaabStatus({ shown = 0, loading = false, failed = 0, total
         : failed > 0 ? `Couldn't read ${failed} ${failed === 1 ? 'league\'s' : 'leagues\''} bids from Sleeper; they'll load on your next visit.` : '';
     el.textContent = failedText && failed >= total ? failedText
         : loading ? `Loading your leagues' bids… ${rest}`
-        : shown > 0 ? `Showing ${shown} ${shown === 1 ? 'bid' : 'bids'} on the Dashboard right now (on upgrades who are on waivers). ${rest}`
-        : `No bids on the Dashboard right now: they show on upgrades who are on waivers, once a league has a winning bid this season. ${rest}`;
+        : shown > 0 ? `${shown} ${shown === 1 ? 'bid' : 'bids'} on the Dashboard now (upgrades on waivers only). ${rest}`
+        : `No bids on the Dashboard now: they show only on upgrades on waivers, once a league has a winning bid. ${rest}`;
     if (failedText && failed < total && !loading) el.textContent += ` ${failedText}`;
 }
 
