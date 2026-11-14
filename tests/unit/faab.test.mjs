@@ -229,3 +229,21 @@ test('Aggressive raises the top end to what winners paid when others bid, only f
     // Never more than you have left.
     assert.equal(suggestBid({ ...opts, left: { 1: 12, 2: 50 }, need: 'starts', style: 'aggressive' }).high, 12);
 });
+
+test('in Aggressive the sheet always says what the style did (round 7)', () => {
+    const bids = [
+        { pos: 'WR', posRank: 30, bid: 4, rivals: 1 }, { pos: 'WR', posRank: 32, bid: 6, rivals: 1 }, { pos: 'WR', posRank: 35, bid: 8, rivals: 0 },
+        { pos: 'WR', posRank: 38, bid: 5, rivals: 1 }, { pos: 'WR', posRank: 40, bid: 7, rivals: 1 }
+    ];
+    const opts = { ...base, bids, left: { 1: 50, 2: 50 }, style: 'aggressive' };
+    // Contested WRs: 4, 5, 6, 7 → median 5, under the range's top: unchanged, and it says so.
+    const already = suggestBid({ ...opts, need: 'starts' });
+    assert.equal(already.high, suggestBid({ ...opts, need: 'starts', style: 'conservative' }).high);
+    assert.ok(already.lines.some(l => l.text === 'Aggressive: winners paid 5 when others bid; this range already reaches it'));
+    const quiet = suggestBid({ ...opts, bids: bids.map(b => ({ ...b, rivals: 0 })), need: 'starts' });
+    assert.ok(quiet.lines.some(l => l.text === 'Aggressive: no claim here has had other bidders yet, so there\'s nothing to raise it to'));
+    const stash = suggestBid({ ...opts, need: 'bench' });
+    assert.ok(stash.lines.some(l => l.text === 'Aggressive raises bids only for players who\'d start for you'));
+    // Conservative: none of these lines.
+    assert.ok(!suggestBid({ ...opts, need: 'starts', style: 'conservative' }).lines.some(l => /Aggressive/.test(l.text)));
+});

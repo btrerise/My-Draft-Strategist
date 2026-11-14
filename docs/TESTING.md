@@ -422,7 +422,8 @@ The card named does the item in its own session; remove the line when it's done.
 **From the suggested FAAB bid (improvements S35)**
 - **S45 (the Settings page): move the FAAB Bids group** (`#faabSettingsGroup` in `lineup/index.html`, from the Dashboard's
   Advanced Settings, with its switch and Conservative / Aggressive) to the new page, and drop "on the Dashboard" from
-  the one-time toast's text (`HINT_TEXT` in `js/mls/scout/faabSettings.js`; `tests/mls-faab-bid.spec.mjs` checks it).
+  the one-time toast's text, so it reads "…in Settings." (`HINT_TEXT` in `js/mls/scout/faabSettings.js`, "…in Advanced
+  Settings on the Dashboard." until then; `tests/mls-faab-bid.spec.mjs` checks it).
   Keep the group hidden without a FAAB league (`applyFaabSettingsToUI`, called from Best Available's render).
 
 **From the starter alert (improvements N2)**

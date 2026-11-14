@@ -511,7 +511,9 @@
                 <input type="checkbox" id="faabBidsToggle" class="toggle-switch" data-action="toggleFaabBids">
             </div>
             <div id="faabStyleOptions" class="faab-style-options" hidden>
-                <div class="mls-segmented" role="group" aria-label="Bidding style" aria-describedby="faabStyleHint">
+                <p id="faabBidsStatus" class="text-helper faab-bids-status" role="status" aria-live="polite"></p>
+                <span id="faabStyleLabel" class="faab-style-label">Bidding style</span>
+                <div class="mls-segmented" role="group" aria-labelledby="faabStyleLabel" aria-describedby="faabStyleHint">
                     <button type="button" class="mls-segmented-btn active" data-style="conservative" aria-pressed="true" data-action="setFaabStyle">Conservative</button>
                     <button type="button" class="mls-segmented-btn" data-style="aggressive" aria-pressed="false" data-action="setFaabStyle">Aggressive</button>
                 </div>

@@ -12652,3 +12652,28 @@ Settings) and `desktop/` and `phone/mls-league-guide.png` (the legend line); re-
   (both widths): the new folded "FAAB Bids · Off" row between Notifications and Add Player Manually (+49 px), identical
   above, the rest moved down. `desktop/mls-league-guide.png`: the legend line one line longer (+21 px).
   `phone/mls-league-guide.png`: identical where it paints (+63 px in the blank lower part, M17's capture cut).
+
+### Round 7: a review as a user of the new setting (owner: all of it)
+
+Looked at turning it on, the toast, and Aggressive on the owner's real leagues (Legends of the Pocket's Auto-Find:
+players who'd start got "Bid 3–8" / "0–2", bench QBs the same 3–8 as stashes; the toast and its Turn on worked).
+1. **Aggressive often changed nothing, silently:** across the 15 FAAB leagues it raises the top for 44% of players who'd
+   start for you (by a median 3% of the budget); for the rest Conservative's top already reaches what contested winners
+   paid. In Aggressive the sheet now always says what it did: "Aggressive: the top is raised to 40, …", "Aggressive:
+   winners paid 8 when others bid; this range already reaches it", "Aggressive: no claim here has had other bidders yet,
+   so there's nothing to raise it to", or, for a stash, "Aggressive raises bids only for players who'd start for you".
+2. **Turning it on showed almost nothing on the Dashboard** (a real Saturday: one bid in 15 FAAB leagues): a line under
+   the switch, while on (`updateFaabStatus`, from Best Available's render): "Showing 1 bid on the Dashboard right now
+   (on upgrades who are on waivers). Auto-Find and Check a List show one for every player on waivers.", "Loading your
+   leagues' bids…", or "No bids on the Dashboard right now: they show on upgrades who are on waivers, once a league has a
+   winning bid this season."
+3. **The toast said "Settings"; the section is "Advanced Settings":** "Need help with FAAB bids? Turn on bid suggestions
+   in Advanced Settings on the Dashboard." (S45's note in Open follow-ups updated: "…in Settings." there).
+4. **The style buttons had no visible label:** "Bidding style" above them (`aria-labelledby`).
+5. **Touch targets:** `touch-targets.spec.mjs` now opens Advanced Settings' FAAB Bids, turns it on and measures it, and
+   measures a toast with an action button: both pass (48px areas, nothing covered).
+
+Tests: unit (19: the Aggressive notes four ways); `mls-faab-bid` (the status line with one bid and with none, the
+label); `touch-targets` (the two new checks). Ran check-precache, `node --test` (688), and `mls-faab-bid`,
+`tooltip-closed-space` and the neighbouring specs: 187 passed. Screenshots: my last commit and this round, rendered in
+the same container, are identical (44 of 44; the group is folded in them).

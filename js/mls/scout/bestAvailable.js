@@ -95,7 +95,7 @@ import { isWeekOver, nextWeeklyRun, shortWhen, waiverStatus } from './waiverStat
 import { recentDropsFor } from './recentDrops.js';
 import { faabBidHTML, waiverChipHTML } from './waivers.js';
 import { faabBidsFor, faabBidsLoaded, isFaabLeague, suggestBidFor } from './faabHistory.js';
-import { applyFaabSettingsToUI, faabBidsOn } from './faabSettings.js';
+import { applyFaabSettingsToUI, faabBidsOn, updateFaabStatus } from './faabSettings.js';
 
     const PER_LEAGUE = 3;
 
@@ -486,6 +486,9 @@ import { applyFaabSettingsToUI, faabBidsOn } from './faabSettings.js';
         });
         // Now the upgrades are known: cards with nothing to do fold (the ones you haven't folded or opened yourself).
         applyDefaultFolds();
+        // The FAAB Bids setting's line: how many bids the Dashboard shows (S35, round 7).
+        const all = [...analyses.values()].flatMap(a => a.players || []);
+        updateFaabStatus({ shown: all.filter(p => p.bid && !p.bid.noHistory).length, loading: all.some(p => p.bidPending) });
         // FAAB leagues' bid history (S35), read after the lines are up (it's up to a request per week per league): the
         // lines are drawn again with the suggested bids once it's in.
         const faabLeagues = synced.filter(isFaabLeague);

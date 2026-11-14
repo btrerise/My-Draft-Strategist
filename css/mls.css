@@ -2969,6 +2969,8 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 /* Suggested FAAB bids' style choice (improvements S35, round 6), under its switch. */
 .faab-style-options { display: grid; gap: 0.4rem; margin-top: 0.5rem; }
 .faab-style-options[hidden] { display: none; }
+.faab-style-label { font-size: 0.8rem; font-weight: 600; color: var(--text-main); margin-top: 0.25rem; }
+.faab-bids-status { margin: 0; }
 .faab-style-options .mls-segmented { justify-self: start; }
 .starter-alerts > .toggle-row { margin: 0; padding: 0; border: 0; background: none; }
 .starter-alerts-bell { color: var(--primary-green); } /* stroke="currentColor": green like the Headshots icon */

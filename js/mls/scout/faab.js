@@ -191,13 +191,23 @@ export function suggestBid({ pos, posRank = null, budget, left, myRosterId, bids
         ? `Before the adjustments: ${money(med)} would have matched at least 3 in 4 of these winning bids`
         : `Before the adjustments: ${money(med)} would have matched about half of these winning bids, ${money(p75)} about 3 in 4` });
     // Aggressive (round 6): a player you want gets a top end that beats other bidders, from the claims they bid on.
+    // Round 7: in Aggressive the sheet always says what it did (it raises the top for under half of the players you'd
+    // start in the owner's leagues; otherwise it was silent and read as broken).
     let raised = null;
-    if (style === 'aggressive' && (need === 'starts' || need === 'empty')) {
-        let contested = withBid.filter(b => b.pos === pos && b.rivals > 0);
-        if (contested.length < MIN_COMPARABLES) contested = withBid.filter(b => b.rivals > 0);
-        if (contested.length > 0) {
-            const target = Math.min(cap, Math.round(quantile(contested.map(b => b.bid).sort((x, y) => x - y), 0.5)));
-            if (target > high) { raised = target; high = target; }
+    let aggressiveNote = null;
+    if (style === 'aggressive') {
+        if (need === 'starts' || need === 'empty') {
+            let contested = withBid.filter(b => b.pos === pos && b.rivals > 0);
+            if (contested.length < MIN_COMPARABLES) contested = withBid.filter(b => b.rivals > 0);
+            if (contested.length > 0) {
+                const target = Math.min(cap, Math.round(quantile(contested.map(b => b.bid).sort((x, y) => x - y), 0.5)));
+                if (target > high) { raised = target; high = target; }
+                else aggressiveNote = `Aggressive: winners paid ${target} when others bid; this range already reaches it`;
+            } else {
+                aggressiveNote = 'Aggressive: no claim here has had other bidders yet, so there\'s nothing to raise it to';
+            }
+        } else {
+            aggressiveNote = 'Aggressive raises bids only for players who\'d start for you';
         }
     }
     // When the cap really cuts (a top end of 6 held to 5 isn't worth saying), it's said on the same line (round 5: a
@@ -206,6 +216,7 @@ export function suggestBid({ pos, posRank = null, budget, left, myRosterId, bids
     const rivals = rivalsLine(withBid, pos, budget);
     if (rivals) lines.push({ kind: 'note', text: rivals });
     if (raised !== null) lines.push({ kind: 'up', text: `Aggressive: the top is raised to ${raised}, what winners paid when others bid` });
+    else if (aggressiveNote) lines.push({ kind: 'note', text: aggressiveNote });
     if (need === 'empty') lines.push({ kind: 'up', text: 'He\'d fill an empty starting spot' });
     else if (need === 'starts') lines.push({ kind: 'up', text: over ? `He'd start for you, over ${over}` : 'He\'d start for you' });
     else if (need === 'bench') lines.push({ kind: 'down', text: 'He wouldn\'t start for you now: a stash' });

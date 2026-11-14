@@ -11,7 +11,8 @@ import { showToast } from '../../shared/ui/toast.js';
 
 const DEFAULTS = { on: false, style: 'conservative', hintShown: false };
 export const FAAB_STYLES = ['conservative', 'aggressive'];
-export const HINT_TEXT = 'Need help with FAAB bids? Turn on bid suggestions in Settings on the Dashboard.';
+// Round 7: "Advanced Settings", the section's name on the Dashboard (S45: "…in Settings.").
+export const HINT_TEXT = 'Need help with FAAB bids? Turn on bid suggestions in Advanced Settings on the Dashboard.';
 
 export function faabSettings() {
     let saved = null;
@@ -60,6 +61,18 @@ export function applyFaabSettingsToUI(hasFaab) {
         b.classList.toggle('active', active);
         b.setAttribute('aria-pressed', String(active));
     });
+}
+
+// The line under the switch while it's on (round 7): turning it on often changes little on the Dashboard (its bids are
+// only on upgrades on waivers; on a real Saturday, 1 in 15 FAAB leagues), so it says how many it shows and where the rest
+// are. shown: bids on the Dashboard now; loading: a league's history is still loading.
+export function updateFaabStatus({ shown = 0, loading = false } = {}) {
+    const el = document.getElementById('faabBidsStatus');
+    if (!el) return;
+    const rest = 'Auto-Find and Check a List show one for every player on waivers.';
+    el.textContent = loading ? `Loading your leagues' bids… ${rest}`
+        : shown > 0 ? `Showing ${shown} ${shown === 1 ? 'bid' : 'bids'} on the Dashboard right now (on upgrades who are on waivers). ${rest}`
+        : `No bids on the Dashboard right now: they show on upgrades who are on waivers, once a league has a winning bid this season. ${rest}`;
 }
 
 // After Auto-Find or Check a List, once ever: when bids are off and the scan shows a player on waivers in a FAAB league.

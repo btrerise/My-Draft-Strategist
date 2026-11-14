@@ -229,6 +229,10 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expect(page.locator('#faabStyleOptions [data-style="conservative"]')).toHaveAttribute('aria-pressed', 'true');
         await expect(cook.locator('button.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
         expect(JSON.parse(await page.evaluate(() => localStorage.getItem('mls_faab_settings')))).toMatchObject({ on: true, style: 'conservative' });
+        // Round 7: the line under the switch says how many bids the Dashboard shows, and the style choice has a label.
+        await expect(page.locator('#faabBidsStatus')).toHaveText('Showing 1 bid on the Dashboard right now (on upgrades who are on waivers). Auto-Find and Check a List show one for every player on waivers.');
+        await expect(page.locator('#faabStyleLabel')).toHaveText('Bidding style');
+        await expect(page.locator('#faabStyleOptions [role="group"]')).toHaveAttribute('aria-labelledby', 'faabStyleLabel');
         await expectClean(page, state);
     });
 
@@ -260,7 +264,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expect(cookCard.locator('.mls-wv-chip')).toHaveText('W');
         await expect(cookCard.locator('.mls-faab-bid')).toHaveCount(0);
         const toast = page.locator('#mds-toast');
-        await expect(toast.locator('.toast-message')).toHaveText('Need help with FAAB bids? Turn on bid suggestions in Settings on the Dashboard.');
+        await expect(toast.locator('.toast-message')).toHaveText('Need help with FAAB bids? Turn on bid suggestions in Advanced Settings on the Dashboard.');
         await toast.locator('.toast-action-btn').click();
         await expect(toast).not.toHaveClass(/\bshow\b/);
         // Auto-Find runs again, with the bids.
@@ -297,6 +301,8 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         // Give the history time to load (it's two weeks of empty lists), then check nothing was added.
         await page.waitForLoadState('networkidle');
         await expect(line(page).locator('.mls-faab-bid')).toHaveCount(0);
+        // The setting's line says why nothing shows (round 7).
+        await expect(page.locator('#faabBidsStatus')).toHaveText(/^No bids on the Dashboard right now: they show on upgrades who are on waivers, once a league has a winning bid this season\./);
         await expectClean(page, state);
     });
 
