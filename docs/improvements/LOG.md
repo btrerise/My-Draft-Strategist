@@ -12699,3 +12699,10 @@ listed with its reason; TESTING.md says how it works; LOG lists what it found.
 
 **Size and placement.** ~15k tokens; touches only `tests/` and `.github/` (no served file, no `CACHE_NAME`). Runs beside
 any card except one editing `check.yml` or `playwright.config.mjs` (e.g. a Playwright upgrade).
+
+### S32: the full suite before the pull request (2026-11-15)
+
+`npm ci && npm run check` once, as the owner asked for the pull request: check-precache OK, `node --test` 669 pass,
+Playwright 1,060 passed, 72 skipped, 4 failed. The 4 are `visual.spec.mjs`'s environment check (this cloud image's fonts
+differ from CI's; it fails before any screenshot is taken, as docs/TESTING.md says); the screenshots were re-taken on CI
+round by round above. Main hasn't moved since round 3's merge (F16); `CACHE_NAME` v2.10.10, above main's v2.10.9.
