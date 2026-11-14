@@ -13093,3 +13093,15 @@ this round differ only in `desktop/` and `phone/mls-league-guide.png` (the short
 - CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 10); I opened them: step 8's shorter FAAB
   bids bullet and the shorter legend line (desktop −107 px, phone −302 px on CI's fonts); identical above, the rest
   moved up.
+
+### Merge with main (S32), the full suite, and the pull request
+
+Merged main (S32, #253, which took `CACHE_NAME` v2.10.10, so S35 is v2.10.11). Conflicts: CHANGELOG and LOG (two new
+entries in the same place, both kept), `js/mls/legend.js`'s import line (both cards' names kept), and the Guide's two
+PNGs (main's taken; CI re-takes them with this card's text).
+
+**The full check** (`npm ci && npm run check`, once, before the pull request): check-precache OK (177 precached),
+`node --test` 688 passed, Playwright 1082 passed, 72 skipped, 4 failed. The 4 are `visual.spec.mjs`'s environment guard
+(this container's fonts), as on main. Main and this branch, rendered in the same container, differ only in `desktop/`
+and `phone/mls-league-setup.png` (the FAAB Bids row in Advanced Settings) and `desktop/` and `phone/mls-league-guide.png`
+(step 8's bullet and the legend line); CI re-takes them. Not run again (rule 7); CI runs it on the pull request.
