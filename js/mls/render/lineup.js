@@ -585,6 +585,32 @@ import { refreshThisWeek } from '../main.js';
         if (Math.abs(shift) >= 1) window.scrollBy(0, shift);
     }
 
+    // While you swap, the swap button shows an ✕ on a phone, at the ⇄'s size so the points above it don't move, and the word
+    // "Cancel" on wider screens, as before (css/mls.css hides one of them). Its name stays "Cancel swap of …".
+    const SWAP_CANCEL_HTML = '<span class="mls-swap-cancel-word">Cancel</span><svg class="mls-swap-cancel-x" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+
+    // The swap snackbar (#swapSnackbar in lineup/index.html, Material 3's snackbar: a line and one action; improvements
+    // S32 round 3). Shown while a swap is pending (name: the player you're swapping), hidden otherwise. Outside the
+    // lineup, so Export Lineup never draws it; only while the Lineup tab shows (css/mls.css).
+    function showSwapSnackbar(name) {
+        const bar = document.getElementById('swapSnackbar');
+        if (!bar) return;
+        if (name) bar.querySelector('.mls-swap-snackbar-text').textContent = `Tap another player's \u21c4 to swap with ${name}.`;
+        bar.hidden = !name;
+    }
+
+    // The snackbar's Cancel (data-action="cancelSwap"): the same as tapping the ✕, and focus goes to that player's swap button.
+    export function cancelSwap() {
+        const id = State.swapSourceId;
+        if (id === null || id === undefined) return;
+        const fromBar = document.getElementById('swapSnackbar')?.contains(document.activeElement);
+        initiateSwap(id);
+        if (fromBar) {
+            const btn = [...document.querySelectorAll('#lineupTab .swap-btn')].find(b => String(b.dataset.id) === String(id));
+            if (btn) btn.focus({ preventScroll: true });
+        }
+    }
+
     export function renderLineupUI() {
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
@@ -639,15 +665,16 @@ import { refreshThisWeek } from '../main.js';
             html += `<div class="mb-3 text-center"><button class="mls-btn-sm btn-secondary" style="font-size: 0.75rem; padding: 4px 10px;" data-action="unlockAllPlayers" title="Clears your manual locks in this league only - does not affect players auto-locked because their game already started. Locks also clear on their own when a new NFL week starts.">Unlock All (${locksList.length})</button></div>`;
         }
 
-        // While a swap is pending, the source player's row gets an amber highlight (see
-        // lockClass below) but nothing else on screen says what to actually do next --
-        // this spells it out instead of leaving it to be inferred from one highlighted row.
+        // While a swap is pending, the source player's row gets an amber highlight and a snackbar at the bottom of the
+        // screen says what to do next (improvements S32 round 3; it was a line above the rows, which pushed them down and
+        // was off the screen when you swapped from the bench).
+        let swapSourceName = null;
         if (State.swapSourceId) {
             let swapSourcePlayer = (starters.find(s => s.player && s.player.id === State.swapSourceId) || {}).player
                 || benchPool.find(p => p.id === State.swapSourceId);
-            let swapSourceName = swapSourcePlayer ? swapSourcePlayer.name : 'this player';
-            html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: #f59e0b;">Tap another player's ⇄ to swap with ${escapeHtml(swapSourceName)}, or tap Cancel to stop.</div>`;
+            swapSourceName = swapSourcePlayer ? swapSourcePlayer.name : 'this player';
         }
+        showSwapSnackbar(swapSourceName);
 
         starters.forEach(s => {
             let slotType = s.slot.replace(/[0-9]/g, '');
@@ -671,6 +698,8 @@ import { refreshThisWeek } from '../main.js';
                 // a player can carry a stale autoLocked flag after the keep-swaps-sticky path
                 // adds them to locksList, and in that case both should treat it as a manual lock.
                 let isAutoLock = p.autoLocked && !locksList.includes(p.id);
+                // Blue edge for a lock his kickoff set, like its padlock; green for one you set (improvements S32 round 3).
+                if (p.isLocked && isAutoLock) lockClass += " autolocked";
                 let lockControl = isAutoLock
                     ? `<button class="mls-btn-sm mls-row-lock mls-autolock-btn" title="Game in progress - tap to override if this is wrong" aria-label="${escapeHtml(p.name)}'s game has started. Override lock" data-action="overrideAutoLock" data-id="${p.id}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color: #60a5fa;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></button>`
                     : `<button class="mls-btn-sm lock-btn mls-row-lock" style="background:none; cursor:pointer; padding:0 4px;" data-action="toggleLock" data-id="${p.id}" aria-label="Lock ${escapeHtml(p.name)}" aria-pressed="${p.isLocked ? 'true' : 'false'}">${lockIcon}</button>`;
@@ -700,9 +729,10 @@ import { refreshThisWeek } from '../main.js';
                     : `<span class="badge mls-lock-badge">LOCKED</span>`;
                 let badgesRow = [lockBadge, irSlotBadge, injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
                 const moveChip = rankMoveChip(rankedByRos ? 'season' : 'weekly', p.cleanName);
-                // On a phone (improvements S32) the LOCKED text, EARLY and the rank-change chip wait behind a tap on the
-                // name (the green edge and the photo's padlock still say locked); the photo and slot badge lock him.
-                const phone = phoneRowParts(p, [lockBadge, earlyTag, moveChip], [irSlotBadge, injBadge, byeBadge, kickoffBadge, sleeperWarn]);
+                // On a phone (improvements S32) the LOCKED text and the rank-change chip wait behind a tap on the name (the
+                // row's edge and the photo's padlock still say locked; EARLY stays on the row since round 3, as it says to set
+                // him first); the photo and slot badge lock him.
+                const phone = phoneRowParts(p, [lockBadge, moveChip], [irSlotBadge, injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn]);
                 const leadLock = leadLockMarkup(isAutoLock ? 'auto' : p.isLocked ? 'on' : 'off', p.id,
                     isAutoLock ? `${escapeHtml(p.name)}'s game has started. Override lock` : `Lock ${escapeHtml(p.name)}`);
 
@@ -733,7 +763,7 @@ import { refreshThisWeek } from '../main.js';
                     </div>
                     <div class="mls-row-actions">
                         ${getPlayerPointsHTML(p)}
-                        <button class="mls-btn-sm btn-secondary swap-btn" data-action="initiateSwap" data-id="${p.id}" aria-label="${State.swapSourceId === p.id ? `Cancel swap of ${escapeHtml(p.name)}` : `Swap ${escapeHtml(p.name)}`}">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>
+                        <button class="mls-btn-sm btn-secondary swap-btn" data-action="initiateSwap" data-id="${p.id}" aria-label="${State.swapSourceId === p.id ? `Cancel swap of ${escapeHtml(p.name)}` : `Swap ${escapeHtml(p.name)}`}">${State.swapSourceId === p.id ? SWAP_CANCEL_HTML : '⇄'}</button>
                         ${lockControl}
                     </div>
                 </div>`;
@@ -788,9 +818,9 @@ import { refreshThisWeek } from '../main.js';
                 }
                 let badgesRow = [irSlotBadge, injBadge, taxiBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn].filter(Boolean).join(' ');
                 const moveChip = rankMoveChip(rankedByRos ? 'season' : 'weekly', p.cleanName);
-                // Phone rows (improvements S32): TAXI (the TX slot says it), EARLY and the rank-change chip behind a tap.
+                // Phone rows (improvements S32): TAXI (the TX slot says it) and the rank-change chip behind a tap.
                 // A bench IR-slot badge stays: it says why he can't start.
-                const phone = phoneRowParts(p, [taxiBadge, earlyTag, moveChip], [irSlotBadge, injBadge, byeBadge, kickoffBadge, sleeperWarn]);
+                const phone = phoneRowParts(p, [taxiBadge, moveChip], [irSlotBadge, injBadge, byeBadge, earlyTag, kickoffBadge, sleeperWarn]);
                 // Bench ("BN") never reveals real position the way a strict slot badge does, so
                 // always show it as plain text here -- same reasoning as the starters block above.
                 let plainPos = `<span class="mls-plain-pos pos-text-${escapeHtml(String(p.pos).toLowerCase())}">${escapeHtml(p.pos)}</span>`;
@@ -808,7 +838,7 @@ import { refreshThisWeek } from '../main.js';
                 const rowActions = p.isTaxi
                     ? getPlayerPointsHTML(p)
                     : `${getPlayerPointsHTML(p)}
-                        <button class="mls-btn-sm btn-secondary swap-btn" data-action="initiateSwap" data-id="${p.id}" aria-label="${State.swapSourceId === p.id ? `Cancel swap of ${escapeHtml(p.name)}` : `Swap ${escapeHtml(p.name)}`}">${State.swapSourceId === p.id ? 'Cancel' : '⇄'}</button>`;
+                        <button class="mls-btn-sm btn-secondary swap-btn" data-action="initiateSwap" data-id="${p.id}" aria-label="${State.swapSourceId === p.id ? `Cancel swap of ${escapeHtml(p.name)}` : `Swap ${escapeHtml(p.name)}`}">${State.swapSourceId === p.id ? SWAP_CANCEL_HTML : '⇄'}</button>`;
 
                 benchHTML += `
                 <div class="lineup-slot ${lockClass} ${p.isTaxi ? 'taxi-row' : ''}">

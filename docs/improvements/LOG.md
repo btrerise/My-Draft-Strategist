@@ -12506,3 +12506,38 @@ The owner liked the result and raised two things.
   mls-weekly-locks, room-on-phones, mls-display-ranks, export-same-everywhere, export-flex, the kickoff and FLEX specs,
   mls-tab-redraws, mls-this-week, mls-sim, smoke (180 pass); `node --test` 669 pass. `CACHE_NAME` stays v2.10.9 (main is
   v2.10.8).
+
+### S32, round 3: a blue edge for auto-locks, an ✕ while swapping, EARLY on the row, the swap snackbar (owner, 2026-11-15)
+
+From my review as a user after round 2; the owner took all four ("I'd like all these changes, snackbar suggestion
+included"). Main moved first (F16, #252) and was merged in: CHANGELOG and LOG conflicted (both kept); `CACHE_NAME` v2.10.10,
+above main's v2.10.9.
+1. **Auto-locked rows have a blue edge**, like the padlock dot and the override control; a lock you set stays green, and a
+   swap in progress (amber) wins. At every width (wider screens have the blue override control too). `autolocked` on the
+   row (js/mls/render/lineup.js), `.lineup-slot.autolocked:not(.swapping)` (css/mls.css).
+2. **While swapping, an ✕ in the swap button's place on phones** (`SWAP_CANCEL_HTML`: the word and an icon; phones show the
+   icon, wider screens the word, as before). The phone swap button is a fixed 44x30px, so the points above it don't move.
+   Its accessible name stays "Cancel swap of …".
+3. **EARLY is back on the phone row** (it says to set him first) and no longer counts in "+N". The legend's "+N" line now
+   lists LOCKED, TAXI and a rank change.
+4. **The swap hint is a snackbar** (Material 3: one line and one action). `#swapSnackbar` in lineup/index.html, inside
+   `#mainApp` (for its Cancel's `data-action="cancelSwap"`) but outside the tabs, since a tab's transform would pin a fixed
+   element to the tab. `showSwapSnackbar` fills it on each render while a swap is pending and hides it otherwise;
+   `cancelSwap` is the ✕'s action and puts focus on that player's swap button. It sits in the toast's place (above the tab
+   bar with 16px margins on phones, bottom right on wider screens, 24px from the bottom beside the rail), amber like a
+   swapping row, only while the Lineup tab shows; a toast that comes while it's up is lifted 80px above it (it can be two
+   lines, 69px). The toast itself (js/shared/ui/toast.js) didn't fit: it hides on a timer, holds one message at a time,
+   and swaps and locks show their own toasts meanwhile. The line above the lineup is gone, so Export Lineup can't draw it
+   (it could before, mid-swap).
+- **Specs first** (`tests/mls-phone-rows.spec.mjs`, failing before the changes): an auto-locked row's edge is blue and a
+  locked one's green, both widths; on a phone the swapping row's button shows the ✕ at the same size and place relative to
+  its points (wider screens: "Cancel"); the snackbar shows the hint, isn't in the lineup, sits above the tab bar inside the
+  margins, keeps a toast above it, hides on another tab and comes back, and its Cancel or a finished swap hides it. The
+  first test now expects EARLY on the row and "+1" after a lock. `mls-keyboard.spec.mjs` reads the hint from the snackbar.
+- **Screenshots:** against round 2 only desktop `mls-league-guide` changes (the "+N" legend line; the phone Guide's
+  legend sits in its blank lower half, a TESTING.md follow-up since M17), re-taken by CI from this commit. Against main the
+  same four as round 1 differ. No baseline swaps, auto-locks or has an early team, so the other changes show in none.
+- Run: check-precache OK, `node --test` 669 pass, Playwright mls-phone-rows, mls-keyboard, touch-targets,
+  mls-lineup-row-actions, badge-legend, room-on-phones, mls-lineup-needs, mls-locked-kickoff, mls-weekly-locks,
+  mls-display-ranks, mls-headshots, mls-rankings-change, export-same-everywhere, export-flex, mls-tab-redraws,
+  mls-starter-alert, smoke, focus-ring (both widths, all pass).

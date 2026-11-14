@@ -58,11 +58,13 @@ test('a phone row shows the chosen set, with the rest in its details; wider scre
     expect(slot.y).toBeLessThan(photo.bottom);
     expect(slot.bottom).toBeGreaterThan(photo.bottom);
     expect(Math.abs((slot.x + slot.w / 2) - (photo.x + photo.w / 2))).toBeLessThan(1.5);
-    // Shown: the injury. Behind the tap: EARLY, counted after the name. No lock at the right.
+    // Shown: the injury, and EARLY (round 3: it says to set him first). Nothing behind the tap yet: three dots. No lock at
+    // the right.
     await expect(henry.locator('.inj-badge')).toBeVisible();
     await expect(henry.locator('.mls-row-more')).toHaveAttribute('aria-label', 'Details for Derrick Henry');
-    await expect(allen.locator('.early-badge')).toBeHidden();
-    await expect(allen.locator('.mls-row-more')).toHaveText('+1');
+    await expect(allen.locator('.early-badge')).toBeVisible();
+    await expect(allen.locator('.mls-row-more')).toHaveClass(/\bis-dots\b/);
+    await expect(allen.locator('.mls-row-more')).toHaveAttribute('aria-label', 'Details for Josh Allen');
     await expect(allen.locator('.mls-row-lock')).toBeHidden();
 
     // The photo and slot badge lock him: the padlock dot turns green, LOCKED joins what's behind the tap.
@@ -74,8 +76,8 @@ test('a phone row shows the chosen set, with the rest in its details; wider scre
     await expect(allen.getByRole('button', { name: 'Lock Josh Allen' })).toHaveAttribute('aria-pressed', 'true');
     await expect(allen.locator('.mls-lock-dot')).toHaveClass(/\bis-on\b/);
     await expect(allen.locator('.mls-lock-badge')).toBeHidden();
-    await expect(allen.locator('.mls-row-more')).toHaveText('+2');
-    await expect(allen.locator('.mls-row-more')).toHaveAttribute('aria-label', 'Details for Josh Allen, 2 more badges');
+    await expect(allen.locator('.mls-row-more')).toHaveText('+1');
+    await expect(allen.locator('.mls-row-more')).toHaveAttribute('aria-label', 'Details for Josh Allen, 1 more badge');
 
     // A tap on his name opens the details: every badge on his row with the legend's sentence, and the lock.
     // force: the click lands on the name's spot, where the details button's area lies over the name (the point of it).
@@ -97,7 +99,7 @@ test('a phone row shows the chosen set, with the rest in its details; wider scre
     await expect(page.locator('.sheet-host')).toHaveCount(0);
     await expect(allen).not.toHaveClass(/\blocked\b/);
     await expect(allen.locator('.mls-row-more')).toBeFocused();
-    await expect(allen.locator('.mls-row-more')).toHaveText('+1');
+    await expect(allen.locator('.mls-row-more')).toHaveClass(/\bis-dots\b/);
 
     // A row with nothing hidden: three quiet dots, and its details still list its badges.
     await henry.locator('.mls-row-more').click();
@@ -197,5 +199,78 @@ test('the row you tap stays put when Unlock All or the swap hint comes and goes'
     await tapped('Brock Bowers', r => r.getByRole('button', { name: 'Cancel swap of Brock Bowers' }).click());
     await tapped('George Kittle', r => r.getByRole('button', { name: 'Swap George Kittle' }).click());
     await tapped('George Kittle', r => r.getByRole('button', { name: 'Cancel swap of George Kittle' }).click());
+    await expectClean(page, state);
+});
+
+// Round 3 (owner, 2026-11-15): an auto-locked row's edge is blue like its padlock (a lock you set stays green), at every
+// width; on a phone the swap button turns into an ✕ the same size while you swap, so the points don't move; and the swap
+// hint is a snackbar at the bottom of the screen with a Cancel action, instead of a line above the lineup.
+test('an auto-locked row has a blue edge, a row you locked a green one', async ({ page }, info) => {
+    if (info.project.name === 'phone') await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    await page.evaluate(async () => {
+        const { State } = await import('/js/mls/state.js');
+        State.gameTimesByTeam = { ...State.gameTimesByTeam, BUF: Date.now() - 60 * 60 * 1000 };
+    });
+    await callApp(page, 'optimizeLineup', true);
+    await page.locator('#lineupTab [data-action="toggleLock"][aria-label="Lock Brock Bowers"]:visible').click();
+    const edge = (name) => row(page, name).evaluate(el => getComputedStyle(el).boxShadow);
+    expect(await edge('Josh Allen')).toContain('rgb(96, 165, 250)');
+    expect(await edge('Brock Bowers')).toContain('rgb(16, 185, 129)');
+    await expectClean(page, state);
+});
+
+test('swapping on a phone: an ✕ in the swap button\'s place, and the hint in a snackbar', async ({ page }, info) => {
+    const phone = info.project.name === 'phone';
+    if (phone) await page.setViewportSize({ width: 375, height: 812 });
+    const state = await setUp(page);
+    const bowers = row(page, 'Brock Bowers');
+    const snackbar = page.locator('.mls-swap-snackbar');
+    await expect(snackbar).toBeHidden();
+    const [swapBefore, ptsBefore] = await Promise.all([box(bowers.locator('.swap-btn')), box(bowers.locator('.mls-pts'))]);
+    await bowers.getByRole('button', { name: 'Swap Brock Bowers' }).click();
+    const cancel = bowers.getByRole('button', { name: 'Cancel swap of Brock Bowers' });
+    await expect(cancel).toBeVisible();
+    if (phone) {
+        // The ✕, at the swap button's size and place; the points above it stay put.
+        await expect(cancel.locator('svg')).toBeVisible();
+        await expect(cancel).not.toContainText('Cancel', { useInnerText: true });
+        // (The tap may have scrolled the page, so compare places within the row's column, not on the screen.)
+        const [swapNow, ptsNow] = await Promise.all([box(cancel), box(bowers.locator('.mls-pts'))]);
+        expect([swapNow.x, swapNow.w, swapNow.h, swapNow.y - ptsNow.y]).toEqual([swapBefore.x, swapBefore.w, swapBefore.h, swapBefore.y - ptsBefore.y]);
+        expect([ptsNow.x, ptsNow.w]).toEqual([ptsBefore.x, ptsBefore.w]);
+    } else {
+        await expect(cancel).toHaveText('Cancel'); // wider screens as before
+    }
+    // The hint: a snackbar with a Cancel action, not a line above the lineup (so not in Export Lineup either).
+    await expect(snackbar).toBeVisible();
+    await expect(snackbar.locator('.mls-swap-snackbar-text')).toHaveText("Tap another player's ⇄ to swap with Brock Bowers.");
+    await expect(page.locator('#optimalLineupContainer')).not.toContainText('Tap another player');
+    if (phone) {
+        // Above the tab bar, inside the screen's margins.
+        const [bar, nav] = await Promise.all([box(snackbar), box(page.locator('.nav-bar'))]);
+        expect(bar.bottom).toBeLessThanOrEqual(nav.y);
+        expect(bar.x).toBeGreaterThanOrEqual(8);
+        expect(bar.right).toBeLessThanOrEqual(367);
+    }
+    // A toast while it's up sits above it, not on it.
+    await page.locator('#lineupTab [data-action="toggleLock"][aria-label="Lock Derrick Henry"]:visible').click();
+    const toast = page.locator('#mds-toast.show');
+    await expect(toast).toBeVisible();
+    await expect.poll(async () => (await box(toast)).bottom <= (await box(snackbar)).y).toBe(true);
+    // Leaving the tab hides it; coming back shows it again while the swap is still pending.
+    await showTab(page, 'roster');
+    await expect(snackbar).toBeHidden();
+    await showTab(page, 'lineup');
+    await expect(snackbar).toBeVisible();
+    // Its Cancel ends the swap.
+    await snackbar.getByRole('button', { name: 'Cancel' }).click();
+    await expect(snackbar).toBeHidden();
+    await expect(bowers.getByRole('button', { name: 'Swap Brock Bowers' })).toBeVisible();
+    // Completing a swap hides it too.
+    await bowers.getByRole('button', { name: 'Swap Brock Bowers' }).click();
+    await expect(snackbar).toBeVisible();
+    await row(page, 'Trey McBride').getByRole('button', { name: 'Swap Trey McBride' }).click();
+    await expect(snackbar).toBeHidden();
     await expectClean(page, state);
 });

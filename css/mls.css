@@ -3065,8 +3065,8 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
    computers keep today's rows: the lead wrapper is `display: contents` there and the phone-only controls are hidden,
    so they lay out exactly as before (and Export Lineup, drawn at a computer's width since M17, is unchanged).
    On a phone a Lineup row shows the slot, photo, name and bye week, position, team, rank badge, the kickoff with its
-   opponent, the warnings that need you (injury, BYE, the IR slot, Bench / Starting in Sleeper), points and swap. LOCKED /
-   AUTO-LOCKED, EARLY, TAXI and the rank-change chip wait behind the "+N" after the name, which opens the row's details
+   opponent, the warnings that need you (injury, BYE, the IR slot, Bench / Starting in Sleeper, and EARLY since round 3),
+   points and swap. LOCKED / AUTO-LOCKED, TAXI and the rank-change chip wait behind the "+N" after the name, which opens the row's details
    in the shared sheet (js/mls/render/lineupDetails.js). The photo and slot badge are the lock button (the padlock dot
    says which state), so swap and lock each have a 48px target with room between them. */
 .mls-row-lead, .mls-row-name-line { display: contents; }
@@ -3129,7 +3129,7 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
     .mls-lead-lock .mls-lock-dot { position: absolute; top: -3px; right: -1px; }
 
     /* What waits behind the tap. */
-    .lineup-slot :is(.mls-lock-badge, .mls-autolock-badge, .early-badge, .taxi-badge, .mls-move-chip),
+    .lineup-slot :is(.mls-lock-badge, .mls-autolock-badge, .taxi-badge, .mls-move-chip),
     .lineup-slot .mls-row-lock,
     .lineup-slot .mls-player-badges-row.is-phone-empty { display: none; }
 
@@ -3152,7 +3152,10 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
     /* Points over the swap button, one centre line. The swap is 44x30px, 48px tall with its hit area. */
     .lineup-slot .mls-row-actions { flex-direction: column; align-items: center; gap: 2px; padding-bottom: 2px; }
     .lineup-slot .mls-pts { margin-right: 0; align-items: center; min-width: 0; }
-    .lineup-slot .swap-btn { position: relative; min-width: 44px; height: 30px; padding: 0 6px; font-size: 0.95rem; }
+    .lineup-slot .swap-btn { position: relative; width: 44px; min-width: 44px; height: 30px; padding: 0; font-size: 0.95rem; }
+    /* While swapping, an ✕ in the ⇄'s place (round 3): same size, so the points above don't move. */
+    .lineup-slot .swap-btn .mls-swap-cancel-word { display: none; }
+    .lineup-slot .swap-btn .mls-swap-cancel-x { display: block; margin: 0 auto; }
     .lineup-slot .swap-btn::after { content: ''; position: absolute; top: -9px; bottom: -9px; left: min(0px, (100% - 48px) / 2); right: min(0px, (100% - 48px) / 2); }
 }
 
@@ -3164,3 +3167,61 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .mls-details-actions { margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
 .mls-details-lock { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 48px; padding: 0 1rem; font-size: 0.9rem; }
 .mls-details-note, .mls-details-empty { margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--text-muted); }
+
+/* Round 3 (improvements S32, owner's go-ahead). Wider screens show the word "Cancel" in a swapping row's button; phones
+   the ✕ (PHONE ROWS above). */
+.mls-swap-cancel-x { display: none; }
+/* An auto-locked row's edge is blue, like its padlock and the override control; a lock you set stays green. A swap in
+   progress (amber) wins. */
+.lineup-slot.autolocked:not(.swapping) { box-shadow: inset 3px 0 0 #60a5fa; }
+
+/* The swap snackbar (Material 3's snackbar: one line and one action; js/mls/render/lineup.js showSwapSnackbar). In the
+   toast's place: bottom right on wider screens (80px up over the tab bar's height, 24px beside the rail), above the tab
+   bar with 16px margins on phones. Amber like a swapping row. Only while the Lineup tab shows. A toast that comes while
+   it's up sits above it. */
+.mls-swap-snackbar {
+    position: fixed;
+    right: 24px;
+    bottom: 80px;
+    z-index: 1400;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 420px;
+    padding: 4px 4px 4px 16px;
+    background: var(--card-bg, #131b2c);
+    color: var(--text-main, #f3f4f6);
+    border: 1px solid #f59e0b;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.35;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+@starting-style { .mls-swap-snackbar { opacity: 0; transform: translateY(12px); } }
+.mls-swap-snackbar[hidden] { display: none; }
+#mainApp:has(#lineupTab:not(.active)) .mls-swap-snackbar { display: none; }
+.mls-swap-snackbar-text { flex: 1; min-width: 0; padding: 10px 0; }
+.mls-swap-snackbar-action {
+    flex: none;
+    min-height: 48px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: #f59e0b;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+body:has(#lineupTab.active):has(.mls-swap-snackbar:not([hidden])) .mds-toast { margin-bottom: 80px; }
+@media (max-width: 767px) {
+    .mls-swap-snackbar { left: 16px; right: 16px; max-width: none; bottom: calc(90px + env(safe-area-inset-bottom)); }
+}
+@media (min-width: 840px) {
+    .has-nav-bar .mls-swap-snackbar { bottom: calc(24px + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mls-swap-snackbar { transition: none; }
+}

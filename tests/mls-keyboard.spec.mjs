@@ -66,11 +66,13 @@ test.describe('Lineup Strategist keyboard', () => {
 
         await lineup.locator('.swap-btn').first().focus();
         await page.keyboard.press('Enter');
-        await expect(lineup).toContainText("Tap another player's ⇄ to swap with Josh Allen, or tap Cancel to stop.");
+        // The hint is a snackbar at the bottom of the screen since improvements S32 round 3, with its own Cancel.
+        await expect(page.locator('.mls-swap-snackbar')).toBeVisible();
+        await expect(page.locator('.mls-swap-snackbar-text')).toHaveText("Tap another player's ⇄ to swap with Josh Allen.");
         expect(await focusedIsBody(page)).toBe(true);
         await lineup.locator('.swap-btn').first().focus();
         await page.keyboard.press('Enter');
-        await expect(lineup).not.toContainText('Tap another player');
+        await expect(page.locator('.mls-swap-snackbar')).toBeHidden();
         await expectClean(page, state);
     });
 });

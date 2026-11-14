@@ -117,7 +117,7 @@ const GROUPS = [
         [lockDotMarkup('off') + lockDotMarkup('on') + lockDotMarkup('auto'),
             'On a phone, on a starter\'s photo: open when he\'s unlocked, green when you locked him, blue when his game has started. Tap his photo or slot badge to lock or unlock him.'],
         [rowMoreMarkup(2, SAMPLE) + rowMoreMarkup(0, SAMPLE),
-            'On a phone, after a Lineup player\'s name: how many of his badges wait in his details (LOCKED, EARLY, TAXI, a rank change). Tap his name to see every badge on his row and what it means.'],
+            'On a phone, after a Lineup player\'s name: how many of his badges wait in his details (LOCKED, TAXI, a rank change). Tap his name to see every badge on his row and what it means.'],
         [`<span class="badge early-badge">EARLY</span>`,
             MEANING.early],
         [`<span class="badge taxi-badge">TAXI</span>`, MEANING.taxi],

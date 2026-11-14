@@ -1799,6 +1799,12 @@
 </div>
 
     </div> <!-- Closes .container (was previously left unclosed) -->
+    <!-- The swap snackbar (improvements S32 round 3): js/mls/render/lineup.js showSwapSnackbar. Inside #mainApp for its
+         Cancel's data-action, outside the tabs (a tab's transform would pin it to the tab instead of the screen). -->
+    <div id="swapSnackbar" class="mls-swap-snackbar" hidden>
+        <span class="mls-swap-snackbar-text" role="status"></span>
+        <button type="button" class="mls-swap-snackbar-action" data-action="cancelSwap">Cancel</button>
+    </div>
 </main> <!-- Closes #mainApp -->
 
 
