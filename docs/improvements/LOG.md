@@ -12574,3 +12574,10 @@ Screenshots: my last commit and this round, rendered in the same container, diff
   them. Desktop: identical to main above the legend; the new "W Bid 9–14 ≈ Bid 2–5" row with round 4's text
   (+145 px), the rest moved down. Phone: identical to main where it paints (+314 px in the blank lower part, M17's
   capture cut).
+- **The flaky tooltip test (owner: "F16 ran the same tests"; take a look).** `tooltip-closed-space`'s "one at a time …
+  a click ends it too" ended a linger with `page.mouse.click(2, 300)`. On desktop that point is the navigation rail's
+  Scoreboard button (y 296–360 in this container), so the click switched to the Scoreboard tab; the next check looks for
+  the Lineup tab's tooltip, and whether it ran before the tab faded out was a race: 3 failures in 6 on main here, and
+  F16's own runs happened to win it. Fixed in the test only: the click is now at (1275, 300), the page's right margin
+  (a plain `div.container`, nothing interactive). 8 repeats of the spec at both widths: 144 passed, 0 failed (the
+  mouse-only tests skip on phones, as before).

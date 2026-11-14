@@ -150,7 +150,10 @@ test.describe('Tooltips still open as before', () => {
         await expect(tipA).toBeHidden();
         await page.mouse.move(0, 0);
         await expect(tipB).toHaveClass(/\btt-linger\b/);
-        await page.mouse.click(2, 300);
+        // A click on nothing (the page's right margin, outside the content column). It was (2, 300), which on the
+        // desktop rail is the Scoreboard button (y 296-360 in a cloud session): the click switched tabs, and whether
+        // the next check ran before the Lineup tab faded out was a race (3 failures in 6 on main; found in S35).
+        await page.mouse.click(1275, 300);
         await expect(tipB).not.toHaveClass(/\btt-linger\b/);
         await expect(tipB).toBeHidden();
         await expectClean(page, state);
