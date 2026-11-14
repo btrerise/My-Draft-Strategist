@@ -12294,3 +12294,49 @@ second's linger; and the computed corners, padding, background and no blur. **Sc
 - For the owner: T-Score's column headers as M3 plain tooltips (a light box with dark text, 4px corners), or kept dark
   like the rest.
 - The M3 card (motion tokens): the tooltips' 0.2s fade and 4px slide should use them.
+
+### F16, round 3: T-Score's column headers as M3 plain tooltips, and notes for F19 and M3 (owner, 2026-11-14)
+
+**The owner's choice.** T-Score's column-header tooltips become Material 3 *plain* tooltips (they name a column in a few
+words), and the cards that follow (F19, M3) get notes.
+
+**What changed.** `css/tscore.css`, `.table-header-tooltip .tooltip-text`: the inverse surface, a light `#e5e7eb` box
+with `#111827` text (was a dark navy box), 4px corners (was 6px), 4px 8px padding with at least 24px height, no border or
+shadow (M3's elevation 0; was a heavy shadow). Closed it's `display: none` like the shared tooltip, with the fade kept by
+`@starting-style` and `display ... allow-discrete`. Text, size, placement (centered below, right-aligned on the last
+columns) and the round-2 linger unchanged. CHANGELOG: a line under Draft Strategist, where T-Score's lines go.
+`tooltip-closed-space.spec.mjs` adds a desktop test on the Top 50 tab: hidden until hovered, then the computed corners,
+colours, no shadow and 24px minimum height, and the linger after the mouse leaves. Screenshots: all 44 identical to
+round 2's render (the tooltips are closed in them). `CACHE_NAME` stays v2.10.9 (main is v2.10.8).
+
+**Found, not changed** (in docs/TESTING.md's Open follow-ups): these header tooltips open on hover only. They aren't
+`js/shared/ui/tooltips.js` triggers, so a tap or the keyboard can't open them and phones never show them.
+
+#### For F19 (shorter tooltips, bullets)
+
+- Material 3's rich tooltip is the target for the (i)s: an optional one-line subhead, short supporting text, and no
+  critical information that exists only in the tooltip (it's easy to miss). Round 2's inventory, measured at 1280px with
+  the test data: 59 distinct tooltips, 27 on an (i), 26 on a badge or cell, 6 T-Score headers; median 24 words, 18 over
+  40, 6 over 80. Longest: Top Available (Scout, 324 words), the League Command Center (Dashboard, 267), the Scoreboard
+  header (197), Power Rankings (97), Optimize Lineup (94), FLEX Kickoff Optimization (88). None has a list; 26 have a bold
+  title (Power Rankings cells, the position-room chips).
+- The shared tooltip is `display: none` while closed (F16), so a `<ul>` inside it needs no layout work, and
+  `aria-describedby` still reads it. Its padding is now 12px top, 16px sides, 8px bottom: lists need their own spacing.
+- **Delete the 12px phone exception** in `css/base.css` (`@media (max-width: 480px)` under the `tt-wide` rule) once the
+  Scoreboard tip is short enough to fit a 375px screen with 16px sides; `tooltips-onscreen.spec.mjs` ("a long tooltip
+  opens wider and fits the window") checks it.
+- T-Score's column headers are M3 *plain* tooltips: keep them to a few words (M3: avoid wrapping to several lines). The
+  In-Season tab's "Label" header (about 20 words) is the longest.
+- Specs that match tooltip text: `tooltip-closed-space.spec.mjs` checks the Scoreboard (i)'s accessible description
+  starts "Your matchup in every Sleeper league"; update it if that opening changes.
+
+#### For M3 (toasts, Sync All's progress, Expressive's motion)
+
+- The tooltips' motion is plain `0.2s ease` with a 4px slide: `css/base.css` (the shared tooltip's two `transition`
+  lines and the `@starting-style` lines in its open states) and `css/tscore.css` (the header tooltip). Both carry an
+  "Improvements M3" comment where the tokens go. M3's effects curve fits a fade (no overshoot); keep
+  `display 0.2s allow-discrete` (or the token's duration) so the fade-out still runs, and keep the first plain
+  `transition` line as the fallback for browsers that don't know `allow-discrete`.
+- The 1.5s hover linger (`LINGER_MS` in `js/shared/ui/tooltips.js`) is M3's tooltip timing, not a motion token: leave it.
+- Reduce Motion: the tooltips have no rule of their own yet; if M3 adds a site-wide reduced-motion rule, the 4px slide
+  should go with it (the fade can stay).

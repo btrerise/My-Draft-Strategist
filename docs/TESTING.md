@@ -353,6 +353,10 @@ done or dropped, remove its line here in the same change. Background for each is
   Chromium's limit for one full-page capture after M17's layout change; a fix is to shoot the Guide in two parts (or
   the legend on its own) in `visual.spec.mjs`, or find what M17 made too tall to paint.
 
+- **T-Score's column-header tooltips open on hover only** (improvements F16, round 3). `.table-header-tooltip` isn't a
+  trigger for `js/shared/ui/tooltips.js`, so a tap or the keyboard can't open them, and a phone never shows them. Making
+  the header text a trigger (`data-tt-self`-style, focusable, Enter and Escape) would bring them in line with the (i)s.
+
 **Needs the owner's decision first**
 - Manual leagues can't be dynasty (improvements S23, round 12). They have no league type, so they always count as
   redraft: no In-Season rankings, no Future column, no draft picks in trades. A "League type" choice for manual leagues

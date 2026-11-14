@@ -18,6 +18,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **Tooltips follow Material 3.** On a computer a tooltip you hovered stays 1.5 seconds after the mouse moves off, so
   you can finish reading it; opening another one, a click or Escape closes it at once. Tooltips have rounder corners,
   a little more room at the sides, a solid background and a softer shadow.
+- **T-Score's column headers.** The short explanations under a column's name (RZ TGTS: "Red Zone Targets") are a small
+  light label with dark text, as Material 3 draws a short tooltip, and stay 1.5 seconds after the mouse moves off.
 - **No empty space under short pages.** A closed tooltip (the (i) notes and badge explanations) no longer takes room
   on the page, so a short page ends where its content does. Tooltips look and open as before.
 

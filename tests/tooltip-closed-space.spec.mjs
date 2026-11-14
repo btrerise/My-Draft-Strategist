@@ -168,4 +168,26 @@ test.describe('Tooltips still open as before', () => {
         expect(style).toEqual({ radius: '12px', pad: '12px 16px 8px', bg: 'rgb(15, 23, 42)', blur: 'none' });
         await expectClean(page, state);
     });
+
+    // T-Score's column headers name a column in a few words: Material 3's plain tooltip (round 3), a light box with
+    // dark text, 4px corners, no shadow. Hover opens it; it lingers 1.5s after the mouse leaves.
+    test('T-Score\'s column headers: Material 3\'s plain tooltip', async ({ page }) => {
+        test.skip(test.info().project.name === 'phone', 'a mouse');
+        const state = await openApp(page, '/t-score/');
+        await showTScoreTab(page, 'top50Tab');
+        const head = page.locator('#top50Tab .table-header-tooltip').first();
+        const tip = head.locator('.tooltip-text');
+        await expect(tip).toBeHidden();
+        await head.hover();
+        await expect(tip).toBeVisible();
+        const style = await tip.evaluate(t => {
+            const cs = getComputedStyle(t);
+            return { radius: cs.borderRadius, bg: cs.backgroundColor, color: cs.color, shadow: cs.boxShadow, minH: cs.minHeight };
+        });
+        expect(style).toEqual({ radius: '4px', bg: 'rgb(229, 231, 235)', color: 'rgb(17, 24, 39)', shadow: 'none', minH: '24px' });
+        await page.mouse.move(0, 0);
+        await expect(tip).toHaveClass(/\btt-linger\b/);
+        await expect(tip).toBeHidden({ timeout: 3000 });
+        await expectClean(page, state);
+    });
 });

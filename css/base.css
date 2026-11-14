@@ -1293,6 +1293,8 @@ label.toggle-title,
     position: absolute; z-index: 1001; top: calc(100% + 8px); right: -10px; 
     opacity: 0; transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
     transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease, display 0.2s allow-discrete;
+    /* Improvements M3: swap 0.2s ease for M3's motion tokens (an "effects" curve, no overshoot) in both transition lines,
+       the @starting-style lines below, and css/tscore.css's header tooltip. Keep display ... allow-discrete. */
     font-size: 0.85rem; font-weight: 400; 
     border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15); 
     pointer-events: none; line-height: 1.5;
@@ -1335,7 +1337,8 @@ label.toggle-title,
    place; improvements S27 round 2). Set each time one is about to show, from its own length. */
 .tooltip .tooltip-text.tt-wide, .tooltip-container .tooltip-text.tt-wide { width: 480px; }
 /* On a phone a wide one fills the window, and M3's 16px sides cost the Scoreboard's 197-word tip its last line (it would
-   scroll inside at 375px): keep 12px there until F19 shortens it (improvements F16, round 2). */
+   scroll inside at 375px): keep 12px there until F19 shortens it (improvements F16, round 2). Improvements F19: once
+   no tooltip needs this, delete this block (tooltips-onscreen.spec.mjs's "a long tooltip opens wider" checks the fit). */
 @media (max-width: 480px) {
     .tooltip .tooltip-text.tt-wide, .tooltip-container .tooltip-text.tt-wide { padding-left: 12px; padding-right: 12px; }
 }
