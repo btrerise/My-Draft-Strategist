@@ -12145,7 +12145,8 @@ Saturday 9 AM and Saturday → Sunday 12 AM runs, and a Sunday player until Wedn
 late; REDRAFT's Saturday free agency and Tuesday 9 AM. Spec: FNB's schedule on Saturday (three W chips, "waivers until
 Sun 12 AM", the tap text, counted) and Sunday (too late, not counted). Ran `node --test` (666), check-precache and the
 Best available, waiver, Scout, past-trade, auto-sub, league-card, Backup and touch-target specs (89 passed).
-Screenshots: the Guide's W line, re-taken on CI.
+Screenshots: the Guide's W line, re-taken on CI. I opened both: desktop differs only in the W line's text (same height); phone is 42px taller,
+all inside its blank lower part (the M17 capture cut in Open follow-ups), identical where it paints.
 
 ### Left over
 - **A short gap on a cold Dashboard** (round 5, point 2): if it matters, the count could wait for the chips.
