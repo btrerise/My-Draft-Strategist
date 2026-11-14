@@ -12259,3 +12259,6 @@ league-week (1.6 MB, 150 requests for all 15 over 10 weeks).
   week is known, and draws again only when that read loaded something. Then check-precache, `node --test` (680) and
   `mls-faab-bid` with the Best available, waiver, Scout, past-trade, league-card, auto-sub, Backup, key-migration, badge
   legend, smoke and touch-target specs: 135 passed.
+- Screenshots: the S34 base and this branch, rendered in the same container (`visual.spec.mjs`, `RENDER_ENV=any`), differ
+  only in `desktop/` and `phone/mls-league-guide.png`: the legend's new "W Bid 9–14" line (desktop +103 px, phone
+  +252 px). Re-taken on CI with `[update screenshots: …]`.
