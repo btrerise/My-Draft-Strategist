@@ -3169,6 +3169,8 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .mls-details-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.25rem 0 0.75rem; }
 .mls-details-head .slot-badge { min-width: 30px; text-align: center; font-size: 0.68rem; }
 .mls-details-bye { color: var(--text-muted); font-size: 0.85rem; }
+/* What the badge says about him (round 5), on its own line in the main text colour, above the Guide's sentence. */
+.mls-details-this { display: block; margin-bottom: 2px; color: var(--text-main); font-weight: 600; }
 .mls-details-list { margin: 0; }
 .mls-details-actions { margin-top: 0.5rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
 .mls-details-lock { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 48px; padding: 0 1rem; font-size: 0.9rem; }

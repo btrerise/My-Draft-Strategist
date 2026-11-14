@@ -44,16 +44,49 @@ function inertCopy(el) {
     return copy.outerHTML;
 }
 
+// The first line under a badge: what it says about this player (owner, improvements S32 round 5), before the Guide's
+// sentence for that kind of badge. Only where the Guide's sentence is general: an injury status, the kickoff, LOCKED /
+// AUTO-LOCKED and the Sleeper lineup. Bye, EARLY and TAXI are already about him; the IR slot, a rank change and the
+// opponent's strength show their own tap text instead of the Guide's. Returns plain text, or '' for none.
+const INJURY_WORDS = {
+    Q: 'Questionable on Sleeper.', D: 'Doubtful on Sleeper.', OUT: 'Out on Sleeper: he won\'t play.',
+    IR: 'On NFL injured reserve.', SUS: 'Suspended.', PUP: 'On the PUP list (physically unable to perform).',
+    NFI: 'On the non-football injury list.',
+};
+function kickoffLine(p, kickoff, plainOpp) {
+    const text = kickoff.textContent.trim();
+    if (text === 'Final') return 'His game is over.';
+    if (kickoff.classList.contains('kickoff-started')) return 'His game has started.';
+    const iso = p && State.gameTimesByTeam[p.team];
+    const when = iso ? new Date(iso) : null;
+    if (!when || isNaN(when.getTime())) return '';
+    const day = when.toLocaleDateString('en-US', { weekday: 'long' });
+    const time = when.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const opp = plainOpp ? plainOpp.textContent.trim() : '';
+    const against = opp.startsWith('@ ') ? `, at ${opp.slice(2)}` : opp.startsWith('vs ') ? `, against ${opp.slice(3)}` : '';
+    return `Kicks off ${day} at ${time}${against}.`;
+}
+function thisLine(kind, el) {
+    const text = el.textContent.trim();
+    if (kind === 'injury') return INJURY_WORDS[text] || `Sleeper lists him as ${text}.`;
+    if (kind === 'lock') return el.classList.contains('mls-autolock-badge') ? 'His game has started, so he stays in this spot.' : 'You locked him in this spot.';
+    if (kind === 'sleeperLineup') return /^Starting/.test(text)
+        ? 'He starts on Sleeper, and this lineup benches him.'
+        : 'He\'s on your bench on Sleeper, and this lineup starts him.';
+    return '';
+}
+const withThisLine = (line, meaning) => line ? `<span class="mls-details-this">${escapeHtml(line)}</span> ${meaning}` : meaning;
+
 // [sample HTML, sentence] for each badge on the row, in the order the row shows them: the badge line, then the rank
 // change and the rank badge from the line under it. The kickoff keeps the plain opponent beside it ("@ CLE"); a
 // coloured opponent badge (S31) gets a line of its own.
-function badgeLines(row) {
+function badgeLines(row, p) {
     const lines = [];
     const add = (el) => {
         const kind = kindOf(el);
         if (!kind) return;
         const tip = el.dataset && el.dataset.tip;
-        lines.push([inertCopy(el), tip ? escapeHtml(tip) : MEANING[kind]]);
+        lines.push([inertCopy(el), tip ? escapeHtml(tip) : withThisLine(thisLine(kind, el), MEANING[kind])]);
     };
     const badgeLine = row.querySelector('.mls-player-badges-row');
     if (badgeLine) {
@@ -61,7 +94,7 @@ function badgeLines(row) {
             if (!el.classList.contains('mls-game-info')) { add(el); continue; }
             const kickoff = el.querySelector('.kickoff-badge');
             const plainOpp = el.querySelector('.mls-opp:not(.opp-rank-badge)');
-            if (kickoff) lines.push([inertCopy(kickoff) + (plainOpp ? ' ' + inertCopy(plainOpp) : ''), MEANING.kickoff]);
+            if (kickoff) lines.push([inertCopy(kickoff) + (plainOpp ? ' ' + inertCopy(plainOpp) : ''), withThisLine(kickoffLine(p, kickoff, plainOpp), MEANING.kickoff)]);
             const oppBadge = el.querySelector('.opp-rank-badge');
             if (oppBadge) add(oppBadge);
         }
@@ -106,7 +139,7 @@ export function openLineupDetails(opener) {
     // The slot, unless it only repeats his position (an RB in an RB slot).
     const slotEl = row.querySelector('.slot-badge');
     const slot = slotEl && slotEl.textContent.trim() !== String(p.pos) ? slotEl : null;
-    const lines = badgeLines(row);
+    const lines = badgeLines(row, p);
     const body = `<div class="mls-details">
     <div class="mls-details-head">${slot ? inertCopy(slot) : ''} ${head}${bye ? ` <span class="mls-details-bye">Bye week ${bye}</span>` : ''}</div>
     ${lines.length

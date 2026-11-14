@@ -332,3 +332,58 @@ test('on a phone the page can scroll clear of the swap snackbar', async ({ page 
     expect((await box(last)).bottom).toBeLessThanOrEqual((await box(page.locator('.mls-swap-snackbar'))).y);
     await expectClean(page, state);
 });
+
+// Round 5 (owner, 2026-11-15): the details sheet says what each badge means for this player first, then the Guide's
+// general sentence (which stays, word for word, under it).
+test.describe('the details say what each badge means for him', () => {
+    test.use({ timezoneId: 'America/New_York' });
+    test('injury, kickoff, lock and the Sleeper lineup, then the Guide\'s sentence', async ({ page }, info) => {
+        test.skip(info.project.name !== 'phone', 'a phone row\'s details');
+        await page.setViewportSize({ width: 375, height: 812 });
+        const state = await openApp(page, '/lineup/');
+        await page.route(/sleeper\.app\/v1\/players\/nfl$/, route => {
+            const players = fixture('players-nfl.json');
+            players[HENRY].injury_status = 'Questionable';
+            return route.fulfill({ json: players });
+        });
+        // Sleeper's lineup leaves Chase on the bench.
+        await page.route(/sleeper\.app\/v1\/league\/1000000000000000001\/rosters$/, route => {
+            const rosters = fixture('league-rosters.json');
+            rosters[0].starters = ['4984', '3198', '6794', '6786', '9493', '11604', '17', 'BAL'];
+            return route.fulfill({ json: rosters });
+        });
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            // Thursday 8:15 PM in New York; Buffalo's game started an hour ago.
+            State.gameTimesByTeam = { ...State.gameTimesByTeam, BAL: '2026-09-18T00:15:00Z', BUF: new Date(Date.now() - 3600e3).toISOString() };
+        });
+        await showTab(page, 'lineup');
+        await callApp(page, 'optimizeLineup', true);
+        const lineFor = (sheet, badge) => sheet.locator('.badge-legend-row').filter({ has: page.locator(badge) }).locator('.badge-legend-text');
+
+        await row(page, 'Derrick Henry').locator('.mls-row-more').click();
+        let sheet = page.getByRole('dialog', { name: 'Derrick Henry' });
+        await expect(lineFor(sheet, '.inj-badge').locator('.mls-details-this')).toHaveText('Questionable on Sleeper.');
+        await expect(lineFor(sheet, '.inj-badge')).toContainText('His injury status from Sleeper: questionable, doubtful, out');
+        await expect(lineFor(sheet, '.kickoff-badge').locator('.mls-details-this')).toHaveText('Kicks off Thursday at 8:15 PM.');
+        await page.keyboard.press('Escape');
+
+        await row(page, 'Josh Allen').locator('.mls-row-more').click();
+        sheet = page.getByRole('dialog', { name: 'Josh Allen' });
+        await expect(lineFor(sheet, '.mls-autolock-badge').locator('.mls-details-this')).toHaveText('His game has started, so he stays in this spot.');
+        await expect(lineFor(sheet, '.kickoff-badge').locator('.mls-details-this')).toHaveText('His game has started.');
+        await page.keyboard.press('Escape');
+
+        const chase = row(page, "Ja'Marr Chase");
+        await chase.getByRole('button', { name: "Lock Ja'Marr Chase" }).click();
+        await chase.locator('.mls-row-more').click();
+        sheet = page.getByRole('dialog', { name: "Ja'Marr Chase" });
+        await expect(lineFor(sheet, '.mls-lock-badge').locator('.mls-details-this')).toHaveText('You locked him in this spot.');
+        await expect(lineFor(sheet, '.mls-sleeper-lineup-badge').locator('.mls-details-this')).toHaveText('He\'s on your bench on Sleeper, and this lineup starts him.');
+        await expect(lineFor(sheet, '.mls-sleeper-lineup-badge')).toContainText('Change it on Sleeper to match.');
+        await page.keyboard.press('Escape');
+        await expectClean(page, state);
+    });
+});

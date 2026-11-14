@@ -12570,3 +12570,23 @@ well (every warning on its row, rows about 79px); five findings:
   mls-lineup-needs, mls-weekly-locks, mls-headshots, export-same-everywhere, smoke, focus-ring (all pass); check-precache;
   `node --test` 669 pass. `CACHE_NAME` stays v2.10.10 (main v2.10.9).
 - **Re-taken on CI** (commit 1c904e5, "Screenshots re-taken on CI (1 PNGs)"): exactly phone `mls-league-lineup`.
+
+### S32, round 5: the details say what each badge means for him (owner, 2026-11-15: "Yes", after round 4's point 4 in plain terms)
+
+Under a badge the sheet showed only the Guide's general sentence for that kind of badge (above "Thu 8:00 PM": "When his
+game kicks off, then whether it has started or finished"; above "Q": every injury status). Now a first line says what it
+means for this player, in the main text colour, and the Guide's sentence follows unchanged (so the Guide is still the one
+place its wording lives). `thisLine` / `kickoffLine` in js/mls/render/lineupDetails.js, `.mls-details-this` in css/mls.css:
+- injury: "Questionable on Sleeper." / "Doubtful on Sleeper." / "Out on Sleeper: he won't play." / "On NFL injured
+  reserve." / "Suspended." / PUP / NFI, else "Sleeper lists him as …";
+- kickoff: "Kicks off Thursday at 8:15 PM, at PIT." (the opponent when the row has the plain one), "His game has
+  started.", "His game is over.";
+- LOCKED: "You locked him in this spot."; AUTO-LOCKED: "His game has started, so he stays in this spot.";
+- Bench in Sleeper: "He's on your bench on Sleeper, and this lineup starts him."; Starting in Sleeper: "He starts on
+  Sleeper, and this lineup benches him."
+Bye, EARLY and TAXI are already about him in the Guide; the IR slot, a rank change and the opponent's strength keep
+showing their own tap text.
+- **Spec first** (`tests/mls-phone-rows.spec.mjs`, New York time; failed before): Henry's Q and kickoff, Allen's
+  AUTO-LOCKED and started game, Chase's LOCKED and Bench in Sleeper, each with the Guide's sentence still under it.
+- Screenshots: none change (no baseline opens the sheet). Run: mls-phone-rows, mls-rankings-change, badge-legend, sheet,
+  mls-keyboard (all pass); check-precache; `node --test` 669 pass.
