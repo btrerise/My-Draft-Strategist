@@ -62,7 +62,10 @@ const league = {
     total_rosters: 2, draft_id: '2000000000000000001',
     roster_positions: ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'K', 'DEF', 'BN', 'BN', 'BN', 'BN', 'BN'],
     scoring_settings: { rec: 1, pass_td: 4, rush_td: 6, rec_td: 6 },
-    settings: { type: 0, playoff_week_start: 15 },
+    // Sleeper's waiver settings (improvements S34): FAAB, 2-day clears, weekly waivers (Wednesday 12 AM PT), so
+    // unrostered players are free agents except recent drops and those whose game has started. (Daily-waiver
+    // schedules: tests/mls-waiver-status.spec.mjs sets one.)
+    settings: { type: 0, playoff_week_start: 15, waiver_type: 2, waiver_budget: 100, waiver_clear_days: 2, waiver_day_of_week: 2, daily_waivers: 0, daily_waivers_hour: 0, daily_waivers_days: 5461 },
 };
 
 // Each team's Sleeper starters, filled slot by slot from its roster in order (refactor 3G), so the
@@ -193,6 +196,11 @@ const tradeTx = {
 const failedClaim = { transaction_id: '3000000000000000002', type: 'waiver', status: 'failed', leg: 1, roster_ids: [1],
     adds: { 8138: 1 }, drops: { 17: 1 }, draft_picks: [], created: Date.parse('2026-09-09T10:00:00Z'), status_updated: Date.parse('2026-09-10T10:00:00Z') };
 
+// Rival dropped James Cook (BUF) on Saturday of week 2 (improvements S34, tests/mls-waiver-status.spec.mjs): in a 2-day
+// league he's on waivers until Monday, after his Sunday game, so he can't play for anyone this week.
+const cookDrop = { transaction_id: '3000000000000000003', type: 'free_agent', status: 'complete', leg: 2, roster_ids: [2],
+    adds: null, drops: { 8138: 2 }, draft_picks: [], created: Date.parse('2026-09-19T16:00:00Z'), status_updated: Date.parse('2026-09-19T16:00:00Z') };
+
 const out = {
     'players-nfl.json': players,
     'league.json': league,
@@ -202,6 +210,7 @@ const out = {
     'league-traded-picks.json': tradedPicks,
     'league-transactions.json': [],
     'league-transactions-trade.json': [tradeTx, failedClaim],
+    'league-transactions-drop.json': [cookDrop],
     'league-rosters-traded.json': rostersTraded,
     'league-matchups-live.json': withPoints(live1),
     'league-matchups-final.json': withPoints({ ...live1, 6794: 20 }),

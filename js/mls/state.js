@@ -11,6 +11,7 @@ import { clearLocksForNewWeek, loadRosterTab, refreshThisWeek, renderBestAvailab
 import { KEYS } from '../shared/storage/keys.js';
 import { showToast } from '../shared/ui/toast.js';
 import { mdsFetch } from '../shared/net.js';
+import { recentDropsFor } from './scout/recentDrops.js';
 
     // --- STATE MANAGEMENT ---
     export const State = {
@@ -269,6 +270,10 @@ export function applyLineupSettingsToUI() {
                     // The Week Recap (the Dashboard's line, the Scoreboard tab) loads for Sleeper's current week, so it
                     // waits for it (improvements S21). The Lineup tab's strip loads with the lineup's redraw above.
                     if (activeTab && (activeTab.id === 'setupTab' || activeTab.id === 'scoreboardTab')) refreshThisWeek();
+                    // Each Sleeper league's recent drops (improvements S34, round 5), read now rather than when the
+                    // Dashboard draws, so Best available's Free agent / Waivers chips are usually there with its first
+                    // lines (with 20 leagues they arrived 1 to 3 s after them). Cached for the visit; errors stay quiet.
+                    recentDropsFor(State.leagues, State.currentNflWeek);
                     // Kickoff times are keyed by week, so we can't fetch them until we know
                     // which week we're on -- chain it here rather than firing both requests
                     // independently at page load.

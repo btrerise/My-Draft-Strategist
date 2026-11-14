@@ -341,6 +341,13 @@ done or dropped, remove its line here in the same change. Background for each is
   slot (Sleeper's draft order, or the final standings until it's set) and look up that pick's market value, in the
   Trade Analyzer, "To make it fair" and the Future column. Not needed in season (improvements S19, round 4).
 
+**Tests**
+- **The phone Guide screenshot stops halfway** (S34, round 6): since M17, `phone/mls-league-guide.png` paints only its
+  first 16,464px (it cuts mid-sentence in section 10, Trade Finder & Market Disconnects); the remaining ~7,100px are
+  blank page, so the badge legend isn't checked on phones any more. Before M17 the full 24,384px painted. Likely
+  Chromium's limit for one full-page capture after M17's layout change; a fix is to shoot the Guide in two parts (or
+  the legend on its own) in `visual.spec.mjs`, or find what M17 made too tall to paint.
+
 **Needs the owner's decision first**
 - Manual leagues can't be dynasty (improvements S23, round 12). They have no league type, so they always count as
   redraft: no In-Season rankings, no Future column, no draft picks in trades. A "League type" choice for manual leagues

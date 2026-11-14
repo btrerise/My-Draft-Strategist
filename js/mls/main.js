@@ -190,6 +190,8 @@ const clickActions = {
     explainRankMove() { explainRankMove(this); },
     // An SoS badge in the Waiver Wire Assistant (js/mls/sos.js): what the number means, for phones.
     explainSoS() { explainSoS(this); },
+    // The Free agent / Waivers chip (improvements S34): its tip as a toast, like SoS.
+    explainWaiver() { explainSoS(this); },
     openRankingSetLeagues() { openRankingSetLeagues(this.dataset.type); },
     // "View" beside "Choose leagues…": the set, read-only, in the shared sheet (rankings/setView.js, improvements S30).
     viewRankingSet() { openRankingSetView(this, this.dataset.type, this.dataset.slot || null); },

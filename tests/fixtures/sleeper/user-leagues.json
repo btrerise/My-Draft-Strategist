@@ -31,7 +31,14 @@
   },
   "settings": {
    "type": 0,
-   "playoff_week_start": 15
+   "playoff_week_start": 15,
+   "waiver_type": 2,
+   "waiver_budget": 100,
+   "waiver_clear_days": 2,
+   "waiver_day_of_week": 2,
+   "daily_waivers": 0,
+   "daily_waivers_hour": 0,
+   "daily_waivers_days": 5461
   }
  }
 ]
