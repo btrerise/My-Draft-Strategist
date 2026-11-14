@@ -1279,13 +1279,24 @@ label.toggle-title,
     text-transform: none; letter-spacing: normal;
 }
 .tooltip-container:hover .tooltip-icon { background: var(--border); color: var(--text-main); }
+/* Closed, a tooltip is display: none, so it takes no room (improvements F16): visibility: hidden still laid it out under
+   its trigger, and a long one hung below a short page (the pre-kickoff Scoreboard) as empty scroll. Opening sets
+   display: block; @starting-style below gives the fade-in its start, and `display ... allow-discrete` keeps it shown
+   while it fades out (browsers without these just show and hide it at once). Screen readers still get the text:
+   aria-describedby reads a hidden element. */
 .tooltip .tooltip-text, .tooltip-container .tooltip-text { 
-    visibility: hidden; width: 260px; 
-    background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(8px);
-    color: #f1f5f9; text-align: left; border-radius: 8px; padding: 12px; 
+    display: none; visibility: hidden; width: 260px; 
+    /* Material 3's rich tooltip (improvements F16, round 2): an opaque surface (no see-through blur), 12px corners
+       (shape "medium"), 12px top, 8px bottom and 16px side padding, and elevation level 2's shadow. */
+    background: rgb(15, 23, 42);
+    color: #f1f5f9; text-align: left; border-radius: 12px; padding: 12px 16px 8px; 
     position: absolute; z-index: 1001; top: calc(100% + 8px); right: -10px; 
-    opacity: 0; transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease; font-size: 0.85rem; font-weight: 400; 
-    border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5); 
+    opacity: 0; transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease, display 0.2s allow-discrete;
+    /* Improvements M3: swap 0.2s ease for M3's motion tokens (an "effects" curve, no overshoot) in both transition lines,
+       the @starting-style lines below, and css/tscore.css's header tooltip. Keep display ... allow-discrete. */
+    font-size: 0.85rem; font-weight: 400; 
+    border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15); 
     pointer-events: none; line-height: 1.5;
     transform: translateY(-4px);
     /* Kept inside the window (improvements S19, round 7): never wider than it, and slid sideways by --tt-dx, which
@@ -1295,7 +1306,8 @@ label.toggle-title,
     text-transform: none; letter-spacing: normal;
 }
 .tooltip:hover .tooltip-text, .tooltip-container:hover .tooltip-text { 
-    visibility: visible; opacity: 1; transform: translateY(0);
+    display: block; visibility: visible; opacity: 1; transform: translateY(0);
+    @starting-style { opacity: 0; transform: translateY(-4px); }
 }
 
 /* Keyboard: an icon with keyboard focus shows its tooltip (see initTooltips in
@@ -1307,28 +1319,46 @@ label.toggle-title,
     color: var(--text-main);
 }
 .tooltip-icon:focus-visible + .tooltip-text:not(.tt-dismissed) {
-    visibility: visible; opacity: 1; transform: translateY(0);
+    display: block; visibility: visible; opacity: 1; transform: translateY(0);
+    @starting-style { opacity: 0; transform: translateY(-4px); }
 }
 .tooltip-container:hover .tooltip-text.tt-dismissed:not(.mobile-visible) {
-    visibility: hidden; opacity: 0;
+    display: none; visibility: hidden; opacity: 0;
 }
 /* Icon-less tooltips, where the badge/status icon/cell itself is the trigger (data-tt-self is
    set by initTooltips in js/shared/ui/tooltips.js): League Command Center status icons and badges, Power
    Rankings cells, the T-Score badge on Draft Tracker cards. */
 .tooltip-container[data-tt-self]:focus-visible > .tooltip-text:not(.tt-dismissed) {
-    visibility: visible; opacity: 1; transform: translateY(0);
+    display: block; visibility: visible; opacity: 1; transform: translateY(0);
+    @starting-style { opacity: 0; transform: translateY(-4px); }
 }
 
 /* A long tooltip opens wider, and scrolls inside if it still runs past the window's bottom (js/shared/ui/tooltips.js,
    place; improvements S27 round 2). Set each time one is about to show, from its own length. */
 .tooltip .tooltip-text.tt-wide, .tooltip-container .tooltip-text.tt-wide { width: 480px; }
+/* On a phone a wide one fills the window, and M3's 16px sides cost the Scoreboard's 197-word tip its last line (it would
+   scroll inside at 375px): keep 12px there until F19 shortens it (improvements F16, round 2). Improvements F19: once
+   no tooltip needs this, delete this block (tooltips-onscreen.spec.mjs's "a long tooltip opens wider" checks the fit). */
+@media (max-width: 480px) {
+    .tooltip .tooltip-text.tt-wide, .tooltip-container .tooltip-text.tt-wide { padding-left: 12px; padding-right: 12px; }
+}
 .tooltip .tooltip-text.tt-scroll, .tooltip-container .tooltip-text.tt-scroll { max-height: var(--tt-maxh, 60vh); overflow-y: auto; overscroll-behavior: contain; pointer-events: auto; }
+
+/* Lingering after the mouse leaves (Material 3: a hovered tooltip stays 1.5s after the pointer leaves its trigger;
+   improvements F16, round 2). js/shared/ui/tooltips.js adds tt-linger as a mouse pointer leaves a shown tooltip's
+   trigger and takes it off after 1.5s, or at once when another tooltip opens, on any tap or click, or on Escape. */
+.tooltip .tooltip-text.tt-linger, .tooltip-container .tooltip-text.tt-linger,
+.table-header-tooltip .tooltip-text.tt-linger {
+    display: block; visibility: visible; opacity: 1; transform: translateY(0);
+}
 
 /* Mobile tap-to-toggle class */
 .tooltip-text.mobile-visible {
+    display: block;
     visibility: visible !important;
     opacity: 1 !important;
     transform: translateY(0) !important;
+    @starting-style { opacity: 0 !important; transform: translateY(-4px) !important; }
 }
 
 /* --- MLS LINEUP & ROSTER TAB SPECIFIC STYLES --- */
