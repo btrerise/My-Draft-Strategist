@@ -495,6 +495,31 @@
             </div>
         </details>
 
+        <!-- Suggested FAAB bids (improvements S35, round 6, js/mls/scout/faabSettings.js): off by default; shown only when
+             there's a FAAB league. A fold like Notifications; its title row says On or Off and the style. -->
+        <details class="sos-details-accordion faab-settings" id="faabSettingsGroup" hidden>
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>FAAB Bids<span id="faabSettingsState" class="notify-settings-state">Off</span></summary>
+            <div class="accordion-body">
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <label class="toggle-title" for="faabBidsToggle">
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        Suggest FAAB Bids
+                    </label>
+                    <span class="toggle-desc">In FAAB leagues, a bid range for players on waivers (Best Available's upgrades, Auto-Find, Check a List), from your league's bids this season. Tap a bid for what it's based on.</span>
+                </div>
+                <input type="checkbox" id="faabBidsToggle" class="toggle-switch" data-action="toggleFaabBids">
+            </div>
+            <div id="faabStyleOptions" class="faab-style-options" hidden>
+                <div class="mls-segmented" role="group" aria-label="Bidding style" aria-describedby="faabStyleHint">
+                    <button type="button" class="mls-segmented-btn active" data-style="conservative" aria-pressed="true" data-action="setFaabStyle">Conservative</button>
+                    <button type="button" class="mls-segmented-btn" data-style="aggressive" aria-pressed="false" data-action="setFaabStyle">Aggressive</button>
+                </div>
+                <small id="faabStyleHint" class="text-helper">Conservative: the cheapest bid likely to win. Aggressive: for a player who'd start for you, enough to beat other bidders; it wins more contested claims and costs more when no one else bids.</small>
+            </div>
+            </div>
+        </details>
+
         <details class="sos-details-accordion">
             <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Add Player Manually</summary>
             <div class="accordion-body">

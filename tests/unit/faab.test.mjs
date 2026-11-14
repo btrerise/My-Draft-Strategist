@@ -205,3 +205,27 @@ test('what the two ends mean, when they are the same amount', () => {
     const s = suggestBid({ ...base, bids: zeros });
     assert.equal(s.lines[1].text, 'Before the adjustments: 0 would have matched at least 3 in 4 of these winning bids');
 });
+
+test('Aggressive raises the top end to what winners paid when others bid, only for a player you\'d start (round 6)', () => {
+    // Cheap WR bids near WR34, nobody else bidding; four contested WR claims far from him (they barely move Conservative).
+    const bids = [
+        { pos: 'WR', posRank: 30, bid: 4, rivals: 0 }, { pos: 'WR', posRank: 32, bid: 6, rivals: 0 }, { pos: 'WR', posRank: 35, bid: 8, rivals: 0 },
+        { pos: 'WR', posRank: 38, bid: 5, rivals: 0 },
+        { pos: 'WR', posRank: 70, bid: 30, rivals: 1 }, { pos: 'WR', posRank: 75, bid: 35, rivals: 2 }, { pos: 'WR', posRank: 80, bid: 40, rivals: 1 },
+        { pos: 'WR', posRank: 85, bid: 45, rivals: 1 }
+    ];
+    const opts = { ...base, bids, left: { 1: 50, 2: 50 } };
+    const cons = suggestBid({ ...opts, need: 'starts' });
+    const aggr = suggestBid({ ...opts, need: 'starts', style: 'aggressive' });
+    // Contested WRs: 30, 35, 40, 45 → median (nearest rank) 35.
+    assert.equal(aggr.high, 35);
+    assert.ok(cons.high < 35, `conservative top ${cons.high}`);
+    assert.equal(aggr.low, cons.low);
+    assert.ok(aggr.lines.some(l => l.kind === 'up' && l.text === 'Aggressive: the top is raised to 35, what winners paid when others bid'));
+    // Not for a stash, and not when nothing was contested.
+    assert.equal(suggestBid({ ...opts, need: 'bench', style: 'aggressive' }).high, suggestBid({ ...opts, need: 'bench' }).high);
+    const quiet = bids.map(b => ({ ...b, rivals: 0 }));
+    assert.equal(suggestBid({ ...opts, bids: quiet, need: 'starts', style: 'aggressive' }).high, suggestBid({ ...opts, bids: quiet, need: 'starts' }).high);
+    // Never more than you have left.
+    assert.equal(suggestBid({ ...opts, left: { 1: 12, 2: 50 }, need: 'starts', style: 'aggressive' }).high, 12);
+});

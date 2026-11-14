@@ -141,9 +141,12 @@ const NOTICEABLE = 0.05; // an adjustment under 5% isn't worth a line
 //   week: when it was won; rivals: how many others bid).
 //   kind: 'redraft' | 'keeper' | 'dynasty' | 'guillotine'. week: this NFL week. lastWeek: seasonLastWeek.
 //   need: 'empty' | 'starts' | 'bench' | null; over: whom he'd replace in your lineup (a name, for 'starts').
-//   minBid: the league's minimum bid (0).
+//   minBid: the league's minimum bid (0). style: 'conservative' (the default) or 'aggressive' (round 6: for a player who'd
+//   start for you or fill an empty spot, the top end is raised to the median winning bid of the position's rival-bid
+//   claims; back-test: wins 54% of rival-bid claims instead of 41%, pays a median 6% of the budget instead of 2.5% when
+//   nobody else bids).
 // lines: [{ kind: 'base' | 'up' | 'down' | 'note', text }] for the tap's sheet; reasons: the same as plain text.
-export function suggestBid({ pos, posRank = null, budget, left, myRosterId, bids, kind = 'redraft', week, lastWeek = 17, need = null, over = null, minBid = 0 }) {
+export function suggestBid({ pos, posRank = null, budget, left, myRosterId, bids, kind = 'redraft', week, lastWeek = 17, need = null, over = null, minBid = 0, style = 'conservative' }) {
     if (!(budget > 0) || !left || myRosterId == null || left[myRosterId] == null || !pos) return null;
     const mine = left[myRosterId];
     const all = Object.values(left);
@@ -187,11 +190,22 @@ export function suggestBid({ pos, posRank = null, budget, left, myRosterId, bids
     lines.push({ kind: 'note', text: money(med) === money(p75)
         ? `Before the adjustments: ${money(med)} would have matched at least 3 in 4 of these winning bids`
         : `Before the adjustments: ${money(med)} would have matched about half of these winning bids, ${money(p75)} about 3 in 4` });
+    // Aggressive (round 6): a player you want gets a top end that beats other bidders, from the claims they bid on.
+    let raised = null;
+    if (style === 'aggressive' && (need === 'starts' || need === 'empty')) {
+        let contested = withBid.filter(b => b.pos === pos && b.rivals > 0);
+        if (contested.length < MIN_COMPARABLES) contested = withBid.filter(b => b.rivals > 0);
+        if (contested.length > 0) {
+            const target = Math.min(cap, Math.round(quantile(contested.map(b => b.bid).sort((x, y) => x - y), 0.5)));
+            if (target > high) { raised = target; high = target; }
+        }
+    }
     // When the cap really cuts (a top end of 6 held to 5 isn't worth saying), it's said on the same line (round 5: a
-    // line of its own, "it would have been 27", was one number too many to reconcile).
-    if (uncapped >= high * 1.5 && uncapped > high + 1) lines[lines.length - 1].text += `; the top here is held to ${high} so a few big bids don't stretch the range`;
+    // line of its own, "it would have been 27", was one number too many to reconcile). Not when Aggressive raised it.
+    if (raised === null && uncapped >= high * 1.5 && uncapped > high + 1) lines[lines.length - 1].text += `; the top here is held to ${high} so a few big bids don't stretch the range`;
     const rivals = rivalsLine(withBid, pos, budget);
     if (rivals) lines.push({ kind: 'note', text: rivals });
+    if (raised !== null) lines.push({ kind: 'up', text: `Aggressive: the top is raised to ${raised}, what winners paid when others bid` });
     if (need === 'empty') lines.push({ kind: 'up', text: 'He\'d fill an empty starting spot' });
     else if (need === 'starts') lines.push({ kind: 'up', text: over ? `He'd start for you, over ${over}` : 'He\'d start for you' });
     else if (need === 'bench') lines.push({ kind: 'down', text: 'He wouldn\'t start for you now: a stash' });

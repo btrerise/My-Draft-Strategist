@@ -193,8 +193,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **A suggested FAAB bid.** In Sleeper FAAB leagues, a player on waivers shows a bid range such as **Bid 13–21 (of
-  your 63 left)**: on the Dashboard's Best available for an upgrade, and on Auto-Find's cards and Check a List's free
+- **A suggested FAAB bid, if you want one.** Turn on **FAAB Bids** in the Dashboard's Advanced Settings (it's off, and
+  shows only if you have a FAAB league), and choose **Conservative** (the cheapest bid likely to win) or **Aggressive**
+  (for a player who'd start for you, enough to beat other bidders). The first time Auto-Find or Check a List finds a
+  player on waivers in a FAAB league, a toast offers it, with a **Turn on** button. In Sleeper FAAB leagues, a player on
+  waivers then shows a bid range such as **Bid 13–21 (of your 63 left)**: on the Dashboard's Best available for an upgrade, and on Auto-Find's cards and Check a List's free
   agents. It comes from the league's winning bids this season at his position, those for players ranked near him today
   and recent ones counting most; it's higher when he'd start for you or fill an empty spot, lower (a stash) when he
   wouldn't, it weighs what you have left against the league's average and, outside dynasty, the weeks left, and its top

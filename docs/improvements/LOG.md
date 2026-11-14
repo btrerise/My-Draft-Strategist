@@ -12608,3 +12608,43 @@ since the sync, a new visit shows "Bid …" in Cook's row while the history (hel
 "(of your 50 left)" from the fresh rosters, the row the same height. Ran check-precache, `node --test` (686),
 `mls-faab-bid`, `tooltip-closed-space` and the neighbouring specs: 157 passed. Screenshots: my last commit and this
 round, rendered in the same container, are identical (44 of 44).
+
+### Round 6: optional, Conservative or Aggressive, and a toast that offers it (owner, 2026-11-14)
+
+The owner: the bids add text some will see as clutter, so make them optional, off by default; offer A and B as a
+choice; and a toast pointing to the setting. Owner's answers: **Conservative by default**; the toast after **Auto-Find
+and Check a List**; a **"Turn on" button in the toast** (built here, not a follow-up).
+- **The setting** (`js/mls/scout/faabSettings.js`, new, in `PRECACHE_ASSETS`; `KEYS.mls.faabSettings` =
+  `mls_faab_settings`: `{ on, style, hintShown }`, so Backup / Restore and Factory Reset have it): the Dashboard's
+  Advanced Settings has a **FAAB Bids** fold after Notifications, built like it (title row "Off" / "On · Conservative"),
+  with a "Suggest FAAB Bids" switch and, while on, a Conservative / Aggressive segmented choice and a line saying what
+  each does. Shown only when a synced league is FAAB (`applyFaabSettingsToUI`, from Best Available's render).
+- **Off** (the default): no bid, no "Bid …" placeholder, and no history or roster reads (`faabBidsFor` returns nothing;
+  `suggestBidFor` returns null). The FA / W chips (S34) are unchanged.
+- **Aggressive** (round 5's B): for a player who'd start for you or fill an empty spot, the top end is raised to the
+  median winning bid of the position's rival-bid claims (every position's when his has under 4), never above what you
+  have; the sheet says so ("Aggressive: the top is raised to 40, what winners paid when others bid"). The cap's note
+  isn't added when Aggressive raised the top. Back-test (round 5, applied to every claim, so the cost is overstated):
+  wins 54% of rival-bid claims instead of 41%, pays a median 6% of the budget instead of 2.5% when nobody else bids.
+- **The toast**, once ever: after Auto-Find or Check a List in a synced FAAB league, when the results show a W player
+  and bids are off: "Need help with FAAB bids? Turn on bid suggestions in Settings on the Dashboard." with **Turn on**,
+  which turns them on and runs the scan again so the bids appear. Ignored or dismissed, it doesn't come back
+  (`hintShown`).
+- **The toast's button** (`js/shared/ui/toast.js`, both apps): `showToast(message, { action: { label, onClick } })`
+  adds a text button in the accent colour between the message and ✕ (tappable on a click-through success toast, like ✕);
+  the toast closes, then the action runs. A toast with one stays 8 seconds instead of 3.5. Nothing else uses it yet.
+- **S45 (the Settings page)**, recorded in `docs/TESTING.md`'s Open follow-ups: move the FAAB Bids group there and drop
+  "on the Dashboard" from the toast (`HINT_TEXT`; the spec checks the text).
+- Legend line and CHANGELOG say it's off until turned on, and what each style does.
+- Found while testing: `.faab-style-options { display: grid }` overrode `hidden`, so the style choice showed while off;
+  `[hidden] { display: none }` added.
+
+Tests: unit (18; Aggressive: raised only for a player you'd start, not without contested claims, never above what you
+have); `mls-faab-bid` (10 per width): the earlier cases turn bids on first; new: off by default (no bid, the rosters
+read once by the sync and not by the history, the group "Off", turning it on shows "On · Conservative" and Cook's bid);
+Aggressive (a fixture with three more contested RB claims; Cook's top end becomes 40 and the sheet says so); the toast
+after Auto-Find and its Turn on (bids appear, settings saved); after Check a List, dismissed, then never again; a
+non-FAAB league (no group, no toast). Ran check-precache, `node --test` (687), and `mls-faab-bid`, `tooltip-closed-space`
+and the neighbouring specs (with Backup, key migration, badge legend, smoke, touch targets): 187 passed. Screenshots: my
+last commit and this round differ only in `desktop/` and `phone/mls-league-setup.png` (the FAAB Bids row in Advanced
+Settings) and `desktop/` and `phone/mls-league-guide.png` (the legend line); re-taken on CI.

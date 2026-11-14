@@ -24,6 +24,15 @@ const KICKOFFS = { BUF: '2026-09-20T20:25:00Z', BAL: '2026-09-20T20:25:00Z', CIN
 // Cook dropped Tue 9/15 at 7 PM PT: on waivers until about Thursday evening, before his Sunday game.
 const COOK_DROP = [{ transaction_id: '1', type: 'free_agent', status: 'complete', leg: 2, adds: null, drops: { 8138: 2 }, status_updated: Date.parse('2026-09-16T02:00:00Z') }];
 
+// Round 6, Aggressive: three more RB claims near Cook (Bijan 40, Gibbs 45, Saquon 50), each with a losing bid in the same
+// run, so the RBs' contested claims are Achane 12 and those three: median (nearest rank) 40.
+const CONTESTED_JSON = JSON.stringify([...JSON.parse(FAAB_JSON), ...[['9509', 40], ['9221', 45], ['4892', 50]].flatMap(([pid, bid], i) => {
+    const at = Date.parse('2026-09-16T07:05:00Z');
+    const claim = (status, roster, b) => ({ transaction_id: `40000000000000000${i}${status[0]}`, type: 'waiver', status, leg: 1, roster_ids: [roster],
+        adds: { [pid]: roster }, drops: null, draft_picks: [], settings: { waiver_bid: b }, created: at - 3600000, status_updated: at });
+    return [claim('complete', 2, bid), claim('failed', 1, bid - 5)];
+})]);
+
 const leagueCard = (page) => page.locator('#leagueCards > .mls-lc-card').filter({ has: page.locator('.mls-lc-name', { hasText: 'Fixture League' }) });
 const line = (page) => leagueCard(page).locator('.mls-lc-ba');
 const player = (page, name) => line(page).locator('.mls-ba-player').filter({ hasText: name });
@@ -34,6 +43,7 @@ const out = (page) => page.locator('#waiverOutput');
 // many: Rival also dropped Jaxon Smith-Njigba and Chase Brown, so more of the line is on waivers (a waiver day's look).
 // spent: each roster's FAAB used (a spec can change it after the sync, as a waiver run would).
 async function routes(page, { history = 'faab', waiverType = 2, many = false, spent = { 1: 37, 2: 12 } } = {}) {
+    const historyJson = history === 'contested' ? CONTESTED_JSON : history === 'faab' ? FAAB_JSON : '[]';
     await page.route(/api\.sleeper\.app\/v1\/league\/\d+$/, (route) => {
         const league = JSON.parse(LEAGUE_JSON);
         league.roster_positions.splice(league.roster_positions.indexOf('RB'), 1);
@@ -48,12 +58,15 @@ async function routes(page, { history = 'faab', waiverType = 2, many = false, sp
         const week = Number(route.request().url().split('/').pop());
         if (week === 2) return route.fulfill({ json: many ? [{ ...COOK_DROP[0], drops: { 8138: 2, 9488: 2, 9224: 2 } }] : COOK_DROP });
         if (history === 'error') return route.fulfill({ status: 500, body: '' });
-        return route.fulfill({ status: 200, contentType: 'application/json', body: history === 'faab' ? FAAB_JSON : '[]' });
+        return route.fulfill({ status: 200, contentType: 'application/json', body: historyJson });
     });
 }
-async function setup(page, opts) {
+// on: suggested bids turned on first (round 6: they're off by default), with style ('conservative' unless given).
+async function setup(page, opts = {}) {
     const state = await openApp(page, '/lineup/');
     await routes(page, opts);
+    const { on = true, style = 'conservative' } = opts;
+    if (on) await page.evaluate((s) => localStorage.setItem('mls_faab_settings', JSON.stringify(s)), { on: true, style });
     await page.clock.setFixedTime(THURSDAY);
     await seedMls(page);
     await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
@@ -195,6 +208,88 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expectClean(page, state);
     });
 
+    test('round 6: off by default (no bids, no history read), the setting shown with a FAAB league', async ({ page }) => {
+        let rosterReads = 0;
+        page.on('request', r => { if (/\/league\/\d+\/rosters$/.test(r.url())) rosterReads++; });
+        const state = await setup(page, { on: false });
+        const cook = player(page, 'James Cook');
+        await expect(cook.locator('.mls-wv-chip')).toHaveText('W');
+        await page.waitForLoadState('networkidle');
+        await expect(line(page).locator('.mls-faab-bid')).toHaveCount(0);
+        // The sync reads the rosters once; the history (which would read them again) isn't loaded.
+        expect(rosterReads).toBe(1);
+        const group = page.locator('#faabSettingsGroup');
+        await expect(group).toBeVisible();
+        await expect(page.locator('#faabSettingsState')).toHaveText('Off');
+        // Turn it on: Conservative, and the bid appears.
+        await group.locator('summary').click();
+        await expect(page.locator('#faabStyleOptions')).toBeHidden();
+        await page.locator('#faabBidsToggle').check();
+        await expect(page.locator('#faabSettingsState')).toHaveText('On · Conservative');
+        await expect(page.locator('#faabStyleOptions [data-style="conservative"]')).toHaveAttribute('aria-pressed', 'true');
+        await expect(cook.locator('button.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        expect(JSON.parse(await page.evaluate(() => localStorage.getItem('mls_faab_settings')))).toMatchObject({ on: true, style: 'conservative' });
+        await expectClean(page, state);
+    });
+
+    test('round 6: Aggressive raises the top end for a player you\'d start', async ({ page }) => {
+        // You have 40 left, Rival 100 (×0.6): Conservative's top for Cook stays under the contested median.
+        const state = await setup(page, { history: 'contested', spent: { 1: 60, 2: 0 } });
+        const cook = player(page, 'James Cook');
+        const bid = cook.locator('button.mls-faab-bid');
+        await expect(bid).toHaveText(/^Bid \d+–\d+ \(of your 40 left\)$/);
+        const conservative = Number((await bid.textContent()).match(/–(\d+)/)[1]);
+        await page.locator('#faabSettingsGroup summary').click();
+        await page.locator('#faabStyleOptions [data-style="aggressive"]').click();
+        await expect(page.locator('#faabSettingsState')).toHaveText('On · Aggressive');
+        // The contested RB claims' median, 40, is above Conservative's top.
+        expect(conservative).toBeLessThan(40);
+        await expect(bid).toHaveText(/^Bid \d+–40 \(of your 40 left\)$/);
+        await bid.click();
+        await expect(page.locator('.sheet .mls-faab-sheet li.is-up').first()).toHaveText('Aggressive: the top is raised to 40, what winners paid when others bid');
+        await expectClean(page, state);
+    });
+
+    test('round 6: one toast offers to turn them on, after Auto-Find; "Turn on" shows the bids', async ({ page }) => {
+        const state = await setup(page, { on: false });
+        await showTab(page, 'scout');
+        await callApp(page, 'setWaiverMode', 'auto');
+        await callApp(page, 'setWaiverCompare', 'lineup');
+        await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
+        const cookCard = out(page).locator('.mls-scan-card').filter({ hasText: 'James Cook' });
+        await expect(cookCard.locator('.mls-wv-chip')).toHaveText('W');
+        await expect(cookCard.locator('.mls-faab-bid')).toHaveCount(0);
+        const toast = page.locator('#mds-toast');
+        await expect(toast.locator('.toast-message')).toHaveText('Need help with FAAB bids? Turn on bid suggestions in Settings on the Dashboard.');
+        await toast.locator('.toast-action-btn').click();
+        await expect(toast).not.toHaveClass(/\bshow\b/);
+        // Auto-Find runs again, with the bids.
+        await expect(cookCard.locator('.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        expect(JSON.parse(await page.evaluate(() => localStorage.getItem('mls_faab_settings')))).toMatchObject({ on: true, hintShown: true });
+        await expectClean(page, state);
+    });
+
+    test('round 6: the toast after Check a List too, and only once', async ({ page }) => {
+        const state = await setup(page, { on: false });
+        await showTab(page, 'scout');
+        await callApp(page, 'setWaiverMode', 'list');
+        await page.fill('#waiverInput', 'James Cook');
+        await page.click('#waiverScanBtn');
+        const toastMsg = page.locator('#mds-toast .toast-message').filter({ hasText: 'Need help with FAAB bids?' });
+        await expect(toastMsg).toBeVisible();
+        await page.locator('#mds-toast .toast-dismiss-btn').click();
+        await expect(page.locator('#mds-toast')).not.toHaveClass(/\bshow\b/);
+        // Ignored once: never again, not even after Auto-Find.
+        await page.click('#waiverScanBtn');
+        await callApp(page, 'setWaiverMode', 'auto');
+        await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
+        await expect(out(page).locator('.mls-scan-card').first()).toBeVisible();
+        await page.waitForTimeout(500);
+        await expect(toastMsg).toBeHidden();
+        expect(JSON.parse(await page.evaluate(() => localStorage.getItem('mls_faab_settings')))).toMatchObject({ on: false, hintShown: true });
+        await expectClean(page, state);
+    });
+
     test('no winning bids yet: the W chip, and no bid', async ({ page }) => {
         const state = await setup(page, { history: 'none' });
         const cook = player(page, 'James Cook');
@@ -214,12 +309,21 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expectClean(page, state);
     });
 
-    test('a league that isn\'t FAAB: waivers, but no bid', async ({ page }) => {
-        const state = await setup(page, { waiverType: 0 });
+    test('a league that isn\'t FAAB: waivers, but no bid, no setting and no toast', async ({ page }) => {
+        const state = await setup(page, { waiverType: 0, on: false });
+        await expect(page.locator('#faabSettingsGroup')).toBeHidden();
         const cook = player(page, 'James Cook');
         await expect(cook.locator('.mls-wv-chip')).toHaveText('W');
         await page.waitForLoadState('networkidle');
         await expect(line(page).locator('.mls-faab-bid')).toHaveCount(0);
+        // No toast after Auto-Find either: there's no FAAB league to help with.
+        await showTab(page, 'scout');
+        await callApp(page, 'setWaiverMode', 'auto');
+        await callApp(page, 'setWaiverCompare', 'lineup');
+        await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
+        await expect(out(page).locator('.mls-scan-card').first()).toBeVisible();
+        await page.waitForTimeout(500);
+        await expect(page.locator('#mds-toast .toast-message').filter({ hasText: 'Need help with FAAB bids?' })).toBeHidden();
         await expectClean(page, state);
     });
 });

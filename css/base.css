@@ -1850,9 +1850,26 @@ input[type="file"]::-webkit-file-upload-button:hover {
    tapped to hold it open (see getToastElement in js/shared/ui/toast.js). Nothing hidden takes taps -- an
    invisible toast parked over the bottom nav must not swallow them. */
 .mds-toast.show.toast-error,
-.mds-toast.show .toast-dismiss-btn {
+.mds-toast.show .toast-dismiss-btn,
+.mds-toast.show .toast-action-btn {
   pointer-events: auto;
 }
+
+/* A toast's optional action (showToast's options.action, improvements S35): a text button in the accent colour, between
+   the message and the ✕. */
+.mds-toast .toast-action-btn {
+  background: none;
+  border: none;
+  color: var(--primary-green, #10b981);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-self: center;
+}
+.mds-toast .toast-action-btn[hidden] { display: none; }
 
 .mds-toast.toast-error {
   border-color: var(--error-color);

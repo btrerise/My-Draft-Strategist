@@ -95,6 +95,7 @@ import { isWeekOver, nextWeeklyRun, shortWhen, waiverStatus } from './waiverStat
 import { recentDropsFor } from './recentDrops.js';
 import { faabBidHTML, waiverChipHTML } from './waivers.js';
 import { faabBidsFor, faabBidsLoaded, isFaabLeague, suggestBidFor } from './faabHistory.js';
+import { applyFaabSettingsToUI, faabBidsOn } from './faabSettings.js';
 
     const PER_LEAGUE = 3;
 
@@ -315,7 +316,7 @@ import { faabBidsFor, faabBidsLoaded, isFaabLeague, suggestBidFor } from './faab
             p.bid = suggestBidFor(league, { pos: p.fa.pos, posRank: posRankOf(p.fa.cleanName), need, over }, posRankOf, wctx.week);
             // Round 5: while the history is loading, the bid's row is there already ("Bid …", muted), so the page doesn't
             // jump 28px on a phone when it arrives.
-            p.bidPending = isFaabLeague(league) && Number(wctx.week) >= 1 && faabBidsLoaded(league.leagueId) === undefined;
+            p.bidPending = faabBidsOn() && isFaabLeague(league) && Number(wctx.week) >= 1 && faabBidsLoaded(league.leagueId) === undefined;
         });
         // How many were left off for this week (round 5): an empty line says that, not "everyone is rostered".
         const cantPlayCount = lineupMode ? freeAgents.filter(fa => !flagged.has(fa.cleanName) && (statusOf(fa) || {}).tooLateThisWeek).length : 0;
@@ -433,6 +434,8 @@ import { faabBidsFor, faabBidsLoaded, isFaabLeague, suggestBidFor } from './faab
 
         const leagues = State.leagues || [];
         const synced = leagues.filter(isFullyMappedLeague);
+        // Advanced Settings' FAAB Bids group shows only with a FAAB league (S35, round 6).
+        applyFaabSettingsToUI(synced.some(isFaabLeague));
         let meta = {};
         let drops = {};
         if (synced.length > 0) {
@@ -487,7 +490,7 @@ import { faabBidsFor, faabBidsLoaded, isFaabLeague, suggestBidFor } from './faab
         // lines are drawn again with the suggested bids once it's in.
         const faabLeagues = synced.filter(isFaabLeague);
         // Only once the week is known, and only when this read loaded something new (else it could draw again forever).
-        const pending = faabLeagues.filter(l => faabBidsLoaded(l.leagueId) === undefined);
+        const pending = faabBidsOn() ? faabLeagues.filter(l => faabBidsLoaded(l.leagueId) === undefined) : [];
         if (Number(State.currentNflWeek) >= 1 && pending.length > 0) {
             faabBidsFor(faabLeagues, State.currentNflWeek).then(() => {
                 if (gen === renderGen && pending.some(l => faabBidsLoaded(l.leagueId) !== undefined)) renderBestAvailable();

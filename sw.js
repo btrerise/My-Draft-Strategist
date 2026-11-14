@@ -178,6 +178,7 @@ const PRECACHE_ASSETS = [
     '/js/mls/scout/recentDrops.js',
     '/js/mls/scout/faab.js',
     '/js/mls/scout/faabHistory.js',
+    '/js/mls/scout/faabSettings.js',
     '/js/mls/rankings/engine.js',
     '/js/mls/rankings/sets.js',
     '/js/mls/rankings/setView.js',   // S30: a saved ranking set, read-only, in the shared sheet

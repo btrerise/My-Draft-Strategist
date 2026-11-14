@@ -23,7 +23,8 @@ import { bidLabel, bidTitle, bidWhere } from './faab.js';
 import { openSheet } from '../../shared/ui/sheet.js';
 import { isWeekOver, shortWhen, waiverStatus, waiverStatusText } from './waiverStatus.js';
 import { recentDropsFor } from './recentDrops.js';
-import { faabBidsFor, suggestBidFor } from './faabHistory.js';
+import { faabBidsFor, isFaabLeague, suggestBidFor } from './faabHistory.js';
+import { maybeShowFaabHint } from './faabSettings.js';
 import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---
@@ -344,6 +345,13 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         const body = `<ul class="mls-faab-sheet">${where}${(data.lines || []).map(l =>
             `<li class="is-${escapeHtml(l.kind)}">${icon[l.kind] || ''}<span>${escapeHtml(l.text)}</span></li>`).join('')}</ul>`;
         openSheet({ title: data.title, body, opener: btn, className: 'mls-faab-sheet-host' });
+    }
+
+    // The one-time "Turn on" toast for suggested FAAB bids (S35, round 6), after Auto-Find or Check a List: in a synced FAAB
+    // league, when the results show a player on waivers. rerun: the scan again, so the bids appear once they're on.
+    export function offerFaabHint(league, outputEl, rerun) {
+        if (!isFullyMappedLeague(league)) return;
+        maybeShowFaabHint({ faabLeague: isFaabLeague(league), anyWaivers: !!(outputEl && outputEl.querySelector('.mls-wv-chip.is-w')), onEnable: rerun });
     }
 
     // The bid's own line under a card's verdict (S35).
@@ -1058,6 +1066,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
             }
 
             outputEl.innerHTML = html;
+            offerFaabHint(league, outputEl, () => autoFindWaiverUpgrades(btn));
         } catch (err) {
             console.error('Waiver Auto-Find failed:', err);
             // Missing rankings and an unsynced league are already caught with their own

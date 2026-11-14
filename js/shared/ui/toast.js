@@ -19,7 +19,10 @@ export const showToast = function(message, options = {}) {
   if (toastsSuppressed && !options.force) return;
 
   const isError = options.isError || false;
-  const duration = options.duration || (isError ? 6000 : 3500);
+  // options.action, { label, onClick } (improvements S35): a button in the toast that does the thing it suggests ("Turn
+  // on"); the toast closes after it runs. A toast with one stays longer, so there's time to reach the button.
+  const action = options.action && options.action.label && typeof options.action.onClick === 'function' ? options.action : null;
+  const duration = options.duration || (isError ? 6000 : action ? 8000 : 3500);
 
   const toast = getToastElement();
   const messageEl = toast.querySelector('.toast-message');
@@ -37,6 +40,11 @@ export const showToast = function(message, options = {}) {
     if (i > 0) messageEl.appendChild(document.createElement('br'));
     messageEl.appendChild(document.createTextNode(line));
   });
+
+  const actionBtn = toast.querySelector('.toast-action-btn');
+  actionBtn.hidden = !action;
+  actionBtn.textContent = action ? action.label : '';
+  toast.toastAction = action ? action.onClick : null;
 
   void toast.offsetWidth; // Force CSS reflow to ensure animation replays
   toast.classList.add('show');
@@ -72,7 +80,17 @@ function getToastElement() {
   dismiss.setAttribute('aria-label', 'Dismiss notification');
   dismiss.textContent = '✕';
   dismiss.addEventListener('click', () => hideToast(toast));
-  toast.append(messageEl, dismiss);
+  // The optional action (showToast's options.action), hidden until a toast has one. Not inside the live region, like ✕.
+  const actionBtn = document.createElement('button');
+  actionBtn.type = 'button';
+  actionBtn.className = 'toast-action-btn';
+  actionBtn.hidden = true;
+  actionBtn.addEventListener('click', () => {
+    const run = toast.toastAction;
+    hideToast(toast);
+    if (run) run();
+  });
+  toast.append(messageEl, actionBtn, dismiss);
 
   toast.addEventListener('pointerenter', (e) => {
     if (e.pointerType === 'mouse') { toast.toastHovered = true; pauseToastTimer(toast); }

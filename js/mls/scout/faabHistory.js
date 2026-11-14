@@ -12,6 +12,7 @@ import { getSleeperLeagueRosters, getSleeperPlayerMap, getSleeperTransactions } 
 import { cacheData, getCachedData } from '../../shared/storage/idb.js';
 import { recentDropsFor, recentTransactionList } from './recentDrops.js';
 import { faabLeftFrom, suggestBid, winningBids } from './faab.js';
+import { faabBidsOn, faabStyle } from './faabSettings.js';
 
 const PARALLEL = 6; // requests at once, across leagues
 const cache = new Map(); // leagueId -> { key, promise }
@@ -84,7 +85,8 @@ async function load(league, week) {
 export async function faabBidsFor(leagues, week) {
     const w = Number(week);
     const out = {};
-    if (!(w >= 1)) return out;
+    // Off (the default, round 6): nothing is read.
+    if (!(w >= 1) || !faabBidsOn()) return out;
     const faab = (leagues || []).filter(isFaabLeague);
     faab.forEach(l => {
         const key = `${w}:${l.lastSyncedAt || ''}`;
@@ -104,7 +106,7 @@ export const faabBidsLoaded = (leagueId) => loaded.get(leagueId);
 // history isn't loaded or failed, no budgets). posRankOf: today's position rank by clean name, from the caller's
 // rankings. need: 'empty' | 'starts' | 'bench' | null; over: whom he'd replace (a name).
 export function suggestBidFor(league, { pos, posRank, need, over = null }, posRankOf, week) {
-    if (!isFaabLeague(league)) return null;
+    if (!isFaabLeague(league) || !faabBidsOn()) return null;
     const history = loaded.get(league.leagueId);
     if (!history) return null;
     const budget = league.waivers.budget;
@@ -113,7 +115,7 @@ export function suggestBidFor(league, { pos, posRank, need, over = null }, posRa
     return suggestBid({
         pos, posRank, budget, left, myRosterId: league.rosterId, bids,
         kind: league.leagueType || 'redraft', week: Number(week) || null, lastWeek: league.lastWeek || 17,
-        need, over, minBid: league.waivers.minBid || 0
+        need, over, minBid: league.waivers.minBid || 0, style: faabStyle()
     });
 }
 

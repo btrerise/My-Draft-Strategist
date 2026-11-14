@@ -86,6 +86,9 @@ export const KEYS = {
         recapLines: 'mls_recap_lines', // the MVPs & LVPs Boom / Bust lines, { QB: { boom, bust }, ... } (improvements S22)
         paidHintDismissed: 'mls_paid_hint_dismissed', // '1' once the Scoreboard's "mark the leagues you pay for" hint is dismissed (improvements S21)
         bestAvailableDismissed: 'mls_best_available_dismissed', // players dismissed from the Best Available card, per league, this NFL week (improvements S5)
+        // Suggested FAAB bids (improvements S35, js/mls/scout/faabSettings.js): { on, style: 'conservative' | 'aggressive',
+        // hintShown } (off by default; the one-time "Turn on" toast after Auto-Find or Check a List).
+        faabSettings: 'mls_faab_settings',
         hasOptimized: 'mls_has_optimized',
         hasSeenRankingsToast: 'mls_has_seen_rankings_toast',
         hideDraftBanner: 'mls_hide_draft_banner',
