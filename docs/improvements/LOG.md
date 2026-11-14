@@ -12177,6 +12177,13 @@ out of the repo: it reads the owner's league data.)
   check-precache and the Best available, waiver, Scout, past-trade, league-card and touch-target specs (77 passed). No
   screenshot changes.
 
+### The full check before the pull request
+
+`npm ci && npm run check` once, on the branch up to date with main: check-precache OK, `node --test` 669 passed,
+Playwright 1018 passed, 54 skipped, 4 failed. The 4 are `visual.spec.mjs`'s environment guard (this container's
+fonts), as on main; the screenshots it covers were compared main-vs-branch in the same container and re-taken on CI.
+Not run again (rule 7); CI runs it on the pull request.
+
 ### Left over
 - **Seth McGowan's quick re-add** (round 8): if a pattern shows (a player dropped the day he was added skipping
   waivers), add it to the rule.
