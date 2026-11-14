@@ -305,11 +305,12 @@ import { faabBidsFor, faabBidsLoaded, isFaabLeague, suggestBidFor } from './faab
                 .map(fa => ({ fa, upgrade: null }))
         ].slice(0, PER_LEAGUE);
         players.forEach(p => { p.status = statusOf(p.fa); });
-        // A suggested FAAB bid on each player on waivers who can still help (improvements S35): raised when he'd start
-        // for you (a Weekly upgrade) or fills an empty spot. Only once the league's history has loaded.
+        // A suggested FAAB bid on each upgrade on waivers (improvements S35; round 2, owner: only upgrades here, since a
+        // player who doesn't help you got nearly the same number): raised when he'd start for you (a Weekly upgrade) or
+        // fills an empty spot. Only once the league's history has loaded.
         players.forEach(p => {
-            if (!p.status || p.status.status !== 'waivers' || p.status.tooLateThisWeek) return;
-            const need = p.upgrade ? (p.upgrade.emptySlot ? 'empty' : (lineupMode ? 'starts' : null)) : null;
+            if (!p.upgrade || !p.status || p.status.status !== 'waivers' || p.status.tooLateThisWeek) return;
+            const need = p.upgrade.emptySlot ? 'empty' : (lineupMode ? 'starts' : null);
             p.bid = suggestBidFor(league, { pos: p.fa.pos, posRank: posRankOf(p.fa.cleanName), need }, posRankOf, wctx.week);
         });
         // How many were left off for this week (round 5): an empty line says that, not "everyone is rostered".
@@ -348,7 +349,7 @@ import { faabBidsFor, faabBidsLoaded, isFaabLeague, suggestBidFor } from './faab
             : upgrade && waiverWhen(status) ? `<span class="mls-ba-over">${waiverWhen(status, false)}</span>` : '';
         const muted = late ? ' is-late' : '';
         const dismiss = `<button type="button" class="btn-bare mls-ba-dismiss" data-action="dismissBestAvailable" data-league-id="${escapeHtml(a.league.leagueId)}" data-player="${escapeHtml(fa.cleanName)}" aria-label="Not interested in ${escapeHtml(fa.name)} (hide him here this week)" title="Not interested (hide this week)">${DISMISS_ICON}</button>`;
-        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}${late ? ' is-late-upgrade' : ''}${muted}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${playedAfterWeek(a, status) ? '' : waiverChipHTML(status)}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${upgrade ? '' : faabBidHTML(bid)}${late ? `${over}${dismiss}` : `${dismiss}${over}${upgrade ? faabBidHTML(bid, { long: true }) : ''}`}</li>`;
+        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}${late ? ' is-late-upgrade' : ''}${muted}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${playedAfterWeek(a, status) ? '' : waiverChipHTML(status)}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${late ? `${over}${dismiss}` : `${dismiss}${over}${bid && !bid.noHistory ? `<span class="mls-ba-bid-sep" aria-hidden="true">&middot;</span>${faabBidHTML(bid, { long: true })}` : ''}`}</li>`;
     }
 
     // A league card's Best Available section (S12; one line of the card before). A fold: open when the league has

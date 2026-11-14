@@ -18,8 +18,9 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 import { isPreferredSleeperEntry } from '../players.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
-import { faabBidMarkup, scoutPillMarkup, tierGapMarkup, waiverChipMarkup } from '../badges.js';
-import { bidLabel, bidTip } from './faab.js';
+import { BID_DOWN_ICON, BID_UP_ICON, faabBidMarkup, scoutPillMarkup, tierGapMarkup, waiverChipMarkup } from '../badges.js';
+import { bidLabel, bidTitle } from './faab.js';
+import { openSheet } from '../../shared/ui/sheet.js';
 import { isWeekOver, shortWhen, waiverStatus, waiverStatusText } from './waiverStatus.js';
 import { recentDropsFor } from './recentDrops.js';
 import { faabBidsFor, suggestBidFor } from './faabHistory.js';
@@ -324,10 +325,23 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     }
 
     // A suggested FAAB bid (improvements S35, scout/faab.js): "Bid 9–14", or with long "Bid 9–14 (of your 63 left)";
-    // a tap says what it's based on. '' when there's no suggestion (not FAAB, no history yet).
+    // a tap opens the sheet that says what it's based on. '' when there's no suggestion (not FAAB, no history yet).
     export function faabBidHTML(s, { long = false } = {}) {
         if (!s || s.noHistory) return '';
-        return faabBidMarkup(`${bidLabel(s)}${long ? ` (of your ${s.left} left)` : ''}`, escapeHtml(bidTip(s)));
+        const data = escapeHtml(JSON.stringify({ title: bidTitle(s), lines: s.lines }));
+        return faabBidMarkup(`${bidLabel(s)}${long ? ` (of your ${s.left} left)` : ''}`, data, { rough: s.rough });
+    }
+
+    // The bid's sheet (round 2, the owner's pick over a toast): its title, then one line each for what it's based on,
+    // what raised it (an up arrow), what lowered it (a down arrow), and the notes.
+    export function openFaabBidSheet(btn) {
+        let data = null;
+        try { data = JSON.parse(btn.dataset.bid || 'null'); } catch (e) { data = null; }
+        if (!data) return;
+        const icon = { up: BID_UP_ICON, down: BID_DOWN_ICON };
+        const body = `<ul class="mls-faab-sheet">${(data.lines || []).map(l =>
+            `<li class="is-${escapeHtml(l.kind)}">${icon[l.kind] || ''}<span>${escapeHtml(l.text)}</span></li>`).join('')}</ul>`;
+        openSheet({ title: data.title, body, opener: btn, className: 'mls-faab-sheet-host' });
     }
 
     // The bid's own line under a card's verdict (S35).
@@ -412,7 +426,8 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
             const st = waiverStatusOf(cleanName);
             if (!st || st.status !== 'waivers' || st.tooLateThisWeek) return '';
             const posRankOf = (c) => (scanDisplay[c] && scanDisplay[c].posRank) || null;
-            const need = verdict && verdict.status === 'starts' ? (verdict.displaced ? 'starts' : 'empty') : null;
+            // Would Start raises it; any other verdict (Bench, Out, Bye, ...) makes him a stash and halves it (round 2).
+            const need = !verdict ? null : verdict.status === 'starts' ? (verdict.displaced ? 'starts' : 'empty') : 'bench';
             return faabBidHTML(suggestBidFor(league, { pos, posRank: posRankOf(cleanName), need }, posRankOf, State.currentNflWeek), { long: true });
         };
 

@@ -182,12 +182,13 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **A suggested FAAB bid.** In Sleeper FAAB leagues, a player on waivers on the Dashboard's Best available, Auto-Find's
-  cards and Check a List's free agents shows a bid range such as **Bid 9–14** (an upgrade adds "(of your 63 left)").
-  It comes from the league's winning bids this season for players at his position ranked near him today, scaled by
-  what you have left against the league's average, by the weeks left (not in dynasty leagues) and by whether he'd start
-  for you or fill an empty spot. Tap it for what it's based on (and when there's too little history at his position)
-  and how many teams can outbid it. Nothing shows until the league has a winning bid this season.
+- **A suggested FAAB bid.** In Sleeper FAAB leagues, a player on waivers shows a bid range such as **Bid 13–21 (of
+  your 63 left)**: on the Dashboard's Best available for an upgrade, and on Auto-Find's cards and Check a List's free
+  agents. It comes from the league's winning bids this season for players at his position ranked near him today; it's
+  higher when he'd start for you or fill an empty spot, lower (a stash) when he wouldn't, and it weighs what you have
+  left against the league's average and, outside dynasty, the weeks left. With too few bids near his rank it's a rough
+  guess, shown greyed as **≈ Bid 2–5**. Tap it for a sheet that says what it's based on, what raised or lowered it, and
+  how many teams can outbid it. Nothing shows until the league has a winning bid this season.
 - **Free agent or waivers.** In Sleeper leagues, every player on the Dashboard's Best available, Auto-Find's cards and
   Check a List's free agents now says **FA** (add him now, until his game starts) or **W** (on waivers: dropped in the
   last day or two, cut in a guillotine league, his game has started, or it's a waiver day in that league's Custom

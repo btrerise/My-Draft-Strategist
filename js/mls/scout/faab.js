@@ -7,11 +7,13 @@
 //     for players at the same position ranked within RANK_BAND spots of him today. The app only has today's ranks, so a
 //     bid is matched by the player's rank now, not when it was placed, and the reasons say so. The range runs from
 //     their median to their 75th percentile. With fewer than MIN_COMPARABLES it widens: any rank at the position, then
-//     the same ranks at any position, then every winning bid; the reasons say which.
+//     every winning bid (never another position's bids near his rank: round 2); the reasons say which, and the label
+//     marks it as a rough guess ("≈ Bid 2–5").
 //   - Your budget: what you have left over the league's average left, kept within 0.6 to 1.5.
 //   - Weeks left: redraft, keeper and guillotine leagues up to ×1.5 in the last week (money left is worth less late in
 //     a season); dynasty flat.
-//   - Need: ×1.5 when he fills an empty starting spot, ×1.25 when he'd start for you, else ×1.
+//   - Need: ×1.5 when he fills an empty starting spot, ×1.25 when he'd start for you, ×0.5 when the lineup check says he
+//     wouldn't (a stash; round 2), else ×1. Best available shows bids on its upgrades only (round 2).
 //   - Whole numbers, never more than you have left; the top at least one step (1% of the budget, at least 1) above the
 //     bottom, since most winning bids are 0 and a tie loses to the waiver order.
 // In the owner's 15 FAAB leagues (weeks 1-10 of 2026, ~1,600 winning claims) 73% of claims had one bidder and the
@@ -19,7 +21,7 @@
 
 export const RANK_BAND = 6;
 export const MIN_COMPARABLES = 4;
-const NEED_FACTOR = { empty: 1.5, starts: 1.25 };
+const NEED_FACTOR = { empty: 1.5, starts: 1.25, bench: 0.5 };
 const POS_NAME = { QB: 'QB', RB: 'RB', WR: 'WR', TE: 'TE', K: 'K', DEF: 'DEF' };
 
 const article = (pos) => (/^[AEFHILMNORSX]/.test(pos) ? 'an' : 'a');
@@ -69,46 +71,43 @@ function weeksFactor(kind, weeksLeft, totalWeeks) {
     return clamp(1 + 0.5 * (1 - Math.min(weeksLeft, totalWeeks) / totalWeeks), 1, 1.5);
 }
 
-const fmtFactor = (f) => `×${(Math.round(f * 100) / 100).toString()}`;
-
 // The comparable bids for a player, widening until there are enough. bids: [{ pos, posRank (today's, or null), bid }].
+// Round 2 (owner): never another position's bids near his rank (RB and WR prices differ a lot in the owner's leagues):
+// his rank band, else every bid at his position, else every bid. Anything but the band is a rough guess.
 function comparables(bids, pos, posRank, budget) {
     const pct = (list) => list.map(b => b.bid / budget).sort((x, y) => x - y);
-    const near = (b) => posRank && b.posRank && Math.abs(b.posRank - posRank) <= RANK_BAND;
-    const band = posRank ? `ranked ${Math.max(1, posRank - RANK_BAND)}–${posRank + RANK_BAND} today` : null;
     const posName = POS_NAME[pos] || pos;
+    const plural = `${posName}s`;
     const atPos = bids.filter(b => b.pos === pos);
     if (posRank) {
-        const same = atPos.filter(near);
-        if (same.length >= MIN_COMPARABLES) return { scope: 'band', pcts: pct(same), label: `Winning bids this season for ${article(posName)} ${posName} ${band}` };
-    }
-    if (atPos.length >= MIN_COMPARABLES) {
-        return { scope: 'pos', pcts: pct(atPos), label: posRank
-            ? `Too few winning bids for ${article(posName)} ${posName} ranked near ${posRank}; all ${posName} bids this season`
-            : `Winning bids this season for every ${posName}` };
-    }
-    if (posRank) {
-        const anyPos = bids.filter(near);
-        if (anyPos.length >= MIN_COMPARABLES) {
-            return { scope: 'band-any', pcts: pct(anyPos), label: `${atPos.length ? 'Too few' : 'No'} winning bids for ${article(posName)} ${posName} yet; based on all positions ${band}` };
+        const same = atPos.filter(b => b.posRank && Math.abs(b.posRank - posRank) <= RANK_BAND);
+        if (same.length >= MIN_COMPARABLES) {
+            return { scope: 'band', pcts: pct(same), label: `Similar ${plural} this season (${posName}${Math.max(1, posRank - RANK_BAND)}–${posRank + RANK_BAND} today)` };
         }
+        if (atPos.length >= MIN_COMPARABLES) {
+            return { scope: 'pos', pcts: pct(atPos), label: `Too few bids for ${plural} near ${posName}${posRank} (${same.length}); every ${posName} this season` };
+        }
+    } else if (atPos.length >= MIN_COMPARABLES) {
+        return { scope: 'pos', pcts: pct(atPos), label: `He isn't in your rankings; every ${posName} this season` };
     }
-    return { scope: 'all', pcts: pct(bids), label: `${atPos.length ? 'Too few' : 'No'} winning bids for ${article(posName)} ${posName} yet; based on all positions` };
+    return { scope: 'all', pcts: pct(bids), label: `${atPos.length ? `Too few winning bids for ${article(posName)} ${posName} (${atPos.length})` : `No winning bids for ${article(posName)} ${posName} yet`}; every position this season` };
 }
 
+const NOTICEABLE = 0.05; // an adjustment under 5% isn't worth a line
+
 // The suggestion. Returns null when the league isn't FAAB or the inputs are missing; { noHistory: true, reasons } when
-// nobody has won a claim with a bid yet; else { low, high, left, budget, scope, factor, reasons, outbid }.
+// nobody has won a claim with a bid yet; else { low, high, left, budget, scope, rough, factor, outbid, lines, reasons }.
 //   pos, posRank: the player's position and his rank there today (null when unranked).
 //   budget: the league's FAAB budget. left: { rosterId: FAAB left } (faabLeftFrom). myRosterId: yours.
 //   bids: the season's winning bids [{ pos, posRank, bid }] (posRank by today's ranks, null when unranked).
 //   kind: 'redraft' | 'keeper' | 'dynasty' | 'guillotine'. week: this NFL week. lastWeek: seasonLastWeek.
-//   need: 'empty' | 'starts' | null. minBid: the league's minimum bid (0).
+//   need: 'empty' | 'starts' | 'bench' | null. minBid: the league's minimum bid (0).
+// lines: [{ kind: 'base' | 'up' | 'down' | 'note', text }] for the tap's sheet; reasons: the same as plain text.
 export function suggestBid({ pos, posRank = null, budget, left, myRosterId, bids, kind = 'redraft', week, lastWeek = 17, need = null, minBid = 0 }) {
     if (!(budget > 0) || !left || myRosterId == null || left[myRosterId] == null || !pos) return null;
     const mine = left[myRosterId];
     const all = Object.values(left);
     const avgLeft = all.length ? all.reduce((s, x) => s + x, 0) / all.length : 0;
-    const outbidCount = (amount) => Object.entries(left).filter(([id, x]) => String(id) !== String(myRosterId) && x > amount).length;
     const withBid = (bids || []).filter(b => b && typeof b.bid === 'number');
     if (withBid.length === 0) {
         return { noHistory: true, left: mine, budget, reasons: ['No winning FAAB bids in this league this season yet, so no suggestion.'] };
@@ -117,6 +116,7 @@ export function suggestBid({ pos, posRank = null, budget, left, myRosterId, bids
     const comp = comparables(withBid, pos, posRank, budget);
     const med = quantile(comp.pcts, 0.5);
     const p75 = quantile(comp.pcts, 0.75);
+    const lo = comp.pcts[0];
     const top = comp.pcts[comp.pcts.length - 1];
 
     const fBudget = avgLeft > 0 ? clamp(mine / avgLeft, 0.6, 1.5) : 1;
@@ -133,23 +133,35 @@ export function suggestBid({ pos, posRank = null, budget, left, myRosterId, bids
     if (low > high) low = high;
 
     const money = (p) => Math.round(p * budget);
-    const reasons = [];
-    reasons.push(`${comp.label}: ${comp.pcts.length}, median ${money(med)}, top ${money(top)} (today's ranks; the bids were placed earlier).`);
-    const budgetBits = [`you have ${mine} left, the league averages ${Math.round(avgLeft)}: ${fmtFactor(fBudget)}`];
-    if (weeksLeft !== null) budgetBits.push(kind === 'dynasty' ? `dynasty: weeks left don't change it` : `${weeksLeft} ${weeksLeft === 1 ? 'week' : 'weeks'} left: ${fmtFactor(fWeeks)}`);
-    if (need === 'empty') budgetBits.push(`he fills an empty starting spot: ${fmtFactor(fNeed)}`);
-    else if (need === 'starts') budgetBits.push(`he'd start for you: ${fmtFactor(fNeed)}`);
-    reasons.push(budgetBits.join(' · ').replace(/^./, c => c.toUpperCase()) + '.');
-    if (cap === 0) reasons.push('You have no FAAB left: only a 0 bid is possible.');
-    const outbid = outbidCount(high);
-    reasons.push(outbid === 0 ? `No other team has more than ${high} left.` : `${outbid} ${outbid === 1 ? 'team' : 'teams'} can outbid ${high}.`);
-    return { low, high, left: mine, budget, scope: comp.scope, factor, outbid, reasons };
+    const lines = [];
+    const range = money(lo) === money(top) ? `${money(top)}` : `${money(lo)} to ${money(top)}`;
+    lines.push({ kind: 'base', text: `${comp.label}: ${comp.pcts.length} won, ${range}, median ${money(med)}` });
+    if (need === 'empty') lines.push({ kind: 'up', text: 'He\'d fill an empty starting spot' });
+    else if (need === 'starts') lines.push({ kind: 'up', text: 'He\'d start for you' });
+    else if (need === 'bench') lines.push({ kind: 'down', text: 'He wouldn\'t start for you now: a stash' });
+    if (fBudget >= 1 + NOTICEABLE) lines.push({ kind: 'up', text: `You have more left than the league average (${Math.round(avgLeft)})` });
+    else if (fBudget <= 1 - NOTICEABLE) lines.push({ kind: 'down', text: `You have less left than the league average (${Math.round(avgLeft)})` });
+    if (fWeeks >= 1 + NOTICEABLE) lines.push({ kind: 'up', text: `${weeksLeft} ${weeksLeft === 1 ? 'week' : 'weeks'} left: money left over is worth less late in the season` });
+    if (cap === 0) lines.push({ kind: 'down', text: 'You have no FAAB left: only a 0 bid is possible' });
+    const richer = Object.entries(left).filter(([id, x]) => String(id) !== String(myRosterId) && x > high).map(([, x]) => x).sort((a, b) => b - a);
+    const amounts = richer.slice(0, 3);
+    const listed = amounts.length <= 1 ? `${amounts[0]}` : `${amounts.slice(0, -1).join(', ')} and ${amounts[amounts.length - 1]}`;
+    lines.push({ kind: 'note', text: richer.length === 0 ? `No other team has more than ${high} left`
+        : `${richer.length} ${richer.length === 1 ? 'team' : 'teams'} can outbid ${high} (${listed}${richer.length > 3 ? ', …' : ''} left)` });
+    lines.push({ kind: 'note', text: 'Ranks are today\'s; the bids were placed earlier.' });
+    return { low, high, left: mine, budget, scope: comp.scope, rough: comp.scope !== 'band', factor, outbid: richer.length, lines,
+        reasons: lines.map(l => l.text.replace(/\.?$/, '.')) };
 }
 
 // The short label on a line: "Bid 9–14", or "Bid 0" when the range is one number.
 export function bidLabel(s) {
     if (!s || s.noHistory) return '';
-    return s.low === s.high ? `Bid ${s.low}` : `Bid ${s.low}–${s.high}`;
+    return `${s.rough ? '≈ ' : ''}${s.low === s.high ? `Bid ${s.low}` : `Bid ${s.low}–${s.high}`}`;
+}
+
+// The sheet's title: "Bid 13–21 · you have 63 of 100".
+export function bidTitle(s) {
+    return s && !s.noHistory ? `${bidLabel(s)} · you have ${s.left} of ${s.budget}` : '';
 }
 
 // The tap text: "Suggested bid 9–14 of your 63 (budget 100). …reasons".

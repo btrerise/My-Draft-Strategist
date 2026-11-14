@@ -1819,8 +1819,22 @@ button.mls-wv-chip { font-family: inherit; line-height: inherit; cursor: pointer
 button.mls-faab-bid, .mls-faab-bid { font: inherit; font-size: 0.78rem; font-weight: 600; color: #fbbf24; background: none; border: 0; padding: 0;
     text-decoration: underline dotted rgba(251, 191, 36, 0.6); text-underline-offset: 3px; cursor: pointer; white-space: nowrap; }
 .mls-scan-bid { margin-top: 4px; }
+/* Too few bids near his rank (round 2): a rough guess, "≈ Bid 2–5", in the muted text colour. */
+button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted); text-decoration-color: rgba(148, 163, 184, 0.6); font-weight: 500; }
+/* Desktop: "over … · waivers until … · Bid 13–21": the dot keeps the bid from running into the line before it. */
+.mls-ba-bid-sep { font-size: 0.78rem; color: var(--text-muted); }
+/* The bid's sheet (round 2): what it's based on, then what raised it (green up arrow) and lowered it (red down arrow),
+   then the notes, muted. */
+.mls-faab-sheet { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; font-size: 0.95rem; line-height: 1.45; color: var(--text-main); }
+.mls-faab-sheet li { display: flex; gap: 0.5rem; align-items: flex-start; }
+.mls-faab-sheet li > svg { flex-shrink: 0; margin-top: 0.2em; }
+.mls-faab-sheet .is-base { font-weight: 600; padding-bottom: 0.2rem; }
+.mls-faab-sheet .is-up > svg { color: var(--primary-green); }
+.mls-faab-sheet .is-down > svg { color: #ef4444; }
+.mls-faab-sheet .is-note { font-size: 0.85rem; color: var(--text-muted); }
 @media (max-width: 600px) {
     /* Its own row: 8px below it so the next player's chips (their 48px areas reach up 16px) don't cover it. */
+    .mls-ba-bid-sep { display: none; }
     .mls-ba-player.is-upgrade .mls-faab-bid { flex-basis: 100%; text-align: left; padding-left: calc(14px + 0.3rem); margin-bottom: 0.5rem; }
 }
 /* After the week's games: one line for everyone who played, instead of a W on each (round 5). */

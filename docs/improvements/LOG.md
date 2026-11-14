@@ -12280,3 +12280,29 @@ league-week (1.6 MB, 150 requests for all 15 over 10 weeks).
   new league id). Factory Reset doesn't clear IndexedDB (true of the week-stats cache in the same store too;
   `keys.js` calls both databases re-fetchable caches).
 - Top Available and the All Leagues search show no bid (they show no W chip either, S34's owner choice).
+
+### Round 2: a review as a user (owner: do all four)
+
+I looked at Best available, Auto-Find and the tap text at both widths, with one player on waivers and with most of
+the line on waivers (a waiver day's look). Four changes, all asked for:
+1. **A bench player got nearly the upgrade's bid** (Chase Brown RB9 "Bid 10–17" beside Cook's 13–21): the number was the
+   league's price, not his worth to you. Best available now shows bids **only on upgrades**; on Auto-Find and Check a
+   List any verdict but Would Start (Bench, Out, Bye, ...) makes him a stash: **×0.5**, and the sheet says so ("He
+   wouldn't start for you now: a stash"). Chase Brown: Bid 5–9 against Cook's 13–21.
+2. **A thin position borrowed another's prices** (Jaxon Smith-Njigba WR11 "Bid 10–17" from RB bids near his rank). The
+   fallback no longer looks at other positions near his rank: his band, else every bid at his position, else every bid.
+   Anything but the band is a **rough guess**, shown greyed with "≈" ("≈ Bid 2–5", `is-rough`).
+3. **The tap text was a 9-line toast of multipliers.** It opens the shared sheet now (M11's; `openFaabBidSheet` in
+   `waivers.js`): title "Bid 13–21 · you have 63 of 100", the basis in bold ("Similar RBs this season (RB1–11 today): 4
+   won, 8 to 30, median 12"), what raised it (green up arrow) and lowered it (red down arrow) in plain words, then the
+   notes ("1 team can outbid 21 (88 left)", "Ranks are today's; the bids were placed earlier."). An adjustment under 5%
+   gets no line. `suggestBid` returns `lines: [{ kind, text }]` for it (and `reasons` as plain text); the button carries
+   them as `data-bid`.
+4. **Desktop:** a "·" before the bid on an upgrade's line (`.mls-ba-bid-sep`, hidden on phones, where the bid has its row).
+
+Tests: unit (11, rewritten for the lines, the stash and the rough label); `mls-faab-bid` (5, both widths): the sheet's
+title and lines with one up and one down arrow, the desktop dot, and a new case with three players on waivers (only
+the upgrade has a bid on Best available; Jaxon's Check a List bid is "≈", greyed, based on every bid). Ran check-precache,
+`node --test` (680) and the same specs as before plus `mls-faab-bid`: 137 passed. Screenshots: my last commit and this
+round, rendered in the same container, differ only in `desktop/` and `phone/mls-league-guide.png` (the legend line's
+new text and its "≈ Bid 2–5" sample); re-taken on CI.

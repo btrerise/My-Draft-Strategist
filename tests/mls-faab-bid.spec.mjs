@@ -31,7 +31,8 @@ const out = (page) => page.locator('#waiverOutput');
 
 // The league (one RB slot, as in mls-best-available.spec.mjs; waiverType changes its claim type), the rosters with
 // FAAB spent, and the transactions: week 1 from `history` ('faab' | 'none' | 'error'), week 2 Cook's drop.
-async function routes(page, { history = 'faab', waiverType = 2 } = {}) {
+// many: Rival also dropped Jaxon Smith-Njigba and Chase Brown, so more of the line is on waivers (a waiver day's look).
+async function routes(page, { history = 'faab', waiverType = 2, many = false } = {}) {
     await page.route(/api\.sleeper\.app\/v1\/league\/\d+$/, (route) => {
         const league = JSON.parse(LEAGUE_JSON);
         league.roster_positions.splice(league.roster_positions.indexOf('RB'), 1);
@@ -44,7 +45,7 @@ async function routes(page, { history = 'faab', waiverType = 2 } = {}) {
     });
     await page.route(/api\.sleeper\.app\/v1\/league\/\d+\/transactions\/\d+$/, (route) => {
         const week = Number(route.request().url().split('/').pop());
-        if (week === 2) return route.fulfill({ json: COOK_DROP });
+        if (week === 2) return route.fulfill({ json: many ? [{ ...COOK_DROP[0], drops: { 8138: 2, 9488: 2, 9224: 2 } }] : COOK_DROP });
         if (history === 'error') return route.fulfill({ status: 500, body: '' });
         return route.fulfill({ status: 200, contentType: 'application/json', body: history === 'faab' ? FAAB_JSON : '[]' });
     });
@@ -81,14 +82,25 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         expect(league.faabLeft).toEqual({ 1: 63, 2: 88 });
         expect(league.lastWeek).toBe(17);
 
+        // On desktop a dot keeps the bid apart from "waivers until …"; on phones the bid has its own row instead.
+        await expect(cook.locator('.mls-ba-bid-sep')).toBeVisible({ visible: test.info().project.name === 'desktop' });
+
+        // A tap opens the sheet (round 2): what it's based on, what raised it (up arrow) and lowered it (down arrow),
+        // the notes. The weeks-left adjustment (×1.03) is under 5%, so it has no line.
         await cook.locator('.mls-faab-bid').click();
-        const toast = page.locator('.toast-message').filter({ hasText: 'Suggested bid' });
-        await expect(toast).toHaveText(new RegExp([
-            '^Suggested bid 13–21 of your 63 left \\(budget 100\\)\\. ',
-            'Winning bids this season for an RB ranked 1–11 today: 4, median 12, top 30 \\(today\'s ranks; the bids were placed earlier\\)\\. ',
-            'You have 63 left, the league averages 76: ×0\\.83 · 16 weeks left: ×1\\.03 · he\'d start for you: ×1\\.25\\. ',
-            '1 team can outbid 21\\.$'
-        ].join('')));
+        const sheet = page.locator('.sheet');
+        await expect(sheet.locator('.sheet-title')).toHaveText('Bid 13–21 · you have 63 of 100');
+        await expect(sheet.locator('.mls-faab-sheet li')).toHaveText([
+            'Similar RBs this season (RB1–11 today): 4 won, 8 to 30, median 12',
+            'He\'d start for you',
+            'You have less left than the league average (76)',
+            '1 team can outbid 21 (88 left)',
+            'Ranks are today\'s; the bids were placed earlier.'
+        ]);
+        await expect(sheet.locator('.mls-faab-sheet li.is-up svg')).toHaveCount(1);
+        await expect(sheet.locator('.mls-faab-sheet li.is-down svg')).toHaveCount(1);
+        await page.keyboard.press('Escape');
+        await expect(sheet).toHaveCount(0);
 
         // Auto-Find's card for him says the same, under its verdict.
         await showTab(page, 'scout');
@@ -106,6 +118,25 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await page.click('#waiverScanBtn');
         const cookRow = out(page).locator('.scout-result-card').filter({ hasText: 'James Cook' }).first();
         await expect(cookRow.locator('.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        await expectClean(page, state);
+    });
+
+    test('several players on waivers: only the upgrade gets a bid on Best available; a thin position is a rough guess', async ({ page }) => {
+        const state = await setup(page, { many: true });
+        await expect(player(page, 'James Cook').locator('.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        await expect(player(page, 'Jaxon Smith-Njigba').locator('.mls-wv-chip')).toHaveText('W');
+        await expect(line(page).locator('.mls-faab-bid')).toHaveCount(1);
+        // Check a List: Jaxon (WR11) has a bid there, but the league's only WR bid is one claim, so it's every bid
+        // (never the RBs near his rank): "≈", muted.
+        await showTab(page, 'scout');
+        await callApp(page, 'setWaiverMode', 'list');
+        await page.fill('#waiverInput', ['Jaxon Smith-Njigba'].join('\n'));
+        await page.click('#waiverScanBtn');
+        const bid = out(page).locator('.scout-result-card').filter({ hasText: 'Jaxon Smith-Njigba' }).first().locator('.mls-faab-bid');
+        await expect(bid).toHaveText(/^≈ Bid \d+–\d+ \(of your 63 left\)$/);
+        await expect(bid).toHaveClass(/\bis-rough\b/);
+        await bid.click();
+        await expect(page.locator('.sheet .mls-faab-sheet li').first()).toHaveText('Too few winning bids for a WR (1); every position this season: 5 won, 3 to 30, median 12');
         await expectClean(page, state);
     });
 
