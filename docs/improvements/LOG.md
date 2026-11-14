@@ -12294,3 +12294,6 @@ phone `mls-league-guide`, phone `mls-league-lineup` and `mls-league-roster`), an
 them. After the merge: check-precache OK, `node --test` 669 pass, Playwright mls-phone-rows, mls-lineup-row-actions,
 touch-targets, badge-legend, mls-rankings-change, mls-display-ranks, mls-headshots, mls-keyboard, room-on-phones,
 export-same-everywhere, mls-now-and-later, mls-waiver-status (116 pass).
+- **Re-taken on CI** (run 43566792683, commit 2b9a114, "Screenshots re-taken on CI (4 PNGs)"): exactly those four, no
+  other screenshot changed. Opened: Lineup rows with the badge on the photo, the padlock dots, "···" after each name and
+  points over swap; Roster rows with the position badge on the photo.
