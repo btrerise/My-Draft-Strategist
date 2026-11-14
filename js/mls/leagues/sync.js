@@ -19,6 +19,7 @@ import { runScout } from '../scout/engine.js';
 import { applyWaiverScanSettingsToUI, getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderLeagueCards, runMarketDisconnectAnalysis, updateMarketMetaDisplay, leagueMarketFormat, useLeagueMarketSet } from '../main.js';
 import { updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { applyMarketSettingsToUI } from '../settings.js';
+import { waiverSettingsFrom } from '../scout/waiverStatus.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { flashButton } from '../../shared/ui/flashButton.js';
 import { normalizeName } from '../../shared/names.js';
@@ -707,6 +708,10 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
             let leagueObj = {
                 leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge, leagueType: leagueType,
                 irRules, rosterSize, picks,
+                // Sleeper's waiver settings (improvements S34): claim type, FAAB budget, clear days, the weekly run's day
+                // and hour, daily waivers. They say whether an unrostered player is a free agent or on waivers
+                // (scout/waiverStatus.js). Kept from the last sync if this response lacks them.
+                waivers: waiverSettingsFrom(ls) || (existingLeague ? existingLeague.waivers || null : null),
                 // Sleeper's starting slots in order ('QB', 'RB', 'FLEX', 'SUPER_FLEX', ...), bench left out
                 // (improvements S22, round 2). A matchup's `starters` follow this order, so starters[i] fills
                 // starterSlots[i]: the Scoreboard's worst benchings compare a benched player with the starter in a slot
