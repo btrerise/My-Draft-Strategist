@@ -22,7 +22,7 @@ const DAY = 24 * HOUR;
 const GAME_LENGTH = 4 * HOUR;
 
 const CLAIM_TYPES = { 0: 'rolling', 1: 'reverse', 2: 'faab' };
-export const CLAIM_TYPE_NAMES = { rolling: 'rolling waivers', reverse: 'reverse standings', faab: 'FAAB' };
+export const CLAIM_TYPE_NAMES = { rolling: 'rolling', reverse: 'reverse standings', faab: 'FAAB' };
 
 const num = (v, fallback = null) => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
 
@@ -113,7 +113,7 @@ export function waiverStatus(player, waivers, drops, kickoffs, now) {
     }
     if (clearsAt == null) return { status: 'free', clearsAt: null, tooLateThisWeek: false, reason: null, atRun, kickoff: ko, claimType };
     const tooLateThisWeek = !weekOver && ko != null && ko < clearsAt;
-    return { status: 'waivers', clearsAt, tooLateThisWeek, reason, atRun, kickoff: ko, claimType };
+    return { status: 'waivers', clearsAt, tooLateThisWeek, reason, atRun, kickoff: ko, droppedAt: reason === 'dropped' ? dropped : null, claimType };
 }
 
 // "Wed 12 AM", "Sat 5 PM", "Sun 1:25 PM", in the viewer's time zone (tz for tests).
@@ -124,16 +124,23 @@ export function shortWhen(ms, tz) {
 }
 
 // The chip's tap text. Plain text (escape before putting it in an attribute).
+// Short, in three parts (S34 round 2, after a review as a user: the first version ran to four lines and said "too late"
+// twice): until when and the claim type; why (dropped when, or his game has started); "Too late for this week."
+//   "On waivers until Wed 12 AM (FAAB). Dropped Sat 9 AM; locked at his Sun 1:25 PM kickoff. Too late for this week."
+//   "On waivers until Wed 12 AM (FAAB). His game has started. Too late for this week."
+//   "On waivers until about Sat 5 PM (FAAB). Dropped Thu 5 PM."
+//   "Free agent: add now, until his Sun 1:25 PM kickoff."
 export function waiverStatusText(st, tz) {
     if (!st) return '';
     if (st.status === 'free') {
-        const lock = st.kickoff != null ? ` until his game starts (${shortWhen(st.kickoff, tz)})` : '';
-        return `Free agent: add him now on Sleeper${lock}, no claim needed.`;
+        return st.kickoff != null && st.kickoff > 0 ? `Free agent: add now, until his ${shortWhen(st.kickoff, tz)} kickoff.` : 'Free agent: add now, no claim needed.';
     }
     const type = CLAIM_TYPE_NAMES[st.claimType] || 'waivers';
-    const why = st.reason === 'played' ? 'his game has started, so Sleeper locks him until the weekly run'
-        : st.atRun ? 'dropped lately, and his game starts before he clears, so Sleeper locks him until the weekly run'
-        : "dropped lately, so he's on waivers for the league's set number of days";
-    const when = st.atRun ? `runs ${shortWhen(st.clearsAt, tz)}` : `clears about ${shortWhen(st.clearsAt, tz)}`;
-    return `Waivers (${type}) · ${when}: ${why}.${!st.tooLateThisWeek ? '' : st.reason === 'played' ? ' Too late for this week.' : ' Too late for this week: his game is before then.'}`;
+    const head = `On waivers until ${st.atRun ? '' : 'about '}${shortWhen(st.clearsAt, tz)} (${type}).`;
+    const dropped = st.droppedAt != null ? `Dropped ${shortWhen(st.droppedAt, tz)}` : null;
+    let why;
+    if (st.reason === 'played') why = 'His game has started.';
+    else if (st.atRun && st.kickoff != null) why = `${dropped || 'Dropped lately'}; locked at his ${shortWhen(st.kickoff, tz)} kickoff.`;
+    else why = `${dropped || 'Dropped lately'}.`;
+    return `${head} ${why}${st.tooLateThisWeek ? ' Too late for this week.' : ''}`;
 }

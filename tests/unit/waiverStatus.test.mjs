@@ -130,11 +130,16 @@ describe('waiverStatus', () => {
 
 describe('waiverStatusText', () => {
     const tz = 'America/Los_Angeles';
-    test('the chip tap texts', () => {
+    test('the chip tap texts: short, "too late" once', () => {
         assert.equal(shortWhen(PT('2026-11-18T00:00:00'), tz), 'Wed 12 AM');
         const played = waiverStatus(dowdle, faab2, {}, kickoffs, PT('2026-11-15T14:00:00'));
-        assert.match(waiverStatusText(played, tz), /^Waivers \(FAAB\) · runs Wed 12 AM: .*Too late for this week/);
+        assert.equal(waiverStatusText(played, tz), 'On waivers until Wed 12 AM (FAAB). His game has started. Too late for this week.');
+        const locked = waiverStatus(dowdle, faab2, { ricodowdle: PT('2026-11-14T08:00:00') }, kickoffs, PT('2026-11-14T12:00:00'));
+        assert.equal(waiverStatusText(locked, tz), 'On waivers until Wed 12 AM (FAAB). Dropped Sat 8 AM; locked at his Sun 10 AM kickoff. Too late for this week.');
+        const clock = waiverStatus(dowdle, rolling1, { ricodowdle: PT('2026-11-12T17:08:00') }, kickoffs, PT('2026-11-13T12:00:00'));
+        assert.equal(waiverStatusText(clock, tz), 'On waivers until about Fri 5:08 PM (rolling). Dropped Thu 5:08 PM.');
         const free = waiverStatus(dowdle, faab2, {}, kickoffs, PT('2026-11-14T12:00:00'));
-        assert.match(waiverStatusText(free, tz), /^Free agent: add him now on Sleeper until his game starts \(Sun 10 AM\)/);
+        assert.equal(waiverStatusText(free, tz), 'Free agent: add now, until his Sun 10 AM kickoff.');
+        assert.equal(waiverStatusText({ status: 'free', kickoff: null }, tz), 'Free agent: add now, no claim needed.');
     });
 });

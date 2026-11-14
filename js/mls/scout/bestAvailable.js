@@ -295,7 +295,10 @@ import { waiverChipHTML } from './waivers.js';
         const players = [
             ...upgrades.map(u => ({ fa: u.fa, upgrade: u })),
             ...late.map(u => ({ fa: u.fa, upgrade: null, late: u })),
-            ...freeAgents.filter(fa => !flagged.has(fa.cleanName)).map(fa => ({ fa, upgrade: null }))
+            // On Weekly, the rest leave out anyone who can't play for you this week (his game has started, or he's on
+            // waivers until after it): the next free agents take their spots (round 2, owner's choice).
+            ...freeAgents.filter(fa => !flagged.has(fa.cleanName) && !(lineupMode && (statusOf(fa) || {}).tooLateThisWeek))
+                .map(fa => ({ fa, upgrade: null }))
         ].slice(0, PER_LEAGUE);
         players.forEach(p => { p.status = statusOf(p.fa); });
 
@@ -304,7 +307,7 @@ import { waiverChipHTML } from './waivers.js';
         upgrades.forEach(u => { u.target = u.emptySlot ? 'empty' : u.bench.cleanName; });
         const shownTargets = {};
         players.forEach(p => { if (p.upgrade) shownTargets[p.upgrade.target] = (shownTargets[p.upgrade.target] || 0) + 1; });
-        return { league, basis, lineupMode, freeAgents, players, posRankOf, rankedAtPos, dismissedCount: dismissed.size, upgrade: upgrades[0] || null,
+        return { league, basis, lineupMode, freeAgents, players, posRankOf, rankedAtPos, dismissedCount: dismissed.size, upgrade: upgrades[0] || null, lateCount: late.length,
             upgradeCount: new Set(upgrades.map(u => u.target)).size, shownTargets, inj: (clean) => (meta[clean] && meta[clean].inj) || null };
     }
 
@@ -317,9 +320,9 @@ import { waiverChipHTML } from './waivers.js';
         // (S34): he's on waivers and plays before the claim runs.
         const over = late ? `<span class="mls-ba-late">too late for this week</span>`
             : upgrade && a.shownTargets[upgrade.target] === 1 ? `<span class="mls-ba-over">${overText(upgrade)}</span>` : '';
-        const muted = (late || (a.lineupMode && status && status.tooLateThisWeek)) ? ' is-late' : '';
+        const muted = late ? ' is-late' : '';
         const dismiss = `<button type="button" class="btn-bare mls-ba-dismiss" data-action="dismissBestAvailable" data-league-id="${escapeHtml(a.league.leagueId)}" data-player="${escapeHtml(fa.cleanName)}" aria-label="Not interested in ${escapeHtml(fa.name)} (hide him here this week)" title="Not interested (hide this week)">${DISMISS_ICON}</button>`;
-        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}${late ? ' is-late-upgrade' : ''}${muted}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${waiverChipHTML(status)}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${dismiss}${over}</li>`;
+        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}${late ? ' is-late-upgrade' : ''}${muted}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${waiverChipHTML(status)}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${late ? `${over}${dismiss}` : `${dismiss}${over}`}</li>`;
     }
 
     // A league card's Best Available section (S12; one line of the card before). A fold: open when the league has
@@ -340,7 +343,9 @@ import { waiverChipHTML } from './waivers.js';
             button = `<button type="button" class="btn btn-secondary mls-btn-sm" data-action="bestAvailableUpload" data-league-id="${id}" aria-label="Upload rankings for ${name}">Upload</button>`;
         } else {
             source = sourceLabel(basis);
-            if (!upgrade) flag = `<span class="mls-ba-flag">No upgrade</span>`;
+            // Weekly says "this week", and how many upgrades are too late for it (round 2), so a greyed upgrade beside
+            // "No upgrade" isn't a contradiction.
+            if (!upgrade) flag = `<span class="mls-ba-flag">${basis.type === 'weekly' ? `No upgrade this week${a.lateCount ? ` &middot; ${a.lateCount} too late` : ''}` : 'No upgrade'}</span>`;
             if (a.players.length > 0) {
                 const notes = Object.entries(a.shownTargets).filter(([, n]) => n > 1).map(([target, n]) => {
                     const u = a.players.find(p => p.upgrade && p.upgrade.target === target).upgrade;

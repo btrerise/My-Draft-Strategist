@@ -82,7 +82,7 @@ test.describe('Lineup Strategist Free agent or Waivers', () => {
         await expect(line(page, 'Fixture League').locator('.mls-wv-chip.is-w')).toHaveCount(0);
         await expect(line(page, 'Fixture League').locator('.mls-wv-chip.is-fa')).toHaveCount(3);
         await cook.locator('.mls-wv-chip').click();
-        await expect(page.locator('.toast-message').filter({ hasText: 'Free agent: add him now on Sleeper, no claim needed.' })).toBeVisible();
+        await expect(page.locator('.toast-message').filter({ hasText: 'Free agent: add now, no claim needed.' })).toBeVisible();
         // The waiver settings came with the sync, and are kept on the league (so Backup / Restore has them).
         const waivers = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_leagues')).find(l => l.leagueId === '1000000000000000001').waivers);
         expect(waivers).toEqual({ type: 'faab', budget: 100, clearDays: 2, dayOfWeek: 2, daily: true, hour: 0, days: 5461 });
@@ -98,32 +98,47 @@ test.describe('Lineup Strategist Free agent or Waivers', () => {
         // Cook was dropped Saturday: on waivers until Monday, after his 1:25 PM game. No upgrade this week.
         await expect(upgradeCount(page)).toHaveText('');
         await openFold(page);
+        // The flag says this week, and why (round 2: "No upgrade" beside a greyed upgrade read as a contradiction).
+        await expect(line(page, 'Fixture League').locator('.mls-ba-flag')).toHaveText('No upgrade this week · 1 too late');
         const cook = player(page, 'James Cook');
         await expect(cook).toHaveClass(/\bis-late\b/);
         await expect(cook.locator('.mls-ba-late')).toHaveText('too late for this week');
+        // The note comes before his × (round 2: on one desktop row it read as the next player's).
+        expect(await cook.locator('.mls-ba-late').evaluate(el => el.nextElementSibling && el.nextElementSibling.classList.contains('mls-ba-dismiss'))).toBe(true);
         await expect(cook.locator('.mls-ba-over')).toHaveCount(0);
         await expect(cook.locator('.mls-wv-chip')).toHaveText('W');
         await cook.locator('.mls-wv-chip').click();
-        await expect(page.locator('.toast-message').filter({ hasText: /^Waivers \(FAAB\) · runs Wed .*Too late for this week/ })).toBeVisible();
-        // Chase Brown (CIN) kicked off at 10 AM: locked on waivers until Wednesday, muted (he wasn't an upgrade, so no
-        // "too late" line). Jaxon Smith-Njigba is a free agent.
-        await expect(player(page, 'Chase Brown').locator('.mls-wv-chip')).toHaveText('W');
-        await expect(player(page, 'Chase Brown')).toHaveClass(/\bis-late\b/);
-        await expect(player(page, 'Chase Brown').locator('.mls-ba-late')).toHaveCount(0);
+        await expect(page.locator('.toast-message').filter({ hasText: /^On waivers until Wed \d+ [AP]M \(FAAB\)\. Dropped Sat [\d:]+ [AP]M; locked at his Sun [\d:]+ [AP]M kickoff\. Too late for this week\.$/ })).toBeVisible();
+        // Chase Brown (CIN) kicked off at 10 AM, so he can't help this week: left off the line (round 2), and the next
+        // free agents fill it. Only Cook, the would-be upgrade, is greyed.
+        await expect(player(page, 'Chase Brown')).toHaveCount(0);
+        await expect(line(page, 'Fixture League').locator('.mls-ba-player')).toHaveCount(3);
+        await expect(line(page, 'Fixture League').locator('.mls-ba-player.is-late')).toHaveCount(1);
+        await expect(line(page, 'Fixture League').locator('.mls-wv-chip.is-fa')).toHaveCount(2);
         await expect(player(page, 'Jaxon Smith-Njigba').locator('.mls-wv-chip')).toHaveText('FA');
 
-        // Auto-Find and Check a List show the same chip.
+        // Auto-Find and Check a List show the same chip, and agree with the card (round 2): Cook is "Too Late", not
+        // "Would Start".
         await showTab(page, 'scout');
         await callApp(page, 'setWaiverMode', 'auto');
+        await callApp(page, 'setWaiverCompare', 'lineup');
+        await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
+        const cookCard = out(page).locator('.mls-scan-card').filter({ hasText: 'James Cook' });
+        await expect(cookCard).toContainText('Too Late');
+        await expect(cookCard).not.toContainText('Would Start');
+        await expect(cookCard.locator('.mls-scan-verdict')).toHaveText(/^On waivers until Wed \d+ [AP]M, after his game - no help this week\.$/);
+        await out(page).evaluate(el => { el.innerHTML = ''; });
         await callApp(page, 'setWaiverCompare', 'roster');
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         await expect(out(page).locator('.mls-scan-card').first()).toBeVisible();
-        await expect(out(page).locator('.mls-scan-card').filter({ hasText: 'James Cook' }).locator('.mls-wv-chip')).toHaveText('W');
+        await expect(cookCard.locator('.mls-wv-chip')).toHaveText('W');
+        await expect(cookCard).toContainText('Too Late');
         await callApp(page, 'setWaiverMode', 'list');
         await page.fill('#waiverInput', ['James Cook', 'Jaxon Smith-Njigba', 'Derrick Henry'].join('\n'));
         await page.click('#waiverScanBtn');
         const card = (n) => out(page).locator('.scout-result-card').filter({ hasText: n });
         await expect(card('James Cook').locator('.mls-wv-chip')).toHaveText('W');
+        await expect(card('James Cook')).toContainText('Too Late');
         await expect(card('Jaxon Smith-Njigba').locator('.mls-wv-chip')).toHaveText('FA');
         // Yours: no chip (the other cards mention him in their verdicts, so leave them out).
         await expect(card('Derrick Henry').filter({ hasNotText: 'James Cook' }).filter({ hasNotText: 'Smith-Njigba' }).locator('.mls-wv-chip')).toHaveCount(0);

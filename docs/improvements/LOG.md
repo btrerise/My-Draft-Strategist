@@ -11648,6 +11648,34 @@ leagues, ~600 moves), with kickoffs from ESPN's scoreboard.
   "too late for this week" sample) are added there (phone +293 px, desktop +142 px); below them the same content,
   moved down by that height (text a sub-pixel off, so not byte-equal rows).
 
+### Round 2: a review as a user (owner: do all 5)
+
+I looked at it on a Sunday morning (the spec's game-day fixture, phone and desktop) and offered five changes; the
+owner asked for all five.
+1. **Auto-Find and Check a List agreed with nothing.** The Dashboard greyed Cook as too late while Auto-Find called him
+   "Would Start · Upgrade over Derrick Henry". Now `buildWaiverContext`'s `evaluate` gives a waiver player who plays
+   before the run a **Too Late** pill (`mls-verdict-out`, like Played) and the line "On waivers until Wed 12 AM, after
+   his game - no help this week." It's not a "starts", so Starters Only and Check a List's would-start sort leave him
+   out. (Whole Roster still lists him "Upgrade over …": that lens is about your roster, and the pill answers this week.)
+   Legend: "Too Late" joins Out / Bye / Played / No Team.
+2. **Shorter tap text**, "too late" once: "On waivers until Wed 12 AM (FAAB). Dropped Sat 8 AM; locked at his Sun 10 AM
+   kickoff. Too late for this week." / "On waivers until Wed 12 AM (FAAB). His game has started. Too late for this
+   week." / "On waivers until about Fri 5:08 PM (rolling). Dropped Thu 5:08 PM." / "Free agent: add now, until his Sun
+   10 AM kickoff." (`waiverStatus` now also returns `droppedAt`.)
+3. **Weekly lines leave out players who can't play for you this week** (his game has started, or on waivers past it);
+   the next free agents fill the three spots (often the Sunday-night and Monday-night players). Only a would-be
+   upgrade who's too late stays, greyed with its note, since it explains why the card has no upgrade.
+4. **The flag** reads "No upgrade this week" on Weekly, plus "· 1 too late" when that's why; ROS keeps "No upgrade".
+5. **Desktop:** "too late for this week" comes before his × so it stays with him on one row; on phones it still wraps
+   under the name (CSS `order`).
+
+Tests: the unit tests' tap texts are exact now; `mls-waiver-status` checks the flag, the note before the ×, Chase
+Brown (played) gone and three players on the line with one greyed, Auto-Find's Too Late pill and line (Starting
+Lineup) and Check a List's; `mls-best-available`'s Weekly flag reads "No upgrade this week". Ran `node --test` (656),
+check-precache, and `mls-waiver-status`, `mls-best-available`, the five other waiver and Scout specs,
+`mls-display-ranks`, `mls-opponent-strength`, `touch-targets` (71 passed). Screenshots: the Guide's legend again
+(`desktop/` and `phone/mls-league-guide.png`), re-taken on CI.
+
 ### Left over
 - `daily_waivers_days` isn't decoded (above). If a league marks some days "Locked" or "FA", the chip can be wrong on
   those days; a session with the league's settings screen open (or Sleeper's help pages reachable) could map the bits.

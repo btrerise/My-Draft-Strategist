@@ -19,7 +19,7 @@ import { normalizeName } from '../../shared/names.js';
 import { isPreferredSleeperEntry } from '../players.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { scoutPillMarkup, tierGapMarkup, waiverChipMarkup } from '../badges.js';
-import { waiverStatus, waiverStatusText } from './waiverStatus.js';
+import { shortWhen, waiverStatus, waiverStatusText } from './waiverStatus.js';
 import { recentDropsFor } from './recentDrops.js';
 import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 
@@ -374,7 +374,13 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
             let verdict = null;
             if (!player.team && meta[fa.cleanName]) verdict = { status: 'noTeam' };
             else if (hasKickedOff(player)) verdict = { status: 'kickedOff' };
-            else if (lineupReady) verdict = checkAgainstLineup(player, currentStarters, deps);
+            else if (lineupReady) {
+                // On waivers, and his game is before the claim runs (improvements S34, round 2): he can't start for you
+                // this week, whatever the lineup check would say, so it agrees with the Dashboard's Best available.
+                const wst = waiverStatusOf(fa.cleanName);
+                if (wst && wst.tooLateThisWeek) verdict = { status: 'tooLate', clearsAt: wst.clearsAt };
+            }
+            if (!verdict && lineupReady) verdict = checkAgainstLineup(player, currentStarters, deps);
             return { fa, player, verdict };
         };
 
@@ -663,6 +669,8 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
                 return { pill: pill('mls-verdict-out', onBye ? 'Bye' : 'Out'), line: onBye ? 'On bye this week - a stash, not a start.' : `Listed ${escapeHtml(player.inj || 'out')} - can't start this week.` };
             case 'kickedOff':
                 return { pill: pill('mls-verdict-out', 'Played'), line: 'His game already kicked off - no help this week.' };
+            case 'tooLate':
+                return { pill: pill('mls-verdict-out', 'Too Late'), line: `On waivers until ${escapeHtml(shortWhen(verdict.clearsAt))}, after his game - no help this week.` };
             case 'locked':
                 return { pill: pill('mls-verdict-bench', 'Locked'), line: `Every ${escapeHtml(player.pos)}-eligible lineup spot is locked (manual lock or game started).` };
             case 'noTeam':

@@ -123,7 +123,7 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await showTab(page, 'setup');
         await expect(summary(page)).toHaveText('No upgrades in your 1 league');
         await expect(fold(page, 'Fixture League')).not.toHaveAttribute('open', '');
-        await expect(fold(page, 'Fixture League').locator('.mls-ba-flag')).toHaveText('No upgrade');
+        await expect(fold(page, 'Fixture League').locator('.mls-ba-flag')).toHaveText('No upgrade this week'); // Weekly says so (S34 round 2); ROS keeps "No upgrade"
         await expect(upgradeCount(page, 'Fixture League')).toBeHidden();
         await openFold(page, 'Fixture League');
         await expect(line(page, 'Fixture League')).toContainText('Every RB, WR and TE in its Weekly rankings (20 ranked) is already rostered in this league.');

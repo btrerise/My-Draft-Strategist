@@ -1820,7 +1820,7 @@ button.mls-wv-chip { font-family: inherit; line-height: inherit; cursor: pointer
 .mls-ba-late { font-size: 0.78rem; color: var(--text-muted); font-style: italic; }
 @media (max-width: 600px) {
     .mls-ba-player.is-late-upgrade { flex-basis: 100%; }
-    .mls-ba-player.is-late-upgrade .mls-ba-late { flex-basis: 100%; padding-left: calc(14px + 0.3rem); }
+    .mls-ba-player.is-late-upgrade .mls-ba-late { flex-basis: 100%; padding-left: calc(14px + 0.3rem); order: 1; }
 }
 .mls-ba-dismiss { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 0.1rem; border-radius: 50%; color: var(--text-muted); opacity: 0.6; cursor: pointer; }
 .mls-ba-dismiss:hover, .mls-ba-dismiss:focus-visible { opacity: 1; color: var(--text-main); background: rgba(255, 255, 255, 0.08); }
