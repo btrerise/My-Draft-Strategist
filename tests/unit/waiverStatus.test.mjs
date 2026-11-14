@@ -141,6 +141,26 @@ describe('waiverStatus', () => {
     });
 });
 
+describe('round 6: real cases from the owner\'s leagues', () => {
+    // LOOG - Chop Shop: guillotine, weekly waivers, 2-day clears. Caleb Williams was cut Mon 11/02 9:46 PM PT and claimed
+    // at Wednesday's 12:12 AM run, 26 hours later.
+    const chop = waiverSettingsFrom({ waiver_type: 2, waiver_budget: 1000, waiver_clear_days: 2, waiver_day_of_week: 2, daily_waivers: 0, daily_waivers_hour: 0 });
+    test('a guillotine cut clears at the next weekly run, not after the clear days', () => {
+        const cut = { calebwilliams: { at: Date.parse('2026-11-02T21:46:00-08:00'), chopped: true } };
+        const st = waiverStatus({ cleanName: 'calebwilliams', team: 'CHI' }, chop, cut, kickoffs, PT('2026-11-03T10:00:00'));
+        assert.equal(st.status, 'waivers');
+        assert.equal(st.clearsAt, PT('2026-11-04T00:00:00'));
+        assert.equal(st.atRun, true);
+        assert.equal(waiverStatusText(st, 'America/Los_Angeles'), 'On waivers until Wed 12 AM (FAAB). Chopped Mon 9:46 PM.');
+        // And a free agent once it has run.
+        assert.equal(waiverStatus({ cleanName: 'calebwilliams', team: 'CHI' }, chop, cut, kickoffs, PT('2026-11-04T06:00:00')).status, 'free');
+    });
+    test('waiver_day_of_week 0 (Gridiron Best Ball): the weekly run is still Wednesday', () => {
+        const gridiron = waiverSettingsFrom({ waiver_type: 0, waiver_clear_days: 0, waiver_day_of_week: 0, daily_waivers: 1, daily_waivers_hour: 0, daily_waivers_days: 10581 });
+        assert.equal(nextWeeklyRun(gridiron, PT('2026-11-15T14:00:00')), PT('2026-11-18T00:00:00'));
+    });
+});
+
 describe('waiverStatusText', () => {
     const tz = 'America/Los_Angeles';
     test('the chip tap texts: short, "too late" once', () => {

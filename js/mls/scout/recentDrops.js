@@ -10,7 +10,9 @@ import { getSleeperPlayerMap, getSleeperTransactions } from '../../shared/api/sl
 const PARALLEL = 8; // leagues fetched at once (two requests each; round 5: 4 made 20 leagues take 1 to 3 s)
 const cache = new Map(); // leagueId -> { key, promise }
 
-// { cleanName: dropped at (ms) } from Sleeper transactions: the latest completed drop of each player.
+// { cleanName: dropped at (ms) } from Sleeper transactions: the latest completed drop of each player. A guillotine
+// league's cut (type 'chopped', round 6) is { at, chopped: true }: those players clear at the next weekly run, whatever
+// the league's clear days (Chop Shop: 2-day clears, cuts on Monday 9:45 PM PT claimed at Wednesday's 12:11 AM run).
 export function dropsFromTransactions(lists, playerMap) {
     const drops = {};
     (lists || []).flat().forEach(tx => {
@@ -19,7 +21,8 @@ export function dropsFromTransactions(lists, playerMap) {
         Object.keys(tx.drops).forEach(pid => {
             const p = playerMap && playerMap[pid];
             const clean = p && p.first_name ? normalizeName(`${p.first_name} ${p.last_name}`) : null;
-            if (clean && (!drops[clean] || drops[clean] < at)) drops[clean] = at;
+            const prev = drops[clean] == null ? null : (typeof drops[clean] === 'object' ? drops[clean].at : drops[clean]);
+            if (clean && (prev == null || prev < at)) drops[clean] = tx.type === 'chopped' ? { at, chopped: true } : at;
         });
     });
     return drops;

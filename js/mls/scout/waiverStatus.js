@@ -64,7 +64,11 @@ function zonedTime(y, m, d, h, tz) {
 
 // The next weekly waiver run after `after` (ms): the day after waiver_day_of_week, at the run hour, Pacific time.
 export function nextWeeklyRun(waivers, after) {
-    const runDay = ((num(waivers && waivers.dayOfWeek, 2) + 1) % 7 + 7) % 7;
+    // Sleeper's waiver_day_of_week is 2 (Tuesday, Sunday = 0) in 20 of the owner's leagues; Gridiron Best Ball has 0
+    // and its weekly claims still land Wednesday at 12:11 AM PT (round 6), so 0 means the default, Wednesday's run too.
+    // Other values are unseen; they're read as the day before the run, untested.
+    const day = num(waivers && waivers.dayOfWeek, 2);
+    const runDay = ((day === 0 ? 2 : day) + 1) % 7;
     const hour = num(waivers && waivers.hour, 0);
     const today = zonedParts(after, WAIVER_TZ);
     for (let i = 0; i <= 7; i++) {
@@ -103,8 +107,12 @@ export function waiverStatus(player, waivers, drops, kickoffs, now) {
     let clearsAt = null;
     let reason = null;
     let atRun = false; // clears at the weekly run (else on his own drop clock)
-    const dropped = toMs(drops[player.cleanName]);
-    const dropClears = dropped != null && waivers.clearDays > 0 ? dropped + waivers.clearDays * DAY : null;
+    const entry = drops[player.cleanName];
+    const chopped = !!(entry && typeof entry === 'object' && entry.chopped);
+    const dropped = toMs(entry && typeof entry === 'object' ? entry.at : entry);
+    // A guillotine cut clears at the next weekly run (round 6); any other drop after the league's clear days.
+    const dropClears = dropped == null ? null : chopped ? nextWeeklyRun(waivers, dropped)
+        : waivers.clearDays > 0 ? dropped + waivers.clearDays * DAY : null;
     if (ko != null && ko <= now) {
         // His game has started (or is over): locked until the weekly run.
         clearsAt = nextWeeklyRun(waivers, now);
@@ -114,6 +122,7 @@ export function waiverStatus(player, waivers, drops, kickoffs, now) {
         if (dropClears != null && dropClears > clearsAt) { clearsAt = dropClears; reason = 'dropped'; atRun = false; }
     } else if (dropClears != null && dropClears > now) {
         reason = 'dropped';
+        atRun = chopped;
         // Still on waivers at kickoff: he locks then, until the run after it.
         clearsAt = dropClears;
         if (ko != null && dropClears > ko) {
@@ -123,7 +132,7 @@ export function waiverStatus(player, waivers, drops, kickoffs, now) {
     }
     if (clearsAt == null) return { status: 'free', clearsAt: null, tooLateThisWeek: false, reason: null, atRun, weekOver, kickoff: ko, claimType };
     const tooLateThisWeek = !weekOver && ko != null && ko < clearsAt;
-    return { status: 'waivers', clearsAt, tooLateThisWeek, reason, atRun, weekOver, kickoff: ko, droppedAt: reason === 'dropped' ? dropped : null, claimType };
+    return { status: 'waivers', clearsAt, tooLateThisWeek, reason, atRun, weekOver, kickoff: ko, droppedAt: reason === 'dropped' ? dropped : null, chopped: reason === 'dropped' && chopped, claimType };
 }
 
 // "Wed 12 AM", "Sat 5 PM", "Sun 1:25 PM", in the viewer's time zone (tz for tests).
@@ -147,7 +156,7 @@ export function waiverStatusText(st, tz) {
     }
     const type = CLAIM_TYPE_NAMES[st.claimType] || 'waivers';
     const head = `On waivers until ${st.atRun ? '' : 'about '}${shortWhen(st.clearsAt, tz)} (${type}).`;
-    const dropped = st.droppedAt != null ? `Dropped ${shortWhen(st.droppedAt, tz)}` : null;
+    const dropped = st.droppedAt != null ? `${st.chopped ? 'Chopped' : 'Dropped'} ${shortWhen(st.droppedAt, tz)}` : null;
     let why;
     // Once the week's games are over everyone who played is on waivers until the run (round 3: "His game has started"
     // read oddly on a Tuesday).

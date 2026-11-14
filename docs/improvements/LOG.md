@@ -11857,7 +11857,47 @@ Best available, waiver, Scout, past-trade, league-card, lineup-choice, touch-tar
 Screenshots: the Guide's W line (`desktop/` and `phone/mls-league-guide.png`), re-taken on CI; I opened both: the
 FA / W explanation is one sentence longer (phone +42 px, desktop +21 px), identical above it, the rest moved down.
 
+### Round 6: the rule against the owner's real leagues (in progress)
+
+A fourth review, of the rule itself against weeks 7–10 of 12 of the owner's leagues (transactions, ESPN kickoffs).
+- **Confirmed:** in daily-waiver leagues a dropped player who has played still waits out his drop clock past
+  Wednesday's run (Marvin Harrison Jr., REDRAFT: dropped Tue 7:45 AM, claimed Thu 9:02 AM; Xavier Worthy, LRD Cucks:
+  dropped Tue 8:06 PM, added Wed 7:10 PM). `waiver_clear_days` 0 (Gridiron Best Ball) frees a drop at once.
+- **Fixed: guillotine cuts.** Sleeper records Chop Shop's Monday-night cuts as type `chopped` (14–15 players each).
+  They clear at the next weekly run, whatever the clear days: cut Mon 9:45 PM PT in a 2-day league, claimed at Wed
+  12:11 AM (26 h), some added as free agents minutes later. `dropsFromTransactions` marks them `{ at, chopped: true }`;
+  `waiverStatus` clears them at the run ("On waivers until Wed 12 AM (FAAB). Chopped Mon 9:46 PM."). Before, Tuesday
+  said "until about Wed 9:45 PM", 21 hours late.
+- **Fixed: `waiver_day_of_week` 0.** Gridiron Best Ball has 0, and its weekly claims land Wednesday 12:11 AM PT like
+  every league with 2, so 0 is read as Wednesday too (it was Monday). Other values are unseen. The owner's read
+  agrees: daily runs, except after Sunday's games, when nothing moves until the normal Wednesday run.
+- **Found, not fixed yet: most daily-waiver leagues have no free agents on ordinary days.** Free-agent adds by weekday
+  against `daily_waivers_days` (two bits a day, Sunday first):
+
+  | League | Sun→Sat | Free-agent adds | Claims |
+  |---|---|---|---|
+  | REDRAFT (9 AM) | 0 0 1 1 1 1 0 | Sun, Mon, Sat | Wed/Thu/Fri 9 AM, Sat 12 AM |
+  | Managers of the Round Table | 0 1 1 1 1 1 1 | Sun | Sun, Wed–Sat 12 AM |
+  | Legends of the Pocket (9 AM) | 0 1 1 1 1 2 2 | Sun | Wed–Sat 9 AM, Sun 12 AM |
+  | Friday Night Beverages, Gridiron, Legacy BB | 1 1 1 1 1 2 2 | none | Sun, Wed–Sat 12 AM |
+  | Late Round Lame Legends | 1 1 1 1 1 1 1 | none | every day 12 AM |
+  | Fantasy Leftovers | 3 1 1 1 1 2 2 | Sun | Sun, Wed–Fri 12 AM |
+  | LRD Cucks | 0 3 3 3 3 1 1 | Sun, Wed–Sat | mostly Wed 12 AM |
+
+  Reading: 0 a free-agent day; 1 (and 2, indistinguishable here) a waiver day, where every unrostered player needs a
+  claim, processed at the run hour (or at 12 AM when a free-agent day starts); 3 perhaps "Waivers → FA" (a run, then
+  free agents). LRD Cucks doesn't fit (free-agent adds on its "1" Friday and Saturday). So today's FA chip is wrong on
+  waiver days in most of the owner's daily leagues. The owner's note: on free-agent days a dropped player is still a
+  claim for a while, so a league mixes FA and W (both chips stay); that part already works (LRD Cucks: Malik
+  Washington, dropped Fri 1:40 PM, claimed Sat 12:45 PM while others were added as free agents).
+  **Waiting on the owner:** Sleeper's Custom Daily Waivers screen for LRD Cucks (Fri, Sat), Fantasy Leftovers (Sun)
+  and Legends of the Pocket (Fri, Sat), to map codes 1, 2 and 3; then the per-day rule goes into `waiverStatus`.
+
+Tests: unit (20): the Chop Shop cut, Gridiron's day 0. Ran `node --test` (660), check-precache, `mls-waiver-status`,
+`mls-best-available`, `mls-waiver-flex-unranked`, `mls-past-trade`, `mls-scout` (44 passed). No screenshot changes.
+
 ### Left over
+- **Daily waiver days** (round 6): the per-day codes, after the owner's settings.
 - **A short gap on a cold Dashboard** (round 5, point 2): if it matters, the count could wait for the chips.
 - **Next week's byes on Tuesday** (round 4, above).
 - `daily_waivers_days` isn't decoded (above). If a league marks some days "Locked" or "FA", the chip can be wrong on
