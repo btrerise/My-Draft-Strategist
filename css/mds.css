@@ -394,11 +394,9 @@
     justify-content: center;
     text-align: center;
     color: var(--text-muted);
-    padding: 3rem 1.5rem;
-    background: var(--card-bg);
-    border-radius: 8px;
-    border: 1px dashed var(--border);
-    box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+    padding: 2rem 1rem;
+    /* Plain text and its button, not a dashed box (improvements M17, round 5): inside the Team tab's card it was a box in
+       a box, and on the page it read as a placeholder card. */
 }
 
 .empty-state-icon {
@@ -1037,3 +1035,41 @@ body.hide-headshots .draft-cell-img {
     font-size: 0.8rem;
     white-space: nowrap;
 }
+
+/* Room on phones (improvements M17, css/base.css's ROOM ON PHONES): under 600px the Tracker's player cards are list rows
+   across the screen with 16px of padding and a divider, not cards with gaps. The lift on hover goes with the card. */
+@media (max-width: 599.98px) {
+    .player-pool-container { gap: 0; }
+    .player-card {
+        border: 0;
+        border-radius: 0;
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+    .player-card + .player-card { border-top: 1px solid var(--divider); }
+    .player-card:hover, .player-card:has(:focus-visible) { transform: none; box-shadow: none; }
+    /* Denser on phones (round 5): 12px above and below a player (16px before; the content's placeholder height for
+       content-visibility is unchanged, it measures the content box), and less air round the tier headings, the first
+       one most (it followed the chips' 1.5rem and its own 2rem). */
+    .player-card { padding-top: 12px; padding-bottom: 12px; }
+    .tier-divider { margin: 1.25rem 0 0.5rem; }
+    .player-pool-container > .tier-divider:first-child { margin-top: 0.25rem; }
+}
+
+/* The Draft Board's grid runs to the screen's edges on phones (the bleed above). Under 600px the page has no side
+   padding any more (css/base.css, ROOM ON PHONES), so the bleed's -0.5rem would overshoot and scroll the page sideways:
+   the grid sits at the edges and starts at the 16px margin instead, scrolling all the way to the edge
+   (improvements M17). */
+@media (max-width: 599.98px) {
+    .draft-board-container {
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}
+
+/* Team tab: the part Export Team captures, its cards in a column (was an inline style). Under 600px the gap is the 8px
+   band between sections (css/base.css, ROOM ON PHONES). */
+.team-export-stack { display: flex; flex-direction: column; gap: 1rem; }
