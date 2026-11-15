@@ -13366,3 +13366,5 @@ passed. The full suite hasn't run.
 
 **Screenshots.** Round 3's branch against this one: only `desktop/mls-league-guide.png` and `phone/mls-league-guide.png`
 (step 5's sentence), re-taken on CI with this commit. The Lineup ones are identical (offline: no early teams).
+CI re-took exactly those two ("Screenshots re-taken on CI (2 PNGs)"): same sizes as round 3's, each different only in
+step 5's last sentence (desktop y 3748–3784, phone y 10141–10223).
