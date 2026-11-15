@@ -13328,3 +13328,6 @@ suite hasn't run.
 **Screenshots.** Round 2's branch against this one in the same container: only `desktop/mls-league-guide.png` and
 `phone/mls-league-guide.png` (step 5's new sentence), re-taken on CI with the commit after this entry. The Lineup ones
 are identical: offline, there are no early teams, so the reminder is hidden in both.
+CI re-took exactly those two ("Screenshots re-taken on CI (2 PNGs)"): from step 5's paragraph down (desktop 10645 →
+10668px, phone 24845 → 24938px), the new sentence in place. The desktop one again differs by 1 level of 255 in the header
+(rows 39–55), as in round 1: the page's new height, nothing that changed there.
