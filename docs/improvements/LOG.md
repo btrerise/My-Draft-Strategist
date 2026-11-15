@@ -13105,3 +13105,62 @@ PNGs (main's taken; CI re-takes them with this card's text).
 (this container's fonts), as on main. Main and this branch, rendered in the same container, differ only in `desktop/`
 and `phone/mls-league-setup.png` (the FAAB Bids row in Advanced Settings) and `desktop/` and `phone/mls-league-guide.png`
 (step 8's bullet and the legend line); CI re-takes them. Not run again (rule 7); CI runs it on the pull request.
+
+## F23 — The flash when tapping things on phones
+
+From the owner's notes of 2026-11-12 (sent 2026-11-14): "Can we remove the highlight that appears when tapping things?
+Or is that intentional for some reason?" Two things showed on a tap: the browser's own tap highlight (Chrome on Android's
+translucent blue-grey box; not intentional, `css/base.css` removed it only on the tab bar, `.nav-btn`) and M2's press
+tint (a 10% wash of the control's own colour while pressed, a button's corners 6 → 4px; intentional, Material 3's
+pressed state).
+
+**User-visible effect.** No browser flash on any tap, on all three pages. Buttons answer a press as before (M2's tint and
+corners, unchanged). Things that open something without being a button now answer a press with the same tint, where
+before they had the browser's flash only: every fold (`<summary>`: Recent Sync Logs, Advanced Settings' Notifications,
+FAAB Bids, Backup & Restore, Danger Zone, Lineup settings, Value settings, Best available, the rankings changes, the
+Trade Analyzer's "Their team", T-Score's folds; in a lighter fold block the whole row tints, padding included), the ROS
+and Weekly rankings cards' headers and Auto-Find's sections (the same toggle), the cross-app banner links ("Switch to My
+Lineup Strategist", "Try My Draft Strategist") and the menu's links to the other pages (T-Score, and the other app).
+Press only: their hover on a computer is unchanged (hover is M2's). Links inside a sentence, and small text links
+("Read Methodology →", the "Powered by" credits), get nothing.
+
+**The owner's decisions** (after a recording at phone size of five taps, today against a preview, 2026-11-15):
+1. Remove the browser's flash everywhere, in all three apps (the suggestion).
+2. Keep M2's press tint as it is (the suggestion; not lighter, not removed).
+3. Give the tint to folds, card headers, banner links and the menu's T-Score link (the suggestion); plain links in text
+   get nothing. I added the menu's link to the other app (`.premium-link-btn`) to the same group: it's the menu row
+   right under the T-Score link, and it was the one menu row left without a tint.
+
+**What changed.**
+- `css/base.css`, STATE LAYERS: a new TAP HIGHLIGHT rule, `:root { -webkit-tap-highlight-color: transparent; }`
+  (inherited, so it covers every element); the `.nav-btn` line ("Removes blue flash on mobile tap") is gone. After M2's
+  `:active` rule: the same `::before` layer for `summary`, `.guide-banner > a` and `a.nav-btn:not(.premium-link-btn)`,
+  tinted 10% on `:active`; the rankings card toggle's `::after` (which already covers its header) tinted on `:active`;
+  `.premium-link-btn` tinted on the link itself (its `::before` is the menu's dashed divider). A fold in a
+  `.sos-details-accordion` stretches its layer over the block's padding (closed: the whole block; open: the header row).
+  Reduce Motion turns the new fades off with M2's.
+- The inventory behind the list (a throwaway script on every tab of the three pages at 390px, not committed): besides
+  buttons, the untinted tappable things were the summaries, the rankings card headers, the banner links, the menu's two
+  page links, standalone text links, links in sentences, form fields (labels, switches, selects, file inputs: they have
+  their own feedback) and the skip link (keyboard only). Everything else that opens something is already a `button`.
+- `sw.js` `CACHE_NAME` v2.10.12. CHANGELOG lines under both apps' Unreleased (T-Score's under Draft Strategist's, as
+  before). docs/TESTING.md: the convention (Touch targets, focus and press feedback) and M3's follow-up (the new 150ms
+  fades move onto the motion tokens with M2's).
+
+**Tests.** `tests/tap-feedback.spec.mjs` (new, 6 per width): the computed `-webkit-tap-highlight-color` is transparent on
+a sample of controls on each page (root, nav, buttons, banners, menu links, folds, links, form fields); with `:active`
+forced through DevTools (`CSS.forcePseudoState`), a button keeps its 10% layer, and the folds, the rankings card header,
+the banner links and both menu links show 10%, while a link inside a Guide sentence has no layer. On main all 12 failed
+(the root's highlight was Chromium's default `rgba(0, 0, 0, 0.18)`; no layer on folds or links). Ran check-precache,
+`node --test` (688), and `tap-feedback`, `touch-targets`, `focus-ring`, `chevrons`, `view-transitions`: all passed.
+Screenshots: main and this branch rendered in the same container are pixel-identical (all 44 PNGs; no tap is in them).
+The full suite hasn't run (rule 7: once, when the owner asks for the pull request).
+
+**How the recording was made** (for anyone repeating it): the headless shell never draws the tap highlight, and neither
+do Playwright's touch taps on Linux (synthetic touches skip the browser's gesture detector, which is what starts the
+highlight). Full Chromium (`channel: 'chromium'`, the same revision 1243) with DevTools' touch emulation
+(`Emulation.setTouchEmulationEnabled` + `setEmitTouchEventsForMouse`, then `Input.dispatchMouseEvent` press/release,
+not awaited) does, recorded with `Page.startScreencast`. It draws desktop Chromium's colour (dark grey), not Android's
+blue-grey.
+
+**Left over.** Nothing for this card. M3 moves the new fades onto the motion tokens with M2's (noted in TESTING.md).

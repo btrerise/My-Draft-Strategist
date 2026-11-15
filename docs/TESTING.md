@@ -311,7 +311,12 @@ shot and S10 took four runs for 14.)
 - **Touch targets, focus and press feedback** (improvements M2, Material 3): `css/base.css`'s last section gives every
   button, link, summary and `role=button` an invisible `::after` that grows it to 48x48px where it's smaller, one
   `:focus-visible` ring (2px green, 2px gap; text fields on their own border), and a `::before` state layer for hover
-  and press (no lifts, shrinks or brightness filters). All at zero specificity (`:where()`), so a component's own rule
+  and press (no lifts, shrinks or brightness filters). **No browser tap flash** (improvements F23): `:root` sets
+  `-webkit-tap-highlight-color: transparent`, inherited by everything, so don't set it per component; the press tint is
+  the only feedback. Folds (`summary`), the rankings card toggles (on their `::after`), the banner links and the menu's
+  links get the press tint too (press only, no hover); links inside a sentence get none. `tap-feedback.spec.mjs` checks
+  both on all three pages (it forces `:active` with DevTools' `CSS.forcePseudoState`). Something new that opens
+  something without being a button should join that list. All at zero specificity (`:where()`), so a component's own rule
   wins. Don't give a control its own focus outline, hover tint or press transform; don't put `overflow: hidden` on a
   group of buttons (it clips their areas; round the end buttons instead, as `.mls-segmented` does). Where two controls
   sit closer than 48px, they split the gap (rules after the shared one). `touch-targets.spec.mjs` hit-tests every
@@ -411,8 +416,9 @@ The card named does the item in its own session; remove the line when it's done.
   areas; the end buttons round their own corners, which moved 9 to 10 anti-aliased pixels at one end of each).
 - **M3 (motion tokens): move M2's two timings onto the tokens.** `--press-morph` in css/base.css's `:root` (350ms
   `cubic-bezier(0.42, 1.67, 0.21, 0.90)`, Expressive's fast spatial curve: a pressed button's corners going 6 → 4px)
-  and the state layer's 150ms `background-color` fade (css/base.css, STATE LAYERS, the `::before` rule). Reduce Motion keeps
-  turning both off.
+  and the state layer's 150ms `background-color` fade (css/base.css, STATE LAYERS, the `::before` rule, and since
+  improvements F23 the same fade on the folds' and links' `::before` and the rankings card toggle's `::after`). Reduce
+  Motion keeps turning them off.
 - **No card yet (a Dashboard card, or M16):** the other dense spots on `ALLOW`, each with its reason there: the phone
   header's menu button, the Scoreboard's lists and fold toggles (rows 2 to 6px apart), the Command Center's Edit /
   Fold all and first card, "This lineup needs you" above its fix button, the Trade Analyzer's Clear above its search,

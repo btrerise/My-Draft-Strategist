@@ -749,7 +749,6 @@ html { scroll-padding-top: 5rem; }
     min-width: 0; /* equal widths whatever the labels (improvements S21: a bold label must not widen its tab, or the marker misses it) */
     border-radius: 8px;
     transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
-    -webkit-tap-highlight-color: transparent; /* Removes blue flash on mobile tap */
     position: relative;
     z-index: 10;
 }
@@ -2833,6 +2832,11 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
    rasterised the rest of the tab (a few anti-aliased pixels in the screenshots). */
 .mls-matchup-strip::after { top: 0; bottom: min(0px, 100% - 48px); }
 
+/* TAP HIGHLIGHT (improvements F23): no browser flash on a tap, on any page. Chrome on Android lays its own translucent
+   box over whatever was tapped; the press tint below is the app's answer instead. Inherited, so this one line covers
+   every element (before F23 only the tab bar had it). */
+:root { -webkit-tap-highlight-color: transparent; }
+
 /* STATE LAYERS: hover, focus and press answer the same way on every button (Material 3's states): the content's own
    colour laid over the control, 8% on hover (only where there's a pointer that hovers), 10% while pressed, fading in
    150ms. Nothing moves or shrinks any more. Disabled controls get none. The owner also picked Expressive's pressed shape
@@ -2852,10 +2856,33 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
     :where(button, [role=button], a.btn, a.btn-sm):where(:not(:disabled, [aria-disabled=true])):hover::before { background-color: color-mix(in srgb, currentColor 8%, transparent); }
 }
 :where(button, [role=button], a.btn, a.btn-sm):where(:not(:disabled, [aria-disabled=true])):active::before { background-color: color-mix(in srgb, currentColor 10%, transparent); }
+/* What opens something without being a button answers a press the same way (improvements F23, owner's choice): folds
+   (<summary>), the cross-app banner links and the menu's links to the other pages, the ROS/Weekly rankings card headers
+   (and Auto-Find's sections, the same toggle; their ::after already covers the header, so it carries the tint) and the
+   menu's link to the other app (its ::before is the dashed divider, so the link itself takes the tint). Press only:
+   their hover stays as M2 left it. Links inside a sentence get nothing. */
+:where(summary, .guide-banner > a, a.nav-btn:not(.premium-link-btn))::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: transparent;
+    pointer-events: none;
+    transition: background-color 150ms linear;
+}
+:where(summary, .guide-banner > a, a.nav-btn:not(.premium-link-btn)):active::before,
+:where(.rankings-card-toggle):active::after,
+.premium-link-btn:active { background-color: color-mix(in srgb, currentColor 10%, transparent); }
+:where(.rankings-card-toggle)::after { transition: background-color 150ms linear; }
+/* A fold in a lighter block (.sos-details-accordion) tints its whole row, the block's padding included, like a list
+   row; open, only the header row. */
+.sos-details-accordion > summary::before { inset: -0.75rem -1rem; border-radius: 8px; }
+.sos-details-accordion[open] > summary::before { bottom: 0; border-radius: 8px 8px 0 0; }
 /* :is(), not :where(): the corners must beat each button's own border-radius. */
 :is(.btn, .btn-sm, .mds-btn-sm, .mls-btn-sm, .btn-header):active:not(:disabled) { border-radius: 4px; }
 @media (prefers-reduced-motion: reduce) {
-    :where(button, [role=button], a.btn, a.btn-sm)::before { transition: none; }
+    :where(button, [role=button], a.btn, a.btn-sm, summary, .guide-banner > a, a.nav-btn)::before,
+    :where(.rankings-card-toggle)::after { transition: none; }
     :is(.btn, .btn-sm, .mds-btn-sm, .mls-btn-sm, .btn-header) { transition-property: none; }
 }
 
