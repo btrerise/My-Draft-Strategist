@@ -15,6 +15,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **No flash when you tap on a phone.** The grey-blue box the phone's browser drew over whatever you tapped is gone,
+  here and on the T-Score page. A tap still answers with the app's own light tint while your finger is down, and now
+  folds (T-Score's "How it's projected" and the like), the "Switch to My Lineup Strategist" banner and the menu's links
+  answer the same way. Links inside a sentence don't.
+
 - **Tooltips follow Material 3.** On a computer a tooltip you hovered stays 1.5 seconds after the mouse moves off, so
   you can finish reading it; opening another one, a click or Escape closes it at once. Tooltips have rounder corners,
   a little more room at the sides, a solid background and a softer shadow.
@@ -192,6 +197,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 ## Lineup Strategist
 
 ### Unreleased
+
+- **No flash when you tap on a phone.** The grey-blue box the phone's browser drew over whatever you tapped is gone. A
+  tap still answers with the app's own light tint while your finger is down, and now things that open something
+  without being a button answer the same way: every fold (Recent Sync Logs, Notifications, Danger Zone, Lineup
+  settings, Best available, the rankings changes), the ROS and Weekly rankings cards' headers, Auto-Find's sections,
+  the "Try My Draft Strategist" banner and the menu's links. Links inside a sentence don't.
 
 - **A suggested FAAB bid, if you want one.** Turn on **FAAB Bids** in the Dashboard's Advanced Settings (it's off, and
   shows only if you have a FAAB league), and choose **Conservative** (a lower bid, usually enough when no other team
