@@ -13282,3 +13282,6 @@ passed. The full suite hasn't run.
 commit after this entry. `desktop/mls-league-lineup.png` and `phone/mls-league-lineup.png`: the picker now under the
 card's empty line (offline, so no teams and no reminder either way); `desktop/mls-league-guide.png`: the legend's EARLY
 line is longer. The phone Guide didn't change in this container.
+CI re-took exactly those three ("Screenshots re-taken on CI (3 PNGs)"); same sizes as round 1's, and each differs only
+there: the Lineup ones in the Early Games card (desktop y 2246–2315, phone y 2323–2407: the empty line, then the
+picker), the desktop Guide in one legend line (y 8761–8772).
