@@ -233,7 +233,7 @@ import { sleeperLineup } from './starterAlertRules.js';
     function reminderSwaps(league) {
         const fromSleeper = league ? sleeperLineup(league) : null;
         const onSleeper = !!fromSleeper && fromSleeper.starters.some(s => s.player);
-        const starters = onSleeper ? fromSleeper.starters : (State.manualStartersMap[State.activeLeagueId] || []);
+        const starters = onSleeper ? fromSleeper.starters : ((league && State.manualStartersMap[league.leagueId]) || []);
         const swaps = earlySwaps(starters, {
             slotPositions: SLOT_POSITIONS,
             isEarly: (p) => isEarlyPlayer(p.team),
@@ -258,10 +258,24 @@ import { sleeperLineup } from './starterAlertRules.js';
     // The swaps as part of "This lineup needs you" (round 4, owner's choice: the amber banner above the lineup took
     // ~150px on a phone, on top of that box): { title, summary, body, count } for getLineupNeedsHTML (gameInfo.js), or
     // null. A suggestion, so it doesn't count toward the box's "needs you" or the Dashboard's (F12's rule stays).
-    export function earlySwapNeeds(league) {
-        const { swaps: all, onSleeper } = reminderSwaps(league);
+    // The swaps still to show for a league: Got it's left out. { swaps, onSleeper }.
+    function openSwaps(league) {
+        const { swaps, onSleeper } = reminderSwaps(league);
         const gone = dismissedKeys();
-        const swaps = all.filter(w => !gone.includes(swapKey(w)));
+        return { swaps: swaps.filter(w => !gone.includes(swapKey(w))), onSleeper };
+    }
+
+    // The Dashboard's league card (round 5, render/leagueCards.js): one muted line naming the swaps, so a Thursday look
+    // across every league shows which have one, without opening each. "" when there's none. Never counted either.
+    export function earlySwapCardLine(league) {
+        const { swaps, onSleeper } = openSwaps(league);
+        if (!swaps.length) return '';
+        const who = (p, slot) => `${escapeHtml(p.name)} (${escapeHtml(slotDisplayName(slot))})`;
+        return `Early games: swap ${swaps.map(w => `${who(w.early, w.earlySlot)} with ${who(w.later, w.laterSlot)}`).join('; ')}${onSleeper ? ' on Sleeper' : ''}`;
+    }
+
+    export function earlySwapNeeds(league) {
+        const { swaps, onSleeper } = openSwaps(league);
         if (!swaps.length) return null;
         const n = swaps.length, s = n === 1 ? '' : 's';
         const who = (p, slot) => `<strong class="text-main">${escapeHtml(p.name)}</strong> (${escapeHtml(slotDisplayName(slot))}, ${escapeHtml(kickoffOf(p.team).label)})`;
@@ -277,6 +291,7 @@ import { sleeperLineup } from './starterAlertRules.js';
             + `<p class="lineup-needs-note early-swap-note"><span>${note}</span> <button type="button" class="btn btn-secondary mls-btn-sm lineup-needs-btn" data-action="dismissEarlySwaps" data-keys="${escapeHtml(swaps.map(swapKey).join(','))}">Got it</button></p>`;
         return {
             count: n,
+            onSleeper,
             title: `Early games: ${n} swap${s} to consider`,
             summary: `Early games: ${n} swap${s}${onSleeper ? ' on Sleeper' : ''}`,
             body,

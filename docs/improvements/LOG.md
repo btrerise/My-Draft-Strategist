@@ -13368,3 +13368,28 @@ passed. The full suite hasn't run.
 (step 5's sentence), re-taken on CI with this commit. The Lineup ones are identical (offline: no early teams).
 CI re-took exactly those two ("Screenshots re-taken on CI (2 PNGs)"): same sizes as round 3's, each different only in
 step 5's last sentence (desktop y 3748–3784, phone y 10141–10223).
+
+### S50, round 5: a third review as a user; the owner took 1 and 2 (2026-11-15)
+
+Findings: (1) "Early games: 1 swap on Sleeper" sat right above "✓ Matches your active Sleeper lineup" (that line compares
+who starts, not which slot): read top to bottom, a contradiction; (2) the Dashboard's league card showed EARLY but not the
+swap, so with 20 leagues you'd open each Lineup tab on a Thursday to find which have one; (3) Got it can't be undone
+that week (small; left as is, the owner didn't take it). Owner: "Yes" to 1 and 2.
+
+**What changed.**
+- `js/mls/render/lineup.js`: while a swap on Sleeper is showing, the green line reads "Same starters as your Sleeper
+  lineup"; after the swap is made (next sync) or Got it, "Matches your active Sleeper lineup" again.
+- `js/mls/render/leagueCards.js`, `js/mls/lineup/earlyGames.js` (`earlySwapCardLine`): a muted line under the card's
+  status row, "Early games: swap Justin Jefferson (FLEX) with Ja'Marr Chase (WR) on Sleeper" (several: joined with
+  "; "), so a folded card shows it too. Not counted (the card's "to fix", its amber, the strip: F12's rule), none in
+  Best Ball, and Got it hides it here as on the Lineup tab. The swaps for a league now read its own lineup
+  (`manualStartersMap[league.leagueId]`, was the active league's) for manual leagues. `css/mls.css`: `.mls-lc-early`,
+  like `.mls-lc-synced`.
+
+**Tests.** `mls-early-games.spec.mjs` (9 per width): with the Sleeper swap, "Same starters as your Sleeper lineup" and not
+"Matches"; the Dashboard card's line, with "1 to fix" unchanged; after Got it, "Matches" again and no card line. Ran
+check-precache, `node --test` (696), `mls-early-games`, `mls-league-cards`, `mls-lineup-needs`, `mls-phone-rows`,
+`touch-targets`, `mls-keyboard`, `mls-last-synced`, `mls-best-available`, `mls-tab-redraws`, `mls-sync-league-switch`:
+all passed. The full suite hasn't run.
+
+**Screenshots.** Round 4's branch against this one in the same container: all 44 pixel-identical (no swap offline).

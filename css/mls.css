@@ -1986,6 +1986,8 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
    injury red (owner's choice, round 10). It's news; red is for what you have to act on, like "Bench X (Out)". */
 .mls-lc-synced { margin: 0.35rem 0 0 calc(28px + 0.4rem); font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; }
 .mls-lc-synced-label { font-weight: 600; }
+/* An early-game swap to make (improvements S50, round 5): muted, like the Synced line; a suggestion, never amber. */
+.mls-lc-early { margin: 0.35rem 0 0 calc(28px + 0.4rem); font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; }
 .mls-lc-synced-add { color: #86efac; }
 .mls-lc-synced-drop { color: #9ca3af; }
 .mls-lc-synced-out { color: var(--text-muted); }
@@ -2001,7 +2003,7 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 /* Phones: the status row starts at the card's edge, under the chevron, so the chips get the full width. */
 @media (max-width: 600px) {
     .mls-lc-card { padding-top: 0.5rem; padding-bottom: 0.55rem; padding-left: 12px; padding-right: 12px; }
-    .mls-lc-status, .mls-lc-synced { margin-left: 0; }
+    .mls-lc-status, .mls-lc-synced, .mls-lc-early { margin-left: 0; }
 }
 
 /* --- SCOREBOARD (js/mls/week/thisWeek.js, improvements S21) ---

@@ -674,7 +674,8 @@ import { refreshThisWeek } from '../main.js';
         // and the differences from your Sleeper lineup (improvements S11, round 4; it replaces the red and purple
         // warnings and the amber "Differs from Sleeper lineup" line). The green line below stays for a match.
         // Early-game swaps (improvements S50, round 4: in this box, not a banner of their own).
-        html += getLineupNeedsHTML(starters, league, benchPool, earlySwapNeeds(league));
+        const earlyNeeds = earlySwapNeeds(league);
+        html += getLineupNeedsHTML(starters, league, benchPool, earlyNeeds);
 
         if (validSleeperStarters.length > 0) {
             let sleeperSet = new Set(validSleeperStarters);
@@ -682,7 +683,10 @@ import { refreshThisWeek } from '../main.js';
             let isMatch = sleeperSet.size === optSet.size && [...sleeperSet].every(id => optSet.has(id));
             
             if (isMatch) {
-                html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: var(--primary-green); display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Matches your active Sleeper lineup</div>`;
+                // The same starters, but with an early-game swap still to make there (improvements S50, round 5), it
+                // doesn't match yet: "Matches" under "1 swap on Sleeper" read as a contradiction.
+                const matchText = earlyNeeds && earlyNeeds.onSleeper ? 'Same starters as your Sleeper lineup' : 'Matches your active Sleeper lineup';
+                html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: var(--primary-green); display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> ${matchText}</div>`;
             }
         }
 

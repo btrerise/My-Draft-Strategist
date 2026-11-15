@@ -122,6 +122,15 @@ test.describe('Early Games from the schedule', () => {
         await box.locator('.lineup-needs-title').click();
         const folded = await box.locator('.lineup-needs-title').textContent();
         await box.locator('.lineup-needs-title').click();
+        // Round 5: the same starters as Sleeper, but not a match while the swap is to make there.
+        await expect(page.locator('#optimalLineupContainer')).toContainText('Same starters as your Sleeper lineup');
+        await expect(page.locator('#optimalLineupContainer')).not.toContainText('Matches your active Sleeper lineup');
+        // Round 5: the Dashboard's league card names it too, muted and not counted.
+        await showTab(page, 'setup');
+        const card = page.locator('.mls-lc-card').filter({ hasText: 'Fixture League' });
+        await expect(card.locator('.mls-lc-early')).toHaveText("Early games: swap Justin Jefferson (FLEX) with Ja'Marr Chase (WR) on Sleeper");
+        await expect(card.locator('.mls-lc-count-todo')).toHaveText('1 to fix');
+        await showTab(page, 'lineup');
         // Once Jefferson's game has started there's nothing left to swap.
         await page.clock.setFixedTime(new Date('2026-09-20T14:00:00Z'));
         await callApp(page, 'renderLineupUI');
@@ -142,6 +151,7 @@ test.describe('Early Games from the schedule', () => {
         await fold.locator('summary').click();
         await fold.getByRole('button', { name: 'Got it' }).click();
         await expect(earlyNeeds(page)).toHaveCount(0);
+        await expect(page.locator('#optimalLineupContainer')).toContainText('Matches your active Sleeper lineup');
         expect(await stored(page, 'mls_early_dismissed')).toEqual({ week: '2026-2', keys: ['6794>4866'] });
         await page.reload();
         await page.waitForLoadState('networkidle');
@@ -149,6 +159,8 @@ test.describe('Early Games from the schedule', () => {
         await showTab(page, 'lineup');
         await expect(page.locator('#lineupTab .early-badge').first()).toBeVisible();
         await expect(earlyNeeds(page)).toHaveCount(0);
+        await showTab(page, 'setup');
+        await expect(page.locator('.mls-lc-early')).toHaveCount(0);
         await expectClean(page, state);
     });
 
