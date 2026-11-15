@@ -93,7 +93,9 @@ import { DISMISS_ICON, UPGRADE_ICON } from '../badges.js';
 import { ensureLineupProjections, FOLD_CHEVRON } from '../lineup/gameInfo.js';
 import { isWeekOver, nextWeeklyRun, shortWhen, waiverStatus } from './waiverStatus.js';
 import { recentDropsFor } from './recentDrops.js';
-import { waiverChipHTML } from './waivers.js';
+import { faabBidHTML, waiverChipHTML } from './waivers.js';
+import { faabBidsFor, faabBidsLoaded, isFaabLeague, suggestBidFor } from './faabHistory.js';
+import { applyFaabSettingsToUI, faabBidsOn, updateFaabStatus } from './faabSettings.js';
 
     const PER_LEAGUE = 3;
 
@@ -304,6 +306,18 @@ import { waiverChipHTML } from './waivers.js';
                 .map(fa => ({ fa, upgrade: null }))
         ].slice(0, PER_LEAGUE);
         players.forEach(p => { p.status = statusOf(p.fa); });
+        // A suggested FAAB bid on each upgrade on waivers (improvements S35; round 2, owner: only upgrades here, since a
+        // player who doesn't help you got nearly the same number): raised when he'd start for you (a Weekly upgrade) or
+        // fills an empty spot. Only once the league's history has loaded.
+        players.forEach(p => {
+            if (!p.upgrade || !p.status || p.status.status !== 'waivers' || p.status.tooLateThisWeek) return;
+            const need = p.upgrade.emptySlot ? 'empty' : (lineupMode ? 'starts' : null);
+            const over = need === 'starts' && p.upgrade.bench ? p.upgrade.bench.name : null;
+            p.bid = suggestBidFor(league, { pos: p.fa.pos, posRank: posRankOf(p.fa.cleanName), need, over }, posRankOf, wctx.week);
+            // Round 5: while the history is loading, the bid's row is there already ("Bid …", muted), so the page doesn't
+            // jump 28px on a phone when it arrives.
+            p.bidPending = faabBidsOn() && isFaabLeague(league) && Number(wctx.week) >= 1 && faabBidsLoaded(league.leagueId) === undefined;
+        });
         // How many were left off for this week (round 5): an empty line says that, not "everyone is rostered".
         const cantPlayCount = lineupMode ? freeAgents.filter(fa => !flagged.has(fa.cleanName) && (statusOf(fa) || {}).tooLateThisWeek).length : 0;
         // Once the week's games are over, everyone who played is on waivers until the weekly run (round 5): one line
@@ -331,7 +345,7 @@ import { waiverChipHTML } from './waivers.js';
     // On waivers only because he played, after the week's games (round 5): the card's one line covers him.
     const playedAfterWeek = (a, st) => !!(a.runAt && st && st.status === 'waivers' && st.reason === 'played');
 
-    function playerHTML(a, { fa, upgrade, late, status }) {
+    function playerHTML(a, { fa, upgrade, late, status, bid, bidPending }) {
         const inj = a.inj(fa.cleanName);
         // A shared target is said once, above the list (sharedNotes). An upgrade too late for this week says so instead
         // (S34): he's on waivers and plays before the claim runs.
@@ -340,7 +354,8 @@ import { waiverChipHTML } from './waivers.js';
             : upgrade && waiverWhen(status) ? `<span class="mls-ba-over">${waiverWhen(status, false)}</span>` : '';
         const muted = late ? ' is-late' : '';
         const dismiss = `<button type="button" class="btn-bare mls-ba-dismiss" data-action="dismissBestAvailable" data-league-id="${escapeHtml(a.league.leagueId)}" data-player="${escapeHtml(fa.cleanName)}" aria-label="Not interested in ${escapeHtml(fa.name)} (hide him here this week)" title="Not interested (hide this week)">${DISMISS_ICON}</button>`;
-        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}${late ? ' is-late-upgrade' : ''}${muted}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${playedAfterWeek(a, status) ? '' : waiverChipHTML(status)}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${late ? `${over}${dismiss}` : `${dismiss}${over}`}</li>`;
+        return `<li class="mls-ba-player${upgrade ? ' is-upgrade' : ''}${late ? ' is-late-upgrade' : ''}${muted}">${upgrade ? UPGRADE_ICON : ''}<span class="mls-ba-name">${escapeHtml(fa.name)}</span> ${chip(fa.pos, a.posRankOf(fa.cleanName))}${playedAfterWeek(a, status) ? '' : waiverChipHTML(status)}${inj ? `<span class="badge inj-badge">${escapeHtml(inj)}</span>` : ''}${late ? `${over}${dismiss}` : `${dismiss}${over}${bid && !bid.noHistory ? `<span class="mls-ba-bid-sep" aria-hidden="true">&middot;</span>${faabBidHTML(bid, { long: true, name: fa.name, league: a.league.name })}`
+            : bidPending ? `<span class="mls-ba-bid-sep" aria-hidden="true">&middot;</span><span class="mls-faab-bid is-pending" aria-hidden="true">Bid …</span>` : ''}`}</li>`;
     }
 
     // A league card's Best Available section (S12; one line of the card before). A fold: open when the league has
@@ -419,6 +434,8 @@ import { waiverChipHTML } from './waivers.js';
 
         const leagues = State.leagues || [];
         const synced = leagues.filter(isFullyMappedLeague);
+        // Advanced Settings' FAAB Bids group shows only with a FAAB league (S35, round 6).
+        applyFaabSettingsToUI(synced.some(isFaabLeague));
         let meta = {};
         let drops = {};
         if (synced.length > 0) {
@@ -438,7 +455,7 @@ import { waiverChipHTML } from './waivers.js';
         const dismissedAll = synced.length > 0 ? currentDismissed() : {};
         // This week's kickoffs, only when they're this week's (S34); none, no chips (round 3).
         const kickoffs = State.gameTimesFetchedForWeek === State.currentNflWeek ? State.gameTimesByTeam : null;
-        const wctx = { drops, kickoffs, now: Date.now() };
+        const wctx = { drops, kickoffs, now: Date.now(), week: State.currentNflWeek };
         const analyses = new Map(synced.map(l => [l.leagueId, analyzeLeague(l, meta, dismissedAll, wctx)]));
         if (summary) summary.textContent = synced.length > 0 ? summaryText([...analyses.values()]) : '';
         if (switchBox) {
@@ -469,6 +486,20 @@ import { waiverChipHTML } from './waivers.js';
         });
         // Now the upgrades are known: cards with nothing to do fold (the ones you haven't folded or opened yourself).
         applyDefaultFolds();
+        // FAAB leagues' bid history (S35), read after the lines are up (it's up to a request per week per league): the
+        // lines are drawn again with the suggested bids once it's in.
+        const faabLeagues = synced.filter(isFaabLeague);
+        // The FAAB Bids setting's line: how many bids the Dashboard shows (S35, round 7; failures, round 8).
+        const all = [...analyses.values()].flatMap(a => a.players || []);
+        updateFaabStatus({ shown: all.filter(p => p.bid && !p.bid.noHistory).length, loading: all.some(p => p.bidPending),
+            failed: faabBidsOn() ? faabLeagues.filter(l => faabBidsLoaded(l.leagueId) === null).length : 0, total: faabLeagues.length });
+        // Only once the week is known, and only when this read loaded something new (else it could draw again forever).
+        const pending = faabBidsOn() ? faabLeagues.filter(l => faabBidsLoaded(l.leagueId) === undefined) : [];
+        if (Number(State.currentNflWeek) >= 1 && pending.length > 0) {
+            faabBidsFor(faabLeagues, State.currentNflWeek).then(() => {
+                if (gen === renderGen && pending.some(l => faabBidsLoaded(l.leagueId) !== undefined)) renderBestAvailable();
+            });
+        }
     }
 
     // × on a player: hide him from this league's line for the rest of the NFL week.

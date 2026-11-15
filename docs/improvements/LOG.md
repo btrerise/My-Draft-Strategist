@@ -12713,3 +12713,395 @@ round by round above. Main hasn't moved since round 3's merge (F16); `CACHE_NAME
   so CI re-takes that one PNG from this commit, as for any intended change.
 - **Re-taken on CI** (commit b0653a6, "Screenshots re-taken on CI (1 PNGs)"): exactly phone `mls-league-lineup`, and
   pixel-identical to the failed run's own render of it (so the difference was deterministic, not a flake).
+
+## S35 — A suggested FAAB bid
+
+Built on S34's branch (`claude/nifty-clarke-p7owoj`, not merged when this started; owner's choice "2", 2026-11-14).
+When S34 merges, this branch is updated to main and `CACHE_NAME` re-checked.
+
+**User-visible effect.** In Sleeper FAAB leagues, a player on waivers (S34's **W**) on the Dashboard's **Best
+available**, on **Auto-Find**'s cards and on **Check a List**'s free agents shows a suggested bid in the W chip's amber,
+dotted-underlined: **Bid 13–21**. An upgrade's line adds "(of your 63 left)" (its own row on phones, under "over …";
+Auto-Find and Check a List show it on a line under the verdict). A tap shows a toast: "Suggested bid 13–21 of your 63
+left (budget 100). Winning bids this season for an RB ranked 1–11 today: 4, median 12, top 30 (today's ranks; the bids
+were placed earlier). You have 63 left, the league averages 76: ×0.83 · 16 weeks left: ×1.03 · he'd start for you:
+×1.25. 1 team can outbid 21." Free agents get no bid (no claim needed); nor do players too late for this week, players
+in non-FAAB or manual leagues, or any league with no winning bid yet this season. On the Dashboard the bids appear a
+moment after the lines (the history loads after them). The Guide's legend has a line for it.
+
+**What the owner's leagues showed (weeks 1–10 of 2026, 15 FAAB leagues: 2 redraft, 1 guillotine, 12 dynasty).** About
+1,600 winning claims; 73% had a single bidder; the median winning bid is 0–2% of the budget in every league; players
+ranked high today went for much more (RB top 24: median ~28%; WR top 24: ~8%). Rosters carry
+`settings.waiver_budget_used` (the other name doesn't exist); `waiver_bid_min` is 0 or absent. Transactions are ~10 KB a
+league-week (1.6 MB, 150 requests for all 15 over 10 weeks).
+
+**Owner's decisions (sketch at 375px, 2026-11-14): "mostly as proposed", with two changes.**
+1. **Where:** Best available's lines and the Waiver Wire's rows (Auto-Find, Check a List), W players in FAAB leagues
+   only. The Dashboard loads every FAAB league's history after the chips; finished weeks kept in IndexedDB.
+2. **Model** (all as a share of the budget): comparable winning bids = same position, ranked within **±6** today (owner;
+   I proposed ±12); median to 75th percentile; widening below 4 comparables to the whole position, then the same ranks at
+   any position, then every claim (the tap text says which). × your left / league average left (0.6–1.5). × weeks left
+   up to 1.5 in the last week for redraft, **keeper (owner: like redraft)** and guillotine; dynasty flat. × 1.25 if he'd
+   start, × 1.5 if he fills an empty spot. Whole numbers, never above what you have; the top at least 1% of the budget
+   (at least 1) above the bottom, since most bids are 0 and a tie loses on waiver order.
+3. **A range.**
+4. **Top bidders:** in the tap text only ("2 teams can outbid 14").
+
+### What changed, and where
+- `js/mls/scout/faab.js` (new, pure): `winningBids`, `seasonLastWeek` (playoff start + rounds, else 17), `faabLeftFrom`,
+  `suggestBid` → `{ low, high, left, budget, scope, factor, outbid, reasons }` or `{ noHistory }`, `bidLabel`, `bidTip`.
+- `js/mls/scout/faabHistory.js` (new): `faabBidsFor(leagues, week)`: weeks 1 to now per FAAB league, 6 requests at a
+  time across leagues, cached for the visit; weeks two or more back kept in IndexedDB (`faab_bids_<league>_<week>` in
+  LineupStrategistDB's existing `sleeperData` store, as just `[{ p, b }]`; no new store, no localStorage key); this week's
+  and last week's reused from S34's drops fetch (`recentDrops.js` now keeps the raw lists: `recentTransactionList`).
+  `suggestBidFor(league, { pos, posRank, need }, posRankOf, week)` maps past bids to today's ranks with the caller's
+  rankings. On an error: null, a console warning, no bid, no toast.
+- `js/mls/leagues/sync.js`: `league.faabLeft` ({ rosterId: left }, FAAB leagues) and `league.lastWeek`; on the league
+  object, so Backup / Restore carries them. `waiverSettingsFrom` adds `minBid`.
+- `js/mls/scout/bestAvailable.js` (bids on W players, need from the upgrade; re-draws when the history arrives),
+  `waivers.js` (`faabBidHTML`, `wrapBid`, `ctx.bidHTML` by Rank By's position rank and the lineup verdict), `engine.js`
+  (Check a List), `badges.js` `faabBidMarkup`, `main.js` `explainBid` (a toast, like the chips), `css/mls.css`,
+  `js/mls/legend.js` (one line), `sw.js` (two new files; `CACHE_NAME` v2.10.9, above S34's v2.10.8; main is v2.10.7).
+
+### Tests
+- `tests/unit/faab.test.mjs` (11): the band, no history, one position missing (a TE: all positions near his rank; an
+  unranked TE: every bid), too few at his rank, a budget nearly spent and empty, weeks left (dynasty flat, redraft and
+  keeper up to ×1.5), need, a 1,000 budget league scaling like a 100 one, mostly-zero bids, missing inputs, the readers.
+- `tests/mls-faab-bid.spec.mjs` (4, both widths) with `fixtures/sleeper/league-transactions-faab.json` (from
+  `make-fixtures.mjs`: four RB bids near Cook, a failed bid that doesn't count, a WR claim, a free-agent add): the bid on
+  Best available, the tap text, the stored budgets, Auto-Find and Check a List; no history (no bid); history failing (no
+  bid, no toast); a non-FAAB league (W, no bid).
+- `mls-waiver-status.spec.mjs` and `unit/waiverStatus.test.mjs`: the stored waiver settings now include `minBid: 0`.
+- Found while running the neighbouring specs: before Sleeper's week is known, `faabBidsFor` returns at once, so Best
+  available drew itself again and again (12 specs timed out with a busy page). Now it reads the history only once the
+  week is known, and draws again only when that read loaded something. Then check-precache, `node --test` (680) and
+  `mls-faab-bid` with the Best available, waiver, Scout, past-trade, league-card, auto-sub, Backup, key-migration, badge
+  legend, smoke and touch-target specs: 135 passed.
+- Screenshots: the S34 base and this branch, rendered in the same container (`visual.spec.mjs`, `RENDER_ENV=any`), differ
+  only in `desktop/` and `phone/mls-league-guide.png`: the legend's new "W Bid 9–14" line (desktop +103 px, phone
+  +252 px). Re-taken on CI with `[update screenshots: …]`.
+- CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)"); I opened them. Desktop: the new "W Bid 9–14" row
+  under "too late for this week" (+103 px); above it identical apart from 1-level anti-aliasing in one line near the top;
+  below it the rest of the legend moved down by that height, its text a sub-pixel off (as in S34), then identical.
+  Phone: +229 px, identical where it paints (the legend sits in the screenshot's blank lower part, the M17 capture cut
+  in Open follow-ups).
+
+### Not done here, and left over
+- **The full suite** (`npm ci && npm run check`) hasn't run: per CLAUDE.md it runs once, when the owner asks for the pull
+  request, which should come after S34 merges and this branch is updated to main (then re-check `CACHE_NAME`).
+- **The weights are a first guess** (±6 ranks, median–75th, the 0.6–1.5 budget clamp, ×1.25 / ×1.5 need, up to ×1.5 by
+  the last week). A back-test like S34's round 8 (would the suggested low end have won each real claim?) could tune
+  them; the owner's transactions are in Sleeper's public API.
+- **Ranks are today's**, not when a bid was placed: a player who broke out after a cheap claim makes his band look
+  cheap. The tap text says so. Losing bids (failed claims) and how contested a player was aren't used.
+- **IndexedDB entries never expire**; they're a few hundred bytes per league-week, keyed by league id (a new season is a
+  new league id). Factory Reset doesn't clear IndexedDB (true of the week-stats cache in the same store too;
+  `keys.js` calls both databases re-fetchable caches).
+- Top Available and the All Leagues search show no bid (they show no W chip either, S34's owner choice).
+
+### Round 2: a review as a user (owner: do all four)
+
+I looked at Best available, Auto-Find and the tap text at both widths, with one player on waivers and with most of
+the line on waivers (a waiver day's look). Four changes, all asked for:
+1. **A bench player got nearly the upgrade's bid** (Chase Brown RB9 "Bid 10–17" beside Cook's 13–21): the number was the
+   league's price, not his worth to you. Best available now shows bids **only on upgrades**; on Auto-Find and Check a
+   List any verdict but Would Start (Bench, Out, Bye, ...) makes him a stash: **×0.5**, and the sheet says so ("He
+   wouldn't start for you now: a stash"). Chase Brown: Bid 5–9 against Cook's 13–21.
+2. **A thin position borrowed another's prices** (Jaxon Smith-Njigba WR11 "Bid 10–17" from RB bids near his rank). The
+   fallback no longer looks at other positions near his rank: his band, else every bid at his position, else every bid.
+   Anything but the band is a **rough guess**, shown greyed with "≈" ("≈ Bid 2–5", `is-rough`).
+3. **The tap text was a 9-line toast of multipliers.** It opens the shared sheet now (M11's; `openFaabBidSheet` in
+   `waivers.js`): title "Bid 13–21 · you have 63 of 100", the basis in bold ("Similar RBs this season (RB1–11 today): 4
+   won, 8 to 30, median 12"), what raised it (green up arrow) and lowered it (red down arrow) in plain words, then the
+   notes ("1 team can outbid 21 (88 left)", "Ranks are today's; the bids were placed earlier."). An adjustment under 5%
+   gets no line. `suggestBid` returns `lines: [{ kind, text }]` for it (and `reasons` as plain text); the button carries
+   them as `data-bid`.
+4. **Desktop:** a "·" before the bid on an upgrade's line (`.mls-ba-bid-sep`, hidden on phones, where the bid has its row).
+
+Tests: unit (11, rewritten for the lines, the stash and the rough label); `mls-faab-bid` (5, both widths): the sheet's
+title and lines with one up and one down arrow, the desktop dot, and a new case with three players on waivers (only
+the upgrade has a bid on Best available; Jaxon's Check a List bid is "≈", greyed, based on every bid). Ran check-precache,
+`node --test` (680) and the same specs as before plus `mls-faab-bid`: 137 passed. Screenshots: my last commit and this
+round, rendered in the same container, differ only in `desktop/` and `phone/mls-league-guide.png` (the legend line's
+new text and its "≈ Bid 2–5" sample); re-taken on CI.
+- CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 2); I opened them. Desktop: the legend row
+  now shows "W Bid 9–14 ≈ Bid 2–5" and its longer text (+21 px); above it unchanged, below it moved down. Phone: +42
+  px, identical where it paints (the legend is in the blank lower part, M17's capture cut).
+- Then merged main (S34 merged as #251, `CACHE_NAME` v2.10.8 there; this branch keeps v2.10.9). The merge adds nothing
+  this branch didn't already have, so no re-run.
+
+### Round 3: a third review as a user (owner: 1 = A + B, and 2, 3, 4; run at 3 AM MST)
+
+I replayed the model on the owner's 15 FAAB leagues (weeks 1–10, Sleeper's own position ranks standing in for the
+owner's rankings) and looked at Tuesday night, a dynasty league and desktop's side sheet. Tuesday night worked (the
+card's "Everyone who played … until Wed" line, and the upgrade keeps its bid). The findings and what changed:
+1. **"≈" would have been on most bids.** For each real winning claim, would ±6 ranks have found 4 other winning bids at
+   its position? 20% of the time; ±12, 39%. **A:** "≈" (greyed) only when it falls back to every position; a bid from
+   every bid at his position shows normally (the sheet still says "Too few bids for WRs near WR34 (n); every WR this
+   season"). **B:** `RANK_BAND` 6 → 12.
+2. **The sheet names who and where:** title "James Cook · Bid 13–21", then "Fixture League · you have 63 of 100"
+   (`bidTitle(s, name)`, `bidWhere(s, league)`; the callers pass the player's and league's names).
+3. **What the two ends mean**, after the basis: "Before the adjustments: 12 would have matched about half of these
+   winning bids, 20 about 3 in 4." "Matched", not "won": a winning bid is what the winner paid, not what it took to win.
+   When both ends are the same amount: "… would have matched at least 3 in 4 of these winning bids".
+4. **Whom he'd replace:** "He'd start for you, over Derrick Henry" (Best available's upgrade, Auto-Find's lineup check).
+5. (Small, no objection) **No FAAB left:** "Bid 0 · none left", never "≈".
+6. Chop Shop (guillotine, 1,000): near all-in bids for a top-20 RB match how that league bids; left as is.
+- Found in the look at the sheet: the league line sat under the sheet's header (a negative margin); fixed.
+
+Tests: unit (12: the ±12 band and its label, the whole position no longer rough, the ends' line both ways, "over …",
+"Bid 0 · none left" never ≈, the title and league line); `mls-faab-bid`: the sheet's title and seven lines from Best
+available, and Auto-Find's sheet ("over Derrick Henry"); Jaxon's Check a List bid still "≈" (one WR bid in the league,
+so every position). Ran check-precache, `node --test` (681), `mls-faab-bid` and the same neighbouring specs: 137
+passed. Screenshots: my last commit and this round, rendered in the same container, differ only in `desktop/` and
+`phone/mls-league-guide.png` (the legend line's text); re-taken on CI.
+- CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 3); I opened them. Desktop: the legend
+  line's new wording, one line longer (+21 px), everything below moved down by that. Phone: +21 px, identical where it
+  paints (the legend is in the blank lower part, M17's capture cut).
+
+### Round 4: a review as a user on the owner's real leagues (owner: make the recommended changes for 1–4)
+
+I ran the app on the owner's 21 Sleeper leagues (read-only: a local copy, Sleeper and ESPN fetched through curl,
+Sleeper's own position ranks uploaded as a stand-in Weekly set) and back-tested the model against the claims that
+really happened (each claim's suggestion from the bids won before it).
+- **Seen:** Saturday's Dashboard had one bid in 15 FAAB leagues (most upgrades were free agents): correct. Cards in ~0.5 s,
+  bids a few seconds later through the curl relay. On Auto-Find in Legends of the Pocket every one of ~40 cards had a
+  bid (a waiver day), Out / Bye / IR ones halved as stashes: left as is (owner).
+- **1. Wild or generic numbers.** RB77 (a deep backup) got "Bid 8–69 (of your 82 left)": week 1 of the owner's dynasty
+  leagues was a rookie frenzy (Claiborne 50, Randall 44, Heidenreich 31), and those players rank deep today. Every QB
+  from QB28 to QB57 got "Bid 3–14" (too few QB bids near any of them). **Changed:** no hard band; every winning bid at
+  his position counts, weighted by how close the player ranks to him today (fully within `NEAR` = 6 spots, fading to a
+  tenth by 30 or unranked) and by how recent (last 3 weeks fully, 4–6 weeks back half, older a quarter); weighted
+  median and 75th percentile. The top end is held to twice the bottom or the bottom plus 5% of the budget, whichever is
+  more (twice alone made a bottom of 0 cap everything at 1); the sheet says what it would have been when the cap cuts
+  by half again or more. Legends of the Pocket's RB77: "Bid 1–3".
+- **2. (The back-test.)** 73% of winning claims had no other bidder; the top end overpays those by a median 2.5% of the
+  budget and beats only ~41% of the rival-bid ones (before and after this round: the weighting and cap tighten the
+  ranges, 90% now within 5% of the budget, without changing that). Today's rank barely predicts which claims get rival
+  bids (21–44% at every rank). So, **3:**
+- **3. How often others bid,** from the league's failed claims (`winningBids` counts failed claims on the same player
+  in the same run, within 10 minutes, as `rivals`): "Others bid on 8 of 24 TE claims here; when they did, the winner
+  paid a median 17" (every position when his has too few). The IndexedDB key is now `faab_bids2_…` (each bid carries
+  `r`); the old `faab_bids_…` entries are left unread.
+- **4. "10 teams can outbid 11"** said little: when more than half the other teams can outbid the top end, "Most left:
+  100, 98, 89 (you: 82)"; otherwise the count, as before.
+- **Left for the owner to judge:** a wanted player in a league where most claims go for 0 now reads like Michael Trigg's
+  "Bid 0–5", with "Others bid on 8 of 24 TE claims here; when they did, the winner paid a median 17" and "it would have
+  been 27" in the sheet: the sheet says when to go higher, the line doesn't. The sheet is now 9 lines and scrolls a
+  little on a phone.
+
+Tests: unit (17: the weighted base, far from the bids, QB28 vs QB57, a week-1 frenzy by week 11, the cap and its 5%
+floor, the rival-bid line three ways, a count vs the most left, `winningBids`' rivals); `mls-faab-bid`: the sheet's
+lines (the fixture's failed claim on Achane gives "Others bid on 1 of 4 RB claims here…", and "Most left: 88 (you:
+63)"). Ran check-precache, `node --test` (686), `mls-faab-bid` and the same neighbouring specs: 137 passed.
+Screenshots: my last commit and this round, rendered in the same container, differ only in `desktop/` and
+`phone/mls-league-guide.png` (the legend line's text); re-taken on CI.
+- Then merged main (F16, #252, which took `CACHE_NAME` v2.10.9, so S35 is v2.10.10; CHANGELOG and LOG conflicts were
+  two new entries in the same place, both kept). Re-ran check-precache, `node --test` (686) and the same specs plus
+  F16's `tooltip-closed-space`: 154 passed, 1 failed: `tooltip-closed-space`'s "linger … a click ends it too" on
+  desktop. It fails 3 runs in 6 on main alone in this container (a flaky F16 test, not this card's; told the owner).
+  Main and this branch, rendered in the same container, differ only in `desktop/` and `phone/mls-league-guide.png`
+  (S35's legend line); re-taken on CI.
+- CI re-took both against main's baselines (commit "Screenshots re-taken on CI (2 PNGs)" after the F16 merge); I opened
+  them. Desktop: identical to main above the legend; the new "W Bid 9–14 ≈ Bid 2–5" row with round 4's text
+  (+145 px), the rest moved down. Phone: identical to main where it paints (+314 px in the blank lower part, M17's
+  capture cut).
+- **The flaky tooltip test (owner: "F16 ran the same tests"; take a look).** `tooltip-closed-space`'s "one at a time …
+  a click ends it too" ended a linger with `page.mouse.click(2, 300)`. On desktop that point is the navigation rail's
+  Scoreboard button (y 296–360 in this container), so the click switched to the Scoreboard tab; the next check looks for
+  the Lineup tab's tooltip, and whether it ran before the tab faded out was a race: 3 failures in 6 on main here, and
+  F16's own runs happened to win it. Fixed in the test only: the click is now at (1275, 300), the page's right margin
+  (a plain `div.container`, nothing interactive). 8 repeats of the spec at both widths: 144 passed, 0 failed (the
+  mouse-only tests skip on phones, as before).
+
+### Round 5: a review as a user (owner: do 1–3 and 5; back-test B for 4 first)
+
+Keyboard (Tab to the bid, Enter opens the sheet with focus on its title, Escape returns focus to the bid) and contrast
+(the bid 11.6:1, the grey "≈" 7.6:1 on the page's background) were fine. Changed:
+1. **The phone page jumped 28px when the bids arrived** (an upgrade's bid adds a row, a moment after the lines). While a
+   FAAB league's history loads, an upgrade on waivers shows its row already, muted: "Bid …" (`.mls-faab-bid.is-pending`,
+   not a button), filled in when it arrives; if the history fails or is empty, the row goes.
+2. **"You have 63 left" came from the last sync**, stale after any waiver run. `faabHistory.js` now re-reads the league's
+   rosters with the history (one request per FAAB league per visit) and updates `league.faabLeft` in memory; on an error
+   the synced numbers stay.
+3. **Too many numbers in the sheet** ("0 … 17 about 3 in 4", "a median 17", "held to 5 … it would have been 27"): the
+   cap is now said on the line about the two ends ("…, 17 about 3 in 4; the top here is held to 5 so a few big bids
+   don't stretch the range"), and the "it would have been" line is gone (9 lines → 8).
+5. The bid's screen-reader label ends "…: what it's based on" (was "…: why").
+
+**4, back-tested (not built; the owner decides):** B raises the top end, for a player who'd start for you or fill an
+empty spot, to the median winning bid of the position's rival-bid claims. The back-test can't tell who would have
+started for the claimant, so it applies B to every claim (the worst case for cost): the top end wins 54% of rival-bid
+claims (41% now), pays a median 6.0% of the budget over the runner-up when it wins (3.5% now), and pays a median 6.0%
+when nobody else bid (2.5% now; mean 8.1% vs 4.0%).
+
+Tests: unit (17; the cap's wording on the ends line); `mls-faab-bid` (6 per width): a new case where, after a waiver run
+since the sync, a new visit shows "Bid …" in Cook's row while the history (held on its rosters request) loads, then
+"(of your 50 left)" from the fresh rosters, the row the same height. Ran check-precache, `node --test` (686),
+`mls-faab-bid`, `tooltip-closed-space` and the neighbouring specs: 157 passed. Screenshots: my last commit and this
+round, rendered in the same container, are identical (44 of 44).
+
+### Round 6: optional, Conservative or Aggressive, and a toast that offers it (owner, 2026-11-14)
+
+The owner: the bids add text some will see as clutter, so make them optional, off by default; offer A and B as a
+choice; and a toast pointing to the setting. Owner's answers: **Conservative by default**; the toast after **Auto-Find
+and Check a List**; a **"Turn on" button in the toast** (built here, not a follow-up).
+- **The setting** (`js/mls/scout/faabSettings.js`, new, in `PRECACHE_ASSETS`; `KEYS.mls.faabSettings` =
+  `mls_faab_settings`: `{ on, style, hintShown }`, so Backup / Restore and Factory Reset have it): the Dashboard's
+  Advanced Settings has a **FAAB Bids** fold after Notifications, built like it (title row "Off" / "On · Conservative"),
+  with a "Suggest FAAB Bids" switch and, while on, a Conservative / Aggressive segmented choice and a line saying what
+  each does. Shown only when a synced league is FAAB (`applyFaabSettingsToUI`, from Best Available's render).
+- **Off** (the default): no bid, no "Bid …" placeholder, and no history or roster reads (`faabBidsFor` returns nothing;
+  `suggestBidFor` returns null). The FA / W chips (S34) are unchanged.
+- **Aggressive** (round 5's B): for a player who'd start for you or fill an empty spot, the top end is raised to the
+  median winning bid of the position's rival-bid claims (every position's when his has under 4), never above what you
+  have; the sheet says so ("Aggressive: the top is raised to 40, what winners paid when others bid"). The cap's note
+  isn't added when Aggressive raised the top. Back-test (round 5, applied to every claim, so the cost is overstated):
+  wins 54% of rival-bid claims instead of 41%, pays a median 6% of the budget instead of 2.5% when nobody else bids.
+- **The toast**, once ever: after Auto-Find or Check a List in a synced FAAB league, when the results show a W player
+  and bids are off: "Need help with FAAB bids? Turn on bid suggestions in Settings on the Dashboard." with **Turn on**,
+  which turns them on and runs the scan again so the bids appear. Ignored or dismissed, it doesn't come back
+  (`hintShown`).
+- **The toast's button** (`js/shared/ui/toast.js`, both apps): `showToast(message, { action: { label, onClick } })`
+  adds a text button in the accent colour between the message and ✕ (tappable on a click-through success toast, like ✕);
+  the toast closes, then the action runs. A toast with one stays 8 seconds instead of 3.5. Nothing else uses it yet.
+- **S45 (the Settings page)**, recorded in `docs/TESTING.md`'s Open follow-ups: move the FAAB Bids group there and drop
+  "on the Dashboard" from the toast (`HINT_TEXT`; the spec checks the text).
+- Legend line and CHANGELOG say it's off until turned on, and what each style does.
+- Found while testing: `.faab-style-options { display: grid }` overrode `hidden`, so the style choice showed while off;
+  `[hidden] { display: none }` added.
+
+Tests: unit (18; Aggressive: raised only for a player you'd start, not without contested claims, never above what you
+have); `mls-faab-bid` (10 per width): the earlier cases turn bids on first; new: off by default (no bid, the rosters
+read once by the sync and not by the history, the group "Off", turning it on shows "On · Conservative" and Cook's bid);
+Aggressive (a fixture with three more contested RB claims; Cook's top end becomes 40 and the sheet says so); the toast
+after Auto-Find and its Turn on (bids appear, settings saved); after Check a List, dismissed, then never again; a
+non-FAAB league (no group, no toast). Ran check-precache, `node --test` (687), and `mls-faab-bid`, `tooltip-closed-space`
+and the neighbouring specs (with Backup, key migration, badge legend, smoke, touch targets): 187 passed. Screenshots: my
+last commit and this round differ only in `desktop/` and `phone/mls-league-setup.png` (the FAAB Bids row in Advanced
+Settings) and `desktop/` and `phone/mls-league-guide.png` (the legend line); re-taken on CI.
+- CI re-took the four (commit "Screenshots re-taken on CI (4 PNGs)" after round 6); I opened them. `mls-league-setup`
+  (both widths): the new folded "FAAB Bids · Off" row between Notifications and Add Player Manually (+49 px), identical
+  above, the rest moved down. `desktop/mls-league-guide.png`: the legend line one line longer (+21 px).
+  `phone/mls-league-guide.png`: identical where it paints (+63 px in the blank lower part, M17's capture cut).
+
+### Round 7: a review as a user of the new setting (owner: all of it)
+
+Looked at turning it on, the toast, and Aggressive on the owner's real leagues (Legends of the Pocket's Auto-Find:
+players who'd start got "Bid 3–8" / "0–2", bench QBs the same 3–8 as stashes; the toast and its Turn on worked).
+1. **Aggressive often changed nothing, silently:** across the 15 FAAB leagues it raises the top for 44% of players who'd
+   start for you (by a median 3% of the budget); for the rest Conservative's top already reaches what contested winners
+   paid. In Aggressive the sheet now always says what it did: "Aggressive: the top is raised to 40, …", "Aggressive:
+   winners paid 8 when others bid; this range already reaches it", "Aggressive: no claim here has had other bidders yet,
+   so there's nothing to raise it to", or, for a stash, "Aggressive raises bids only for players who'd start for you".
+2. **Turning it on showed almost nothing on the Dashboard** (a real Saturday: one bid in 15 FAAB leagues): a line under
+   the switch, while on (`updateFaabStatus`, from Best Available's render): "Showing 1 bid on the Dashboard right now
+   (on upgrades who are on waivers). Auto-Find and Check a List show one for every player on waivers.", "Loading your
+   leagues' bids…", or "No bids on the Dashboard right now: they show on upgrades who are on waivers, once a league has a
+   winning bid this season."
+3. **The toast said "Settings"; the section is "Advanced Settings":** "Need help with FAAB bids? Turn on bid suggestions
+   in Advanced Settings on the Dashboard." (S45's note in Open follow-ups updated: "…in Settings." there).
+4. **The style buttons had no visible label:** "Bidding style" above them (`aria-labelledby`).
+5. **Touch targets:** `touch-targets.spec.mjs` now opens Advanced Settings' FAAB Bids, turns it on and measures it, and
+   measures a toast with an action button: both pass (48px areas, nothing covered).
+
+Tests: unit (19: the Aggressive notes four ways); `mls-faab-bid` (the status line with one bid and with none, the
+label); `touch-targets` (the two new checks). Ran check-precache, `node --test` (688), and `mls-faab-bid`,
+`tooltip-closed-space` and the neighbouring specs: 187 passed. Screenshots: my last commit and this round, rendered in
+the same container, are identical (44 of 44; the group is folded in them).
+
+### Round 8: a review as a user (owner: yes to all three)
+
+Switching leagues on Scout (no toast in a non-FAAB league, once in a FAAB one), turning bids off and on (the Dashboard
+redraws), Backup / Restore and Factory Reset (the setting goes with them) were fine. Changed:
+1. **The Guide didn't mention it** (only the badge legend did): step 8, "Scout: Waiver Wire Assistant", has a FAAB bids
+   bullet: off until turned on in Advanced Settings, FAAB Bids; where the bids show; Conservative and Aggressive; tap
+   for what it's based on.
+2. **When Sleeper couldn't be reached, the status line blamed "no winning bid yet":** it now says "Couldn't read your
+   leagues' bids from Sleeper; they'll load on your next visit." (or "Couldn't read N leagues' bids …" after the usual
+   line when only some failed).
+3. **Changing the setting didn't touch Auto-Find's or Check a List's results already on screen:** the last scan is kept
+   (`rerunWaiverScanForFaab` in `waivers.js`) and run again when bids are turned on or off or the style changes, while
+   its results are still the ones shown.
+
+Tests: `mls-faab-bid` (11 per width): the failure line; a new case where turning bids off and on from the Dashboard
+redraws Auto-Find's results. Ran check-precache, `node --test` (688), and `mls-faab-bid`, `tooltip-closed-space` and
+the neighbouring specs (with the Guide's): 189 passed. Screenshots: my last commit and this round differ only in
+`desktop/` and `phone/mls-league-guide.png` (step 8's new bullet); re-taken on CI.
+- CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 8); I opened them. Step 8's new FAAB bids
+  bullet after Pasted Lists (desktop +81 px, phone +219 px; on phones this part of the Guide paints), identical above,
+  the rest moved down.
+
+### Round 9: plain words (owner: read it as someone with a high-school education)
+
+Every line this card shows was reread for someone without the jargon; the owner approved the rewrites, keeping
+"median" ("the middle bid was 2" for a 0–50 range read as a contradiction). What changed, in the sheet:
+- The basis is two sentences: the fact in bold ("This season, 40 RBs were won on waivers here, for 0 to 50. The median
+  bid was 2."), then how bids are weighted, not bold ("Bids on players ranked close to RB72 count most, and so do recent
+  ones.", or "He isn't in your rankings, so …", or for a rough guess "Only 1 WR has been won here, so this is a rough
+  guess."): `lines[0].sub`, drawn as `.mls-faab-sub`.
+- "Before the adjustments: 2 would have matched about half …" → "Before the changes below, a bid of 2 would have tied or
+  beaten half of these winning bids, and 5 would have tied or beaten 3 out of 4."; the cap: "We stop the top at 8 so a
+  few very high bids don't make the range too wide."
+- "Others bid on 13 of 40 RB claims here; when they did, the winner paid a median 8" → "Other teams also bid in 13 of the
+  40 RB claims here. When they did, the median winning bid was 8."; none: "In all 40 RB claims here this season, only one
+  team bid."
+- "over DJ Giddens" → "in place of DJ Giddens"; "a stash" → "He wouldn't start for you right now, so this is a bench
+  pickup and the bid is lower"; "the league average" → "the average team"; the weeks line → "Only N weeks left: FAAB you
+  don't spend is wasted when the season ends, so bid a little more"; "only a 0 bid is possible" → "so you can only bid 0".
+- "2 teams can outbid 21 (88 and 71 left)" → "2 teams have more than 21 left (88 and 71), so they could outbid you";
+  "Most left: … (you: 82)" → "Most FAAB left on other teams: … (you have 82)".
+- "Ranks are today's; the bids were placed earlier." → "Note: these bids were made earlier in the season, but players
+  are matched by today's rankings, which may have changed."
+- The Aggressive lines say "median winning bid when other teams also bid", "This range already goes that high.", and
+  "no claim in this league has had more than one bidder yet, so there's nothing to compare against."
+- Settings, the Guide, the badge legend and CHANGELOG: Conservative "a lower bid. Usually enough when no other team wants
+  him." (it was "the cheapest bid likely to win", which overstated it: about 4 in 10 when another team bids);
+  Aggressive "for a player who'd start for you, a higher bid. Wins more often when other teams bid too, but you may pay
+  more than you needed to."; the legend's "≈ and grey" line is a sentence.
+Unchanged (already clear): the bid label, "Bid 0 · none left", the toast, the status line, "Suggest FAAB Bids".
+
+Tests: unit (19) and `mls-faab-bid` (11 per width) with the new text. Ran check-precache, `node --test` (688), and
+`mls-faab-bid`, `tooltip-closed-space` and the neighbouring specs: 189 passed. Screenshots: my last commit and this
+round differ only in `desktop/` and `phone/mls-league-guide.png` (the Guide bullet and the legend line); re-taken on CI.
+- CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 9); I opened them: step 8's FAAB bids
+  bullet in its new words (desktop +44 px, phone +111 px) and the legend line further down; identical above, the rest
+  moved down.
+
+### Round 10: shorter words (owner: apply all of it)
+
+Round 9's plain words, made shorter where it lost nothing ("median" kept):
+- The sheet: "40 RBs were won on waivers this season, for 0 to 50. Median: 2." / "Players ranked near RB72, and recent
+  bids, count most." / "Before the changes below, 2 tied or beat half of these winning bids; 5 tied or beat 3 out of 4."
+  / "The top stops at 8, so a few huge bids don't stretch the range." / "13 of the 40 RB claims had other bidders. Their
+  median winning bid was 8." / "None of the 40 RB claims had a second bidder." / "He wouldn't start for you now, so the
+  bid is lower" / "Only 3 weeks left, and unspent FAAB is wasted, so bid a little more" / "2 teams have more than 21 left:
+  88 and 71" (with more than three: "…: 99, 98, 97 and 2 more") / "Note: players are matched by today's rankings, which
+  may have changed since these bids." / the three Aggressive notes.
+- Settings: "A bid range for players on waivers in FAAB leagues, from your league's bids this season. Tap a bid to see
+  why."; "Conservative: lower bids, usually enough when no one else bids. Aggressive: higher bids for players who'd start
+  for you. They win more often against other bidders, but can cost more than needed."; the status line "1 bid on the
+  Dashboard now (upgrades on waivers only). …" / "No bids on the Dashboard now: they show only on upgrades on waivers,
+  once a league has a winning bid. …".
+- The Guide's bullet (~75 words → 50) and the badge legend line (~150 → 70).
+Unchanged: the toast, the bid label, the rough-guess notes, and the lines round 9 already had short.
+
+Tests: unit (19, plus "and 2 more"), `mls-faab-bid` (11 per width) with the new text. Ran check-precache, `node --test`
+(688), and `mls-faab-bid`, `tooltip-closed-space` and the neighbouring specs: 189 passed. Screenshots: my last commit and
+this round differ only in `desktop/` and `phone/mls-league-guide.png` (the shorter bullet and legend line: desktop
+−128 px, phone −324 px); re-taken on CI.
+- CI re-took both (commit "Screenshots re-taken on CI (2 PNGs)" after round 10); I opened them: step 8's shorter FAAB
+  bids bullet and the shorter legend line (desktop −107 px, phone −302 px on CI's fonts); identical above, the rest
+  moved up.
+
+### Merge with main (S32), the full suite, and the pull request
+
+Merged main (S32, #253, which took `CACHE_NAME` v2.10.10, so S35 is v2.10.11). Conflicts: CHANGELOG and LOG (two new
+entries in the same place, both kept), `js/mls/legend.js`'s import line (both cards' names kept), and the Guide's two
+PNGs (main's taken; CI re-takes them with this card's text).
+
+**The full check** (`npm ci && npm run check`, once, before the pull request): check-precache OK (177 precached),
+`node --test` 688 passed, Playwright 1082 passed, 72 skipped, 4 failed. The 4 are `visual.spec.mjs`'s environment guard
+(this container's fonts), as on main. Main and this branch, rendered in the same container, differ only in `desktop/`
+and `phone/mls-league-setup.png` (the FAAB Bids row in Advanced Settings) and `desktop/` and `phone/mls-league-guide.png`
+(step 8's bullet and the legend line); CI re-takes them. Not run again (rule 7); CI runs it on the pull request.

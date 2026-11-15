@@ -250,3 +250,16 @@ export function waiverChipMarkup(status, tip, { sample = false } = {}) {
     if (sample) return `<span class="${cls}">${inner}</span>`;
     return `<button type="button" class="${cls}" data-action="explainWaiver" data-tip="${tip}" title="${tip}" aria-label="${tip}">${inner}</button>`;
 }
+
+// --- A SUGGESTED FAAB BID (improvements S35; scout/waivers.js faabBidHTML) ---
+// "Bid 9–14" after a W chip in a FAAB league (Best available's upgrades, Auto-Find, Check a List); "≈ Bid 2–5", muted,
+// when there were too few bids near his rank (round 2). Tap for what it's based on, in the shared sheet. label: plain
+// text; data: escaped JSON for the sheet ({ title, lines }).
+export function faabBidMarkup(label, data, { sample = false, rough = false } = {}) {
+    const cls = `mls-faab-bid${rough ? ' is-rough' : ''}`;
+    if (sample) return `<span class="${cls}">${label}</span>`;
+    return `<button type="button" class="${cls}" data-action="explainBid" data-bid="${data}" aria-label="${label}: what it's based on">${label}</button>`;
+}
+// The bid sheet's arrows (round 2): what raised the bid and what lowered it.
+export const BID_UP_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
+export const BID_DOWN_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>`;

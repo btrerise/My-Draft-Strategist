@@ -495,6 +495,33 @@
             </div>
         </details>
 
+        <!-- Suggested FAAB bids (improvements S35, round 6, js/mls/scout/faabSettings.js): off by default; shown only when
+             there's a FAAB league. A fold like Notifications; its title row says On or Off and the style. -->
+        <details class="sos-details-accordion faab-settings" id="faabSettingsGroup" hidden>
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>FAAB Bids<span id="faabSettingsState" class="notify-settings-state">Off</span></summary>
+            <div class="accordion-body">
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <label class="toggle-title" for="faabBidsToggle">
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        Suggest FAAB Bids
+                    </label>
+                    <span class="toggle-desc">A bid range for players on waivers in FAAB leagues, from your league's bids this season. Tap a bid to see why.</span>
+                </div>
+                <input type="checkbox" id="faabBidsToggle" class="toggle-switch" data-action="toggleFaabBids">
+            </div>
+            <div id="faabStyleOptions" class="faab-style-options" hidden>
+                <p id="faabBidsStatus" class="text-helper faab-bids-status" role="status" aria-live="polite"></p>
+                <span id="faabStyleLabel" class="faab-style-label">Bidding style</span>
+                <div class="mls-segmented" role="group" aria-labelledby="faabStyleLabel" aria-describedby="faabStyleHint">
+                    <button type="button" class="mls-segmented-btn active" data-style="conservative" aria-pressed="true" data-action="setFaabStyle">Conservative</button>
+                    <button type="button" class="mls-segmented-btn" data-style="aggressive" aria-pressed="false" data-action="setFaabStyle">Aggressive</button>
+                </div>
+                <small id="faabStyleHint" class="text-helper">Conservative: lower bids, usually enough when no one else bids. Aggressive: higher bids for players who'd start for you. They win more often against other bidders, but can cost more than needed.</small>
+            </div>
+            </div>
+        </details>
+
         <details class="sos-details-accordion">
             <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Add Player Manually</summary>
             <div class="accordion-body">
@@ -1739,6 +1766,7 @@
                     <li><strong class="text-main">Auto-Find:</strong> Lists the top available players by your Weekly or ROS rankings (<strong class="text-main">Rank By</strong>; in dynasty and keeper leagues ROS reads <strong class="text-main">Dynasty Rank</strong>, plus <strong class="text-main">In-Season Rank</strong> when the league has In-Season rankings), filtered by <strong class="text-main">Position</strong> and <strong class="text-main">Show Top</strong>, with each one's weekly positional and FLEX rank. Turn on <strong class="text-main">Only Would-Starts</strong> to hide anyone who wouldn't crack your lineup.</li>
                     <li><strong class="text-main">Compare Against:</strong> <strong class="text-main">Starting Lineup</strong> checks whether he'd start for you this week and names who he'd bench. <strong class="text-main">Whole Roster</strong> checks whether he's better than your weakest player at the position (your drop candidate).</li>
                     <li><strong class="text-main">Pasted Lists:</strong> Paste waiver recommendations or trade targets and tap "Scan Pasted List" to get the same checks. Set <strong class="text-main">Search In</strong> to <strong class="text-main">All My Leagues</strong> to run that list against <em>every</em> league you have synced at once - one card per player showing where he is a free agent, where he is already on your roster, and who owns him in the rest, with a Switch button to jump straight to any of them.</li>
+                    <li><strong class="text-main">FAAB bids</strong> (off until you turn them on in <strong class="text-main">Advanced Settings, FAAB Bids</strong>): a bid range for players on waivers in FAAB leagues, from your league's winning bids this season. <strong class="text-main">Conservative</strong> bids lower; <strong class="text-main">Aggressive</strong> bids higher for players who'd start for you, winning more often but sometimes paying more. Tap a bid to see why.</li>
                 </ul>
             </div>
 

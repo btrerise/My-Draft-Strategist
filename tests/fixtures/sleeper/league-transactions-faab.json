@@ -1,0 +1,132 @@
+[
+ {
+  "transaction_id": "3000000000000000110",
+  "type": "waiver",
+  "status": "complete",
+  "leg": 1,
+  "roster_ids": [
+   2
+  ],
+  "adds": {
+   "4034": 2
+  },
+  "drops": null,
+  "draft_picks": [],
+  "settings": {
+   "waiver_bid": 30
+  },
+  "created": 1789502400000,
+  "status_updated": 1789542300000
+ },
+ {
+  "transaction_id": "3000000000000000111",
+  "type": "waiver",
+  "status": "complete",
+  "leg": 1,
+  "roster_ids": [
+   2
+  ],
+  "adds": {
+   "9226": 2
+  },
+  "drops": null,
+  "draft_picks": [],
+  "settings": {
+   "waiver_bid": 12
+  },
+  "created": 1789502400000,
+  "status_updated": 1789542300000
+ },
+ {
+  "transaction_id": "3000000000000000112",
+  "type": "waiver",
+  "status": "failed",
+  "leg": 1,
+  "roster_ids": [
+   1
+  ],
+  "adds": {
+   "9226": 1
+  },
+  "drops": null,
+  "draft_picks": [],
+  "settings": {
+   "waiver_bid": 40
+  },
+  "created": 1789502400000,
+  "status_updated": 1789542300000
+ },
+ {
+  "transaction_id": "3000000000000000113",
+  "type": "waiver",
+  "status": "complete",
+  "leg": 1,
+  "roster_ids": [
+   1
+  ],
+  "adds": {
+   "8150": 1
+  },
+  "drops": null,
+  "draft_picks": [],
+  "settings": {
+   "waiver_bid": 8
+  },
+  "created": 1789502400000,
+  "status_updated": 1789542300000
+ },
+ {
+  "transaction_id": "3000000000000000114",
+  "type": "waiver",
+  "status": "complete",
+  "leg": 1,
+  "roster_ids": [
+   2
+  ],
+  "adds": {
+   "9224": 2
+  },
+  "drops": null,
+  "draft_picks": [],
+  "settings": {
+   "waiver_bid": 20
+  },
+  "created": 1789502400000,
+  "status_updated": 1789542300000
+ },
+ {
+  "transaction_id": "3000000000000000115",
+  "type": "waiver",
+  "status": "complete",
+  "leg": 1,
+  "roster_ids": [
+   1
+  ],
+  "adds": {
+   "10229": 1
+  },
+  "drops": null,
+  "draft_picks": [],
+  "settings": {
+   "waiver_bid": 3
+  },
+  "created": 1789502400000,
+  "status_updated": 1789542300000
+ },
+ {
+  "transaction_id": "3000000000000000116",
+  "type": "free_agent",
+  "status": "complete",
+  "leg": 1,
+  "roster_ids": [
+   1
+  ],
+  "adds": {
+   "9997": 1
+  },
+  "drops": null,
+  "draft_picks": [],
+  "created": 1789675200000,
+  "status_updated": 1789675200000
+ }
+]

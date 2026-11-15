@@ -20,6 +20,7 @@ import { applyWaiverScanSettingsToUI, getPowerLeagueKind, loadRosterTab, optimiz
 import { updateRankingsMetaDisplay } from '../rankings/engine.js';
 import { applyMarketSettingsToUI } from '../settings.js';
 import { waiverSettingsFrom } from '../scout/waiverStatus.js';
+import { faabLeftFrom, seasonLastWeek } from '../scout/faab.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { flashButton } from '../../shared/ui/flashButton.js';
 import { normalizeName } from '../../shared/names.js';
@@ -712,6 +713,10 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
                 // and hour, daily waivers. They say whether an unrostered player is a free agent or on waivers
                 // (scout/waiverStatus.js). Kept from the last sync if this response lacks them.
                 waivers: waiverSettingsFrom(ls) || (existingLeague ? existingLeague.waivers || null : null),
+                // A FAAB league's budget left per team, { rosterId: left }, from the rosters' waiver_budget_used, and the
+                // season's last week (improvements S35, the suggested bid). null outside FAAB leagues.
+                faabLeft: ls.waiver_type === 2 ? faabLeftFrom(rosters, ls.waiver_budget) : null,
+                lastWeek: seasonLastWeek(ls),
                 // Sleeper's starting slots in order ('QB', 'RB', 'FLEX', 'SUPER_FLEX', ...), bench left out
                 // (improvements S22, round 2). A matchup's `starters` follow this order, so starters[i] fills
                 // starterSlots[i]: the Scoreboard's worst benchings compare a benched player with the starter in a slot

@@ -193,6 +193,20 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A suggested FAAB bid, if you want one.** Turn on **FAAB Bids** in the Dashboard's Advanced Settings (it's off, and
+  shows only if you have a FAAB league), and choose **Conservative** (a lower bid, usually enough when no other team
+  wants him) or **Aggressive** (for a player who'd start for you, a higher bid that wins more often when other teams
+  bid too). The first time Auto-Find or Check a List finds a player on waivers in a FAAB league, a toast offers it,
+  with a **Turn on** button. In Sleeper FAAB leagues, a player on waivers then shows a bid range such as **Bid 13–21
+  (of your 63 left)**: on the Dashboard's Best available for an upgrade, and on Auto-Find's cards and Check a List's
+  free agents. It comes from the league's winning bids this season at his position, those for players ranked near him
+  today and recent ones counting most; it's higher when he'd start for you or fill an empty spot, lower (a stash) when
+  he wouldn't, it weighs what you have left against the league's average and, outside dynasty, the weeks left, and its
+  top end is kept to about twice the bottom. With too few bids at his position it's a rough guess from every bid,
+  shown greyed as **≈ Bid 2–5**. Tap it for a sheet that names the player and league and says what it's based on, what
+  the two ends mean, how often others bid at his position (and what the winner paid then), what raised or lowered it,
+  and who has the most left. What you and the other teams have left is read fresh from Sleeper on each visit, not from
+  your last sync. Nothing shows until the league has a winning bid this season.
 - **Phone lineup rows show less at once.** On a phone, a player's slot (or, on the Roster tab, position) badge sits on
   the bottom edge of his photo, so his name gets more of the row. A Lineup row shows his slot, photo, name, position,
   team, rank, kickoff and opponent, points and swap, plus what needs you (injury, bye, the IR slot, Bench or Starting

@@ -18,9 +18,13 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { normalizeName } from '../../shared/names.js';
 import { isPreferredSleeperEntry } from '../players.js';
 import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
-import { scoutPillMarkup, tierGapMarkup, waiverChipMarkup } from '../badges.js';
+import { BID_DOWN_ICON, BID_UP_ICON, faabBidMarkup, scoutPillMarkup, tierGapMarkup, waiverChipMarkup } from '../badges.js';
+import { bidLabel, bidTitle, bidWhere } from './faab.js';
+import { openSheet } from '../../shared/ui/sheet.js';
 import { isWeekOver, shortWhen, waiverStatus, waiverStatusText } from './waiverStatus.js';
 import { recentDropsFor } from './recentDrops.js';
+import { faabBidsFor, isFaabLeague, suggestBidFor } from './faabHistory.js';
+import { maybeShowFaabHint } from './faabSettings.js';
 import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---
@@ -321,6 +325,50 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         return st ? waiverChipMarkup(st.status, escapeHtml(waiverStatusText(st))) : '';
     }
 
+    // A suggested FAAB bid (improvements S35, scout/faab.js): "Bid 9–14", or with long "Bid 9–14 (of your 63 left)";
+    // a tap opens the sheet that says what it's based on. '' when there's no suggestion (not FAAB, no history yet).
+    // name, league: the player and league the sheet names (round 3).
+    export function faabBidHTML(s, { long = false, name = '', league = '' } = {}) {
+        if (!s || s.noHistory) return '';
+        const data = escapeHtml(JSON.stringify({ title: bidTitle(s, name), where: bidWhere(s, league), lines: s.lines }));
+        return faabBidMarkup(`${bidLabel(s)}${long ? ` (of your ${s.left} left)` : ''}`, data, { rough: s.rough });
+    }
+
+    // The bid's sheet (round 2, the owner's pick over a toast): its title, then one line each for what it's based on,
+    // what raised it (an up arrow), what lowered it (a down arrow), and the notes.
+    export function openFaabBidSheet(btn) {
+        let data = null;
+        try { data = JSON.parse(btn.dataset.bid || 'null'); } catch (e) { data = null; }
+        if (!data) return;
+        const icon = { up: BID_UP_ICON, down: BID_DOWN_ICON };
+        const where = data.where ? `<li class="is-where"><span>${escapeHtml(data.where)}</span></li>` : '';
+        const body = `<ul class="mls-faab-sheet">${where}${(data.lines || []).map(l =>
+            `<li class="is-${escapeHtml(l.kind)}">${icon[l.kind] || ''}<span>${escapeHtml(l.text)}${l.sub ? ` <span class="mls-faab-sub">${escapeHtml(l.sub)}</span>` : ''}</span></li>`).join('')}</ul>`;
+        openSheet({ title: data.title, body, opener: btn, className: 'mls-faab-sheet-host' });
+    }
+
+    // The one-time "Turn on" toast for suggested FAAB bids (S35, round 6), after Auto-Find or Check a List: in a synced FAAB
+    // league, when the results show a player on waivers. rerun: the scan again, so the bids appear once they're on.
+    export function offerFaabHint(league, outputEl, rerun) {
+        lastWaiverScan = { outputEl, rerun, marker: outputEl ? outputEl.firstElementChild : null };
+        if (!isFullyMappedLeague(league)) return;
+        maybeShowFaabHint({ faabLeague: isFaabLeague(league), anyWaivers: !!(outputEl && outputEl.querySelector('.mls-wv-chip.is-w')), onEnable: rerun });
+    }
+
+    // The last Auto-Find or Check a List (S35, round 8), so turning bids on or off, or changing their style, redraws
+    // results already on screen (the Dashboard redraws at once; these used to wait for the next scan).
+    let lastWaiverScan = null;
+    export function rerunWaiverScanForFaab() {
+        const last = lastWaiverScan;
+        if (!last || !last.outputEl || !last.outputEl.isConnected) return;
+        // Only while that scan's results are still the ones shown (another mode can write to the same box).
+        if (!last.marker || !last.outputEl.contains(last.marker)) return;
+        last.rerun();
+    }
+
+    // The bid's own line under a card's verdict (S35).
+    export const wrapBid = (html) => (html ? `<div class="mls-scan-bid">${html}</div>` : '');
+
     export function freeAgentPlayer(fa, meta) {
         const m = (meta && meta[fa.cleanName]) || {};
         return { id: m.id || `fa:${fa.cleanName}`, name: fa.name, cleanName: fa.cleanName, pos: fa.pos, team: m.team || null, inj: m.inj || null };
@@ -334,7 +382,9 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     export async function buildWaiverContext(league) {
         let meta = {};
         // This league's recent drops, for Free agent or Waivers (improvements S34); {} for a league without them.
-        const [metaResult, dropsResult] = await Promise.allSettled([getSleeperMetaByName(), recentDropsFor(isFullyMappedLeague(league) ? [league] : [], State.currentNflWeek)]);
+        // And a FAAB league's bid history (improvements S35), for the suggested bid; a failure only leaves the bid out.
+        const mapped = isFullyMappedLeague(league) ? [league] : [];
+        const [metaResult, dropsResult] = await Promise.allSettled([getSleeperMetaByName(), recentDropsFor(mapped, State.currentNflWeek), faabBidsFor(mapped, State.currentNflWeek)]);
         if (metaResult.status === 'fulfilled') meta = metaResult.value;
         else console.warn('Waiver scan: Sleeper player map unavailable, falling back to league/market positions.', metaResult.reason);
         const drops = dropsResult.status === 'fulfilled' ? dropsResult.value[league.leagueId] || null : null;
@@ -390,12 +440,25 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         };
 
         const scan = resolveWaiverBasis();
+        const scanDisplay = scan && scan.basis === 'ros' ? (scan.season ? buildRankDisplayIndex(scan.rankings, getPos) : rosDisplay) : wkDisplay;
+
+        // A suggested FAAB bid for a player on waivers who can still help this week (improvements S35), matched by his
+        // Rank By position rank; raised when the lineup check says he'd start or fills an empty spot. '' otherwise.
+        const bidHTML = (cleanName, pos, verdict, name = '') => {
+            const st = waiverStatusOf(cleanName);
+            if (!st || st.status !== 'waivers' || st.tooLateThisWeek) return '';
+            const posRankOf = (c) => (scanDisplay[c] && scanDisplay[c].posRank) || null;
+            // Would Start raises it; any other verdict (Bench, Out, Bye, ...) makes him a stash and halves it (round 2).
+            const need = !verdict ? null : verdict.status === 'starts' ? (verdict.displaced ? 'starts' : 'empty') : 'bench';
+            const over = need === 'starts' ? verdict.displaced.name : null;
+            return faabBidHTML(suggestBidFor(league, { pos, posRank: posRankOf(cleanName), need, over }, posRankOf, State.currentNflWeek), { long: true, name, league: league.name });
+        };
 
         // *Cross: which number a cross-position head-to-head (FLEX slot, WR vs RB) is shown in.
         // Weekly files carry a FLEX list, so 'flex'; ROS files carry Overall instead, so
         // 'overall' -- "ROS Flex" isn't a number any ROS source actually publishes.
         return {
-            league, meta, getPos, evaluate, hasPlayed, lineupReady, checkIsWeekly, waiverStatusOf,
+            league, meta, getPos, evaluate, hasPlayed, lineupReady, checkIsWeekly, waiverStatusOf, bidHTML,
             checkLabel: checkIsWeekly ? 'Wk' : seasonRankings === State.rosRankings ? rosName(false) : 'In-Season',
             // The same, written out for the notes ("using In-Season ranks"; S23, round 5).
             checkName: checkIsWeekly ? 'Weekly' : seasonRankings === State.rosRankings ? rosName(false) : 'In-Season',
@@ -403,7 +466,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
             checkCross: checkIsWeekly ? 'flex' : 'overall',
             wkDisplay, rosDisplay, rosByName,
             scan,
-            scanDisplay: scan && scan.basis === 'ros' ? (scan.season ? buildRankDisplayIndex(scan.rankings, getPos) : rosDisplay) : wkDisplay,
+            scanDisplay,
             scanCross: scan && scan.basis === 'ros' ? 'overall' : 'flex'
         };
     }
@@ -718,6 +781,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
                 <div class="mls-player-badges-row">${waiverChipHTML(ctx.waiverStatusOf(fa.cleanName))}${injBadge}${getByeBadgeHTML(player.team)}${getGameInfoHTML(player.team, waiverOpponentPlayer(ctx, fa.cleanName, player))}${getSoSBadgeHTML(player.team, player.pos, WAIVER_SOS_OPTS)}</div>
                 ${waiverRanksRowHTML(ctx, fa.cleanName, player.pos)}
                 ${shownLine ? `<div class="mls-scan-verdict">${shownLine}</div>` : ''}
+                ${ctx.bidHTML ? wrapBid(ctx.bidHTML(fa.cleanName, player.pos, verdict, fa.name)) : ''}
             </div>
             <div class="mls-text-right">${pill}</div>
         </div>`;
@@ -1014,6 +1078,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
             }
 
             outputEl.innerHTML = html;
+            offerFaabHint(league, outputEl, () => autoFindWaiverUpgrades(btn));
         } catch (err) {
             console.error('Waiver Auto-Find failed:', err);
             // Missing rankings and an unsynced league are already caught with their own

@@ -94,7 +94,7 @@ test.describe('Lineup Strategist Free agent or Waivers', () => {
         await expect(page.locator('.toast-message').filter({ hasText: /^Free agent: add now, until his Sun [\d:]+ [AP]M kickoff\.$/ })).toBeVisible();
         // The waiver settings came with the sync, and are kept on the league (so Backup / Restore has them).
         const waivers = await page.evaluate(() => JSON.parse(localStorage.getItem('mls_leagues')).find(l => l.leagueId === '1000000000000000001').waivers);
-        expect(waivers).toEqual({ type: 'faab', budget: 100, clearDays: 2, dayOfWeek: 2, daily: false, hour: 0, days: 5461 });
+        expect(waivers).toEqual({ type: 'faab', budget: 100, minBid: 0, clearDays: 2, dayOfWeek: 2, daily: false, hour: 0, days: 5461 });
         await expectClean(page, state);
     });
 

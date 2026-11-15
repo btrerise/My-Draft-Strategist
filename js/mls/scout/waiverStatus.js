@@ -35,6 +35,8 @@ export function waiverSettingsFrom(settings) {
     return {
         type: CLAIM_TYPES[settings.waiver_type] || 'rolling',
         budget: num(settings.waiver_budget),
+        // The smallest FAAB bid allowed (improvements S35's suggested bid); 0 in the owner's leagues.
+        minBid: num(settings.waiver_bid_min, 0),
         clearDays: num(settings.waiver_clear_days, 0),
         dayOfWeek: num(settings.waiver_day_of_week, 2),
         daily: settings.daily_waivers === 1,
