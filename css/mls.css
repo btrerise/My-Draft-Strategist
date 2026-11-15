@@ -325,6 +325,18 @@ body.mls-hide-headshots .mls-headshot { display: none; }
     flex-wrap: wrap;
     gap: 0.5rem;
 }
+/* Early Games' chips say where each team came from (improvements S50): the kickoff in your time for one the schedule
+   filled in, "Added" for one you picked. Teams you took off the schedule's list sit under them with Put back. */
+.team-chip .team-chip-note {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+.early-removed {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.early-removed-team { white-space: nowrap; }
 
 /* Weekly Rankings Feedback */
 .weekly-meta-display {

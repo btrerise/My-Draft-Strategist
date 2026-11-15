@@ -13171,3 +13171,56 @@ Owner: "Looks good. Run the suite, then open PR, watch CI, and merge when green"
 (`npm ci && npm run check`, once): check-precache OK (177 precached), `node --test` 688 passed, Playwright 1094 passed,
 72 skipped, 4 failed. The 4 are `visual.spec.mjs`'s environment guard (this container's fonts), as on main; the
 screenshots themselves were compared main against this branch in the same container (identical, above).
+
+## S50 — Early Games filled in for you from the week's kickoffs
+
+From the owner's notes of 2026-11-12 (sent 2026-11-14): "Could we make the 'Early Games' feature on the Lineup tab
+automatic? Might want to make it optional if so." Before, Early Games was a list of teams you picked by hand
+(`KEYS.mls.earlyTeams`) that never cleared, so last Thursday's teams stayed picked until you removed them.
+
+**User-visible effect.** The Lineup tab's Early Games card has a "Fill in from the schedule" switch, on by default. With it
+on, the list fills itself each week with every team playing before Sunday 1:00 PM Eastern (Thursday, Friday, Saturday
+and the international morning games; not Monday night), so the EARLY badges, the Early Game Reminder banner and the
+Dashboard league cards' EARLY chip appear on their own. Each chip says where it came from: the schedule's show their
+kickoff in your local time ("Thu 8:15 PM"; "Schedule" while this visit's kickoffs haven't loaded), yours say "Added".
+You can still add a team, or remove one the schedule filled in; a removed one is listed under the chips ("Removed this
+week: DET Put back"). Everything clears when a new NFL week starts, switch on or off. With the switch off you pick by
+hand as before (and those picks also clear weekly). The card's tooltip, the switch's line and the Guide's step 5 say it's
+automatic; the Guide legend's EARLY line says "a team under Early Games: filled in from the schedule, or one you added".
+Empty states: "No games before Sunday 1:00 PM Eastern this week." (kickoffs loaded, none early), "This week's kickoff
+times haven't loaded yet. You can add teams yourself." (switch on, no kickoffs), "No teams selected." (switch off).
+
+**The owner's decisions** (2026-11-15, all four suggestions):
+1. Early = before Sunday 1:00 PM Eastern (Thursday, Friday, Saturday, international mornings); Monday night isn't.
+2. On by default, the switch on the Early Games card (S45's Settings page isn't merged).
+3. With it on you can still add a team and remove one the schedule added, for that week only.
+4. The list follows the NFL week: last week's teams clear on their own, even with the switch off.
+
+**What changed.**
+- `js/mls/lineup/earlyRule.js` (new, no imports): `earlyTeamsFromKickoffs(gameTimesByTeam)`. Worked out in Eastern time
+  with `Intl.DateTimeFormat` (`America/New_York`), whatever the device's zone. "Sunday" is the week's main Sunday (the
+  Eastern Sunday with the most kickoffs), so a Christmas Wednesday or a week-18 Saturday counts and nothing after it
+  does; a week with no Sunday games falls back to Wednesday–Saturday.
+- `js/mls/lineup/earlyGames.js`: the list is now `getEarlyTeams()`: the schedule's teams less the ones you removed, then
+  yours (`State.earlyTeams`, the same key as before, so old installs keep their picks). `noteEarlyWeek()` (called from
+  `refreshCurrentNflWeek` in `state.js` once Sleeper names the week) clears your teams and the week's state when the
+  week differs from the saved one; an install with no saved week adopts the current one, so its picks count as this
+  week's and clear next week. `noteEarlyKickoffs()` (called from `refreshGameTimes` when ESPN's kickoffs arrive) saves
+  the schedule's teams for the week. Until they load, what was saved stays (the badges show at once on the next visit).
+  New actions `restoreEarlyTeam` (Put back) and `setEarlyFromSchedule` (the switch, a change action) in `main.js`.
+- Storage (`keys.js`, no renamed keys): `mls_early_week` = `{ week: '2026-11', schedule: [team], removed: [team] }`
+  (the season-week stamp as `locksWeek` and starter alerts use), and `mls_early_from_schedule` = `'0'` while the switch
+  is off (unset = on). Both `mls_`, so Backup, Restore and Factory Reset pick them up.
+- `lineup/index.html`: the switch row, the "Removed this week" line, the tooltip and Guide step 5. `css/mls.css`: the
+  chip's muted note and the removed line. `js/mls/legend.js`: the EARLY meaning. `sw.js`: `earlyRule.js` precached,
+  `CACHE_NAME` v2.10.13. CHANGELOG line under Lineup Strategist.
+- Not touched (out of scope): the optimizer (EARLY stays a reminder) and FLEX Kickoff Optimization.
+
+**Tests.** `tests/unit/earlyRule.test.mjs` (5): a November week with Thursday, Saturday and a 9:30 AM Madrid game fills
+exactly those six teams (not 1:00 PM, 4:25, SNF or MNF); a September (daylight time) week with 12:59 vs 1:00 PM; a
+Christmas Wednesday; empty and bad input; the new keys are MLS-owned. Passes with `TZ=America/Phoenix` too.
+`tests/mls-early-games.spec.mjs` (6 per width), with a stubbed ESPN scoreboard: on by default fills exactly the
+Thursday, Saturday and international teams with their kickoffs, the banner and EARLY on Josh Allen and Justin Jefferson
+but not Ja'Marr Chase; add and remove for the week, Put back, kept across a reload; switch off picks by hand and stays
+off; the next NFL week clears last week's teams (switch off) and the schedule refills when it's turned on; a pre-S50
+install keeps its picks as this week's; kickoffs that fail keep what was saved, then show the not-loaded empty state.

@@ -1143,10 +1143,19 @@
             </h3>
             <div class="tooltip-container">
                 <div class="tooltip-icon">i</div>
-                <span class="tooltip-text">Select teams playing before Sunday's main slate. Players on these teams will be flagged with an EARLY badge across your Lineup screen so you can make informed slot decisions.</span>
+                <span class="tooltip-text">Players on these teams get an EARLY badge on your Lineup screen, so you can set them before the main Sunday games. With Fill in from the schedule on, the list fills itself each week with every team playing before Sunday 1:00 PM Eastern (Thursday, Friday, Saturday and the international morning games). You can still add a team or remove one for that week. The list clears when a new NFL week starts.</span>
             </div>
         </header>
-        
+
+        <!-- Fill in from the schedule (improvements S50): on unless you turn it off; js/mls/lineup/earlyGames.js. -->
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <label class="toggle-title" for="earlyFromScheduleToggle">Fill in from the schedule</label>
+                <span id="earlyFromScheduleDesc" class="toggle-desc">Every team playing before Sunday 1:00 PM Eastern, this week.</span>
+            </div>
+            <input type="checkbox" id="earlyFromScheduleToggle" class="toggle-switch" checked data-action="setEarlyFromSchedule">
+        </div>
+
         <div class="early-games-stack">
             <select id="earlyTeamSelect" class="form-input" data-action="addEarlyTeam" aria-label="Select Early Team">
                 <!-- Populated by JS -->
@@ -1154,6 +1163,7 @@
             <div id="earlyTeamChips" class="team-chips-container">
                 <!-- Chips inject here -->
             </div>
+            <p id="earlyRemoved" class="early-removed" hidden></p>
         </div>
     </section>
 
@@ -1720,7 +1730,7 @@
             <!-- Step 5 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">5</span> Lineup Optimizer & Early Games</h4>
-                <p class="step-desc">The Lineup Optimizer generates your highest-projected starting lineup based on your Weekly Rankings. Lock foundational starters with <svg role="img" aria-label="lock" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap <strong class="text-main">⇄ Swap</strong> to manually override positions. On a phone, tap a player's photo or slot badge to lock him, and his name for every badge on his row and what it means. Select teams playing in early windows (TNF, London) under <strong class="text-main">Early Games</strong> to flag them with an <span class="badge early-badge">EARLY</span> badge across your lineup before roster locks. Each starter and bench player also shows their opponent and Sleeper's projection for the week (labeled <strong class="text-main">proj</strong>); once that player's game is final, their actual score takes its place with the projection shown beneath it. The optimizer runs on your rankings; the one place it uses Sleeper's projection is a FLEX decision between players who have no FLEX rank in your file, since position ranks don't compare across positions (TE24 isn't really ahead of WR45). Projections and scores update when you open or interact with the tab, not live during games.</p>
+                <p class="step-desc">The Lineup Optimizer generates your highest-projected starting lineup based on your Weekly Rankings. Lock foundational starters with <svg role="img" aria-label="lock" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap <strong class="text-main">⇄ Swap</strong> to manually override positions. On a phone, tap a player's photo or slot badge to lock him, and his name for every badge on his row and what it means. <strong class="text-main">Early Games</strong> fills itself each week with the teams playing before Sunday 1:00 PM Eastern (Thursday, Friday, Saturday and the international morning games), and their players get an <span class="badge early-badge">EARLY</span> badge across your lineup so you set them first. Add or remove a team for the week there, or turn off <strong class="text-main">Fill in from the schedule</strong> to pick them yourself; the list clears when a new NFL week starts. Each starter and bench player also shows their opponent and Sleeper's projection for the week (labeled <strong class="text-main">proj</strong>); once that player's game is final, their actual score takes its place with the projection shown beneath it. The optimizer runs on your rankings; the one place it uses Sleeper's projection is a FLEX decision between players who have no FLEX rank in your file, since position ranks don't compare across positions (TE24 isn't really ahead of WR45). Projections and scores update when you open or interact with the tab, not live during games.</p>
                 <ul class="guide-list">
                     <li><strong class="text-main">Automatic Game-Time Locks:</strong> Once a player's game kicks off, the optimizer locks him in place so he's never moved or benched after the fact. If a lock is wrong, you can override it for that player. "Unlock All" clears your manual locks for the league, but leaves game-time locks alone. Manual locks (and swaps, which lock) last for the week: they clear on their own when a new NFL week starts.</li>
                     <li><strong class="text-main">FLEX Kickoff Optimization:</strong> On by default. Who starts is always decided by rank first. Then your starters are arranged so SFLEX holds the latest kickoff it can (a QB or an RB/WR/TE), then FLEX, then W/T and W/R, giving you the most time to make a late swap. Turn it off if you'd rather these slots simply follow rank order.</li>

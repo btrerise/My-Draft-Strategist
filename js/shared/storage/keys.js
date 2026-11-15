@@ -56,7 +56,11 @@ export const KEYS = {
     // My Lineup Strategist (/lineup/). All start with MLS_PREFIX.
     mls: {
         activeLeague: 'mls_active_league',
-        earlyTeams: 'mls_early_teams',
+        earlyTeams: 'mls_early_teams', // [team] you added under Early Games yourself, for the week in earlyWeek
+        // Early Games' week (improvements S50, js/mls/lineup/earlyGames.js): { week: '2026-11', schedule: [team] the week's
+        // kickoffs filled in, removed: [team] of those you took off }. A new NFL week clears it and earlyTeams.
+        earlyWeek: 'mls_early_week',
+        earlyFromSchedule: 'mls_early_from_schedule', // '0' while Early Games' "Fill in from the schedule" is off; unset = on
         leagues: 'mls_leagues',
         locksMap: 'mls_locks_map',
         // The NFL week ("2026-5") the locks above were last checked in; a new week clears them (improvements S11).

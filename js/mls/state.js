@@ -12,6 +12,7 @@ import { KEYS } from '../shared/storage/keys.js';
 import { showToast } from '../shared/ui/toast.js';
 import { mdsFetch } from '../shared/net.js';
 import { recentDropsFor } from './scout/recentDrops.js';
+import { noteEarlyKickoffs, noteEarlyWeek } from './lineup/earlyGames.js';
 
     // --- STATE MANAGEMENT ---
     export const State = {
@@ -19,6 +20,9 @@ import { recentDropsFor } from './scout/recentDrops.js';
         marketFormat: readJSON(KEYS.mls.marketFormat, null),
         activeLeagueId: localStorage.getItem(KEYS.mls.activeLeague) || null,
         earlyTeams: readJSON(KEYS.mls.earlyTeams, []),
+        // Early Games' week and what the schedule filled in (improvements S50, lineup/earlyGames.js), and its switch.
+        earlyWeek: readJSON(KEYS.mls.earlyWeek, null),
+        earlyFromSchedule: localStorage.getItem(KEYS.mls.earlyFromSchedule) !== '0',
         rosRankings: readJSON(KEYS.mls.ros, []),
         weeklyRankings: readJSON(KEYS.mls.weekly, []),
         rosRankingsUpdatedAt: localStorage.getItem(KEYS.mls.rosUpdated) || null,
@@ -278,6 +282,8 @@ export function applyLineupSettingsToUI() {
                     // which week we're on -- chain it here rather than firing both requests
                     // independently at page load.
                     refreshGameTimes();
+                    // Early Games follows the NFL week: last week's teams clear (improvements S50).
+                    noteEarlyWeek();
                 }
             })
             .catch(() => { /* leave State.currentNflWeek as null; see comment above */ });
@@ -351,6 +357,8 @@ export function applyLineupSettingsToUI() {
                 State.gameTimesByTeam = map;
                 State.gamesByTeam = games;
                 State.gameTimesFetchedForWeek = week;
+                // Early Games fills in from these kickoffs (improvements S50).
+                noteEarlyKickoffs();
 
                 // If the person is already looking at the lineup tab, refresh it so kickoff
                 // badges and FLEX ordering reflect the newly-arrived data without requiring a

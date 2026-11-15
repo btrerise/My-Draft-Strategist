@@ -198,6 +198,13 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Early Games fills itself in.** Each week the Lineup tab's Early Games list picks up every team playing before
+  Sunday 1:00 PM Eastern (Thursday, Friday, Saturday and the international morning games), so the EARLY badges, the
+  Early Game Reminder and the Dashboard's EARLY chip appear on their own. Each team shows its kickoff in your time, or
+  "Added" for one you picked. You can still add a team or remove one for that week (with Put back), and the list clears
+  when a new NFL week starts, so last Thursday's teams no longer stay picked. Turn off "Fill in from the schedule" on the
+  card to pick the teams yourself.
+
 - **No flash when you tap on a phone.** The grey-blue box the phone's browser drew over whatever you tapped is gone. A
   tap still answers with the app's own light tint while your finger is down, and now things that open something
   without being a button answer the same way: every fold (Recent Sync Logs, Notifications, Danger Zone, Lineup
