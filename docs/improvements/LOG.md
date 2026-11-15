@@ -13237,5 +13237,11 @@ intended, and re-taken on CI (`[update screenshots: …]` in the commit after th
   teams yourself." where main said "No teams selected."; no EARLY badges either way.
 - `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: Guide step 5's longer Early Games sentence.
 
+CI re-took exactly those four (`e8448ec`, "Screenshots re-taken on CI (4 PNGs)"); nothing else changed. Opened each
+against main's: the Lineup ones differ from the Early Games card down (the card, then everything below moved by the
+taller card: desktop 2808 → 2882px, phone 3028 → 3131px), and the Guide ones from step 5 down (desktop 10601 → 10645px,
+phone 24709 → 24845px). One more spot: on the desktop Lineup PNG, rows 39–55 (the header) differ by 1 level out of 255,
+not visible, most likely the taller page's background rendering; nothing there changed.
+
 **Left over.** Nothing required. Possible follow-ups, not built: the switch could move to S45's Settings page once it
 merges (the owner chose the card for now); a page left open across the week change picks up the new week only with F24.
