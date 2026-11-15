@@ -13224,3 +13224,18 @@ Thursday, Saturday and international teams with their kickoffs, the banner and E
 but not Ja'Marr Chase; add and remove for the week, Put back, kept across a reload; switch off picks by hand and stays
 off; the next NFL week clears last week's teams (switch off) and the schedule refills when it's turned on; a pre-S50
 install keeps its picks as this week's; kickoffs that fail keep what was saved, then show the not-loaded empty state.
+Ran check-precache, `node --test` (693), `mls-early-games` and the specs that stub kickoffs or read EARLY
+(`mls-auto-sub`, `mls-final-window`, `mls-flex-choice`, `mls-keyboard`, `mls-mvp-lvp`, `mls-opponent-strength`,
+`mls-root-for`, `mls-root-kickoff-find`, `mls-starter-alert`, `mls-this-week`, `nav-rail`, `tooltip-closed-space`,
+`tooltips-onscreen`, `touch-targets`, `mls-lineup-needs`, `mls-phone-rows`, `key-migration`): 338 passed. The full suite
+hasn't run (rule 7: once, when the owner asks for the pull request).
+
+**Screenshots.** Main and this branch rendered in the same container (`npm run pxdiff`): 40 of 44 identical. Changed, as
+intended, and re-taken on CI (`[update screenshots: …]` in the commit after this entry):
+- `desktop/mls-league-lineup.png`, `phone/mls-league-lineup.png`: the Early Games card's new switch row and its empty
+  line. The tests are offline (ESPN aborted), so the card shows "This week's kickoff times haven't loaded yet. You can add
+  teams yourself." where main said "No teams selected."; no EARLY badges either way.
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: Guide step 5's longer Early Games sentence.
+
+**Left over.** Nothing required. Possible follow-ups, not built: the switch could move to S45's Settings page once it
+merges (the owner chose the card for now); a page left open across the week change picks up the new week only with F24.
