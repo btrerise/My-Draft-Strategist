@@ -325,11 +325,36 @@ body.mls-hide-headshots .mls-headshot { display: none; }
     flex-wrap: wrap;
     gap: 0.5rem;
 }
-/* Early Games' chips say where each team came from (improvements S50): the kickoff in your time for one the schedule
-   filled in, "Added" for one you picked. Teams you took off the schedule's list sit under them with Put back. */
-.team-chip .team-chip-note {
-    font-weight: 500;
+/* Early Games' chips, one row per day (improvements S50, round 2): the day the schedule's teams play in your time,
+   "Schedule" before this visit's kickoffs load, then "Added" for the teams you picked. The chips are compact: the ✕
+   keeps its 44px tap area by reaching past the chip's edges (negative margins), and the rows are 44px apart, so
+   neighbouring tap areas don't overlap. Teams you took off the schedule's list sit under them with Put back. */
+.early-days {
+    flex-direction: column;
+    gap: 0;
+}
+.early-day {
+    display: grid;
+    grid-template-columns: 4.25rem 1fr;
+    align-items: center;
+    min-height: 44px;
+}
+.early-day-label {
+    font-size: 0.8rem;
+    font-weight: 600;
     color: var(--text-muted);
+}
+.early-day-teams {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px 1.25rem;
+}
+.early-day .team-chip {
+    gap: 0.25rem;
+    padding: 0.2rem 0.25rem 0.2rem 0.65rem;
+}
+.early-day .team-chip .close-chip {
+    margin: -14px -10px -14px -8px;
 }
 .early-removed {
     margin: 0;

@@ -15,7 +15,7 @@ import { State } from '../state.js';
 import { renderLineupUI } from '../main.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { escapeHtml } from '../../shared/html.js';
-import { formatKickoffLabel } from './gameInfo.js';
+import { hasKickedOff } from './gameInfo.js';
 import { earlyTeamsFromKickoffs } from './earlyRule.js';
 
     const weekStamp = () => (State.currentNflWeek == null ? null : `${State.currentNflSeason || ''}-${State.currentNflWeek}`);
@@ -134,10 +134,36 @@ import { earlyTeamsFromKickoffs } from './earlyRule.js';
         refreshEarlyGames();
     };
 
-    // A chip's second line: the kickoff (your local time) for a team the schedule filled in, "Added" for one of yours.
-    function chipNote(team, fromSchedule) {
-        if (!fromSchedule) return 'Added';
-        return formatKickoffLabel(State.gameTimesByTeam[team]) || 'Schedule';
+    // The day a schedule team plays, in your time ("Thu"), or null when this visit's kickoffs haven't loaded.
+    function kickoffDay(team) {
+        const iso = State.gameTimesByTeam[team];
+        const d = iso ? new Date(iso) : null;
+        return d && !isNaN(d.getTime()) ? { label: d.toLocaleDateString(undefined, { weekday: 'short' }), ms: d.getTime() } : null;
+    }
+
+    // The chips in rows, one per day (round 2, owner's choice after a review as a user: a pill per team with its
+    // kickoff took ~400px on a phone, and each player's row already shows his kickoff). The schedule's teams by the day
+    // they play, in your time ("Schedule" while this visit's kickoffs haven't loaded), then the teams you added.
+    function earlyGroups(teams) {
+        const { schedule } = weekState();
+        const groups = [];
+        const groupFor = (key, label, ms) => {
+            let g = groups.find(x => x.key === key);
+            if (!g) { g = { key, label, ms, teams: [] }; groups.push(g); }
+            return g;
+        };
+        teams.forEach(t => {
+            if (State.earlyFromSchedule && schedule.includes(t)) {
+                const day = kickoffDay(t);
+                const g = day ? groupFor(day.label, day.label, day.ms) : groupFor('schedule', 'Schedule', Infinity);
+                g.ms = Math.min(g.ms, day ? day.ms : Infinity);
+                g.teams.push({ team: t, source: 'schedule' });
+            } else {
+                groupFor('added', 'Added', Infinity).teams.push({ team: t, source: 'added' });
+            }
+        });
+        const rank = (g) => (g.key === 'added' ? 2 : g.key === 'schedule' ? 1 : 0);
+        return groups.sort((x, y) => rank(x) - rank(y) || x.ms - y.ms);
     }
 
     function emptyText() {
@@ -175,14 +201,9 @@ import { earlyTeamsFromKickoffs } from './earlyRule.js';
             restoreChipFocus();
             return;
         }
-        const { schedule } = weekState();
-        let html = "";
-        teams.forEach(t => {
-            const fromSchedule = State.earlyFromSchedule && schedule.includes(t);
-            const note = chipNote(t, fromSchedule);
-            const source = fromSchedule ? 'from the schedule' : 'added by you';
-            html += `<div class="team-chip" data-source="${fromSchedule ? 'schedule' : 'added'}">${t} <span class="team-chip-note">${escapeHtml(note)}</span> <button type="button" class="close-chip" data-action="removeEarlyTeam" data-team="${t}" aria-label="Remove ${t} (${source}) from Early Games">✕</button></div>`;
-        });
+        const html = earlyGroups(teams).map(g => `<div class="early-day" data-group="${g.key}"><span class="early-day-label">${escapeHtml(g.label)}</span><div class="early-day-teams">${
+            g.teams.map(({ team, source }) => `<div class="team-chip" data-source="${source}">${team}<button type="button" class="close-chip" data-action="removeEarlyTeam" data-team="${team}" aria-label="Remove ${team} (${source === 'schedule' ? 'from the schedule' : 'added by you'}) from Early Games"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div>`).join('')
+        }</div></div>`).join('');
         container.innerHTML = html;
         restoreChipFocus();
     }
@@ -198,9 +219,15 @@ import { earlyTeamsFromKickoffs } from './earlyRule.js';
             `<span class="early-removed-team">${t} <button type="button" class="mls-btn-sm btn-link-inline" data-action="restoreEarlyTeam" data-team="${t}" aria-label="Put ${t} back in Early Games">Put back</button></span>`).join(' ')}`;
     }
 
-    function checkEarlyBannerVisibility() {
+    // The Early Game Reminder shows only when it applies (round 2): a starter in the open league's lineup plays early
+    // and his game hasn't started. Before, it showed whenever any team was early, which with the schedule filling the
+    // list is every week. render/lineup.js calls this after each redraw, since the lineup decides it.
+    export function checkEarlyBannerVisibility() {
         const banner = document.getElementById('earlyBanner');
-        if (banner) banner.style.display = getEarlyTeams().length > 0 ? 'block' : 'none';
+        if (!banner) return;
+        const starters = State.manualStartersMap[State.activeLeagueId] || [];
+        const applies = starters.some(s => s && s.player && isEarlyPlayer(s.player.team) && !hasKickedOff(s.player));
+        banner.style.display = applies ? 'block' : 'none';
     }
 
     export function isEarlyPlayer(teamStr) {

@@ -7,10 +7,10 @@ import { getByeWeek } from '../../shared/data/byes.js';
 import { pushLineupUndoSnapshot, State } from '../state.js';
 import { isUnavailableThisWeek, rankingIndex, renderHTMLInto, getActiveLeague } from '../helpers.js';
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
-import { isEarlyPlayer } from '../lineup/earlyGames.js';
+import { checkEarlyBannerVisibility, isEarlyPlayer } from '../lineup/earlyGames.js';
 import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
 import { pickForSlot } from '../lineup/flexChoice.js';
-import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, kickoffFreeze, lineupBuiltBeforeKickoff, lineupProjectionsLoaded, noteLineupOptimized, refreshLineupStats } from '../lineup/gameInfo.js';
+import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, kickoffFreeze, lineupBuiltBeforeKickoff, lineupProjectionsLoaded, noteLineupOptimized, refreshLineupStats } from '../lineup/gameInfo.js';
 import { activeSeasonRankings, getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { leadLockMarkup, rankBadgeParts, rowMoreMarkup, sleeperLineupBadgeMarkup } from '../badges.js';
@@ -641,6 +641,8 @@ import { refreshThisWeek } from '../main.js';
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
         if (!container || !benchContainer) return;
+        // The Early Game Reminder follows this lineup's starters (improvements S50, round 2).
+        checkEarlyBannerVisibility();
 
         let league = getActiveLeague();
         let starters = State.manualStartersMap[State.activeLeagueId] || [];
@@ -732,7 +734,8 @@ import { refreshThisWeek } from '../main.js';
 
                 let rankBadge = lineupRankBadge(p, rankedByRos, rankDisplay);
 
-                let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
+                // EARLY until his game starts (improvements S50, round 2), as on the Dashboard's league cards.
+                let earlyTag = isEarlyPlayer(p.team) && !hasKickedOff(p) ? `<span class="badge early-badge">EARLY</span>` : "";
                 const byeWeek = getByeWeek(p.team, State.currentNflSeason);
                 let byeStr = byeWeek ? ` (${byeWeek})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);
@@ -827,7 +830,8 @@ import { refreshThisWeek } from '../main.js';
                 let lockClass = State.swapSourceId === p.id ? "swapping" : "";
                 let rankBadge = lineupRankBadge(p, rankedByRos, rankDisplay);
 
-                let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
+                // EARLY until his game starts (improvements S50, round 2), as on the Dashboard's league cards.
+                let earlyTag = isEarlyPlayer(p.team) && !hasKickedOff(p) ? `<span class="badge early-badge">EARLY</span>` : "";
                 const byeWeek = getByeWeek(p.team, State.currentNflSeason);
                 let byeStr = byeWeek ? ` (${byeWeek})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);

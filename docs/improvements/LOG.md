@@ -13245,3 +13245,40 @@ not visible, most likely the taller page's background rendering; nothing there c
 
 **Left over.** Nothing required. Possible follow-ups, not built: the switch could move to S45's Settings page once it
 merges (the owner chose the card for now); a page left open across the week change picks up the new week only with F24.
+
+### S50, round 2: a review as a user; the owner took all four (2026-11-15)
+
+I looked at the card filled in (a fixture week, one team added, one removed) at 390 and 1280px. Findings:
+1. On phones each team was a 56px pill on its own row (the ✕'s 44px tap area plus the kickoff time made two too wide
+   to share a row): six early teams took ~400px.
+2. The kickoff times repeated what each player's row already shows beside EARLY.
+3. The Early Game Reminder showed whenever any team was early, which with the schedule filling the list is every week,
+   even with no early player in your lineup.
+4. EARLY stayed on a player after his game started (the Dashboard's chip already dropped it).
+5. The picker sat above the list, though with the switch on adding a team is the exception.
+
+Owner: "All four" (the four changes proposed: rows by day, the reminder only when it applies, EARLY off at kickoff, the
+picker under the list).
+
+**What changed.**
+- `js/mls/lineup/earlyGames.js`: the chips in rows, one per day the schedule's teams play (your local weekday; "Schedule"
+  while this visit's kickoffs haven't loaded), then "Added". A chip is the team and an SVG ✕ (was the ✕ character).
+  `checkEarlyBannerVisibility` (now exported) shows the reminder only when a starter in the open league's lineup is on an
+  early team and his game hasn't started; `render/lineup.js` calls it on every redraw.
+- `js/mls/render/lineup.js`: EARLY on starter and bench rows only until `hasKickedOff`.
+- `lineup/index.html`: the picker under the chips and the removed line. `css/mls.css`: `.early-day` rows (a 4.25rem
+  label column, 44px rows); compact chips whose ✕ keeps its 44px tap area through negative margins, 18px between wrapped
+  lines so tap areas don't overlap. `js/mls/legend.js`: EARLY "goes once his game starts". CHANGELOG lines updated.
+- The phone card with six early teams, one added and one removed: ~440px with the switch (was ~620px).
+
+**Tests.** `mls-early-games.spec.mjs` (7 per width now): the rows' day labels (Fri, Sat, Sun in UTC; Added; Schedule);
+after Thursday's kickoff Josh Allen loses EARLY while Justin Jefferson keeps it and the reminder stays; after every early
+kickoff no EARLY and no reminder; a new test: the reminder hides with only KC picked (nobody in the lineup) and shows
+with CIN (Ja'Marr Chase starts). Ran check-precache, `node --test` (693), `mls-early-games`, `touch-targets`,
+`mls-phone-rows`, `mls-lineup-needs`, `mls-keyboard`, `focus-ring`, `svg-icons`, `badge-legend`, `tap-feedback`: all
+passed. The full suite hasn't run.
+
+**Screenshots.** Round 1's branch against this one in the same container: three changed, re-taken on CI with the
+commit after this entry. `desktop/mls-league-lineup.png` and `phone/mls-league-lineup.png`: the picker now under the
+card's empty line (offline, so no teams and no reminder either way); `desktop/mls-league-guide.png`: the legend's EARLY
+line is longer. The phone Guide didn't change in this container.

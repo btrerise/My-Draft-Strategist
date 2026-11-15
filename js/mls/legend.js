@@ -38,7 +38,7 @@ export const MEANING = {
     bye: 'His team is on bye this week.',
     kickoff: 'When his game kicks off, then whether it has started or finished.',
     lock: 'LOCKED: you locked him in that spot, for this NFL week. AUTO-LOCKED: his game has started, so the optimizer leaves him where he is.',
-    early: 'He plays before the main Sunday games (a team under Early Games: filled in from the schedule, or one you added), so set him first.',
+    early: 'He plays before the main Sunday games (a team under Early Games: filled in from the schedule, or one you added), so set him first. It goes once his game starts.',
     taxi: 'On your taxi squad. He can\'t start.',
     irSlot: 'In your IR slot on Sleeper. He can\'t start until you move him out of it there. Tap for more.',
     sleeperLineup: 'Your lineup on Sleeper differs from this one for him. Change it on Sleeper to match.',

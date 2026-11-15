@@ -3,7 +3,7 @@
 // the lineup's EARLY badges and the reminder, adding and removing for the week, the new week clearing the list, an
 // install from before S50, and kickoffs that never load.
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, loadMlsRankings } from './helpers.mjs';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp } from './helpers.mjs';
 
 // Week 2 (the fixture's NFL state), from ESPN's scoreboard: Thursday night, a Saturday game, a 9:30 AM game abroad, the
 // 1:00 and 4:25 PM games and Monday night. FIXED_NOW (Tuesday 9/15) is before all of them.
@@ -46,6 +46,8 @@ const waitForKickoffs = (page) => expect.poll(() => page.evaluate(async () =>
 const chips = (page) => page.locator('#earlyTeamChips .team-chip');
 const chipTeams = (page) => chips(page).evaluateAll(els => els.map(e => e.firstChild.textContent.trim()));
 const chip = (page, team) => chips(page).filter({ has: page.locator(`[data-team="${team}"]`) });
+// The row a team's chip is in: the day it plays (your time; UTC in the tests), "Schedule" or "Added" (round 2).
+const dayOf = (page, team) => page.locator('#earlyTeamChips .early-day').filter({ has: page.locator(`[data-team="${team}"]`) }).locator('.early-day-label');
 const toggle = (page) => page.locator('#earlyFromScheduleToggle');
 const stored = (page, key) => page.evaluate((k) => JSON.parse(localStorage.getItem(k)), key);
 
@@ -58,9 +60,12 @@ test.describe('Early Games from the schedule', () => {
         await expect(toggle(page)).toBeChecked();
         await expect.poll(() => chipTeams(page)).toEqual(EARLY);
         for (const team of EARLY) await expect(chip(page, team)).toHaveAttribute('data-source', 'schedule');
-        // Each one's kickoff, in the browser's time (UTC in the tests).
-        await expect(chip(page, 'BUF').locator('.team-chip-note')).toHaveText(/^Fri 12:15/);
-        await expect(chip(page, 'MIN').locator('.team-chip-note')).toHaveText(/^Sun 1:30/);
+        // One row per day they play, in the browser's time (UTC in the tests).
+        await expect(page.locator('#earlyTeamChips .early-day-label')).toHaveText(['Fri', 'Sat', 'Sun']);
+        await expect(dayOf(page, 'BUF')).toHaveText('Fri');
+        await expect(dayOf(page, 'DET')).toHaveText('Sat');
+        await expect(dayOf(page, 'MIN')).toHaveText('Sun');
+        // Josh Allen, Derrick Henry and Justin Jefferson start and play early, so the reminder shows.
         await expect(page.locator('#earlyBanner')).toBeVisible();
         // Josh Allen (BUF), Derrick Henry and the Ravens (BAL), Justin Jefferson (MIN) and so on get EARLY;
         // Ja'Marr Chase (CIN, 1:00 PM) doesn't.
@@ -69,6 +74,36 @@ test.describe('Early Games from the schedule', () => {
         await expect(row('Justin Jefferson').locator('.early-badge')).toHaveCount(1);
         await expect(row("Ja'Marr Chase").locator('.early-badge')).toHaveCount(0);
         expect(await stored(page, 'mls_early_week')).toEqual({ week: '2026-2', schedule: EARLY, removed: [] });
+
+        // Round 2: once Thursday's game has started, Allen loses EARLY; Jefferson (Sunday morning) keeps it, and so
+        // does the reminder.
+        await page.clock.setFixedTime(new Date('2026-09-18T01:00:00Z'));
+        await callApp(page, 'renderLineupUI');
+        await expect(row('Josh Allen').locator('.early-badge')).toHaveCount(0);
+        await expect(row('Justin Jefferson').locator('.early-badge')).toHaveCount(1);
+        await expect(page.locator('#earlyBanner')).toBeVisible();
+        // Once every early game has started, nothing is left for it to remind you of.
+        await page.clock.setFixedTime(new Date('2026-09-20T14:00:00Z'));
+        await callApp(page, 'renderLineupUI');
+        await expect(page.locator('#lineupTab .early-badge')).toHaveCount(0);
+        await expect(page.locator('#earlyBanner')).toBeHidden();
+        await expectClean(page, state);
+    });
+
+    test('the reminder shows only when one of your starters plays early', async ({ page }) => {
+        const state = await open(page);
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await showTab(page, 'lineup');
+        await expect.poll(() => chipTeams(page)).toEqual(EARLY);
+        await expect(page.locator('#earlyBanner')).toBeVisible();
+        // Off, with only Kansas City picked: nobody in this lineup plays for them.
+        await toggle(page).uncheck();
+        await page.selectOption('#earlyTeamSelect', 'KC');
+        await expect(page.locator('#earlyBanner')).toBeHidden();
+        // Cincinnati (Ja'Marr Chase starts): it shows.
+        await page.selectOption('#earlyTeamSelect', 'CIN');
+        await expect(page.locator('#earlyBanner')).toBeVisible();
         await expectClean(page, state);
     });
 
@@ -78,7 +113,7 @@ test.describe('Early Games from the schedule', () => {
         await expect.poll(() => chipTeams(page)).toEqual(EARLY);
         await page.selectOption('#earlyTeamSelect', 'KC');
         await expect(chip(page, 'KC')).toHaveAttribute('data-source', 'added');
-        await expect(chip(page, 'KC').locator('.team-chip-note')).toHaveText('Added');
+        await expect(dayOf(page, 'KC')).toHaveText('Added');
         await chip(page, 'DET').locator('.close-chip').click();
         await expect.poll(() => chipTeams(page)).toEqual(['BAL', 'BUF', 'LAR', 'MIN', 'PIT', 'KC']);
         await expect(page.locator('#earlyRemoved')).toBeVisible();
@@ -110,8 +145,7 @@ test.describe('Early Games from the schedule', () => {
         await expect(page.locator('#earlyFromScheduleDesc')).toContainText('pick the teams yourself');
         await page.selectOption('#earlyTeamSelect', 'CIN');
         expect(await chipTeams(page)).toEqual(['CIN']);
-        await expect(chip(page, 'CIN').locator('.team-chip-note')).toHaveText('Added');
-        await expect(page.locator('#earlyBanner')).toBeVisible();
+        await expect(dayOf(page, 'CIN')).toHaveText('Added');
         expect(await page.evaluate(() => localStorage.getItem('mls_early_from_schedule'))).toBe('0');
 
         await page.reload();
@@ -162,9 +196,8 @@ test.describe('Early Games from the schedule', () => {
         } });
         await showTab(page, 'lineup');
         expect(await chipTeams(page)).toEqual(['BAL', 'BUF']);
-        // No kickoff to show, so the chip says where it came from.
-        await expect(chip(page, 'BUF').locator('.team-chip-note')).toHaveText('Schedule');
-        await expect(page.locator('#earlyBanner')).toBeVisible();
+        // No kickoff to show, so the row says where they came from.
+        await expect(dayOf(page, 'BUF')).toHaveText('Schedule');
         await chip(page, 'BAL').locator('.close-chip').click();
         await chip(page, 'BUF').locator('.close-chip').click();
         await expect(page.locator('#earlyTeamChips')).toHaveText('This week’s kickoff times haven’t loaded yet. You can add teams yourself.');

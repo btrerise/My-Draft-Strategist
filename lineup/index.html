@@ -1157,13 +1157,14 @@
         </div>
 
         <div class="early-games-stack">
-            <select id="earlyTeamSelect" class="form-input" data-action="addEarlyTeam" aria-label="Select Early Team">
-                <!-- Populated by JS -->
-            </select>
-            <div id="earlyTeamChips" class="team-chips-container">
+            <!-- One row per day, then the teams you added (S50 round 2); the picker under them, since the schedule fills the list. -->
+            <div id="earlyTeamChips" class="team-chips-container early-days">
                 <!-- Chips inject here -->
             </div>
             <p id="earlyRemoved" class="early-removed" hidden></p>
+            <select id="earlyTeamSelect" class="form-input" data-action="addEarlyTeam" aria-label="Select Early Team">
+                <!-- Populated by JS -->
+            </select>
         </div>
     </section>
 
