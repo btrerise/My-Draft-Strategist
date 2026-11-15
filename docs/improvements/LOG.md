@@ -13164,3 +13164,10 @@ not awaited) does, recorded with `Page.startScreencast`. It draws desktop Chromi
 blue-grey.
 
 **Left over.** Nothing for this card. M3 moves the new fades onto the motion tokens with M2's (noted in TESTING.md).
+
+### The full suite and the pull request
+
+Owner: "Looks good. Run the suite, then open PR, watch CI, and merge when green" (2026-11-15). **The full check**
+(`npm ci && npm run check`, once): check-precache OK (177 precached), `node --test` 688 passed, Playwright 1094 passed,
+72 skipped, 4 failed. The 4 are `visual.spec.mjs`'s environment guard (this container's fonts), as on main; the
+screenshots themselves were compared main against this branch in the same container (identical, above).
