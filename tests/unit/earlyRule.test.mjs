@@ -2,7 +2,8 @@
 // card, the switch, the week clearing) is in tests/mls-early-games.spec.mjs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { earlyTeamsFromKickoffs, easternParts } from '../../js/mls/lineup/earlyRule.js';
+import { earlySwaps, earlyTeamsFromKickoffs, easternParts } from '../../js/mls/lineup/earlyRule.js';
+import { SLOT_POSITIONS } from '../../js/mls/constants.js';
 import { KEYS, isMlsOwnedKey } from '../../js/shared/storage/keys.js';
 
 // A November week (Eastern standard time, UTC-5): Thursday night, a Saturday game, a 9:30 AM game in Europe, then the
@@ -53,4 +54,43 @@ test('nothing or nonsense in, nothing out; a week with no Sunday games falls bac
 
 test('the new keys belong to Lineup Strategist, so Backup, Restore and Factory Reset pick them up', () => {
     for (const key of [KEYS.mls.earlyWeek, KEYS.mls.earlyFromSchedule, KEYS.mls.earlyTeams]) assert.equal(isMlsOwnedKey(key), true, key);
+});
+
+// The Early Game Reminder's swaps (round 3). Kickoffs as hours; early = before 13 (the Sunday 1:00 PM games).
+const P = (name, pos, kick) => ({ name, pos, kick });
+const swapsOf = (starters, startedNames = []) => earlySwaps(starters, {
+    slotPositions: SLOT_POSITIONS,
+    isEarly: (p) => p.kick < 13,
+    kickoffMs: (p) => p.kick,
+    started: (p) => startedNames.includes(p.name),
+}).map(w => `${w.early.name} ${w.earlySlot} <-> ${w.later.name} ${w.laterSlot}`);
+
+test('an early player in FLEX is swapped with the latest player at his position who can take FLEX', () => {
+    const lineup = [
+        { slot: 'WR1', player: P('Chase', 'WR', 13) }, { slot: 'WR2', player: P('Nacua', 'WR', 16) },
+        { slot: 'TE1', player: P('Bowers', 'TE', 20) }, { slot: 'FLEX1', player: P('Jefferson', 'WR', 9) },
+    ];
+    assert.deepEqual(swapsOf(lineup), ['Jefferson FLEX <-> Nacua WR']);
+    // Sleeper's lineup names slots by type, without a number.
+    assert.deepEqual(swapsOf(lineup.map(s => ({ ...s, slot: s.slot.replace(/\d$/, '') }))), ['Jefferson FLEX <-> Nacua WR']);
+});
+
+test('no swap when nobody later can trade places, when he is in his own slot, or once either game has started', () => {
+    assert.deepEqual(swapsOf([{ slot: 'WR', player: P('Chase', 'WR', 9) }, { slot: 'FLEX', player: P('Jefferson', 'WR', 9) }]), []);
+    assert.deepEqual(swapsOf([{ slot: 'WR', player: P('Jefferson', 'WR', 9) }, { slot: 'FLEX', player: P('Chase', 'WR', 13) }]), []);
+    assert.deepEqual(swapsOf([{ slot: 'RB', player: P('Henry', 'RB', 16) }, { slot: 'FLEX', player: P('Jefferson', 'WR', 9) }]), []);
+    const lineup = [{ slot: 'WR', player: P('Chase', 'WR', 13) }, { slot: 'FLEX', player: P('Jefferson', 'WR', 9) }];
+    assert.deepEqual(swapsOf(lineup, ['Jefferson']), []);
+    assert.deepEqual(swapsOf(lineup, ['Chase']), []);
+    // A W/T slot can't take a RB, so an early RB there has nobody (and a RB slot's player can't go to W/T).
+    assert.deepEqual(swapsOf([{ slot: 'RB', player: P('Henry', 'RB', 16) }, { slot: 'WRTE', player: P('Kelce', 'TE', 9) }]), []);
+});
+
+test('two flex slots each get their own partner; SFLEX works for a QB', () => {
+    const lineup = [
+        { slot: 'QB', player: P('Mahomes', 'QB', 16) }, { slot: 'WR', player: P('Chase', 'WR', 13) },
+        { slot: 'WR', player: P('Lamb', 'WR', 16) }, { slot: 'FLEX', player: P('Jefferson', 'WR', 9) },
+        { slot: 'WRRB', player: P('Nacua', 'WR', 9) }, { slot: 'SFLEX', player: P('Allen', 'QB', 0) },
+    ];
+    assert.deepEqual(swapsOf(lineup), ['Jefferson FLEX <-> Lamb WR', 'Nacua WRRB <-> Chase WR', 'Allen SFLEX <-> Mahomes QB']);
 });

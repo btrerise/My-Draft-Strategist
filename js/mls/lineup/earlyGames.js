@@ -10,13 +10,15 @@
 //   State.earlyWeek    { week: '2026-11', schedule: [team], removed: [team] } (KEYS.mls.earlyWeek). schedule is saved
 //                      so the badges show before this visit's kickoffs load; until they load, what was saved stays.
 // An install from before S50 has no week saved: its picks count as the current week's, and clear when the next starts.
-import { NFL_TEAMS } from '../constants.js';
+import { NFL_TEAMS, SLOT_POSITIONS, slotDisplayName } from '../constants.js';
 import { State } from '../state.js';
 import { renderLineupUI } from '../main.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { escapeHtml } from '../../shared/html.js';
-import { hasKickedOff } from './gameInfo.js';
-import { earlyTeamsFromKickoffs } from './earlyRule.js';
+import { formatKickoffLabel, hasKickedOff } from './gameInfo.js';
+import { earlySwaps, earlyTeamsFromKickoffs } from './earlyRule.js';
+import { sleeperLineup } from './starterAlertRules.js';
+import { getActiveLeague } from '../helpers.js';
 
     const weekStamp = () => (State.currentNflWeek == null ? null : `${State.currentNflSeason || ''}-${State.currentNflWeek}`);
     const weekState = () => {
@@ -135,15 +137,18 @@ import { earlyTeamsFromKickoffs } from './earlyRule.js';
     };
 
     // The day a schedule team plays, in your time ("Thu"), or null when this visit's kickoffs haven't loaded.
-    function kickoffDay(team) {
+    // The kickoff a schedule team plays at, in your time ("Thu 5:15 PM"), or null when this visit's kickoffs haven't loaded.
+    function kickoffOf(team) {
         const iso = State.gameTimesByTeam[team];
-        const d = iso ? new Date(iso) : null;
-        return d && !isNaN(d.getTime()) ? { label: d.toLocaleDateString(undefined, { weekday: 'short' }), ms: d.getTime() } : null;
+        const ms = iso ? new Date(iso).getTime() : NaN;
+        const label = formatKickoffLabel(iso);
+        return label && !isNaN(ms) ? { iso, label, ms } : null;
     }
 
-    // The chips in rows, one per day (round 2, owner's choice after a review as a user: a pill per team with its
-    // kickoff took ~400px on a phone, and each player's row already shows his kickoff). The schedule's teams by the day
-    // they play, in your time ("Schedule" while this visit's kickoffs haven't loaded), then the teams you added.
+    // The chips in rows (round 2, owner's choice after a review as a user: a pill per team with its kickoff took ~400px on
+    // a phone). One row per kickoff, labelled with it in your time (round 3: a row labelled just "Sun" left you wondering
+    // why Sunday was listed; it's the morning games abroad), "Schedule" while this visit's kickoffs haven't loaded, then
+    // the teams you added.
     function earlyGroups(teams) {
         const { schedule } = weekState();
         const groups = [];
@@ -154,9 +159,8 @@ import { earlyTeamsFromKickoffs } from './earlyRule.js';
         };
         teams.forEach(t => {
             if (State.earlyFromSchedule && schedule.includes(t)) {
-                const day = kickoffDay(t);
-                const g = day ? groupFor(day.label, day.label, day.ms) : groupFor('schedule', 'Schedule', Infinity);
-                g.ms = Math.min(g.ms, day ? day.ms : Infinity);
+                const k = kickoffOf(t);
+                const g = k ? groupFor(k.iso, k.label, k.ms) : groupFor('schedule', 'Schedule', Infinity);
                 g.teams.push({ team: t, source: 'schedule' });
             } else {
                 groupFor('added', 'Added', Infinity).teams.push({ team: t, source: 'added' });
@@ -219,15 +223,43 @@ import { earlyTeamsFromKickoffs } from './earlyRule.js';
             `<span class="early-removed-team">${t} <button type="button" class="mls-btn-sm btn-link-inline" data-action="restoreEarlyTeam" data-team="${t}" aria-label="Put ${t} back in Early Games">Put back</button></span>`).join(' ')}`;
     }
 
-    // The Early Game Reminder shows only when it applies (round 2): a starter in the open league's lineup plays early
-    // and his game hasn't started. Before, it showed whenever any team was early, which with the schedule filling the
-    // list is every week. render/lineup.js calls this after each redraw, since the lineup decides it.
+    // The Early Game Reminder (round 3, owner's choice): it names the swaps to make so a flex slot holds the later game
+    // (earlyRule.js, earlySwaps), read from your Sleeper lineup as of the last sync in a synced league (owner: "just
+    // because it looks right on our app, doesn't mean the player is in the correct place on Sleeper"), or from this
+    // app's lineup in a manual league or one with no Sleeper lineup set. Hidden when there's no such swap: nobody early
+    // in a flex slot, or nobody later to trade places with. Round 2 showed it whenever a starter played early, every week
+    // with FLEX Kickoff Optimization having already done the swap. render/lineup.js calls this after each redraw.
+    function reminderSwaps(league) {
+        const fromSleeper = league ? sleeperLineup(league) : null;
+        const onSleeper = !!fromSleeper && fromSleeper.starters.some(s => s.player);
+        const starters = onSleeper ? fromSleeper.starters : (State.manualStartersMap[State.activeLeagueId] || []);
+        const swaps = earlySwaps(starters, {
+            slotPositions: SLOT_POSITIONS,
+            isEarly: (p) => isEarlyPlayer(p.team),
+            started: (p) => hasKickedOff(p),
+            kickoffMs: (p) => { const k = kickoffOf(p.team); return k ? k.ms : NaN; },
+        });
+        return { swaps, onSleeper };
+    }
+
     export function checkEarlyBannerVisibility() {
         const banner = document.getElementById('earlyBanner');
-        if (!banner) return;
-        const starters = State.manualStartersMap[State.activeLeagueId] || [];
-        const applies = starters.some(s => s && s.player && isEarlyPlayer(s.player.team) && !hasKickedOff(s.player));
-        banner.style.display = applies ? 'block' : 'none';
+        const text = document.getElementById('earlyBannerText');
+        if (!banner || !text) return;
+        const league = getActiveLeague();
+        const { swaps, onSleeper } = reminderSwaps(league);
+        banner.style.display = swaps.length ? 'flex' : 'none';
+        if (!swaps.length) { text.innerHTML = ''; return; }
+        const who = (p, slot) => `<strong class="text-main">${escapeHtml(p.name)}</strong> (${escapeHtml(slotDisplayName(slot))}, ${escapeHtml(kickoffOf(p.team).label)})`;
+        const items = swaps.map(w => `${who(w.early, w.earlySlot)} with ${who(w.later, w.laterSlot)}`);
+        const slots = [...new Set(swaps.map(w => slotDisplayName(w.earlySlot)))];
+        const why = `so your ${slots.join(' and ')} ${slots.length > 1 ? 'hold' : 'holds'} the later game${swaps.length > 1 ? 's' : ''}.`;
+        const swapList = items.length === 1 ? items[0] : `<ul class="early-banner-list">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+        const synced = league && league.lastSyncedAt ? formatKickoffLabel(new Date(league.lastSyncedAt).toISOString()) : '';
+        text.innerHTML = onSleeper
+            ? `<strong>Early Game Reminder:</strong> On Sleeper, swap${items.length === 1 ? '' : ':'} ${swapList}${items.length === 1 ? ', ' : ''}${why}`
+                + `<span class="early-banner-note">From your Sleeper lineup${synced ? ` as of your last sync, ${escapeHtml(synced)}` : ' as of your last sync'}.</span>`
+            : `<strong>Early Game Reminder:</strong> Swap${items.length === 1 ? '' : ':'} ${swapList}${items.length === 1 ? ', ' : ''}${why} Use the <strong class="text-main">⇄ Swap</strong> button on his row.`;
     }
 
     export function isEarlyPlayer(teamStr) {

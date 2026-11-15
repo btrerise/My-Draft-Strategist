@@ -36,3 +36,34 @@ export function earlyTeamsFromKickoffs(gameTimesByTeam) {
         .sort((a, b) => Date.parse(a.iso) - Date.parse(b.iso) || a.team.localeCompare(b.team))
         .map(r => r.team);
 }
+
+// The swaps the Early Game Reminder asks for (round 3, owner's choice: "Check Sleeper's slots"). An early starter whose
+// game hasn't started, sitting in a slot that takes several positions (FLEX, SFLEX, W/R, W/T), is worth swapping with a
+// starter in his own position's slot whose game is later and who can play that flex slot: the flex slot then holds the
+// later game, the one with room to change. starters: [{ slot, player }] with slot a type ('FLEX', Sleeper's lineup) or
+// a label ('FLEX1', this app's lineup). slotPositions: SLOT_POSITIONS (js/mls/constants.js). Returns
+// [{ early, earlySlot, later, laterSlot }], the latest-kicking partner first when there are several.
+export const slotTypeOf = (slot) => String(slot || '').replace(/\d+$/, '');
+export function earlySwaps(starters, { slotPositions, isEarly, kickoffMs, started }) {
+    const list = (starters || []).filter(s => s && s.player);
+    const used = new Set();
+    const swaps = [];
+    list.forEach(s => {
+        const p = s.player, type = slotTypeOf(s.slot), takes = slotPositions[type];
+        if (!takes || takes.length < 2 || !isEarly(p) || started(p)) return;
+        const pk = kickoffMs(p);
+        if (!Number.isFinite(pk)) return;
+        let best = null;
+        list.forEach(t => {
+            const q = t.player, own = slotPositions[slotTypeOf(t.slot)];
+            if (t === s || used.has(t) || !own || own.length !== 1 || own[0] !== p.pos || !takes.includes(q.pos) || started(q)) return;
+            const qk = kickoffMs(q);
+            if (!Number.isFinite(qk) || qk <= pk) return;
+            if (!best || qk > best.qk) best = { t, qk };
+        });
+        if (!best) return;
+        used.add(best.t);
+        swaps.push({ early: p, earlySlot: type, later: best.t.player, laterSlot: slotTypeOf(best.t.slot) });
+    });
+    return swaps;
+}

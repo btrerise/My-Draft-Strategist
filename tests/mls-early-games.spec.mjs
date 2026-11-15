@@ -3,7 +3,8 @@
 // the lineup's EARLY badges and the reminder, adding and removing for the week, the new week clearing the list, an
 // install from before S50, and kickoffs that never load.
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp } from './helpers.mjs';
+import { readFileSync } from 'node:fs';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, FIXTURE_LEAGUE_ID } from './helpers.mjs';
 
 // Week 2 (the fixture's NFL state), from ESPN's scoreboard: Thursday night, a Saturday game, a 9:30 AM game abroad, the
 // 1:00 and 4:25 PM games and Monday night. FIXED_NOW (Tuesday 9/15) is before all of them.
@@ -22,6 +23,16 @@ const scoreboard = {
         competitions: [{ competitors: [{ team: { abbreviation: a }, homeAway: 'away' }, { team: { abbreviation: b }, homeAway: 'home' }] }] })),
 };
 const SCOREBOARD_RE = /site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/;
+
+// Your lineup on Sleeper, for the reminder (round 3): QB RB RB WR WR TE FLEX K DEF, with Justin Jefferson (MIN, the
+// Sunday 9:30 AM ET game) in FLEX and Ja'Marr Chase and CeeDee Lamb (1:00 PM) at WR.
+const SLEEPER_STARTERS = ['4984', '3198', '0', '4866', '6786', '11604', '6794', '17', 'BAL'];
+const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/sleeper/${name}`, import.meta.url), 'utf8'));
+async function routeSleeperLineup(page, starters) {
+    const rosters = fixture('league-rosters.json');
+    rosters.find(r => r.owner_id === '900001').starters = starters;
+    await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/rosters$`), route => route.fulfill({ json: rosters }));
+}
 
 // storage: localStorage to start from (once per test, not again on a reload). espn: false = the scoreboard fails.
 async function open(page, { storage = null, espn = true } = {}) {
@@ -60,13 +71,13 @@ test.describe('Early Games from the schedule', () => {
         await expect(toggle(page)).toBeChecked();
         await expect.poll(() => chipTeams(page)).toEqual(EARLY);
         for (const team of EARLY) await expect(chip(page, team)).toHaveAttribute('data-source', 'schedule');
-        // One row per day they play, in the browser's time (UTC in the tests).
-        await expect(page.locator('#earlyTeamChips .early-day-label')).toHaveText(['Fri', 'Sat', 'Sun']);
-        await expect(dayOf(page, 'BUF')).toHaveText('Fri');
-        await expect(dayOf(page, 'DET')).toHaveText('Sat');
-        await expect(dayOf(page, 'MIN')).toHaveText('Sun');
-        // Josh Allen, Derrick Henry and Justin Jefferson start and play early, so the reminder shows.
-        await expect(page.locator('#earlyBanner')).toBeVisible();
+        // One row per kickoff, labelled with it in the browser's time (UTC in the tests; round 3).
+        await expect(page.locator('#earlyTeamChips .early-day-label')).toHaveText(['Fri 12:15 AM', 'Sat 8:30 PM', 'Sun 1:30 PM']);
+        await expect(dayOf(page, 'BUF')).toHaveText('Fri 12:15 AM');
+        await expect(dayOf(page, 'MIN')).toHaveText('Sun 1:30 PM');
+        // No Sleeper lineup here, and this app's lineup has nobody early in FLEX (FLEX Kickoff Optimization put
+        // CeeDee Lamb's 1:00 PM game there): no reminder.
+        await expect(page.locator('#earlyBanner')).toBeHidden();
         // Josh Allen (BUF), Derrick Henry and the Ravens (BAL), Justin Jefferson (MIN) and so on get EARLY;
         // Ja'Marr Chase (CIN, 1:00 PM) doesn't.
         const row = (name) => page.locator('#lineupTab .lineup-slot').filter({ has: page.locator('.player-name-wrap', { hasText: name }) });
@@ -75,35 +86,48 @@ test.describe('Early Games from the schedule', () => {
         await expect(row("Ja'Marr Chase").locator('.early-badge')).toHaveCount(0);
         expect(await stored(page, 'mls_early_week')).toEqual({ week: '2026-2', schedule: EARLY, removed: [] });
 
-        // Round 2: once Thursday's game has started, Allen loses EARLY; Jefferson (Sunday morning) keeps it, and so
-        // does the reminder.
+        // Round 2: once Thursday's game has started, Allen loses EARLY; Jefferson (Sunday morning) keeps it.
         await page.clock.setFixedTime(new Date('2026-09-18T01:00:00Z'));
         await callApp(page, 'renderLineupUI');
         await expect(row('Josh Allen').locator('.early-badge')).toHaveCount(0);
         await expect(row('Justin Jefferson').locator('.early-badge')).toHaveCount(1);
-        await expect(page.locator('#earlyBanner')).toBeVisible();
-        // Once every early game has started, nothing is left for it to remind you of.
         await page.clock.setFixedTime(new Date('2026-09-20T14:00:00Z'));
         await callApp(page, 'renderLineupUI');
         await expect(page.locator('#lineupTab .early-badge')).toHaveCount(0);
-        await expect(page.locator('#earlyBanner')).toBeHidden();
         await expectClean(page, state);
     });
 
-    test('the reminder shows only when one of your starters plays early', async ({ page }) => {
+    test('the reminder names the swap to make on Sleeper, from your Sleeper lineup, until his game starts', async ({ page }) => {
         const state = await open(page);
+        await routeSleeperLineup(page, SLEEPER_STARTERS);
         await seedMls(page);
         await loadMlsRankings(page);
         await showTab(page, 'lineup');
         await expect.poll(() => chipTeams(page)).toEqual(EARLY);
-        await expect(page.locator('#earlyBanner')).toBeVisible();
-        // Off, with only Kansas City picked: nobody in this lineup plays for them.
-        await toggle(page).uncheck();
-        await page.selectOption('#earlyTeamSelect', 'KC');
+        const banner = page.locator('#earlyBanner');
+        // This app's lineup has Lamb in FLEX; Sleeper's has Jefferson there, and that's the one that counts (owner).
+        await expect(banner).toBeVisible();
+        await expect(banner).toContainText("On Sleeper, swap Justin Jefferson (FLEX, Sun 1:30 PM) with Ja'Marr Chase (WR, Sun 5:00 PM), so your FLEX holds the later game.");
+        await expect(banner).toContainText('From your Sleeper lineup as of your last sync, Tue 4:00 PM.');
+        // Above the lineup it's about, in the Optimal Lineup card.
+        expect(await banner.evaluate(el => !!el.closest('section').querySelector('#optimalLineupContainer'))).toBe(true);
+        // Once Jefferson's game has started there's nothing left to swap.
+        await page.clock.setFixedTime(new Date('2026-09-20T14:00:00Z'));
+        await callApp(page, 'renderLineupUI');
+        await expect(banner).toBeHidden();
+        await expectClean(page, state);
+    });
+
+    test('no reminder when Sleeper already has the early players in their own slots', async ({ page }) => {
+        const state = await open(page);
+        // Jefferson at WR, Lamb (1:00 PM) in FLEX.
+        await routeSleeperLineup(page, ['4984', '3198', '0', '4866', '6794', '11604', '6786', '17', 'BAL']);
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await showTab(page, 'lineup');
+        await expect.poll(() => chipTeams(page)).toEqual(EARLY);
+        await expect(page.locator('#lineupTab .early-badge').first()).toBeVisible();
         await expect(page.locator('#earlyBanner')).toBeHidden();
-        // Cincinnati (Ja'Marr Chase starts): it shows.
-        await page.selectOption('#earlyTeamSelect', 'CIN');
-        await expect(page.locator('#earlyBanner')).toBeVisible();
         await expectClean(page, state);
     });
 

@@ -13285,3 +13285,46 @@ line is longer. The phone Guide didn't change in this container.
 CI re-took exactly those three ("Screenshots re-taken on CI (3 PNGs)"); same sizes as round 1's, and each differs only
 there: the Lineup ones in the Early Games card (desktop y 2246–2315, phone y 2323–2407: the empty line, then the
 picker), the desktop Guide in one legend line (y 8761–8772).
+
+### S50, round 3: a second review as a user; the owner took 2–5, and 1 as "check Sleeper's slots" (2026-11-15)
+
+A walk through a week in Phoenix time (Tuesday, Thursday night after kickoff, the Dashboard, the switch off, the tooltip).
+Findings: (1) the reminder still showed with nothing to do: it says to move early starters out of FLEX, but FLEX Kickoff
+Optimization (on by default) already does, and no early starter was in FLEX; (2) its wording said "before Sunday",
+though the list includes Sunday-morning games abroad; (3) it sat between the starters and the Bench Priorities heading;
+(4) the card's tooltip was six lines of prose; (5) a row labelled just "Sun" left you wondering why Sunday was listed;
+(6) chips stay plain after their game (left as is, optional).
+
+Owner: "Do 2-5 for sure. For 1, my only thought is the reminder is helpful to ensure the user makes the change on Sleeper,
+if synced. Just because it looks right on our app, doesn't mean the player is in the correct place on Sleeper." Asked
+which rule: **check Sleeper's slots** (the suggestion) over keeping round 2's rule with new words.
+
+**What changed.**
+- `js/mls/lineup/earlyRule.js`: `earlySwaps(starters, …)`: an early starter whose game hasn't started, in a slot taking
+  several positions (FLEX, SFLEX, W/R, W/T), paired with the latest-kicking starter in his own position's slot who can
+  play that flex slot and hasn't started. No partner, no swap (the advice would be impossible).
+- `js/mls/lineup/earlyGames.js`: the reminder reads Sleeper's lineup (`sleeperLineup`, starterAlertRules.js: each slot
+  as of the last sync) in a synced league with a lineup set there, else this app's lineup; shows only when there's a
+  swap, and names it: "On Sleeper, swap Justin Jefferson (FLEX, Sun 6:30 AM) with Ja'Marr Chase (WR, Sun 10:00 AM), so
+  your FLEX holds the later game." plus "From your Sleeper lineup as of your last sync, Tue 9:00 AM." (several swaps:
+  a list). In a manual league it says to use ⇄ Swap. The chips' rows are one per kickoff, labelled with it in your
+  time ("Sun 6:30 AM"), in one grid so the labels share a column.
+- `lineup/index.html`: the reminder moved into the Optimal Lineup card, under Lineup settings and above the lineup; the
+  tooltip down to two lines; Guide step 5 says what the reminder does. `css/mls.css`: the list and note in the reminder,
+  the grid. Found by `touch-targets` along the way: the empty line in the new grid's `max-content` column made the phone
+  Lineup scroll sideways by 115px; it now spans the grid.
+- Round 2's rule (any early starter) is gone with it: the reminder no longer shows every week.
+
+**Tests.** `tests/unit/earlyRule.test.mjs` (8): the swap with the latest partner, slot labels with and without a number,
+no swap (no later partner, his own slot, a position that can't take the slot, either game started), two flex slots and
+SFLEX. `mls-early-games.spec.mjs` (8 per width): row labels by kickoff; no reminder with this app's lineup (Lamb's
+1:00 PM game in FLEX); with a Sleeper lineup that has Jefferson in FLEX the reminder names the swap with Chase and the
+sync time, sits in the Optimal Lineup card, and goes once Jefferson's game starts; no reminder when Sleeper already
+has Jefferson at WR. Ran check-precache, `node --test` (696), `mls-early-games`, `touch-targets`, `mls-phone-rows`,
+`mls-lineup-needs`, `mls-keyboard`, `mls-starter-alert`, `tooltip-closed-space`, `tooltips-onscreen`, `svg-icons`,
+`badge-legend`, `mls-flex-choice`, `mls-sflex-kickoff`, `mls-2qb-kickoff`: all passed (after the fix above). The full
+suite hasn't run.
+
+**Screenshots.** Round 2's branch against this one in the same container: only `desktop/mls-league-guide.png` and
+`phone/mls-league-guide.png` (step 5's new sentence), re-taken on CI with the commit after this entry. The Lineup ones
+are identical: offline, there are no early teams, so the reminder is hidden in both.
