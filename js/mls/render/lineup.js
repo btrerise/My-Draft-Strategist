@@ -7,7 +7,7 @@ import { getByeWeek } from '../../shared/data/byes.js';
 import { pushLineupUndoSnapshot, State } from '../state.js';
 import { isUnavailableThisWeek, rankingIndex, renderHTMLInto, getActiveLeague } from '../helpers.js';
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
-import { checkEarlyBannerVisibility, isEarlyPlayer } from '../lineup/earlyGames.js';
+import { earlySwapNeeds, isEarlyPlayer } from '../lineup/earlyGames.js';
 import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
 import { pickForSlot } from '../lineup/flexChoice.js';
 import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, kickoffFreeze, lineupBuiltBeforeKickoff, lineupProjectionsLoaded, noteLineupOptimized, refreshLineupStats } from '../lineup/gameInfo.js';
@@ -641,8 +641,6 @@ import { refreshThisWeek } from '../main.js';
         const container = document.getElementById('optimalLineupContainer');
         const benchContainer = document.getElementById('benchContainer');
         if (!container || !benchContainer) return;
-        // The Early Game Reminder follows this lineup's starters (improvements S50, round 2).
-        checkEarlyBannerVisibility();
 
         let league = getActiveLeague();
         let starters = State.manualStartersMap[State.activeLeagueId] || [];
@@ -675,7 +673,8 @@ import { refreshThisWeek } from '../main.js';
         // What this lineup needs from you, in one box: injured, bye and IR-slot starters, empty slots, IR moves,
         // and the differences from your Sleeper lineup (improvements S11, round 4; it replaces the red and purple
         // warnings and the amber "Differs from Sleeper lineup" line). The green line below stays for a match.
-        html += getLineupNeedsHTML(starters, league, benchPool);
+        // Early-game swaps (improvements S50, round 4: in this box, not a banner of their own).
+        html += getLineupNeedsHTML(starters, league, benchPool, earlySwapNeeds(league));
 
         if (validSleeperStarters.length > 0) {
             let sleeperSet = new Set(validSleeperStarters);

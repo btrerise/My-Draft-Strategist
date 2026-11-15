@@ -59,6 +59,8 @@ const chipTeams = (page) => chips(page).evaluateAll(els => els.map(e => e.firstC
 const chip = (page, team) => chips(page).filter({ has: page.locator(`[data-team="${team}"]`) });
 // The row a team's chip is in: the day it plays (your time; UTC in the tests), "Schedule" or "Added" (round 2).
 const dayOf = (page, team) => page.locator('#earlyTeamChips .early-day').filter({ has: page.locator(`[data-team="${team}"]`) }).locator('.early-day-label');
+// The early-game swaps in "This lineup needs you" (round 4): a fold of the box, or its body when they're all it has.
+const earlyNeeds = (page) => page.locator('#optimalLineupContainer .lineup-needs-early, #optimalLineupContainer .lineup-needs-early-body');
 const toggle = (page) => page.locator('#earlyFromScheduleToggle');
 const stored = (page, key) => page.evaluate((k) => JSON.parse(localStorage.getItem(k)), key);
 
@@ -76,8 +78,8 @@ test.describe('Early Games from the schedule', () => {
         await expect(dayOf(page, 'BUF')).toHaveText('Fri 12:15 AM');
         await expect(dayOf(page, 'MIN')).toHaveText('Sun 1:30 PM');
         // No Sleeper lineup here, and this app's lineup has nobody early in FLEX (FLEX Kickoff Optimization put
-        // CeeDee Lamb's 1:00 PM game there): no reminder.
-        await expect(page.locator('#earlyBanner')).toBeHidden();
+        // CeeDee Lamb's 1:00 PM game there): no early swap to suggest.
+        await expect(earlyNeeds(page)).toHaveCount(0);
         // Josh Allen (BUF), Derrick Henry and the Ravens (BAL), Justin Jefferson (MIN) and so on get EARLY;
         // Ja'Marr Chase (CIN, 1:00 PM) doesn't.
         const row = (name) => page.locator('#lineupTab .lineup-slot').filter({ has: page.locator('.player-name-wrap', { hasText: name }) });
@@ -104,17 +106,49 @@ test.describe('Early Games from the schedule', () => {
         await loadMlsRankings(page);
         await showTab(page, 'lineup');
         await expect.poll(() => chipTeams(page)).toEqual(EARLY);
-        const banner = page.locator('#earlyBanner');
+        const box = page.locator('#optimalLineupContainer .lineup-needs-box');
+        const fold = box.locator('.lineup-needs-early');
         // This app's lineup has Lamb in FLEX; Sleeper's has Jefferson there, and that's the one that counts (owner).
-        await expect(banner).toBeVisible();
-        await expect(banner).toContainText("On Sleeper, swap Justin Jefferson (FLEX, Sun 1:30 PM) with Ja'Marr Chase (WR, Sun 5:00 PM), so your FLEX holds the later game.");
-        await expect(banner).toContainText('From your Sleeper lineup as of your last sync, Tue 4:00 PM.');
-        // Above the lineup it's about, in the Optimal Lineup card.
-        expect(await banner.evaluate(el => !!el.closest('section').querySelector('#optimalLineupContainer'))).toBe(true);
+        // Round 4: a fold of "This lineup needs you", closed, not a banner; it doesn't add to the box's count.
+        await expect(fold).toBeVisible();
+        await expect(fold.locator('summary')).toHaveText('Early games: 1 swap on Sleeper');
+        await expect(fold).not.toHaveAttribute('open', '');
+        const titleBefore = await box.locator('.lineup-needs-title').textContent();
+        expect(titleBefore).toContain('This lineup needs you');
+        await fold.locator('summary').click();
+        await expect(fold).toContainText("Swap Justin Jefferson (FLEX, Sun 1:30 PM) with Ja'Marr Chase (WR, Sun 5:00 PM), so your FLEX holds the later game.");
+        await expect(fold).toContainText('On Sleeper, as of your last sync, Tue 4:00 PM.');
+        // Folded, the box's count leaves the suggestion out (F12's rule for "needs you").
+        await box.locator('.lineup-needs-title').click();
+        const folded = await box.locator('.lineup-needs-title').textContent();
+        await box.locator('.lineup-needs-title').click();
         // Once Jefferson's game has started there's nothing left to swap.
         await page.clock.setFixedTime(new Date('2026-09-20T14:00:00Z'));
         await callApp(page, 'renderLineupUI');
-        await expect(banner).toBeHidden();
+        await expect(earlyNeeds(page)).toHaveCount(0);
+        expect(folded).toMatch(/^This lineup needs you/);
+        expect(folded).not.toContain('Early');
+        await expectClean(page, state);
+    });
+
+    test('Got it hides the swap for the week, after a reload too', async ({ page }) => {
+        const state = await open(page);
+        await routeSleeperLineup(page, SLEEPER_STARTERS);
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await showTab(page, 'lineup');
+        await expect.poll(() => chipTeams(page)).toEqual(EARLY);
+        const fold = page.locator('#optimalLineupContainer .lineup-needs-early');
+        await fold.locator('summary').click();
+        await fold.getByRole('button', { name: 'Got it' }).click();
+        await expect(earlyNeeds(page)).toHaveCount(0);
+        expect(await stored(page, 'mls_early_dismissed')).toEqual({ week: '2026-2', keys: ['6794>4866'] });
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await waitForKickoffs(page);
+        await showTab(page, 'lineup');
+        await expect(page.locator('#lineupTab .early-badge').first()).toBeVisible();
+        await expect(earlyNeeds(page)).toHaveCount(0);
         await expectClean(page, state);
     });
 
@@ -127,7 +161,7 @@ test.describe('Early Games from the schedule', () => {
         await showTab(page, 'lineup');
         await expect.poll(() => chipTeams(page)).toEqual(EARLY);
         await expect(page.locator('#lineupTab .early-badge').first()).toBeVisible();
-        await expect(page.locator('#earlyBanner')).toBeHidden();
+        await expect(earlyNeeds(page)).toHaveCount(0);
         await expectClean(page, state);
     });
 
@@ -165,7 +199,6 @@ test.describe('Early Games from the schedule', () => {
         await toggle(page).uncheck();
         await expect(chips(page)).toHaveCount(0);
         await expect(page.locator('#earlyTeamChips')).toHaveText('No teams selected.');
-        await expect(page.locator('#earlyBanner')).toBeHidden();
         await expect(page.locator('#earlyFromScheduleDesc')).toContainText('pick the teams yourself');
         await page.selectOption('#earlyTeamSelect', 'CIN');
         expect(await chipTeams(page)).toEqual(['CIN']);
@@ -194,7 +227,6 @@ test.describe('Early Games from the schedule', () => {
         await showTab(page, 'lineup');
         await expect(toggle(page)).not.toBeChecked();
         await expect(page.locator('#earlyTeamChips')).toHaveText('No teams selected.');
-        await expect(page.locator('#earlyBanner')).toBeHidden();
         expect(await stored(page, 'mls_early_teams')).toEqual([]);
         expect(await stored(page, 'mls_early_week')).toEqual({ week: '2026-2', schedule: EARLY, removed: [] });
         await toggle(page).check();

@@ -205,10 +205,11 @@ What changed for users in each version of the two apps, in plain language. Newes
   You can still add a team or remove one for that week (with Put back), and the list clears when a new NFL week starts,
   so last Thursday's teams no longer stay picked. Turn off "Fill in from the schedule" on the card to pick the teams
   yourself.
-- **The Early Game Reminder names the swap to make.** When an early player sits in a FLEX-type slot and a later player
-  at his position could take it, the reminder, now above your lineup, says who to swap ("On Sleeper, swap Justin
-  Jefferson (FLEX, Sun 6:30 AM) with Ja'Marr Chase (WR, Sun 10:00 AM)"). In a synced league it reads your Sleeper
-  lineup as of your last sync, so it catches what still needs changing there. Otherwise it stays out of the way. A
+- **Early-game swaps in "This lineup needs you".** The Early Game Reminder banner is gone. When an early player sits in
+  a FLEX-type slot and a later player at his position could take it, the box above your lineup gets one line, "Early
+  games: 1 swap on Sleeper", that opens to the swap ("Swap Justin Jefferson (FLEX, Sun 6:30 AM) with Ja'Marr Chase (WR,
+  Sun 10:00 AM)"). In a synced league it reads your Sleeper lineup as of your last sync, so it catches what still needs
+  changing there. Got it hides it for the week. It's a suggestion, so it doesn't add to the lineups that need you. A
   player's EARLY badge goes once his game starts, as on the Dashboard.
 
 - **No flash when you tap on a phone.** The grey-blue box the phone's browser drew over whatever you tapped is gone. A

@@ -88,6 +88,12 @@
 .lineup-needs-box .lineup-needs-title + .lineup-needs-sleeper { margin-top: 0.4rem; }
 .lineup-needs-sleeper-text { margin: 0.4rem 0 0; color: var(--text-muted); line-height: 1.45; }
 .lineup-needs-note { margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--text-muted); }
+/* Early-game swaps (improvements S50, round 4): a fold of the box, or under its title when they're all it has. Got it
+   sits after the note, on its line. */
+.lineup-needs-early-body { margin-top: 0.15rem; }
+.early-swap-list { margin: 0.25rem 0; padding-left: 1.1rem; }
+.early-swap-note { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.early-swap-note .lineup-needs-btn { margin-left: 0; }
 
 .sim-lookup-card {
     background: rgba(0, 0, 0, 0.15);
@@ -297,21 +303,6 @@ body.mls-hide-headshots .mls-headshot { display: none; }
     font-size: 0.9rem;
 }
 
-/* Early Games Warning Banner */
-.early-warning-banner {
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    color: #fde047;
-    padding: 1rem;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    margin-bottom: 1.25rem;
-    display: none;
-    align-items: flex-start;
-    gap: 0.75rem;
-    line-height: 1.5;
-}
-
 /* Early Games Control Group */
 .early-games-stack {
     display: flex;
@@ -357,9 +348,6 @@ body.mls-hide-headshots .mls-headshot { display: none; }
 .early-day .team-chip .close-chip {
     margin: -14px -10px -14px -8px;
 }
-/* The reminder's swaps, and where it read them from (round 3). */
-.early-banner-list { margin: 0.35rem 0; padding-left: 1.1rem; }
-.early-banner-note { display: block; margin-top: 0.35rem; color: var(--text-muted); font-size: 0.8rem; }
 .early-removed {
     margin: 0;
     font-size: 0.85rem;

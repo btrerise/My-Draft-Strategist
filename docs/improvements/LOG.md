@@ -13331,3 +13331,38 @@ are identical: offline, there are no early teams, so the reminder is hidden in b
 CI re-took exactly those two ("Screenshots re-taken on CI (2 PNGs)"): from step 5's paragraph down (desktop 10645 →
 10668px, phone 24845 → 24938px), the new sentence in place. The desktop one again differs by 1 level of 255 in the header
 (rows 39–55), as in round 1: the page's new height, nothing that changed there.
+
+### S50, round 4: the reminder into "This lineup needs you" (owner, 2026-11-15)
+
+Owner: "Could we combine the reminder with one of the other items beneath the 'Optimize Lineup' button? I'm thinking it
+could at least be collapsible and/or dismissable. With its new location, on a phone, it's quite the scroll before you
+actually see the Lineup." I suggested the "This lineup needs you" box (where Sleeper to-dos already go, folding and
+remembered), with a Got it for the week and no change to the needs counts; owner: "Yes, go with your initial suggestion".
+
+**What changed.**
+- The amber Early Game Reminder banner is gone (`lineup/index.html`, its CSS in `css/mls.css`).
+- `js/mls/lineup/earlyGames.js`, `earlySwapNeeds(league)`: round 3's swaps as { title, summary, body, count } for
+  `getLineupNeedsHTML` (`gameInfo.js`, a new optional 4th argument; `render/lineup.js` passes it). With anything else in
+  the box they're a fold like the Sleeper one, closed until opened ("Early games: 1 swap on Sleeper"); alone they show
+  under the box's title, "Early games: 1 swap to consider", with the info icon (not the warning one). The body: "Swap
+  Justin Jefferson (FLEX, Sun 6:30 AM) with Ja'Marr Chase (WR, Sun 10:00 AM), so your FLEX holds the later game." and
+  "On Sleeper, as of your last sync, Tue 9:00 AM." (manual: "Use ⇄ Swap on his row.") beside **Got it**.
+- Not counted: the box's folded count, its title, the Lineup strip and the Dashboard keep F12's rule (`leagueNeeds`
+  untouched), so a league with only an early swap doesn't "need you".
+- Got it (`dismissEarlySwaps`, a click action in `main.js`) stores the swaps it hid in a new key, `mls_early_dismissed` =
+  `{ week: '2026-11', keys: ['earlyId>laterId'] }` (`keys.js`), read only for the week it names. A different swap (Sleeper's
+  lineup changed) shows again.
+- Guide step 5: the swap appears in "This lineup needs you".
+- On a phone, the first player now starts at 619px instead of 774px (155px higher); on desktop 637 instead of 711
+  (Sleeper lineup with Jefferson in FLEX and an empty RB slot, the spec's fixture).
+
+**Tests.** `mls-early-games.spec.mjs` (9 per width): the fold, closed, in the box with "Early games: 1 swap on Sleeper";
+opened, the swap and the sync time; folding the box leaves "Early" out of its count line; gone at Jefferson's kickoff;
+a new test: Got it hides it and stores `{ week: '2026-2', keys: ['6794>4866'] }`, still hidden after a reload; none with
+this app's lineup or with Sleeper's Jefferson at WR. The alone-in-the-box look checked by eye (a throwaway render). Ran
+check-precache, `node --test` (696), `mls-early-games`, `touch-targets`, `mls-phone-rows`, `mls-lineup-needs`,
+`mls-keyboard`, `mls-starter-alert`, `badge-legend`, `svg-icons`, `focus-ring`, `chevrons`, `mls-locked-kickoff`: all
+passed. The full suite hasn't run.
+
+**Screenshots.** Round 3's branch against this one: only `desktop/mls-league-guide.png` and `phone/mls-league-guide.png`
+(step 5's sentence), re-taken on CI with this commit. The Lineup ones are identical (offline: no early teams).

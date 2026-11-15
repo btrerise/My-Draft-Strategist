@@ -60,6 +60,8 @@ export const KEYS = {
         // Early Games' week (improvements S50, js/mls/lineup/earlyGames.js): { week: '2026-11', schedule: [team] the week's
         // kickoffs filled in, removed: [team] of those you took off }. A new NFL week clears it and earlyTeams.
         earlyWeek: 'mls_early_week',
+        // Early-game swaps you dismissed with Got it in "This lineup needs you" (S50 round 4): { week, keys: ['early>later'] }.
+        earlyDismissed: 'mls_early_dismissed',
         earlyFromSchedule: 'mls_early_from_schedule', // '0' while Early Games' "Fill in from the schedule" is off; unset = on
         leagues: 'mls_leagues',
         locksMap: 'mls_locks_map',

@@ -18,7 +18,6 @@ import { escapeHtml } from '../../shared/html.js';
 import { formatKickoffLabel, hasKickedOff } from './gameInfo.js';
 import { earlySwaps, earlyTeamsFromKickoffs } from './earlyRule.js';
 import { sleeperLineup } from './starterAlertRules.js';
-import { getActiveLeague } from '../helpers.js';
 
     const weekStamp = () => (State.currentNflWeek == null ? null : `${State.currentNflSeason || ''}-${State.currentNflWeek}`);
     const weekState = () => {
@@ -28,6 +27,9 @@ import { getActiveLeague } from '../helpers.js';
             schedule: w && Array.isArray(w.schedule) ? w.schedule : [],
             removed: w && Array.isArray(w.removed) ? w.removed : [],
         };
+    };
+    const readJSON = (key, fallback) => {
+        try { const v = JSON.parse(localStorage.getItem(key)); return v == null ? fallback : v; } catch (e) { return fallback; }
     };
     const writeJSON = (key, value) => {
         try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage blocked: it still works this visit */ }
@@ -86,7 +88,6 @@ import { getActiveLeague } from '../helpers.js';
     // Redraws the card and the banner, and the Lineup tab when it's showing (its EARLY badges).
     function refreshEarlyGames(redrawLineup = true) {
         renderEarlyCard();
-        checkEarlyBannerVisibility();
         if (!redrawLineup) return;
         const activeTab = document.querySelector('.tab-content.active');
         if (activeTab && activeTab.id === 'lineupTab') renderLineupUI();
@@ -223,12 +224,12 @@ import { getActiveLeague } from '../helpers.js';
             `<span class="early-removed-team">${t} <button type="button" class="mls-btn-sm btn-link-inline" data-action="restoreEarlyTeam" data-team="${t}" aria-label="Put ${t} back in Early Games">Put back</button></span>`).join(' ')}`;
     }
 
-    // The Early Game Reminder (round 3, owner's choice): it names the swaps to make so a flex slot holds the later game
-    // (earlyRule.js, earlySwaps), read from your Sleeper lineup as of the last sync in a synced league (owner: "just
-    // because it looks right on our app, doesn't mean the player is in the correct place on Sleeper"), or from this
-    // app's lineup in a manual league or one with no Sleeper lineup set. Hidden when there's no such swap: nobody early
-    // in a flex slot, or nobody later to trade places with. Round 2 showed it whenever a starter played early, every week
-    // with FLEX Kickoff Optimization having already done the swap. render/lineup.js calls this after each redraw.
+    // The early-game swaps (round 3, owner's choice): the swaps that put the later game in a flex slot (earlyRule.js,
+    // earlySwaps), read from your Sleeper lineup as of the last sync in a synced league (owner: "just because it looks
+    // right on our app, doesn't mean the player is in the correct place on Sleeper"), or from this app's lineup in a
+    // manual league or one with no Sleeper lineup set. None when nobody early is in a flex slot, or nobody later can
+    // trade places with him. Round 2 showed a reminder whenever a starter played early, every week, with FLEX Kickoff
+    // Optimization having already done the swap.
     function reminderSwaps(league) {
         const fromSleeper = league ? sleeperLineup(league) : null;
         const onSleeper = !!fromSleeper && fromSleeper.starters.some(s => s.player);
@@ -242,24 +243,44 @@ import { getActiveLeague } from '../helpers.js';
         return { swaps, onSleeper };
     }
 
-    export function checkEarlyBannerVisibility() {
-        const banner = document.getElementById('earlyBanner');
-        const text = document.getElementById('earlyBannerText');
-        if (!banner || !text) return;
-        const league = getActiveLeague();
-        const { swaps, onSleeper } = reminderSwaps(league);
-        banner.style.display = swaps.length ? 'flex' : 'none';
-        if (!swaps.length) { text.innerHTML = ''; return; }
+    // Swaps you dismissed with Got it, this NFL week (round 4; KEYS.mls.earlyDismissed, { week, keys }).
+    const swapKey = (w) => `${w.early.id}>${w.later.id}`;
+    function dismissedKeys() {
+        const d = readJSON(KEYS.mls.earlyDismissed, null);
+        return d && d.week === weekStamp() && Array.isArray(d.keys) ? d.keys : [];
+    }
+    export const dismissEarlySwaps = function(keys) {
+        const add = String(keys || '').split(',').filter(Boolean);
+        writeJSON(KEYS.mls.earlyDismissed, { week: weekStamp(), keys: [...new Set([...dismissedKeys(), ...add])] });
+        renderLineupUI();
+    };
+
+    // The swaps as part of "This lineup needs you" (round 4, owner's choice: the amber banner above the lineup took
+    // ~150px on a phone, on top of that box): { title, summary, body, count } for getLineupNeedsHTML (gameInfo.js), or
+    // null. A suggestion, so it doesn't count toward the box's "needs you" or the Dashboard's (F12's rule stays).
+    export function earlySwapNeeds(league) {
+        const { swaps: all, onSleeper } = reminderSwaps(league);
+        const gone = dismissedKeys();
+        const swaps = all.filter(w => !gone.includes(swapKey(w)));
+        if (!swaps.length) return null;
+        const n = swaps.length, s = n === 1 ? '' : 's';
         const who = (p, slot) => `<strong class="text-main">${escapeHtml(p.name)}</strong> (${escapeHtml(slotDisplayName(slot))}, ${escapeHtml(kickoffOf(p.team).label)})`;
         const items = swaps.map(w => `${who(w.early, w.earlySlot)} with ${who(w.later, w.laterSlot)}`);
         const slots = [...new Set(swaps.map(w => slotDisplayName(w.earlySlot)))];
-        const why = `so your ${slots.join(' and ')} ${slots.length > 1 ? 'hold' : 'holds'} the later game${swaps.length > 1 ? 's' : ''}.`;
-        const swapList = items.length === 1 ? items[0] : `<ul class="early-banner-list">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+        const why = `so your ${slots.join(' and ')} ${slots.length > 1 ? 'hold' : 'holds'} the later game${s}.`;
+        const text = n === 1 ? `Swap ${items[0]}, ${why}` : `Swap:<ul class="early-swap-list">${items.map(i => `<li>${i}</li>`).join('')}</ul>${why[0].toUpperCase()}${why.slice(1)}`;
         const synced = league && league.lastSyncedAt ? formatKickoffLabel(new Date(league.lastSyncedAt).toISOString()) : '';
-        text.innerHTML = onSleeper
-            ? `<strong>Early Game Reminder:</strong> On Sleeper, swap${items.length === 1 ? '' : ':'} ${swapList}${items.length === 1 ? ', ' : ''}${why}`
-                + `<span class="early-banner-note">From your Sleeper lineup${synced ? ` as of your last sync, ${escapeHtml(synced)}` : ' as of your last sync'}.</span>`
-            : `<strong>Early Game Reminder:</strong> Swap${items.length === 1 ? '' : ':'} ${swapList}${items.length === 1 ? ', ' : ''}${why} Use the <strong class="text-main">⇄ Swap</strong> button on his row.`;
+        const note = onSleeper
+            ? `On Sleeper, as of your last sync${synced ? `, ${escapeHtml(synced)}` : ''}.`
+            : 'Use ⇄ Swap on his row.';
+        const body = `<p class="lineup-needs-sleeper-text">${text}</p>`
+            + `<p class="lineup-needs-note early-swap-note"><span>${note}</span> <button type="button" class="btn btn-secondary mls-btn-sm lineup-needs-btn" data-action="dismissEarlySwaps" data-keys="${escapeHtml(swaps.map(swapKey).join(','))}">Got it</button></p>`;
+        return {
+            count: n,
+            title: `Early games: ${n} swap${s} to consider`,
+            summary: `Early games: ${n} swap${s}${onSleeper ? ' on Sleeper' : ''}`,
+            body,
+        };
     }
 
     export function isEarlyPlayer(teamStr) {

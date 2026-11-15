@@ -19,7 +19,7 @@ import { exportMlsSettings, factoryReset, importMlsSettings } from './backup.js'
 import { goToSetupStep, onload } from './init.js';
 import { toggleMlsHeadshots } from './lineup/headshots.js';
 import './players.js';
-import { addEarlyTeam, removeEarlyTeam, restoreEarlyTeam, setEarlyFromSchedule } from './lineup/earlyGames.js';
+import { addEarlyTeam, dismissEarlySwaps, removeEarlyTeam, restoreEarlyTeam, setEarlyFromSchedule } from './lineup/earlyGames.js';
 import { explainIrSlot, toggleLineupNeeds, toggleLockCountdown } from './lineup/gameInfo.js';
 import { activeOwnRankings, activePowerRankings, activeSeasonRankings, addAndSyncLeague, leagueQbMarketPricing, setQbMarketPrices, createManualLeague, cycleLeague, deleteLeagueManager, getLeagueRankings, getLeagueSeasonRankings, moveLeague, saveRequirements, setLeagueStyle, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
 import './leagues/scoutResults.js';
@@ -238,6 +238,7 @@ const clickActions = {
     removeEarlyTeam() { removeEarlyTeam(this.dataset.team); },
     // Early Games filled in from the schedule (improvements S50).
     restoreEarlyTeam() { restoreEarlyTeam(this.dataset.team); },
+    dismissEarlySwaps() { dismissEarlySwaps(this.dataset.keys); },
     // The Global Injury Auditor's place on the Lineup tab now points to the Dashboard's list (improvements S11).
     goToLineupNeeds() { goToLineupNeeds(); },
     // Lineup tab: Monte Carlo card (5C)
