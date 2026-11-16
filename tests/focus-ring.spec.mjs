@@ -1,6 +1,7 @@
 // One focus ring everywhere (improvements M2, Material 3's focus state): tab through every tab of both apps and T-Score
-// with the fixture data, and every control that takes keyboard focus shows a solid outline at least 2px wide in a colour
-// that isn't transparent (css/base.css, FOCUS: 2px green with a 2px gap; text fields and selects on their own border).
+// with the fixture data, and every control that takes keyboard focus shows a solid outline in a colour that isn't
+// transparent, at least 3px wide (Material 3's focus indicator; improvements M18), or 2px for text fields and selects
+// (css/base.css, FOCUS: 3px green with a 2px gap; text fields and selects 2px on their own border).
 // Draft Strategist's draft-strength slider rings its thumb instead (css/mds.css), which an outline can't show here.
 import { test, expect } from '@playwright/test';
 import {
@@ -33,7 +34,7 @@ async function tabThrough(page) {
             window.__focusSeen.add(el);
             const cs = getComputedStyle(el);
             const width = parseFloat(cs.outlineWidth);
-            const ok = el.matches(elsewhere) || (cs.outlineStyle !== 'none' && width >= 2 && cs.outlineColor !== 'rgba(0, 0, 0, 0)');
+            const ok = el.matches(elsewhere) || (cs.outlineStyle !== 'none' && width >= (el.matches('input:not([type=checkbox], [type=radio], [type=range], [type=button], [type=submit]), select, textarea') ? 2 : 3) && cs.outlineColor !== 'rgba(0, 0, 0, 0)');
             if (!el.matches(':focus-visible')) return { key, ok: false, why: 'not :focus-visible' };
             return { key, ok, why: `outline ${cs.outlineStyle} ${cs.outlineWidth} ${cs.outlineColor}` };
         }, RING_ELSEWHERE);

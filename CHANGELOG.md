@@ -15,6 +15,21 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Motion follows Material 3 Expressive.** Everything that moves now uses Material's own motion: things that move
+  (a chevron turning, a switch's handle, a pressed button's corners, the phone tab slide) settle with a slight spring,
+  and fades and colour changes are quicker and smooth. Tab and league fades on wider screens take 300 ms instead of
+  half a second, and the tab bar's marker moves in 200 ms. With Reduce Motion nothing moves, and the sync spinner fades
+  softly instead of turning.
+- **Toasts behave like Material 3's snackbar.** They sit centred at the bottom of the page (clear of the rail on a
+  computer, above the tab bar on a phone), grow up into place instead of bouncing in, and never cover an open dialog:
+  one that arrives while a dialog is open waits until it closes. A message stays longer the longer it is (4 to 8
+  seconds), and an error stays until you close it with ✕.
+- **A bolder keyboard focus ring.** The green ring around whatever has keyboard focus is 3px, Material 3's size, on
+  every page (text fields keep their 2px outline).
+- **Easier reading on wide screens.** Long explanations (the Guide, the setup steps, and T-Score's Research and notes) stop at about 70 characters a
+  line instead of running across the whole window.
+- **Tablets between 768 and 839 pixels wide** get the same layout as other tablets (with the tab bar at the bottom), and
+  a window exactly 600 pixels wide gets one layout instead of a mix of two.
 - **No flash when you tap on a phone.** The grey-blue box the phone's browser drew over whatever you tapped is gone,
   here and on the T-Score page. A tap still answers with the app's own light tint while your finger is down, and now
   folds (T-Score's "How it's projected" and the like), the "Switch to My Lineup Strategist" banner and the menu's links
@@ -198,6 +213,21 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Motion follows Material 3 Expressive.** Everything that moves now uses Material's own motion: things that move
+  (a chevron turning, a switch's handle, a pressed button's corners, the phone tab slide) settle with a slight spring,
+  and fades and colour changes are quicker and smooth. Tab and league fades on wider screens take 300 ms instead of
+  half a second, and the tab bar's marker moves in 200 ms. With Reduce Motion nothing moves, and the sync spinner fades
+  softly instead of turning.
+- **Toasts behave like Material 3's snackbar.** They sit centred at the bottom of the page (clear of the rail on a
+  computer, above the tab bar on a phone), grow up into place instead of bouncing in, and never cover an open dialog:
+  one that arrives while a dialog is open waits until it closes. A message stays longer the longer it is (4 to 8
+  seconds), and an error stays until you close it with ✕.
+- **A bolder keyboard focus ring.** The green ring around whatever has keyboard focus is 3px, Material 3's size, on
+  every page (text fields keep their 2px outline).
+- **Easier reading on wide screens.** Long explanations (the Guide, the setup steps) stop at about 70 characters a
+  line instead of running across the whole window.
+- **Tablets between 768 and 839 pixels wide** get the same layout as other tablets (with the tab bar at the bottom), and
+  a window exactly 600 pixels wide gets one layout instead of a mix of two.
 - **Early Games fills itself in.** Each week the Lineup tab's Early Games list picks up every team playing before
   Sunday 1:00 PM Eastern (Thursday, Friday, Saturday and the international morning games), so the EARLY badges and the
   Dashboard's EARLY chip appear on their own. The card lists the teams by kickoff, in your time, then the ones you

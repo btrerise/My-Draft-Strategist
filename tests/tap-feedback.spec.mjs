@@ -37,7 +37,7 @@ async function pressed(page, selector) {
     await cdp.send('CSS.forcePseudoState', { nodeId, forcedPseudoClasses: ['active'] });
     const styles = await page.evaluate(async (s) => {
         const el = document.querySelector(s);
-        // The layer fades in over 150ms (a transition): read it once the fade has ended.
+        // The layer fades in over 100ms (a transition): read it once the fade has ended.
         getComputedStyle(el, '::before').backgroundColor;
         // Transitions only: Draft Strategist's setup pulse is an endless animation.
         await Promise.all(document.getAnimations().filter((a) => a instanceof CSSTransition).map((a) => a.finished.catch(() => {})));

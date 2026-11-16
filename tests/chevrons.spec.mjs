@@ -1,7 +1,7 @@
 // Every fold's chevron turns with its fold (improvements F11). One shared rule in css/base.css (CHEVRONS): a chevron
 // is <svg class="chevron"> directly inside its toggle (a <summary>, or a button with aria-expanded), points right when
-// closed and down when open (.chevron-flip: down, then up), and turns at the Dashboard's league cards' speed
-// (--vt-ms, --vt-ease: 275 ms on phones, 375 ms from 768px). With Reduce Motion it doesn't turn. A <details> that
+// closed and down when open (.chevron-flip: down, then up), and turns on the
+// fast spatial spring (350 ms; improvements M18). With Reduce Motion it doesn't turn. A <details> that
 // used to show the browser's own triangle shows the shared chevron instead. Folds that redraw their box on each
 // click turn the new chevron from the old one's angle (js/shared/ui/chevron.js).
 //
@@ -22,8 +22,10 @@ const timing = (loc) => loc.evaluate(el => {
     return { property: s.transitionProperty, duration: s.transitionDuration, easing: s.transitionTimingFunction };
 });
 async function expectDashboardTiming(page, loc) {
-    const wide = (page.viewportSize()?.width ?? 0) >= 768;
-    expect(await timing(loc)).toEqual({ property: 'transform', duration: wide ? '0.375s' : '0.275s', easing: 'cubic-bezier(0.2, 0, 0, 1)' });
+    // Material 3 Expressive's fast spatial spring, at every width (improvements M18).
+    const t = await timing(loc);
+    expect({ property: t.property, duration: t.duration }).toEqual({ property: 'transform', duration: '0.35s' });
+    expect(t.easing).toMatch(/^linear\(0( 0%)?, 0\.099( 5%)?, 0\.317/);
 }
 // Turns over time rather than jumping: some frame between the click and the end sits between the two angles.
 async function sawTurning(loc) {

@@ -330,6 +330,12 @@ shot and S10 took four runs for 14.)
   area (the spec then reports it as short). The spec waits for every animation that ends before it measures: a tab
   measured on the first frame of its fade-in is at opacity 0, and `checkVisibility()` drops all of its controls (that
   was why T-Score's tabs were measured only now and then).
+- **Motion and window sizes** (improvements M18, Material 3 Expressive): every `transition` and `animation` takes its curve
+  and time from the `--motion-*` tokens in `css/base.css`'s `:root` (springs as `linear()` easings: spatial for what moves,
+  effects for colour and opacity; emphasized decelerate / accelerate for what enters or leaves past the screen's edge).
+  Media queries use Material's window sizes, `max-width: 599.98px` / `min-width: 600px` and `839.98px` / `840px`, plus
+  the few content tweaks listed in `tests/unit/motionTokens.test.mjs`, which fails on anything else. Material values
+  come from `docs/improvements/material3-review-3.md`, which names the source files.
 - **Image exports** (improvements S19, round 12): html2canvas draws text without the page's `tabular-nums`, so a new
   export calls `useProportionalDigits(clonedRoot)` (`js/shared/ui/exportImage.js`) in its `onclone`;
   `export-numerals.spec.mjs` checks three exports' clones; the Scoreboard's Export (improvements S22) is checked in

@@ -35,9 +35,46 @@
 /* --- SHARED CSS VARIABLES & ROOT DESIGN TOKENS --- */
 :root {
     color-scheme: dark;
-    /* A pressed button's corners tighten (improvements M2): Material 3 Expressive's fast spatial curve (a little overshoot).
-       M3's motion tokens can replace it. */
-    --press-morph: 350ms cubic-bezier(0.42, 1.67, 0.21, 0.90);
+    /* MOTION (Material 3 Expressive; improvements M18). Every transition and animation in the four stylesheets uses these
+       (tests/unit/motionTokens.test.mjs checks). Expressive's motion is springs (androidx Compose's
+       ExpressiveMotionTokens: spatial fast 0.6 damping / 800 stiffness, default 0.8 / 380, slow 0.8 / 200; effects
+       critically damped at 3800 / 1600 / 800). CSS has no springs, so each one is sampled into a linear() easing over
+       the time it takes to settle, the way material-web's labs do it (labs/gb button group: its fast spatial linear()
+       is the first line below, to 0.002). Spatial: things that move or change size or shape (a little overshoot: 9.5%
+       fast, 1.5% default and slow). Effects: colour and opacity (no overshoot). Fast for small things, default for
+       most, slow for whole screens. Browsers without linear() get Material's cubic-bezier stand-ins (further down). */
+    --motion-spatial-fast: linear(0, 0.099, 0.317, 0.561, 0.775, 0.934, 1.034, 1.083, 1.095, 1.084, 1.063, 1.04, 1.02, 1.005, 0.996, 0.992, 0.991, 0.992, 0.994, 0.996, 1);
+    --motion-spatial-fast-ms: 350ms;
+    --motion-spatial-default: linear(0, 0.066, 0.213, 0.383, 0.546, 0.685, 0.796, 0.878, 0.935, 0.973, 0.996, 1.008, 1.014, 1.015, 1.014, 1.012, 1.009, 1.007, 1.005, 1.003, 1.002, 1.001, 1, 1, 1);
+    --motion-spatial-default-ms: 500ms;
+    --motion-spatial-slow: linear(0, 0.052, 0.171, 0.317, 0.464, 0.598, 0.713, 0.805, 0.875, 0.927, 0.964, 0.988, 1.003, 1.011, 1.014, 1.015, 1.014, 1.012, 1.01, 1.008, 1.006, 1.004, 1.003, 1.002, 1.001, 1, 1);
+    --motion-spatial-slow-ms: 650ms;
+    --motion-effects-fast: linear(0, 0.181, 0.456, 0.672, 0.813, 0.897, 0.945, 0.971, 0.985, 0.992, 0.996, 0.998, 1);
+    --motion-effects-fast-ms: 150ms;
+    --motion-effects-default: linear(0, 0.144, 0.385, 0.594, 0.745, 0.845, 0.908, 0.947, 0.969, 0.983, 0.99, 0.995, 1);
+    --motion-effects-default-ms: 200ms;
+    --motion-effects-slow: linear(0, 0.124, 0.342, 0.543, 0.697, 0.805, 0.878, 0.925, 0.954, 0.972, 0.984, 0.99, 0.994, 0.997, 1);
+    --motion-effects-slow-ms: 300ms;
+    /* Material 3's easing curves (material-web's md.sys.motion tokens), for what enters and leaves the screen: a drawer
+       or a sheet comes in decelerating and goes out accelerating, so nothing overshoots past the screen's edge.
+       Emphasized is also standard (material-web sets one to the other). */
+    --motion-emphasized: cubic-bezier(0.2, 0, 0, 1);
+    --motion-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+    --motion-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+    --motion-duration-short2: 100ms;
+    --motion-duration-short4: 200ms;
+    --motion-duration-medium2: 300ms;
+    --motion-duration-medium4: 400ms;
+    /* State layers (material-web's ripple): the hover tint comes almost at once (15 ms), the press tint in 100 ms. */
+    --motion-state-hover-ms: 15ms;
+    /* The snackbar (toasts): material-web labs/gb's 150 ms in, 75 ms out, on Material's legacy decelerate and
+       accelerate curves (md.sys.motion.easing.legacy.*). */
+    --motion-legacy-decelerate: cubic-bezier(0, 0, 0.2, 1);
+    --motion-legacy-accelerate: cubic-bezier(0.4, 0, 1, 1);
+    --motion-snackbar-enter-ms: 150ms;
+    --motion-snackbar-exit-ms: 75ms;
+    /* A pressed button's corners tighten (improvements M2): the fast spatial spring. */
+    --press-morph: var(--motion-spatial-fast-ms) var(--motion-spatial-fast);
     /* Deeper, more premium dark mode backgrounds */
     --bg-color: #0a0e17; 
     --card-bg: #131b2c; 
@@ -116,6 +153,18 @@
     --space-5: 1.5rem;
     --space-6: 2rem;
 }
+/* Browsers without linear() easings (Safari before 17.2): the cubic-bezier curves Material 3 Expressive gives for the web,
+   with the same overshoot and length as each spring (the fast spatial one is labs/gb's pressed-button curve). */
+@supports not (transition-timing-function: linear(0, 1)) {
+    :root {
+        --motion-spatial-fast: cubic-bezier(0.42, 1.67, 0.21, 0.90);
+        --motion-spatial-default: cubic-bezier(0.38, 1.21, 0.22, 1.00);
+        --motion-spatial-slow: cubic-bezier(0.39, 1.29, 0.35, 0.98);
+        --motion-effects-fast: cubic-bezier(0.31, 0.94, 0.34, 1.00);
+        --motion-effects-default: cubic-bezier(0.34, 0.80, 0.34, 1.00);
+        --motion-effects-slow: cubic-bezier(0.34, 0.88, 0.34, 1.00);
+    }
+}
 
 /* --- GLOBAL RESETS --- */
 * { 
@@ -155,7 +204,7 @@
 }
 .skip-link:focus-visible {
     transform: none;
-    outline: 2px solid #fff;
+    outline: 3px solid #fff;
     outline-offset: 2px;
 }
 
@@ -213,7 +262,7 @@ body {
 }
 
 /* --- Header League Select --- */
-@media (max-width: 767px) {
+@media (max-width: 839.98px) {
     /* 1. Reduce the wide left/right padding on the ends of the header */
     .header {
         padding: 0.5rem 0.5rem; 
@@ -279,7 +328,7 @@ body {
     
     transform: translateX(-100%);
     visibility: hidden;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.3s; 
+    transition: transform var(--motion-duration-short4) var(--motion-emphasized-accelerate), visibility 0s linear var(--motion-duration-short4); 
     
     border-right: 1px solid var(--border); 
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4); 
@@ -468,7 +517,7 @@ html { scroll-padding-top: 5rem; }
 .hamburger-menu.open { 
     transform: translateX(0); 
     visibility: visible;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0s;
+    transition: transform var(--motion-duration-medium4) var(--motion-emphasized-decelerate), visibility 0s linear 0s;
 }
 
 /* Header inside the drawer */
@@ -509,7 +558,7 @@ html { scroll-padding-top: 5rem; }
     justify-content: center;
     padding: 0.25rem;
     border-radius: 6px;
-    transition: color 0.2s ease, background-color 0.2s ease;
+    transition: color var(--motion-effects-fast-ms) var(--motion-effects-fast), background-color var(--motion-effects-fast-ms) var(--motion-effects-fast);
 }
 
 .close-menu-btn:hover {
@@ -540,13 +589,13 @@ html { scroll-padding-top: 5rem; }
     
     /* We set a transparent border so adding color on hover doesn't shift text */
     border-left: 3px solid transparent; 
-    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease; 
+    transition: color var(--motion-effects-fast-ms) var(--motion-effects-fast), background-color var(--motion-effects-fast-ms) var(--motion-effects-fast), border-color var(--motion-effects-fast-ms) var(--motion-effects-fast); 
 }
 
 /* SVG Icon styling inside buttons */
 .hamburger-menu .nav-btn svg {
     opacity: 0.7;
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transition: opacity var(--motion-effects-default-ms) var(--motion-effects-default), transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast);
 }
 
 .hamburger-menu .nav-btn:hover { 
@@ -693,7 +742,7 @@ html { scroll-padding-top: 5rem; }
     color: var(--text-main);
     pointer-events: none;
 }
-@media (max-width: 767px) {
+@media (max-width: 839.98px) {
     .header:has(.header-picker) .logo-container { display: none; }
     .header:has(.header-picker) .header-controls { flex: 1 1 auto; min-width: 0; justify-content: flex-end; }
     .header:has(.header-picker) .header-controls > .cluster { flex: 1 1 auto; min-width: 0; }
@@ -748,7 +797,7 @@ html { scroll-padding-top: 5rem; }
     flex: 1; 
     min-width: 0; /* equal widths whatever the labels (improvements S21: a bold label must not widen its tab, or the marker misses it) */
     border-radius: 8px;
-    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+    transition: color var(--motion-effects-fast-ms) var(--motion-effects-fast), background-color var(--motion-effects-fast-ms) var(--motion-effects-fast), transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast); 
     position: relative;
     z-index: 10;
 }
@@ -758,7 +807,7 @@ html { scroll-padding-top: 5rem; }
 
 /* Tab Icon Animation */
 .nav-bar .nav-btn svg {
-    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s;
+    transition: transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast), filter var(--motion-effects-fast-ms) var(--motion-effects-fast);
 }
 
 /* Hover & Active States */
@@ -787,7 +836,7 @@ html { scroll-padding-top: 5rem; }
 .tab-content.active { 
     display: block; 
     /* Upgraded bezier curve for a smoother fade-in */
-    animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; 
+    animation: fadeIn var(--motion-effects-slow-ms) var(--motion-effects-slow) forwards; 
 }
 
 @keyframes fadeIn { 
@@ -860,7 +909,7 @@ html { scroll-padding-top: 5rem; }
         flex: none;
         border-radius: 50%;
         color: var(--text-muted);
-        transition: color 150ms linear, background-color 150ms linear;
+        transition: color var(--motion-effects-fast-ms) var(--motion-effects-fast), background-color var(--motion-effects-fast-ms) var(--motion-effects-fast);
     }
     .header-kofi:hover, .header-kofi:focus-visible {
         color: var(--primary-green);
@@ -882,7 +931,7 @@ html { scroll-padding-top: 5rem; }
         opacity: 0;
         visibility: hidden;
         pointer-events: none;
-        transition: opacity 150ms linear, visibility 150ms linear;
+        transition: opacity var(--motion-effects-default-ms) var(--motion-effects-default), visibility var(--motion-effects-default-ms) linear;
     }
     .header-kofi:hover::before, .header-kofi:focus-visible::before { opacity: 1; visibility: visible; }
 }
@@ -904,7 +953,7 @@ html { scroll-padding-top: 5rem; }
     justify-content: space-between;
     align-items: center;
     cursor: pointer;
-    transition: border-color 0.2s ease, transform 0.2s ease;
+    transition: border-color var(--motion-effects-fast-ms) var(--motion-effects-fast), transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast);
     text-align: left;
 }
 .guide-banner:hover {
@@ -914,7 +963,7 @@ html { scroll-padding-top: 5rem; }
 }
 .guide-arrow {
     color: var(--primary-green);
-    transition: transform 0.2s;
+    transition: transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast);
 }
 .guide-banner:hover .guide-arrow {
     transform: translateX(4px);
@@ -1006,7 +1055,7 @@ html { scroll-padding-top: 5rem; }
     font-size: 0.95rem; 
     background: rgba(0,0,0,0.2); 
     color: var(--text-main); 
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color var(--motion-effects-fast-ms) var(--motion-effects-fast), box-shadow var(--motion-effects-fast-ms) var(--motion-effects-fast);
     font-family: inherit;
 }
 /* Focus: the 2px green outline from FOCUS (end of this file) on the field's border (improvements M2). */
@@ -1067,7 +1116,7 @@ label.toggle-title,
     border-radius: 12px;
     position: relative;
     cursor: pointer;
-    transition: background 0.3s ease;
+    transition: background var(--motion-effects-fast-ms) var(--motion-effects-fast);
     flex-shrink: 0;
 }
 .toggle-switch::after {
@@ -1079,7 +1128,7 @@ label.toggle-title,
     height: 20px;
     background: #fff;
     border-radius: 50%;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast);
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 .toggle-switch:checked {
@@ -1128,7 +1177,7 @@ label.toggle-title,
     font-size: 0.75rem; 
     cursor: pointer; 
     font-family: inherit;
-    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-radius var(--press-morph);
+    transition: color var(--motion-effects-fast-ms) var(--motion-effects-fast), background-color var(--motion-effects-fast-ms) var(--motion-effects-fast), border-color var(--motion-effects-fast-ms) var(--motion-effects-fast), box-shadow var(--motion-effects-fast-ms) var(--motion-effects-fast), opacity var(--motion-effects-default-ms) var(--motion-effects-default), border-radius var(--press-morph);
     letter-spacing: 0.3px;
 }
 /* .swap-btn / .lock-btn (MLS roster swap+lock controls) defined near their actual
@@ -1145,7 +1194,7 @@ label.toggle-title,
     align-items: center;
     justify-content: center;
     border-radius: 6px;
-    transition: color 0.2s ease;
+    transition: color var(--motion-effects-fast-ms) var(--motion-effects-fast);
 }
 
 /* Hover and press: the shared state layer (STATE LAYERS, end of this file; improvements M2), not a tint and a shrink. */
@@ -1272,7 +1321,7 @@ label.toggle-title,
     background: rgba(255,255,255,0.1); color: var(--text-muted); border: 1px solid var(--border);
     border-radius: 50%; width: 18px; height: 18px; display: inline-flex; justify-content: center; 
     align-items: center; font-size: 11px; font-weight: bold; line-height: 1; font-family: monospace;
-    transition: color 0.2s ease, background-color 0.2s ease;
+    transition: color var(--motion-effects-fast-ms) var(--motion-effects-fast), background-color var(--motion-effects-fast-ms) var(--motion-effects-fast);
     /* Always a lowercase "i": inside an uppercase label (the Trade Analyzer verdict's "BY YOUR RANKINGS") it used to
        inherit text-transform and read "I" (improvements S19, round 8). */
     text-transform: none; letter-spacing: normal;
@@ -1290,8 +1339,8 @@ label.toggle-title,
     background: rgb(15, 23, 42);
     color: #f1f5f9; text-align: left; border-radius: 12px; padding: 12px 16px 8px; 
     position: absolute; z-index: 1001; top: calc(100% + 8px); right: -10px; 
-    opacity: 0; transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
-    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease, display 0.2s allow-discrete;
+    opacity: 0; transition: opacity var(--motion-effects-default-ms) var(--motion-effects-default), transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast), visibility var(--motion-effects-default-ms) linear;
+    transition: opacity var(--motion-effects-default-ms) var(--motion-effects-default), transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast), visibility var(--motion-effects-default-ms) linear, display var(--motion-effects-default-ms) allow-discrete;
     /* Improvements M3: swap 0.2s ease for M3's motion tokens (an "effects" curve, no overshoot) in both transition lines,
        the @starting-style lines below, and css/tscore.css's header tooltip. Keep display ... allow-discrete. */
     font-size: 0.85rem; font-weight: 400; 
@@ -1372,7 +1421,7 @@ label.toggle-title,
     justify-content: space-between; 
     align-items: center; 
     padding: 0.8rem 0; 
-    transition: background-color 0.15s;
+    transition: background-color var(--motion-effects-fast-ms) var(--motion-effects-fast);
     gap: 1rem;
 }
 .lineup-slot + .lineup-slot, .roster-item + .roster-item { border-top: 1px solid var(--divider); }
@@ -1614,12 +1663,28 @@ label.toggle-title,
         animation: none;
     }
 }
+/* --- READING WIDTH (improvements M18) ---
+   Material 3 bounds line length on wide windows: running text stops at about 70 characters a line instead of stretching
+   across a 1,100px card (the Guides' paragraphs reached 143). Only prose: the Guides, the setup steps' explanations and
+   T-Score's Research, notes and the About text. Narrower windows never reach the cap. */
+:root { --reading-width: 70ch; }
+.guide-content :where(p, li),
+.setup-step-how,
+#researchTab :where(p, li),
+.tscore-article-note,
+.tscore-support p,
+.tscore-privacy { max-width: var(--reading-width); }
 /* Sync Loading Spinner */
 @keyframes spin {
     100% { transform: rotate(360deg); }
 }
 .sync-spinner {
-    animation: spin 1s linear infinite;
+    animation: spin 1s linear infinite; /* a turn at a constant speed: linear is the curve (tests/unit/motionTokens.test.mjs) */
+}
+/* Reduce Motion (improvements M18): the spinner stops turning and fades softly instead, so a wait still shows. */
+@keyframes spin-reduced { to { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+    .sync-spinner { animation: spin-reduced 1s var(--motion-emphasized) infinite alternate; }
 }
 /* --- INFO & GUIDE TAB --- */
 .guide-content {
@@ -1702,7 +1767,7 @@ select {
     background-repeat: no-repeat;
     background-position: right 0.75rem center;
     background-size: 1rem;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: border-color var(--motion-effects-fast-ms) var(--motion-effects-fast), box-shadow var(--motion-effects-fast-ms) var(--motion-effects-fast);
     width: 100%;
 }
 
@@ -1734,7 +1799,7 @@ input[type="file"]::file-selector-button {
     font-size: 0.85rem;
     font-weight: 500;
     margin-right: 0.75rem;
-    transition: background 0.2s, border-color 0.2s;
+    transition: background var(--motion-effects-fast-ms) var(--motion-effects-fast), border-color var(--motion-effects-fast-ms) var(--motion-effects-fast);
 }
 
 input[type="file"]::file-selector-button:hover {
@@ -1754,7 +1819,7 @@ input[type="file"]::-webkit-file-upload-button {
     font-size: 0.85rem;
     font-weight: 500;
     margin-right: 0.75rem;
-    transition: background 0.2s, border-color 0.2s;
+    transition: background var(--motion-effects-fast-ms) var(--motion-effects-fast), border-color var(--motion-effects-fast-ms) var(--motion-effects-fast);
 }
 
 input[type="file"]::-webkit-file-upload-button:hover {
@@ -1769,14 +1834,14 @@ input[type="file"]::-webkit-file-upload-button:hover {
     cursor: pointer;
     padding: 0.25rem 0.5rem;
     line-height: 1;
-    transition: color 0.2s;
+    transition: color var(--motion-effects-fast-ms) var(--motion-effects-fast);
 }
 
 .close-banner-btn:hover {
     color: var(--text-main);
 }
 /* Reclaim horizontal space for player cards on mobile */
-@media (max-width: 767px) {
+@media (max-width: 839.98px) {
     .container {
         /* Reduces the outer screen edge gap from 1.5rem to 0.5rem */
         padding: 1.25rem 0.5rem; 
@@ -1808,11 +1873,18 @@ input[type="file"]::-webkit-file-upload-button:hover {
   cursor: pointer;
 }
 
-/* --- TOAST NOTIFICATIONS --- */
+/* --- TOAST NOTIFICATIONS (Material 3's snackbar; improvements M18) ---
+   Centred at the bottom, over the page and clear of the rail; above the tab bar where there is one. Under dialogs and
+   sheets (2000), so a dialog is never covered (a toast that arrives while one is open waits for it to close:
+   js/shared/ui/toast.js). Motion as material-web's labs/gb snackbar: it grows up out of its bottom edge in 150 ms
+   (legacy decelerate) and leaves with a 75 ms fade at full size (legacy accelerate); it used to slide up with a large
+   overshoot. The navy card with the green (red for errors) edge is the site's own, not Material's inverse surface. */
 .mds-toast {
   position: fixed;
-  bottom: 80px;
-  right: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  left: calc(50% + var(--rail-inset, 0px) / 2);
+  translate: -50% 0;
+  width: max-content;
   background-color: var(--card-bg, #131b2c); 
   color: var(--text-main, #f3f4f6);
   padding: 12px 20px;
@@ -1821,15 +1893,16 @@ input[type="file"]::-webkit-file-upload-button:hover {
   font-size: 0.9rem;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   border: 1px solid var(--primary-green, #10b981);
-  transform: translateY(150%);
+  transform-origin: center bottom;
+  scale: 1 0;
   opacity: 0;
-  /* visibility flips only after the slide-out finishes, so a hidden toast's ✕ drops out of
-     the tab order without cutting the exit animation short */
+  /* visibility (and the collapsed scale) flip only after the fade-out finishes, so a hidden toast's ✕ drops out of
+     the tab order without cutting the exit short, and the fade happens at full size */
   visibility: hidden;
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease, visibility 0s linear 0.4s;
-  z-index: 9999;
+  transition: opacity var(--motion-snackbar-exit-ms) var(--motion-legacy-accelerate), scale 0s linear var(--motion-snackbar-exit-ms), visibility 0s linear var(--motion-snackbar-exit-ms);
+  z-index: 1900;
   pointer-events: none;
-  max-width: 380px;
+  max-width: min(672px, calc(100vw - 32px - var(--rail-inset, 0px)));
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -1837,10 +1910,10 @@ input[type="file"]::-webkit-file-upload-button:hover {
 }
 
 .mds-toast.show {
-  transform: translateY(0);
+  scale: 1;
   opacity: 1;
   visibility: visible;
-  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease, visibility 0s;
+  transition: opacity var(--motion-snackbar-enter-ms) var(--motion-legacy-decelerate), scale var(--motion-snackbar-enter-ms) var(--motion-legacy-decelerate), visibility 0s;
 }
 
 /* Pointer events, only while shown and only where needed. A success toast stays click-through
@@ -1891,31 +1964,21 @@ input[type="file"]::-webkit-file-upload-button:hover {
   color: var(--text-main);
 }
 
-@media (max-width: 767px) {
-  .mds-toast {
-    /* Clears .nav-bar, which pads itself by the same env() inset for the home indicator.
-       (env() is 0 until the viewport meta adds viewport-fit=cover; this keeps them in step.) */
-    bottom: calc(90px + env(safe-area-inset-bottom));
-    left: 50%;
-    right: auto;
-    transform: translate(-50%, 150%);
-    width: max-content;
-    max-width: 90vw;
-  }
-  .mds-toast.show {
-    transform: translate(-50%, 0);
-  }
+@media (max-width: 839.98px) {
+  /* Clears .nav-bar, which pads itself by the same env() inset for the home indicator.
+     (env() is 0 until the viewport meta adds viewport-fit=cover; this keeps them in step.) */
+  .has-nav-bar .mds-toast { bottom: calc(90px + env(safe-area-inset-bottom)); }
 }
 
 /* --- CHEVRONS (improvements F11) ---
    Every fold's chevron, in all three pages: <svg class="chevron"> as a direct child of its toggle, which is a
-   <summary> or a button with aria-expanded. It turns with the fold at the Dashboard's league cards' speed (S16's
-   --vt-ms and --vt-ease: 275 ms on phones, 375 ms wider), and not at all with Reduce Motion. Two resting pairs, so no
+   <summary> or a button with aria-expanded. It turns on Material 3 Expressive's fast spatial spring (a small thing
+   that moves; improvements M18, was S16's --vt-ms), and not at all with Reduce Motion. Two resting pairs, so no
    fold's look changed: .chevron points right when closed and down when open (the Dashboard's); .chevron-flip
    points down when closed and up when open (the rankings cards, Draft Strategist's player cards). A <summary> with one
    gets .chevron-summary in place of the browser's marker. Folds that redraw their toggle on every click turn the new
    chevron from the old one's angle with turnChevronAcrossRedraw (js/shared/ui/chevron.js). */
-.chevron { transform: rotate(-90deg); transition: transform var(--vt-ms) var(--vt-ease); }
+.chevron { transform: rotate(-90deg); transition: transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast); }
 :is(details[open] > summary, [aria-expanded="true"]) > .chevron { transform: none; }
 .chevron.chevron-flip { transform: none; }
 :is(details[open] > summary, [aria-expanded="true"]) > .chevron.chevron-flip { transform: rotate(180deg); }
@@ -2366,7 +2429,7 @@ a.nav-btn,
     align-items: center; 
     border: 1px solid var(--border); 
     border-radius: 8px; 
-    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), filter 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+    transition: color var(--motion-effects-fast-ms) var(--motion-effects-fast), background-color var(--motion-effects-fast-ms) var(--motion-effects-fast), border-color var(--motion-effects-fast-ms) var(--motion-effects-fast), box-shadow var(--motion-effects-fast-ms) var(--motion-effects-fast), transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast), opacity var(--motion-effects-default-ms) var(--motion-effects-default), filter var(--motion-effects-fast-ms) var(--motion-effects-fast); 
     font-size: 0.85rem;
     font-weight: 600;
     width: auto;
@@ -2436,7 +2499,7 @@ button.pos-filter {
 .badge-legend-sample .badge { margin-left: 0; }
 .badge-legend-sample .lineup-needs-box, .badge-legend-sample .bye-warning-banner, .badge-legend-sample .tier-divider { margin: 0; }
 .badge-legend-text { margin: 0; min-width: 0; font-size: 0.85rem; line-height: 1.55; color: var(--text-muted); overflow-wrap: anywhere; }
-@media (max-width: 600px) {
+@media (max-width: 599.98px) {
     .badge-legend-body { margin-left: 0; }
     .badge-legend-row { grid-template-columns: minmax(0, 1fr); }
 }
@@ -2462,10 +2525,10 @@ button.pos-filter {
     position: absolute; inset: 0;
     background: rgba(10, 14, 23, 0.7);
     opacity: 0;
-    transition: opacity 200ms linear;
+    transition: opacity var(--motion-effects-default-ms) var(--motion-effects-default);
     touch-action: none;
 }
-.sheet-host.is-open .sheet-scrim { opacity: 1; transition-duration: 400ms; }
+.sheet-host.is-open .sheet-scrim { opacity: 1; transition-duration: var(--motion-duration-medium4); }
 .sheet {
     position: absolute; left: 0; right: 0; bottom: 0;
     height: 50vh; height: 50dvh;
@@ -2478,9 +2541,9 @@ button.pos-filter {
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.45);
     padding-bottom: env(safe-area-inset-bottom);
     transform: translateY(100%);
-    transition: transform 200ms cubic-bezier(0.3, 0, 0.8, 0.15), height 300ms cubic-bezier(0.2, 0, 0, 1);
+    transition: transform var(--motion-duration-short4) var(--motion-emphasized-accelerate), height var(--motion-duration-medium2) var(--motion-emphasized);
 }
-.sheet-host.is-open .sheet { transform: none; transition: transform 400ms cubic-bezier(0.05, 0.7, 0.1, 1), height 300ms cubic-bezier(0.2, 0, 0, 1); }
+.sheet-host.is-open .sheet { transform: none; transition: transform var(--motion-duration-medium4) var(--motion-emphasized-decelerate), height var(--motion-duration-medium2) var(--motion-emphasized); }
 .sheet.is-expanded { height: calc(100vh - 48px); height: calc(100dvh - max(48px, env(safe-area-inset-top))); }
 .sheet.is-dragging, .sheet-host.is-open .sheet.is-dragging { transition: none; }
 .sheet-grip { display: flex; justify-content: center; touch-action: none; cursor: grab; }
@@ -2528,15 +2591,15 @@ button.pos-filter {
    for tab and league fades and 375 ms for the Dashboard cards.
    Reduce Motion: the helper never starts one, and none of this applies. */
 :root {
-    --vt-ms: 275ms;
-    /* Tab and league fades, and the tab bar's marker that moves with them: the phone speed on phones, slower on
-       wider screens (owner's choice, round 6: 500 ms). Dashboard cards keep --vt-ms. */
-    --vt-fade-ms: var(--vt-ms);
-    --vt-ease: cubic-bezier(0.2, 0, 0, 1);
+    /* On the motion tokens since improvements M18 (they were 275 ms on phones, 375 ms wider, and 500 ms for the wider
+       fades, all on cubic-bezier(0.2, 0, 0, 1)). What moves (the phone slide, the Dashboard's cards) uses Material 3
+       Expressive's default spatial spring; the fades ("soft + rise", tab and league) are effects, the slow one, 300 ms
+       at every width (a fade has no overshoot, and Material keeps effects at 300 ms or less). */
+    --vt-ms: var(--motion-spatial-default-ms);
+    --vt-ease: var(--motion-spatial-default);
+    --vt-fade-ms: var(--motion-effects-slow-ms);
+    --vt-fade-ease: var(--motion-effects-slow);
     --vt-shift: 48px;
-}
-@media (min-width: 768px) {
-    :root { --vt-ms: 375ms; --vt-fade-ms: 500ms; }
 }
 @media (prefers-reduced-motion: no-preference) {
     html[data-vt] .header { view-transition-name: vt-header; }
@@ -2563,7 +2626,7 @@ button.pos-filter {
     html[data-vt="league"]::view-transition-new(*),
     html[data-vt="tab"]::view-transition-group(*),
     html[data-vt="tab"]::view-transition-old(*),
-    html[data-vt="tab"]::view-transition-new(*) { animation-duration: var(--vt-fade-ms); }
+    html[data-vt="tab"]::view-transition-new(*) { animation-duration: var(--vt-fade-ms); animation-timing-function: var(--vt-fade-ease); }
     html[data-vt="league"]::view-transition-old(root),
     html[data-vt="tab"]::view-transition-old(root) { animation-name: vt-fade-out; }
     html[data-vt="league"]::view-transition-new(root),
@@ -2571,6 +2634,13 @@ button.pos-filter {
 
     html[data-vt="league"]::view-transition-old(vt-league-name) { animation-name: vt-out-up; }
     html[data-vt="league"]::view-transition-new(vt-league-name) { animation-name: vt-in-up; }
+    /* The name is small and moves: the fast spatial spring. */
+    html[data-vt="league"]::view-transition-group(vt-league-name),
+    html[data-vt="league"]::view-transition-old(vt-league-name),
+    html[data-vt="league"]::view-transition-new(vt-league-name) {
+        animation-duration: var(--motion-spatial-fast-ms);
+        animation-timing-function: var(--motion-spatial-fast);
+    }
 
     /* League Command Center cards (js/mls/render/leagueCards.js names each one while a "cards" transition runs):
        a card that folds or unfolds changes height in place, and the cards below or around it move to their new
@@ -2585,12 +2655,13 @@ button.pos-filter {
         object-position: top;
     }
 
-    /* The tab bar's marker slides to the active tab: along the bar, or up and down the rail (improvements S26). */
-    .nav-marker { transition: left var(--vt-fade-ms) var(--vt-ease), width var(--vt-fade-ms) var(--vt-ease), top var(--vt-fade-ms) var(--vt-ease), height var(--vt-fade-ms) var(--vt-ease); }
+    /* The tab bar's marker slides to the active tab: along the bar, or up and down the rail (improvements S26). Material's
+       navigation bar and rail move their indicator in 200 ms, emphasized (material-web labs/gb; M18, was 500 ms wider). */
+    .nav-marker { --marker-motion: var(--motion-duration-short4) var(--motion-emphasized); transition: left var(--marker-motion), width var(--marker-motion), top var(--marker-motion), height var(--marker-motion); }
 }
 /* Phones: the old tab leaves and the new one arrives in the direction of travel (a swipe left, or a tab further
    right, moves forward). Wider screens fade (above). */
-@media (prefers-reduced-motion: no-preference) and (max-width: 767px) {
+@media (prefers-reduced-motion: no-preference) and (max-width: 839.98px) {
     html[data-vt="tab"][data-vt-dir="forward"]::view-transition-old(root) { animation-name: vt-out-left; }
     html[data-vt="tab"][data-vt-dir="forward"]::view-transition-new(root) { animation-name: vt-in-right; }
     html[data-vt="tab"][data-vt-dir="back"]::view-transition-old(root) { animation-name: vt-out-right; }
@@ -2616,14 +2687,10 @@ button.pos-filter {
    active tab. */
 .nav-marker { position: absolute; top: 0; left: 0; height: 3px; border-radius: 0 0 3px 3px; background: var(--primary-green); pointer-events: none; }
 
-/* Toasts slide up from the bottom (above); with Reduce Motion they appear and go without moving. */
+/* Toasts grow up from their bottom edge (above); with Reduce Motion they only fade. */
 @media (prefers-reduced-motion: reduce) {
-    .mds-toast, .mds-toast.show { transition: opacity 0.2s ease, visibility 0s linear 0.2s; }
-    .mds-toast.show { transition: opacity 0.2s ease, visibility 0s; }
-    .mds-toast { transform: none; }
-    @media (max-width: 767px) {
-        .mds-toast, .mds-toast.show { transform: translateX(-50%); }
-    }
+    .mds-toast, .mds-toast.show { scale: 1; transition: opacity var(--motion-effects-default-ms) var(--motion-effects-default), visibility 0s linear var(--motion-effects-default-ms); }
+    .mds-toast.show { transition: opacity var(--motion-effects-default-ms) var(--motion-effects-default), visibility 0s; }
 }
 
 /* --- NAVIGATION RAIL AND TABLET BAR (improvements S26, Material 3's window sizes) ---
@@ -2642,7 +2709,7 @@ button.pos-filter {
 .menu-section-label,
 .close-menu-btn .icon-collapse { display: none; }
 
-@media (min-width: 600px) and (max-width: 839px) {
+@media (min-width: 600px) and (max-width: 839.98px) {
     .nav-bar { justify-content: center; gap: 4px; padding-left: 16px; padding-right: 16px; }
     /* Equal widths (the marker and the bold label, as on phones), sized for "Scoreboard" in bold beside its icon. */
     .nav-bar .nav-btn { flex: 0 1 8.5rem; flex-direction: row; justify-content: center; gap: 4px; padding: 18px 4px; } /* M3: 4dp from icon to label; the 64dp bar */
@@ -2686,25 +2753,25 @@ button.pos-filter {
        decelerate to open, 200ms emphasized accelerate to close. */
     .has-nav-bar .hamburger-menu,
     .has-nav-bar .hamburger-menu > * {
-        transition: transform 200ms cubic-bezier(0.3, 0, 0.8, 0.15), visibility 0s linear 200ms;
+        transition: transform var(--motion-duration-short4) var(--motion-emphasized-accelerate), visibility 0s linear var(--motion-duration-short4);
     }
     .has-nav-bar .hamburger-menu { transform: translateX(calc(var(--rail-w) - 100%)); }
     .has-nav-bar .hamburger-menu > * { transform: translateX(calc(280px - var(--rail-w))); }
     .has-nav-bar .hamburger-menu.open,
     .has-nav-bar .hamburger-menu.open > * {
         transform: none;
-        transition: transform 400ms cubic-bezier(0.05, 0.7, 0.1, 1), visibility 0s linear 0s;
+        transition: transform var(--motion-duration-medium4) var(--motion-emphasized-decelerate), visibility 0s linear 0s;
     }
     .has-nav-bar .hamburger-menu .menu-nav-links { padding-top: 14px; } /* the first icon at 102px, as on the rail */
     .has-nav-bar .hamburger-menu .menu-nav-links > * {
         transform: translateY(calc(var(--rail-row, 4) * 12px)); /* 68px - 56px per row above it */
         /* Only on the way out (owner): closing, the rows stay put while the panel slides away, and move back to the
            rail's spacing once it's hidden, ready for the next opening. */
-        transition: transform 0s linear 200ms;
+        transition: transform 0s linear var(--motion-duration-short4);
     }
     .has-nav-bar .hamburger-menu.open .menu-nav-links > * {
         transform: none;
-        transition: transform 400ms cubic-bezier(0.05, 0.7, 0.1, 1);
+        transition: transform var(--motion-duration-medium4) var(--motion-emphasized-decelerate);
     }
     .has-nav-bar .menu-nav-links > :nth-child(1) { --rail-row: 0; }
     .has-nav-bar .menu-nav-links > :nth-child(2) { --rail-row: 1; }
@@ -2729,8 +2796,7 @@ button.pos-filter {
     }
     .menu-section-label + .nav-btn { margin-top: 0; }
 
-    /* Fixed elements stay clear of the rail: toasts drop to the bottom (no bar there), dialogs centre on the page. */
-    .has-nav-bar .mds-toast { bottom: calc(24px + env(safe-area-inset-bottom)); }
+    /* Fixed elements stay clear of the rail: dialogs centre on the page (toasts too, through --rail-inset). */
     .has-nav-bar .preview-overlay,
     .has-nav-bar .mds-modal-overlay { padding-left: calc(1.5rem + var(--rail-w)); }
 }
@@ -2740,8 +2806,8 @@ button.pos-filter {
 .has-nav-bar .hamburger-menu .nav-btn { min-height: 56px; padding-top: 0; padding-bottom: 0; font-size: 0.875rem; }
 /* The menu's backdrop fades in and out with the menu (setBackdrop, js/shared/ui/navMenu.js) instead of dimming and
    blurring the whole page in one frame (improvements S26). */
-.has-nav-bar .menu-overlay { opacity: 0; pointer-events: none; transition: opacity 200ms linear; }
-.has-nav-bar .menu-overlay.open { opacity: 1; pointer-events: auto; transition-duration: 400ms; }
+.has-nav-bar .menu-overlay { opacity: 0; pointer-events: none; transition: opacity var(--motion-effects-default-ms) var(--motion-effects-default); }
+.has-nav-bar .menu-overlay.open { opacity: 1; pointer-events: auto; transition-duration: var(--motion-duration-medium4); }
 @starting-style { .has-nav-bar .menu-overlay.open { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
     .has-nav-bar .hamburger-menu,
@@ -2762,10 +2828,13 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
    Every page (both apps and T-Score) loads this file, so these rules hold site-wide. Per-component rules that only
    repeated them are gone; what's left differs for a reason (an inset ring where a parent clips it). */
 
-/* FOCUS: one ring for every control a keyboard reaches: 2px green with a 2px gap (the owner's pick). Text fields and
-   selects: the 2px green outline sits on the field's own border instead (Material 3's focused text field). */
-:focus-visible { outline: 2px solid var(--primary-green); outline-offset: 2px; }
+/* FOCUS: one ring for every control a keyboard reaches: Material 3's focus indicator, 3px green with a 2px gap
+   (material-web's md.sys.state.focus-indicator: 3px thick, 2px outside, 3px inside where a parent clips it;
+   improvements M18, was 2px). Text fields and selects: a 2px green outline on the field's own border instead
+   (Material 3's focused text field, 2dp). */
+:focus-visible { outline: 3px solid var(--primary-green); outline-offset: 2px; }
 :is(input:not([type=checkbox], [type=radio], [type=range], [type=button], [type=submit]), select, textarea):focus-visible {
+    outline-width: 2px;
     outline-offset: -1px;
 }
 
@@ -2838,8 +2907,10 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
 :root { -webkit-tap-highlight-color: transparent; }
 
 /* STATE LAYERS: hover, focus and press answer the same way on every button (Material 3's states): the content's own
-   colour laid over the control, 8% on hover (only where there's a pointer that hovers), 10% while pressed, fading in
-   150ms. Nothing moves or shrinks any more. Disabled controls get none. The owner also picked Expressive's pressed shape
+   colour laid over the control, 8% on hover (only where there's a pointer that hovers), 10% while pressed. Timing as
+   material-web's ripple (improvements M18; was 150 ms both): the hover tint comes in 15 ms, the press tint in 100 ms,
+   both linear. (The ripple also lets a press fade out over 375 ms; with one layer for both, the release takes the
+   hover's 15 ms.) Nothing moves or shrinks any more. Disabled controls get none. The owner also picked Expressive's pressed shape
    morph: the site's 6px buttons tighten to 4px while pressed (--press-morph, :root), never with Reduce Motion. */
 :where(button, [role=button], a.btn, a.btn-sm):where(:not(.premium-link-btn, .rankings-card-toggle))::before {
     content: '';
@@ -2848,14 +2919,14 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
     border-radius: inherit;
     background-color: transparent;
     pointer-events: none;
-    transition: background-color 150ms linear;
+    transition: background-color var(--motion-state-hover-ms) linear;
 }
 /* A colour, not opacity: an always-present opacity: 0 layer over the text changed how CI's Chromium anti-aliased every
    button's label (a few hundred pixels per screenshot), though it drew nothing. */
 @media (hover: hover) {
     :where(button, [role=button], a.btn, a.btn-sm):where(:not(:disabled, [aria-disabled=true])):hover::before { background-color: color-mix(in srgb, currentColor 8%, transparent); }
 }
-:where(button, [role=button], a.btn, a.btn-sm):where(:not(:disabled, [aria-disabled=true])):active::before { background-color: color-mix(in srgb, currentColor 10%, transparent); }
+:where(button, [role=button], a.btn, a.btn-sm):where(:not(:disabled, [aria-disabled=true])):active::before { background-color: color-mix(in srgb, currentColor 10%, transparent); transition-duration: var(--motion-duration-short2); }
 /* What opens something without being a button answers a press the same way (improvements F23, owner's choice): folds
    (<summary>), the cross-app banner links and the menu's links to the other pages, the ROS/Weekly rankings card headers
    (and Auto-Find's sections, the same toggle; their ::after already covers the header, so it carries the tint) and the
@@ -2868,12 +2939,12 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
     border-radius: inherit;
     background-color: transparent;
     pointer-events: none;
-    transition: background-color 150ms linear;
+    transition: background-color var(--motion-state-hover-ms) linear;
 }
 :where(summary, .guide-banner > a, a.nav-btn:not(.premium-link-btn)):active::before,
 :where(.rankings-card-toggle):active::after,
-.premium-link-btn:active { background-color: color-mix(in srgb, currentColor 10%, transparent); }
-:where(.rankings-card-toggle)::after { transition: background-color 150ms linear; }
+.premium-link-btn:active { background-color: color-mix(in srgb, currentColor 10%, transparent); transition-duration: var(--motion-duration-short2); }
+:where(.rankings-card-toggle)::after { transition: background-color var(--motion-state-hover-ms) linear; }
 /* A fold in a lighter block (.sos-details-accordion) tints its whole row, the block's padding included, like a list
    row; open, only the header row. */
 .sos-details-accordion > summary::before { inset: -0.75rem -1rem; border-radius: 8px; }
@@ -2920,7 +2991,7 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
 .notify-card-lines { margin: 4px 0 0; padding-left: 1.1rem; display: grid; gap: 4px; color: var(--text-muted); }
 .notify-card-body > .notify-card-lines:first-child { margin-top: 8px; }
 .notify-card-actions { margin-top: 12px; display: flex; justify-content: flex-end; }
-@media (max-width: 767px) {
+@media (max-width: 839.98px) {
     .notify-card { left: 8px; right: 8px; width: auto; bottom: calc(90px + env(safe-area-inset-bottom)); }
 }
 @media (min-width: 840px) {

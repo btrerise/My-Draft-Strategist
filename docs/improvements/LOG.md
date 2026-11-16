@@ -13423,3 +13423,74 @@ which wasn't in the backup. `noteEarlyWeek` saved the week's stamp on any first 
 keep (teams you added, the schedule's, or removed ones), and the schedule saves its own week when the kickoffs load. A
 new spec checks a visit with nothing to keep writes no `mls_early_*` key. Re-ran `backup`, `mls-early-games` (11 per
 width) and `key-migration`: all passed.
+
+## M18 — Material 3 Expressive: a review against the sources, corrections to earlier values, and what's built
+
+**For every later M card, S18 and the light-theme card: read `docs/improvements/material3-review-3.md` first. Where it
+and your card's text disagree on a Material value, the review wins** (it was checked against material-web's labs and
+token files and Compose's tokens; the cards' values came from an earlier session that couldn't read m3.material.io).
+
+**Asked** (owner, 2026-11-16): review the site against Material 3 Expressive from git sources (material-web `labs/gb`,
+androidx Compose's tokens and adaptive layouts, the skydashnet M3 skill), check M3, S18, M17 and other cards' Material
+values, group the findings, then: "Build and/or fold-in all numbers, please. This includes fixes to past choices I've
+made."
+
+**What the review found** (details, sources and numbers in the review): M3's six motion curves are cubic-bezier
+approximations of Compose's Expressive springs (right peak and length, up to 10% off in shape); labs already writes the
+fast one as `linear()`. M2's focus ring was 2px where Material's is 3px. M3's toast entrance (an overshoot) isn't labs'
+snackbar (a 150 ms grow, a 75 ms fade). S16's fades (500 ms) and the marker (500 ms) are slower than Material's. Rules
+at `max-width: 600px` and `min-width: 600px` both applied at exactly 600px. About 20 text styles under 4.5:1, text down
+to 9.28px, Guide lines to 143 characters, 26 corner radii, ~570 colour literals outside `:root`. Self-audit 7/16.
+
+**Built here** (the owner's past choices changed are marked):
+- Motion tokens in `css/base.css` (`:root`, MOTION): the six Expressive springs as `linear()` easings with their
+  lengths, Material's emphasized curves and durations, the snackbar's and the state layers' timings; a cubic-bezier
+  fallback under `@supports not (transition-timing-function: linear(0, 1))`. Every transition and animation in the four
+  stylesheets moved onto them by one rule: colour, background, border and shadow → effects fast; opacity → effects
+  default (slow above 200 ms); transform and size → spatial fast (small things, 200 ms or less before) or default.
+  Drawers, the sheet and the expanded rail keep emphasized decelerate 400 ms / accelerate 200 ms (an overshoot would
+  open a gap at the screen's edge). The switch handle, chevrons, the league name's roll and the press morph: fast spatial.
+- **Changed past choices:** view transitions: phone slides and the Dashboard's cards on the default spatial spring
+  (500 ms, was 275 / 375 ms); tab and league fades on effects slow, 300 ms at every width (was 275 ms on phones and the
+  owner's 500 ms wider, S16 round 6); the tab bar's marker 200 ms emphasized (was 500 ms wider, S26). Chevrons 350 ms
+  fast spatial (were the Dashboard's 275 / 375 ms). The focus ring 3px (owner's 2px, M2); text fields stay 2px (Material's
+  focused field). State layers: hover 15 ms, press 100 ms (were 150 ms). The sync spinner fades instead of turning under
+  Reduce Motion.
+- Toasts as Material's snackbar (M3's asks 1–5, with the owner's "build all" taken as yes to the card's suggestions,
+  corrected where labs differs): centred over the page and clear of the rail (`--rail-inset`), 24px from the bottom on
+  computers, above the tab bar below 840px; z-index 1900 (under dialogs and sheets, 2000); one that arrives while an
+  `aria-modal="true"` element is on screen waits, checking every 250 ms, and the latest wins; success 4s + 1s per 40
+  characters up to 8s, with an action 8s, an error until ✕; it grows from its bottom edge (`scale`, 150 ms legacy
+  decelerate) and fades out at full size (75 ms legacy accelerate); with Reduce Motion it only fades. The site's navy
+  card and green / red edge stay (identity). Its width is up to 672px (labs).
+- Breakpoints: `max-width: 600px` → 599.98px (24 queries); 767 / 768 → 839.98 / 840 (16 + 12), so 768–839px windows
+  get the tablet layout that goes with the bottom bar. 480 / 520 / 900 / 1024 stay as content tweaks inside a size class.
+  Checked: no sideways scroll on any tab of the three pages at 600, 700, 768, 800, 839 and 840px.
+- Reading width: `--reading-width: 70ch` on the Guides' paragraphs and lists, the setup steps' explanations, T-Score's
+  Research, notes and About.
+- `tests/unit/motionTokens.test.mjs`: the tokens re-derived from the springs (and the fast one equal to labs'); no
+  literal curve or time in any transition or animation (allowlist: 0s, the 1 ms view-transition cut, `linear`, the four
+  endless pulses and the spinner); media queries only on the allowed widths. Checked that it fails on a planted
+  `transition: color 0.2s ease` and `@media (max-width: 767px)`. `tests/snackbar.spec.mjs` (4 per width): placement,
+  waiting for a dialog and the z-index, the timings, the entrance and Reduce Motion. `focus-ring.spec.mjs` now wants 3px
+  (2px for fields); `chevrons.spec.mjs` the fast spatial spring; `tap-feedback.spec.mjs`'s comment.
+
+**Folded into cards, with their values in the review:** M3 (now only progress and loading: 4px bar with a 4px gap and a
+4px stop dot; a 38px loading shape in 48px), M4 (2px between grouped buttons, inner corners 8 → 4px), M6 (the measured
+contrast list), M7 / M8 (the small-text counts), M9 (one filled primary per group), M10 (hero moments, emphasized type),
+M12 / M13 (two panes from 1200px, a 360px side pane, a 24px gap), M14 (Material's corner scale, buttons 12 → 8px or
+8 → 4px, every colour on tokens, fewer shadows). **New card: a light theme** after M14 (the owner chose to build it): a
+light set of the tokens, Light / Dark / System in Settings, contrast in both, screenshots in both. S18 uses the motion
+tokens (page-to-page fades on effects slow, 300 ms). The runbook's cards still show their old values until it's updated;
+the review overrides them.
+
+**Screenshots** (main and this branch rendered in the same container, `npm run pxdiff`): the desktop PNGs whose prose now
+wraps at 70 characters change (`desktop/mds-empty-guide.png`, `desktop/mds-empty-setup.png`,
+`desktop/mls-empty-setup.png`, `desktop/mls-league-guide.png`, `desktop/mls-league-roster.png`,
+`desktop/mls-league-setup.png`, `desktop/tscore-researchTab.png`); every phone PNG and every other desktop PNG is
+identical. S52 (open) re-takes the two Guide and setup screenshots too: whichever merges second re-takes them.
+
+**Tests run:** check-precache; `node --test` (699); chevrons, focus-ring, tap-feedback, nav-rail, view-transitions,
+touch-targets, support, analytics, tscore-refresh, mls-phone-rows, mls-trade-sides-align, sheet, room-on-phones, smoke,
+mls-replace-set-dialog, mls-busy-spinner, tooltips-onscreen, tooltip-closed-space, mls-keyboard and the new snackbar
+spec: all passed.
