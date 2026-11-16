@@ -230,6 +230,12 @@ shot and S10 took four runs for 14.)
   to 21, the CPU slowed 4x, each tab switch timed five times; `PERF_REF=<ref>` for another commit, `PERF_PROFILE=1` for
   the functions that took the time. Both are how `docs/improvements/performance.md` was measured: rerun them the same
   way for a before/after.
+- **Backup timing** (`tests/tools/backup-perf.tool.mjs`, improvements F25): `PERF_BACKUP=<a Lineup Strategist backup
+  file> npx playwright test -c tools/playwright.config.mjs backup-perf --project phone` loads that backup, slows the CPU 4x
+  and times switches to the Dashboard and Sync All: long tasks, the 4 s after, requests, and Chrome's own style, layout
+  and script time. Every request leaving localhost is recorded the first time and replayed after (`perf-net.json` beside
+  the backup), so `PERF_REF=<git ref>` compares commits on the same data; `PERF_PROFILE=1` adds the busiest functions.
+  A backup holds the owner's data: keep it and its `perf-net.json` out of the repo.
 - `tests/tools/playwright.config.mjs` matches `*.tool.mjs`, so the default config never runs these (each `npm run`
   script names its own file).
 
