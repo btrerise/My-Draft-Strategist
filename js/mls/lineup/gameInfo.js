@@ -18,7 +18,7 @@ import { normalizeName } from '../../shared/names.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
 import { rankedOpponentBadgeHTML, weeklyOpponentInfo } from '../opponent.js';
 import { leagueNeeds, lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } from './issues.js';
-import { CRUNCH_ICON, byeCrunch, crunchWeeks } from './byeCrunch.js';
+import { CRUNCH_ICON, byeCrunch, crunchListHTML, crunchWeeks } from './byeCrunch.js';
 
     // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
     // currently-known NFL week) -- not just whenever they have a bye scheduled at some point
@@ -475,7 +475,7 @@ import { CRUNCH_ICON, byeCrunch, crunchWeeks } from './byeCrunch.js';
                 const label = i.find === 'ALL' ? 'Find players' : `Find ${i.find}`;
                 button = ` <button type="button" class="btn btn-secondary mls-btn-sm lineup-needs-btn" data-action="findLeaguePlayers" data-league-id="${leagueId}" data-pos="${escapeHtml(i.find)}">${label}</button>`;
             }
-            return `<li class="lineup-needs-item is-${i.kind}">${i.kind === 'crunch' ? CRUNCH_ICON : ''}${escapeHtml(i.text)}${button}</li>`;
+            return `<li class="lineup-needs-item is-${i.kind}">${i.kind === 'crunch' ? CRUNCH_ICON : ''}${escapeHtml(i.text)}${button}${crunchListHTML(i)}</li>`;
         }).join('');
 
         // The strip's and the cards' rule (leagueNeeds, lineup/issues.js; improvements F12): a change to set on Sleeper

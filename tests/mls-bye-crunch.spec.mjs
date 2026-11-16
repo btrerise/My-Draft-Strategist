@@ -16,16 +16,21 @@ const move = (from, to, id) => { from.players = from.players.filter(p => p !== i
 
 const card = (page) => page.locator('#leagueCards > .mls-lc-card').filter({ has: page.locator('.mls-lc-name', { hasText: 'Fixture League' }) });
 const todo = (page) => card(page).locator('.mls-lc-todo > .mls-needs-line');
-const plain = (s) => s.replace(/ /g, ' ').trim();
-const cardItems = (page) => todo(page).locator('.mls-needs-item').evaluateAll(ls => ls.map(l => l.textContent));
 const lineupBox = (page) => page.locator('#optimalLineupContainer .lineup-needs-box');
-const boxItems = (page) => lineupBox(page).locator('.lineup-needs-item').evaluateAll(ls => ls.map(l => l.textContent));
 
 const WEEK13 = [
-    'Bye Crunch · Week 13: 1 RB short (1 of your 2 RBs on bye: Derrick Henry)',
-    'Bye Crunch · Week 13: 1 K short (your only K on bye: Justin Tucker)',
-    'Bye Crunch · Week 13: 1 DEF short (your only DEF on bye: Baltimore Ravens)',
+    'Bye Crunch · Week 13: 1 RB short (1 of your 2 RBs on bye)',
+    'Bye Crunch · Week 13: 1 K short (your only K on bye)',
+    'Bye Crunch · Week 13: 1 DEF short (your only DEF on bye)',
 ];
+// One bullet per player (owner's request, round 2).
+const WEEK13_PLAYERS = [['Derrick Henry (BAL) on bye'], ['Justin Tucker (BAL) on bye'], ['Baltimore Ravens on bye']];
+// An item's headline (its own text, without the list or a button) and its bullets.
+const itemParts = (items) => items.evaluateAll(ls => ls.map(l => ({
+    head: [...l.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').replace(/\u00a0/g, ' ').trim(),
+    list: [...l.querySelectorAll('.mls-crunch-list li')].map(li => li.textContent.replace(/\u00a0/g, ' ')),
+})));
+
 
 // Sleeper's week (and its projections, the fixture's week 2 file for any week); Bijan for A.J. Brown.
 async function routeWeek(page, week, { bijan = true } = {}) {
@@ -53,7 +58,7 @@ test.describe('Bye Crunch', () => {
         await expect(todo(page).locator('.mls-needs-label')).toHaveText('Notes');
         await expect(card(page)).not.toHaveClass(/\bhas-needs\b|\bneeds-you\b/);
         await expect(page.locator('#lineupNeedsBox')).not.toContainText('need you');
-        expect((await cardItems(page)).map(plain)).toEqual(WEEK13);
+        expect(await itemParts(todo(page).locator('.mls-needs-item'))).toEqual(WEEK13.map((head, i) => ({ head, list: WEEK13_PLAYERS[i] })));
         await expect(todo(page).locator('.mls-needs-item.is-crunch .mls-crunch-icon')).toHaveCount(3);
         // Nothing for week 14.
         await expect(todo(page)).not.toContainText('Week 14');
@@ -68,7 +73,8 @@ test.describe('Bye Crunch', () => {
         await showTab(page, 'lineup');
         await expect(lineupBox(page).locator('.lineup-needs-title')).toContainText('Nothing needs you before kickoff');
         await expect(lineupBox(page)).not.toHaveClass(/\bhas-problems\b/);
-        expect((await boxItems(page)).map(plain)).toEqual([`${WEEK13[0]} Find RB`, `${WEEK13[1]} Find K`, `${WEEK13[2]} Find DEF`]);
+        expect(await itemParts(lineupBox(page).locator('.lineup-needs-item'))).toEqual(WEEK13.map((head, i) => ({ head, list: WEEK13_PLAYERS[i] })));
+        for (const pos of ['RB', 'K', 'DEF']) await expect(lineupBox(page).getByRole('button', { name: `Find ${pos}` })).toBeVisible();
         await page.locator('[data-action="setWaiverPos"][data-pos="ALL"]').evaluate(b => b.click());
         await lineupBox(page).getByRole('button', { name: 'Find DEF' }).click();
         await expect(page.locator('#scoutTab [data-action="setWaiverPos"][data-pos="DEF"]')).toHaveAttribute('aria-pressed', 'true');
@@ -79,8 +85,8 @@ test.describe('Bye Crunch', () => {
         const state = await open(page, 12, { bijan: false });
         await expect(todo(page).locator('.mls-needs-label')).toHaveText('Needs you');
         // Henry alone is short every week (the empty slot); his bye leaves the second RB slot short too in week 13.
-        expect((await cardItems(page)).map(plain)).toEqual(['RB slot is empty',
-            'Bye Crunch · Week 13: 1 RB short (your only RB on bye: Derrick Henry)', WEEK13[1], WEEK13[2]]);
+        expect((await itemParts(todo(page).locator('.mls-needs-item'))).map(i => i.head)).toEqual(['RB slot is empty',
+            'Bye Crunch · Week 13: 1 RB short (your only RB on bye)', WEEK13[1], WEEK13[2]]);
         await expect(card(page).locator('.mls-lc-count-todo')).toHaveText('1 to fix');
         await expect(page.locator('#lineupNeedsBox')).toContainText('1 lineup needs you · 1 to fix');
         await expectClean(page, state);

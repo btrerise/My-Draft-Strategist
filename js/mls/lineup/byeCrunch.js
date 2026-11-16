@@ -108,20 +108,33 @@ const names = (ps) => {
 };
 const OUT_PHRASES = { OUT: 'is Out', IR: 'is on IR', PUP: 'is on PUP', SUS: 'is suspended', NFI: 'is on NFI' };
 
-// One entry's words: "Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye: Derrick Henry, Breece Hall and
-// De'Von Achane)", then who's out now, assumed still out: "· Joe Mixon is Out, assumed still out". slotName turns a
-// slot type into its label ('WRTE' -> 'W/T').
+// One entry's headline: "Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye)". The players are crunchDetails'
+// lines, one per bullet (owner's request, S52 round 2: names in one sentence ran together). slotName turns a slot type
+// into its label ('WRTE' -> 'W/T').
 export function crunchText(c, slotName = (t) => t) {
     const what = `${c.short} ${slotName(c.slotType)} short`;
-    let bye = '';
-    if (c.onBye.length) {
+    let count = '';
+    if (c.onBye.length && c.pos != null) {
         const pl = (n) => `${c.pos}${n === 1 ? '' : 's'}`;
-        const count = c.pos == null ? 'on bye'
-            : c.total === c.onBye.length ? (c.total === 1 ? `your only ${pl(1)} on bye` : `all ${c.total} of your ${pl(c.total)} on bye`)
-            : `${c.onBye.length} of your ${c.total} ${pl(c.total)} on bye`;
-        bye = ` (${count}: ${names(c.onBye)})`;
+        count = c.total === c.onBye.length ? (c.total === 1 ? ` (your only ${pl(1)} on bye)` : ` (all ${c.total} of your ${pl(c.total)} on bye)`)
+            : ` (${c.onBye.length} of your ${c.total} ${pl(c.total)} on bye)`;
     }
-    const outs = c.out.map(p => `${names([p])} ${OUT_PHRASES[p.inj] || (p.isReserve ? 'is in your IR slot' : `is ${p.inj}`)}`);
-    const outText = outs.length ? ` · ${outs.join(', ')}, assumed still out` : '';
-    return `Bye Crunch · Week ${c.week}: ${what}${bye}${outText}`;
+    return `Bye Crunch · Week ${c.week}: ${what}${count}`;
+}
+
+// One line per player behind it: "Derrick Henry (BAL) on bye" (a team defense without its team again), then who's out
+// now: "Joe Mixon is on IR, assumed still out"; an injured player still in your IR slot "is in your IR slot".
+export function crunchDetails(c) {
+    const team = (p) => (p.team && p.pos !== 'DEF' && !String(p.name || '').includes(p.team) ? ` (${p.team})` : '');
+    return [
+        ...c.onBye.map(p => `${names([p])}${team(p)} on bye`),
+        ...c.out.map(p => `${names([p])} ${OUT_PHRASES[p.inj] || (p.isReserve ? 'is in your IR slot' : `is ${p.inj}`)}, assumed still out`),
+    ];
+}
+
+// An item's player lines as a bulleted list (S52 round 2), for the league card and the Lineup box; '' without any.
+const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+export function crunchListHTML(item) {
+    const lines = (item && item.details) || [];
+    return lines.length ? `<ul class="mls-crunch-list">${lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : '';
 }

@@ -131,7 +131,7 @@ const GROUPS = [
             MEANING.sleeperLineup],
         [`<div class="lineup-needs-box has-problems"><div class="lineup-needs-title">${WARNING_ICON}<span>This lineup needs you</span></div><ul class="lineup-needs-list"><li class="lineup-needs-item is-injured">Player is Out: start Other Player instead?</li><li class="lineup-needs-item is-ir">Activate Player from IR on Sleeper before kickoff</li></ul></div>`,
             'Above your lineup: what it needs from you before kickoff, in red for an injury and purple for your IR slot, with a button to swap or find a player. Each league\'s card on the Dashboard lists the same.'],
-        [`<ul class="lineup-needs-list"><li class="lineup-needs-item is-crunch">${CRUNCH_ICON}Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye: …)</li></ul>`,
+        [`<ul class="lineup-needs-list"><li class="lineup-needs-item is-crunch">${CRUNCH_ICON}Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye)<ul class="mls-crunch-list"><li>Player (BAL) on bye</li></ul></li></ul>`,
             'Bye Crunch: in one of the next 2 weeks, byes leave a starting spot nobody on your roster can fill (players Out or on IR now are assumed still out). A heads-up in time to add someone, with a Find button; it doesn\'t count as a lineup that needs you.'],
         [pill('mls-verdict-start', 'Would Start'),
             'In Auto-Find and Check a List: he\'d make your lineup this week. The line under it names who he\'d replace.'],

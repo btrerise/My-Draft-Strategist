@@ -13270,3 +13270,16 @@ container's fonts), as on main; the comparison above stands in for it.
   user-minus icon and "Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye: …)" in orange, its meaning beside it).
   Opened and checked.
 - `phone/mls-league-guide.png`: the same two sentences (on phones the legend is a sheet, not in the screenshot).
+
+### S52, round 2: one player per line (owner, 2026-11-16, after trying it on a league where it applies)
+Owner: "Would it be better to have each player that Bye Crunch lists in bullet point form for easier readability? My
+current example has 5 lines of text that run together." Yes: the item is now a headline and a bulleted list.
+- Headline: "Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye)" (no names in it any more; a flex slot reads
+  "1 FLEX short"). Under it, one bullet per player: "Derrick Henry (BAL) on bye", then "Joe Mixon is on IR, assumed
+  still out" (a team defense without its team again: "Baltimore Ravens on bye"). The bullets are the muted text color,
+  so the orange headline stays the thing to read; the Find button stays beside the headline.
+- Where: `crunchText` (the headline) and the new `crunchDetails` (the lines) and `crunchListHTML` (the `<ul>`) in
+  `byeCrunch.js`; the item carries `details`; `getLineupNeedsHTML` and `leagueTodoHTML` add the list (on the card the
+  item is a `<div>` so it can hold one). `css/mls.css`: `.mls-crunch-list`. The legend's sample, the Guide's sentence and
+  the CHANGELOG line follow. Unit tests and `mls-bye-crunch.spec.mjs` check the headline and the bullets apart.
+- Screenshots: the same two Guide PNGs move again (the Guide's example and the legend's sample), re-taken by CI.
