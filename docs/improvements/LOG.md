@@ -13494,3 +13494,10 @@ identical. S52 (open) re-takes the two Guide and setup screenshots too: whicheve
 touch-targets, support, analytics, tscore-refresh, mls-phone-rows, mls-trade-sides-align, sheet, room-on-phones, smoke,
 mls-replace-set-dialog, mls-busy-spinner, tooltips-onscreen, tooltip-closed-space, mls-keyboard and the new snackbar
 spec: all passed.
+
+### M18: screenshots re-taken on CI (2026-11-16)
+
+The "Update screenshots" run for ee046f9 succeeded and committed exactly the seven predicted desktop PNGs (933564a):
+`mds-empty-guide`, `mds-empty-setup`, `mls-empty-setup`, `mls-league-guide`, `mls-league-roster`, `mls-league-setup`,
+`tscore-researchTab`. Each differs only where prose now wraps at 70 characters (the Guides are taller); no other
+screenshot changed.
