@@ -199,11 +199,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **Bye Crunch: a heads-up two weeks ahead.** When byes in one of the next 2 weeks leave a starting spot nobody on your
-  roster can fill, the league's Dashboard card says so under one heading per week, "Bye Crunch · Week 13: 2 starters
-  short", with a line per position ("RB: 1 short · 3 of 4 on bye: …", then "FLEX: 1 short · also … on bye") naming
-  who's on bye and anyone Out or on IR now (assumed still out), each with a Find button that opens Top Available on
-  that position. The Lineup tab's box shows the same heading folded to one line; tap it to open. Kickers and defenses
-  aren't checked. It's a note, not counted in "N lineups need you".
+  roster can fill, the league's Dashboard card and the Lineup tab's box show one line per week, "Bye Crunch · Week 13: 2
+  starters short". Tap it to see each position ("RB: 1 short · 3 of 4 on bye") with a Find button that opens Top
+  Available on that position, and a bullet per player, including anyone Out or on IR now (assumed still out). A FLEX
+  line lists only players not already named above it. Kickers and defenses aren't checked. It's a note, not counted in
+  "N lineups need you".
 - **Tuesday's waiver checks use next week's byes.** Once the week's games are over, Best available, Auto-Find and Check
   a List ask about next week, and now that includes its byes: a free agent on bye next week isn't an upgrade, and
   Auto-Find says "On bye next week".

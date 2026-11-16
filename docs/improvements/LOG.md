@@ -13579,3 +13579,23 @@ card too). The owner took **A + B**, C to revisit if needed.
   button on its row, the Lineup tab's fold closed then open, kept open after Optimize).
 - Screenshots: the two Guide PNGs (the Guide's sentence and the legend's sample), re-taken by CI.
 - CI re-took the two Guide PNGs (commit b204bd1): the legend's sample is now the heading "Bye Crunch · Week 13: 2 starters short" with an RB row and a FLEX row, and its meaning says the Lineup tab folds it; the Guide's sentence says the same. Opened and checked.
+
+### S52, round 5: folded on the card too, and bullets again (owner, 2026-11-16)
+Owner: "I think we should do Option C as well." And, on round 4's one-line rows: "I am torn … it saves vertical space
+… it's hard to scan/read … Perhaps now that we're doing folds we can go back to bullets? Do you have another idea?"
+My view: with the item folded in both places, the space a run-on line saved no longer matters, so bullets, keeping
+round 4's structure. (Another idea, not taken: names as inline chips; compact, but a new badge style that would read
+like the rank and status chips.)
+- **C:** the Dashboard card's Bye Crunch is a fold like the Lineup tab's, closed to "Bye Crunch · Week 13: 3 starters
+  short"; open folds stay open across redraws (keyed by league and week, on both). One helper draws both,
+  `crunchFoldHTML(item, { key, open, chevron, button })`.
+- **Rows:** a slot heading, "RB: 1 short", with "· 5 of 6 on bye" when several are on bye (a flex slot whose players
+  are all listed above: "· the players above"), its Find button, then a bullet per player: "Derrick Henry (BAL)" (the
+  heading says they're on bye), "George Kittle (TE) · Out, assumed still out". A flex row bullets only players the rows
+  above didn't, with their position: "Brock Bowers (TE, LV)". `crunchGroup` returns `{ head, note, players }` per row;
+  `crunchRowsHTML` draws them.
+- Legend sample (drawn with `crunchFoldHTML`, open), Guide sentence and CHANGELOG line follow. Tests: unit (the rows'
+  bullets and notes, the fold's markup); spec (the card's fold closed, then open with Find on its row; still open after
+  the Dashboard redraws; the Lineup tab's fold as before).
+- Screenshots: the two Guide PNGs, re-taken by CI.
+- The legend's sample draws the fold open with its heading as text (`CRUNCH_ICON` + `crunchRowsHTML`), not a `<summary>`: a legend row isn't a control, and `touch-targets.spec.mjs` caught the sample's 23px summary on phones. The real folds' summaries use the shared 48px TOUCH TARGETS area, as every `.mls-change-fold` does.

@@ -106,47 +106,43 @@ export function crunchWeeks(currentWeek, lastWeek = 18) {
 // which is the SoS badge's icon on phones.
 export const CRUNCH_ICON = `<svg class="mls-crunch-icon" aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="23" y1="11" x2="17" y2="11"></line></svg>`;
 
-const names = (ps) => {
-    const n = ps.map(p => String((p && p.name) || 'Unknown player').replace(/ /g, ' '));
-    return n.length <= 1 ? n.join('') : `${n.slice(0, -1).join(', ')} and ${n[n.length - 1]}`;
-};
-const OUT_PHRASES = { OUT: 'is Out', IR: 'is on IR', PUP: 'is on PUP', SUS: 'is suspended', NFI: 'is on NFI' };
+const OUT_TAGS = { OUT: 'Out', IR: 'on IR', PUP: 'on PUP', SUS: 'suspended', NFI: 'on NFI' };
+const outTag = (p) => OUT_TAGS[p.inj] || (p.isReserve ? 'injured in your IR slot' : p.inj);
+const nb = (t) => String(t).replace(/ /g, '\u00a0');
 
-const outPhrase = (p) => OUT_PHRASES[p.inj] || (p.isReserve ? 'is in your IR slot' : `is ${p.inj}`);
-const team = (p) => (p.team && !String(p.name || '').includes(p.team) ? ` (${p.team})` : '');
-const isOut = (ps) => ps.map(p => `${names([p])} ${outPhrase(p)}`);
-
-// One week's Bye Crunch as a heading and a row per slot type (owner's choice A, S52 round 4: "Bye Crunch · Week 13:"
-// on every note repeated itself, and a FLEX's bullets were bookkeeping).
+// One week's Bye Crunch as a heading, a row per slot type, and a bullet per player (owner's choices: A in round 4, one
+// heading per week instead of "Bye Crunch · Week 13:" on every note; bullets again in round 5, since the item now folds
+// and a sentence of names was hard to scan).
 // entries: one week's byeCrunchWeek entries, in slot order. slotName turns a slot type into its label ('WRTE' -> 'W/T').
-// Returns { week, short, text, rows: [{ slotType, head, detail, text }] } (text: head · detail):
-//   text  "Bye Crunch · Week 13: 3 starters short"
-//   rows  a strict slot: "RB: 1 short · Derrick Henry (BAL) on bye", "WR: 1 short · 5 of 6 on bye: Ja'Marr Chase, …";
-//         a flex slot names only who the rows above it didn't: "FLEX: 1 short · also Brock Bowers (TE) on bye", or
-//         "FLEX: 1 short · on bye: Derrick Henry (RB) and Ja'Marr Chase (WR)" when it's the first row. Who's out now
-//         follows, "; Joe Mixon is on IR, assumed still out".
+// Returns { week, short, text, rows: [{ slotType, head, note, players: [text], text }] }:
+//   text     "Bye Crunch · Week 13: 3 starters short"
+//   head     "RB: 1 short"; note: a strict slot with several on bye "5 of 6 on bye" ("all 2 on bye"); a flex slot whose
+//            players are all in the rows above "the players above"
+//   players  "Derrick Henry (BAL)" (the heading says they're on bye); a flex slot's only those the rows above didn't
+//            list, with the position, "Brock Bowers (TE, LV)"; who's out now, "George Kittle (TE) · Out, assumed still out"
+//   text     the row in one line, for tests: head · note · players
 export function crunchGroup(entries, slotName = (t) => t) {
     const week = entries[0].week;
     const short = entries.reduce((n, c) => n + c.short, 0);
     const named = new Set();
     const rows = entries.map(c => {
         const head = `${slotName(c.slotType)}: ${c.short} short`;
-        let bye, out;
-        if (c.pos != null) {
-            const n = c.onBye.length;
-            bye = n === 0 ? '' : n === 1 ? `${names(c.onBye)}${team(c.onBye[0])} on bye`
-                : `${c.total === n ? `all ${n}` : `${n} of ${c.total}`} on bye: ${names(c.onBye)}`;
-            out = c.out;
-        } else {
-            const fresh = c.onBye.filter(p => !named.has(p.id));
-            const tagged = fresh.map(p => ({ ...p, name: `${p.name} (${p.pos})` }));
-            bye = !fresh.length ? '' : `${named.size ? 'also ' : 'on bye: '}${names(tagged)}${named.size ? ' on bye' : ''}`;
-            out = c.out.filter(p => !named.has(p.id));
-        }
+        const strict = c.pos != null;
+        const bye = strict ? c.onBye : c.onBye.filter(p => !named.has(p.id));
+        const out = strict ? c.out : c.out.filter(p => !named.has(p.id));
+        const tag = (p) => {
+            const bits = [strict ? null : p.pos, p.team && !String(p.name || '').includes(p.team) ? p.team : null].filter(Boolean);
+            return bits.length ? ` (${bits.join(', ')})` : '';
+        };
+        const players = [
+            ...bye.map(p => `${nb(p.name || 'Unknown player')}${tag(p)}`),
+            ...out.map(p => `${nb(p.name || 'Unknown player')}${strict ? '' : ` (${p.pos})`} · ${outTag(p)}, assumed still out`),
+        ];
+        let note = '';
+        if (strict && c.onBye.length > 1) note = `${c.total === c.onBye.length ? `all ${c.onBye.length}` : `${c.onBye.length} of ${c.total}`} on bye`;
+        if (!strict && !players.length && c.onBye.length + c.out.length) note = 'the players above';
         [...c.onBye, ...c.out].forEach(p => named.add(p.id));
-        const parts = [bye, out.length ? `${isOut(out).join(', ')}, assumed still out` : ''].filter(Boolean);
-        const detail = parts.join('; ');
-        return { slotType: c.slotType, head, detail, text: `${head}${detail ? ` · ${detail}` : ''}` };
+        return { slotType: c.slotType, head, note, players, text: [head, note, ...players].filter(Boolean).join(' · ') };
     });
     return { week, short, rows, text: `Bye Crunch · Week ${week}: ${short} starter${short === 1 ? '' : 's'} short` };
 }
@@ -157,11 +153,20 @@ export function crunchGroups(entries, slotName) {
     return weeks.map(w => crunchGroup(entries.filter(c => c.week === w), slotName));
 }
 
-// A week's rows as a list, for the league card and the Lineup box (round 4); button(row) gives each row's Find button.
 const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+// A week's rows: the slot ("RB: 1 short", a shade brighter) and its note, the row's Find button (button(row)), then a
+// bullet per player.
 export function crunchRowsHTML(item, button = () => '') {
     const rows = (item && item.rows) || [];
-    // The slot ("RB: 1 short") a shade brighter than who's behind it, so the rows scan.
-    const row = (r) => (r.head ? `<span class="mls-crunch-head">${esc(r.head)}</span>${r.detail ? ` · ${esc(r.detail)}` : ''}` : esc(r.text));
-    return rows.length ? `<ul class="mls-crunch-list">${rows.map(r => `<li>${row(r)}${button(r)}</li>`).join('')}</ul>` : '';
+    const row = (r) => `<span class="mls-crunch-head">${esc(r.head)}</span>${r.note ? ` · ${esc(r.note)}` : ''}${button(r)}`
+        + (r.players && r.players.length ? `<ul class="mls-crunch-players">${r.players.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : '');
+    return rows.length ? `<ul class="mls-crunch-list">${rows.map(r => `<li>${row(r)}</li>`).join('')}</ul>` : '';
+}
+
+// A week's Bye Crunch as a fold, closed to its heading (owner's choices: B on the Lineup tab in round 4, C on the
+// Dashboard card in round 5). key: what the renderer remembers it open by; open: whether it was open before a redraw.
+export function crunchFoldHTML(item, { key, open = false, chevron = '', button } = {}) {
+    return `<details class="mls-change-fold mls-crunch-fold" data-crunch-key="${esc(key)}"${open ? ' open' : ''}>`
+        + `<summary>${chevron}${CRUNCH_ICON}<span>${esc(item.text)}</span></summary>${crunchRowsHTML(item, button)}</details>`;
 }

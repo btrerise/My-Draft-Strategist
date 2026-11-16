@@ -18,7 +18,7 @@ import { normalizeName } from '../../shared/names.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
 import { rankedOpponentBadgeHTML, weeklyOpponentInfo } from '../opponent.js';
 import { leagueNeeds, lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } from './issues.js';
-import { CRUNCH_ICON, byeCrunch, crunchRowsHTML, crunchWeeks } from './byeCrunch.js';
+import { byeCrunch, crunchFoldHTML, crunchWeeks } from './byeCrunch.js';
 
     // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
     // currently-known NFL week) -- not just whenever they have a bye scheduled at some point
@@ -469,7 +469,7 @@ import { CRUNCH_ICON, byeCrunch, crunchRowsHTML, crunchWeeks } from './byeCrunch
         if (items.length === 0 && !sleeper && !early) return "";
 
         const leagueId = escapeHtml(league ? league.leagueId : '');
-        const openCrunch = new Set([...document.querySelectorAll('#optimalLineupContainer .lineup-needs-crunch[open]')].map(d => d.dataset.week));
+        const openCrunch = new Set([...document.querySelectorAll('#optimalLineupContainer .mls-crunch-fold[open]')].map(d => d.dataset.crunchKey));
         const itemHTML = items.map(i => {
             let button = '';
             if (i.swap) {
@@ -481,9 +481,8 @@ import { CRUNCH_ICON, byeCrunch, crunchRowsHTML, crunchWeeks } from './byeCrunch
             // Bye Crunch folds to its heading (owner's choice B, S52 round 4): it's about a coming week, so this week's
             // lineup stays near the top; a tap opens the rows, each with its Find button. Kept open across redraws.
             if (i.rows) {
-                const open = openCrunch.has(String(i.week)) ? ' open' : '';
                 const findBtn = (r) => ` <button type="button" class="btn btn-secondary mls-btn-sm lineup-needs-btn" data-action="findLeaguePlayers" data-league-id="${leagueId}" data-pos="${escapeHtml(r.find)}">${r.find === 'ALL' ? 'Find players' : `Find ${escapeHtml(r.find)}`}</button>`;
-                return `<li class="lineup-needs-item is-${i.kind}"><details class="mls-change-fold lineup-needs-crunch" data-week="${escapeHtml(String(i.week))}"${open}><summary>${FOLD_CHEVRON}${CRUNCH_ICON}<span>${escapeHtml(i.text)}</span></summary>${crunchRowsHTML(i, findBtn)}</details></li>`;
+                return `<li class="lineup-needs-item is-${i.kind}">${crunchFoldHTML(i, { key: `${league ? league.leagueId : ''}:${i.week}`, open: openCrunch.has(`${league ? league.leagueId : ''}:${i.week}`), chevron: FOLD_CHEVRON, button: findBtn })}</li>`;
             }
             return `<li class="lineup-needs-item is-${i.kind}">${escapeHtml(i.text)}${button}</li>`;
         }).join('');

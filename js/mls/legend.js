@@ -19,7 +19,7 @@ import {
     lockDotMarkup, opponentBadgeMarkup, rowMoreMarkup, sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, waiverChipMarkup, faabBidMarkup, weekResultMarkup, weekStatusMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
-import { CRUNCH_ICON } from './lineup/byeCrunch.js';
+import { CRUNCH_ICON, crunchRowsHTML } from './lineup/byeCrunch.js';
 import { openSheet } from '../shared/ui/sheet.js';
 
 const GUIDE_ICON = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>';
@@ -131,8 +131,11 @@ const GROUPS = [
             MEANING.sleeperLineup],
         [`<div class="lineup-needs-box has-problems"><div class="lineup-needs-title">${WARNING_ICON}<span>This lineup needs you</span></div><ul class="lineup-needs-list"><li class="lineup-needs-item is-injured">Player is Out: start Other Player instead?</li><li class="lineup-needs-item is-ir">Activate Player from IR on Sleeper before kickoff</li></ul></div>`,
             'Above your lineup: what it needs from you before kickoff, in red for an injury and purple for your IR slot, with a button to swap or find a player. Each league\'s card on the Dashboard lists the same.'],
-        [`<ul class="lineup-needs-list"><li class="lineup-needs-item is-crunch">${CRUNCH_ICON}Bye Crunch · Week 13: 2 starters short<ul class="mls-crunch-list"><li><span class="mls-crunch-head">RB: 1 short</span> · 3 of 4 on bye: …</li><li><span class="mls-crunch-head">FLEX: 1 short</span> · also Player (WR) on bye</li></ul></li></ul>`,
-            'Bye Crunch: in one of the next 2 weeks, byes leave a starting spot nobody on your roster can fill (players Out or on IR now are assumed still out; kickers and defenses aren\'t checked). A line per position says who\'s on bye, with a Find button. On the Lineup tab it\'s folded to its heading: tap to open. A heads-up in time to add someone; it doesn\'t count as a lineup that needs you.'],
+        // The fold as it looks open, with its heading as text (a legend row isn't a control), as the box's sample above.
+        [`<ul class="lineup-needs-list"><li class="lineup-needs-item is-crunch"><div class="mls-crunch-fold">${CRUNCH_ICON}<span>Bye Crunch · Week 13: 2 starters short</span>${crunchRowsHTML({ rows: [
+            { head: 'RB: 1 short', note: '3 of 4 on bye', players: ['Player (BAL)', 'Player (NYJ)', 'Player (LV)'] },
+            { head: 'FLEX: 1 short', note: '', players: ['Player (WR, BAL)'] }] })}</div></li></ul>`,
+            'Bye Crunch: in one of the next 2 weeks, byes leave a starting spot nobody on your roster can fill (players Out or on IR now are assumed still out; kickers and defenses aren\'t checked). Folded to its heading: tap to open a line per position, with a Find button, and a bullet per player. A heads-up in time to add someone; it doesn\'t count as a lineup that needs you.'],
         [pill('mls-verdict-start', 'Would Start'),
             'In Auto-Find and Check a List: he\'d make your lineup this week. The line under it names who he\'d replace.'],
         [pill('mls-verdict-bench', 'Bench') + pill('mls-verdict-bench', 'Locked') + pill('mls-verdict-bench', 'No Slot'),
