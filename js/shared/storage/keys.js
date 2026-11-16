@@ -65,6 +65,7 @@ export const KEYS = {
         // Bye Crunch weeks you hid with Got it (improvements S52 round 7): { [leagueId]: [week] }. Weeks before the coming
         // one are dropped the next time one is hidden; js/mls/lineup/gameInfo.js reads it.
         byeCrunchDismissed: 'mls_bye_crunch_dismissed',
+        byeCrunch: 'mls_bye_crunch', // '0' while Bye Crunch is off (Lineup settings or Advanced Settings, S52 round 8); unset = on
         earlyFromSchedule: 'mls_early_from_schedule', // '0' while Early Games' "Fill in from the schedule" is off; unset = on
         leagues: 'mls_leagues',
         locksMap: 'mls_locks_map',

@@ -204,7 +204,10 @@ What changed for users in each version of the two apps, in plain language. Newes
   Available on that position, and a bullet per player, including anyone Out or on IR now (assumed still out). A FLEX
   line lists only players not already named above it. Kickers and defenses aren't checked. It's a note, not counted in
   "N lineups need you". Its Find opens Top Available for that week: players on bye then are left out (Show all brings
-  them back), and Starts, which is about this week, is hidden. **Got it** hides a week's note for that league.
+  them back), and Starts, which is about this week, is hidden. **Got it** hides a week's note for that league. It's on
+  unless you turn it off, in the Lineup tab's Lineup settings or in the Dashboard's Advanced Settings (Lineup).
+- **Early Games' "Fill in from the schedule" is in Advanced Settings too** (Lineup), beside Bye Crunch, so it's found from
+  the Dashboard as well as the Early Games card.
 - **Tuesday's waiver checks use next week's byes.** Once the week's games are over, Best available, Auto-Find and Check
   a List ask about next week, and now that includes its byes: a free agent on bye next week isn't an upgrade, and
   Auto-Find says "On bye next week".

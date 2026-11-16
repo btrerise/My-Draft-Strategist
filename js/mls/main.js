@@ -20,7 +20,7 @@ import { goToSetupStep, onload } from './init.js';
 import { toggleMlsHeadshots } from './lineup/headshots.js';
 import './players.js';
 import { addEarlyTeam, dismissEarlySwaps, removeEarlyTeam, restoreEarlyTeam, setEarlyFromSchedule } from './lineup/earlyGames.js';
-import { dismissByeCrunch, explainIrSlot, toggleLineupNeeds, toggleLockCountdown } from './lineup/gameInfo.js';
+import { dismissByeCrunch, explainIrSlot, setByeCrunchOn, toggleLineupNeeds, toggleLockCountdown } from './lineup/gameInfo.js';
 import { activeOwnRankings, activePowerRankings, activeSeasonRankings, addAndSyncLeague, leagueQbMarketPricing, setQbMarketPrices, createManualLeague, cycleLeague, deleteLeagueManager, getLeagueRankings, getLeagueSeasonRankings, moveLeague, saveRequirements, setLeagueStyle, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
 import './leagues/scoutResults.js';
 import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDraftStrategistRoster } from './leagues/handoff.js';
@@ -131,6 +131,8 @@ const clickActions = {
     findLeaguePlayers() { findLeaguePlayers(this.dataset.leagueId, this.dataset.pos, this.dataset.week || null); },
     // Bye Crunch (improvements S52 round 7): Top Available's Show all, and Got it on a week's note.
     clearTopAvailableWeek() { clearTopAvailableWeek(); },
+    // Bye Crunch's switch (round 8), in Lineup settings and Advanced Settings.
+    setByeCrunch() { setByeCrunchOn(this.checked); renderLineupUI(); renderLeagueCards(); },
     dismissByeCrunch() {
         const card = this.closest('.mls-lc-card');
         dismissByeCrunch(this.dataset.leagueId, this.dataset.week);

@@ -13634,3 +13634,26 @@ judged for a coming week, since rankings are built week to week, so it's hidden 
   the week doesn't stick to a later visit; Got it hides the note on both, sets the key, and holds after a reload).
 - Screenshots: the two Guide PNGs, re-taken by CI.
 - CI re-took the two Guide PNGs (commit 380d8e5): the legend's meaning and the Guide's sentence now mention Find for that week and Got it. Opened and checked.
+
+### S52, round 8: on by default, with a switch in two places; Early Games' switch in Advanced Settings too (owner, 2026-11-16)
+The owner asked whether it should be opt-in (a toast suggesting it, as FAAB Bids does), to keep features and visual
+noise down. My view: unlike FAAB bids, which add numbers to rows every week, Bye Crunch shows nothing except when a
+coming week can't be filled, folded to one line; an opt-in toast would fire exactly then and ask for a trip to a setting,
+so more interruption, and a dismissed toast loses the one warning that matters. I suggested on by default with an off
+switch. Owner: "On, perhaps the setting lives in both places? Frankly, I'm thinking the Early Games switch should live in
+Advanced Settings as well as the Lineup tab ... rather than having to 'hunt it down'."
+- **Bye Crunch's switch**, on unless turned off: in the Lineup tab's Lineup settings ("Bye Crunch: Warn when byes in the
+  next 2 weeks leave a starting spot you can't fill.") and in a new **Lineup** fold in the Dashboard's Advanced Settings
+  (first after Show Player Headshots). New key `KEYS.mls.byeCrunch` (`mls_bye_crunch`, '0' while off; unset = on), read
+  into `State.byeCrunchOn`; `setByeCrunchOn` in `gameInfo.js` and `getByeCrunch` returns nothing while it's off. Flipping
+  either copy updates the other and redraws the Lineup tab and the cards.
+- **Early Games' "Fill in from the schedule"** (S50's, done here at the owner's request): the same switch in the Lineup
+  fold, "Early Games: fill in from the schedule". Both copies share `data-action="setEarlyFromSchedule"`;
+  `syncEarlyFromScheduleToggles` (earlyGames.js) keeps them together.
+- Start-up sets every copy from storage (`init.js` calls both syncs; a top-of-module call ran inside a circular import
+  before `State` existed, caught by the spec).
+- Guide: the Dashboard step says where to turn Bye Crunch off; the Lineup step says the Early Games switch is in
+  Advanced Settings too. CHANGELOG: two lines.
+- Tests: `mls-bye-crunch.spec.mjs` (off in Advanced Settings: no note on the card or the Lineup tab, the key is '0', it
+  holds after a reload, Lineup settings shows it off; on again from Lineup settings: both notes back, the Advanced copy
+  checked, the key gone; Early Games' two copies follow each other, and the card's description says it's off).

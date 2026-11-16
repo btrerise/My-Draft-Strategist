@@ -12,6 +12,8 @@ import { activeSeasonRankings, getLeagueRankings, loadActiveLeagueData, refreshL
 import { initManualAddForm } from './leagues/addPlayer.js';
 import { initTradePicker } from './trade/picker.js';
 import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
+import { syncByeCrunchToggles } from './lineup/gameInfo.js';
+import { syncEarlyFromScheduleToggles } from './lineup/earlyGames.js';
 import { applySimSettingsToUI, applyTradeSettingsToUI, applyMarketSettingsToUI } from './settings.js';
 import { applyRecapLinesToUI } from './week/recapLines.js';
 import { checkForDraftStrategistHandoff, generateSoSGrid, updateMarketMetaDisplay, renderSyncLogs, showTab, lookupSimPlayer, initStarterAlerts } from './main.js';
@@ -200,6 +202,9 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
         applySimSettingsToUI();
         applyRecapLinesToUI();
         applyWaiverScanSettingsToUI();
+        // The switches that are in two places (improvements S52 round 8): Bye Crunch and Early Games' schedule.
+        syncByeCrunchToggles();
+        syncEarlyFromScheduleToggles();
         // Starter alerts (improvements N2): the Settings controls, and the first check's timer if they're on.
         initStarterAlerts();
         updatePulsePrompts();

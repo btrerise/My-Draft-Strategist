@@ -251,6 +251,52 @@ test.describe('Bye Crunch: Find for that week, and Got it (round 7)', () => {
     });
 });
 
+// Round 8: on by default, with the same switch in the Lineup tab's Lineup settings and in Advanced Settings (Lineup);
+// Early Games' "Fill in from the schedule" is in Advanced Settings too.
+test.describe('Bye Crunch: the switch, in both places (round 8)', () => {
+    test('off in Advanced Settings: no note on the card or the Lineup tab, Lineup settings follows; on again from there, after a reload', async ({ page }) => {
+        const state = await open(page, 12);
+        const settings = page.locator('details.lineup-switches');
+        await settings.locator('summary').click();
+        const adv = page.locator('#byeCrunchToggleSettings');
+        await expect(adv).toBeChecked();
+        await adv.uncheck();
+        await expect(page.locator('#leagueCards .mls-crunch-fold')).toHaveCount(0);
+        expect(await page.evaluate(() => localStorage.getItem('mls_bye_crunch'))).toBe('0');
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await expect(page.locator('#byeCrunchToggleSettings')).not.toBeChecked();
+        await showTab(page, 'lineup');
+        await expect(page.locator('#optimalLineupContainer .mls-crunch-fold')).toHaveCount(0);
+        await page.locator('#lineupSettings > summary').click();
+        const lineupToggle = page.locator('#byeCrunchToggle');
+        await expect(lineupToggle).not.toBeChecked();
+        await lineupToggle.check();
+        await expect(page.locator('#optimalLineupContainer .mls-crunch-fold')).toHaveCount(1);
+        await expect(page.locator('#byeCrunchToggleSettings')).toBeChecked();
+        expect(await page.evaluate(() => localStorage.getItem('mls_bye_crunch'))).toBeNull();
+        await showTab(page, 'setup');
+        await expect(page.locator('#leagueCards .mls-crunch-fold')).toHaveCount(1);
+        await expectClean(page, state);
+    });
+
+    test('Early Games\' "Fill in from the schedule" in Advanced Settings follows the card\'s, and the other way', async ({ page }) => {
+        const state = await open(page, 2);
+        await page.locator('details.lineup-switches > summary').click();
+        const adv = page.locator('#earlyFromScheduleToggleSettings');
+        await expect(adv).toBeChecked();
+        await adv.uncheck();
+        await expect(page.locator('#earlyFromScheduleToggle')).not.toBeChecked();
+        expect(await page.evaluate(() => localStorage.getItem('mls_early_from_schedule'))).toBe('0');
+        await showTab(page, 'lineup');
+        await expect(page.locator('#earlyFromScheduleDesc')).toHaveText('Off: pick the teams yourself. They clear when a new NFL week starts.');
+        await page.locator('#earlyFromScheduleToggle').check();
+        await showTab(page, 'setup');
+        await expect(adv).toBeChecked();
+        await expectClean(page, state);
+    });
+});
+
 test.describe('Waiver tools on Tuesday read next week\'s byes (S52, S34\'s leftover)', () => {
     test('Sunday of week 6: Cook would start for you', async ({ page }) => {
         const state = await waiverSetup(page);

@@ -639,7 +639,7 @@ import { byeCrunch, crunchDismissHTML, crunchFoldHTML, crunchWeeks } from './bye
     // coming week), the starting slots nobody on the roster can fill: on bye that week, or Out or on IR now (assumed
     // still out). [] when nothing's short, or the week or season isn't known.
     export function getByeCrunch(league) {
-        if (!league || State.currentNflWeek == null || State.currentNflSeason == null) return [];
+        if (!State.byeCrunchOn || !league || State.currentNflWeek == null || State.currentNflSeason == null) return [];
         const posMap = league.globalPosMap || {};
         // Weeks you hid with Got it (round 7) aren't checked.
         const hidden = [...crunchDismissedWeeks(league.leagueId),
@@ -648,6 +648,22 @@ import { byeCrunch, crunchDismissHTML, crunchFoldHTML, crunchWeeks } from './bye
             byeWeek: team => getByeWeek(team, State.currentNflSeason),
             posOf: p => (p.pos && p.pos !== 'FLEX' ? p.pos : posMap[p.cleanName] || p.pos),
         });
+    }
+
+    // Bye Crunch's switch (owner's choice, S52 round 8): on by default, off for anyone who'd rather not see it. The same
+    // switch is in the Lineup tab's Lineup settings and the Dashboard's Advanced Settings (Lineup), so it's found from
+    // either; every copy follows the one you flip. The caller redraws.
+    export function setByeCrunchOn(on) {
+        State.byeCrunchOn = !!on;
+        try {
+            if (on) localStorage.removeItem(KEYS.mls.byeCrunch);
+            else localStorage.setItem(KEYS.mls.byeCrunch, '0');
+        } catch (e) { /* storage blocked: the switch still works this visit */ }
+        syncByeCrunchToggles();
+    }
+    // Also at start-up (init.js), since the page's switches start checked.
+    export function syncByeCrunchToggles() {
+        document.querySelectorAll('input[data-action="setByeCrunch"]').forEach(t => { t.checked = State.byeCrunchOn; });
     }
 
     // Bye Crunch's Got it (owner's request, S52 round 7): hides one league's note for one week, on its card and its
