@@ -13657,3 +13657,7 @@ Advanced Settings as well as the Lineup tab ... rather than having to 'hunt it d
 - Tests: `mls-bye-crunch.spec.mjs` (off in Advanced Settings: no note on the card or the Lineup tab, the key is '0', it
   holds after a reload, Lineup settings shows it off; on again from Lineup settings: both notes back, the Advanced copy
   checked, the key gone; Early Games' two copies follow each other, and the card's description says it's off).
+- Screenshots: main against this branch in this container, six differ: `{desktop,phone}/mls-empty-setup.png` and
+  `{desktop,phone}/mls-league-setup.png` (50px taller: the Lineup fold in Advanced Settings), and
+  `{desktop,phone}/mls-league-guide.png` (rounds 7–8's Guide sentences). The Lineup tab's are unchanged (Lineup settings
+  starts folded). Re-taken by CI.
