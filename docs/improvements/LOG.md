@@ -13578,3 +13578,4 @@ card too). The owner took **A + B**, C to revisit if needed.
   slots, "also", the rows' HTML, one item per week); `mls-bye-crunch.spec.mjs` (heading and rows on the card, the Find
   button on its row, the Lineup tab's fold closed then open, kept open after Optimize).
 - Screenshots: the two Guide PNGs (the Guide's sentence and the legend's sample), re-taken by CI.
+- CI re-took the two Guide PNGs (commit b204bd1): the legend's sample is now the heading "Bye Crunch · Week 13: 2 starters short" with an RB row and a FLEX row, and its meaning says the Lineup tab folds it; the Guide's sentence says the same. Opened and checked.
