@@ -13540,3 +13540,17 @@ current example has 5 lines of text that run together." Yes: the item is now a h
   with its bullet. Opened and checked. `CACHE_NAME` v2.10.14 (main's is v2.10.13). After the merge: check-precache,
   `node --test` (706) and the Bye Crunch, Early Games, lineup-needs, league-card, legend, waiver and backup specs
   (132) pass.
+
+### S52, round 3: no K or DEF, and a shorter FLEX note (owner, 2026-11-16)
+Owner: "Leave K and DEF out of Bye Crunch. If you are able to shorten the FLEX note, that would be great."
+- **K and DEF** are never checked (`NOT_CHECKED` in `byeCrunch.js`): people stream them, so a kicker or defense on bye is
+  routine. The Guide and the legend say so.
+- **A flex slot's bullets** (W/R, W/T, FLEX, SFLEX) are one per position, not one per player, and players an earlier
+  item for the same week already named aren't listed again:
+  "Bye Crunch · Week 13: 1 FLEX short" · "RBs: the 3 above" · "WRs on bye: Garrett Wilson and Zay Flowers" · "Out now,
+  assumed still out: Sam LaPorta (Out)". Partly named above: "RBs on bye: Breece Hall and Ashton Jeanty, and the 1
+  above"; one: "RB: Derrick Henry, above". A strict slot (RB, WR…) keeps one bullet per player (round 2), since its
+  list is short by nature. `crunchDetails(c, above)`; `lineupIssueItems` passes the ids each week's earlier items named.
+- Tests: unit (K and DEF left out; the FLEX after an RB note, on its own, and partly above); `mls-bye-crunch.spec.mjs`
+  now expects only the RB note in week 13 (the fixture's BAL kicker and defense are on bye and not flagged).
+- Screenshots: the two Guide PNGs again (the Guide's sentence and the legend's meaning), re-taken by CI.

@@ -5,7 +5,8 @@
 //
 // The fixture team (Fixture League) has one RB, Derrick Henry (BAL), plus Bijan Robinson (ATL) moved in here, a K and
 // a DEF from BAL. With Sleeper's week stubbed to 12, the weeks checked are 13 (BAL, IND, LV, NYJ on bye) and 14 (ARI,
-// DAL): week 13 leaves an RB slot, the K and the DEF short; week 14 nothing (McBride, ARI, and Lamb, DAL, have backups).
+// DAL): week 13 leaves an RB slot short; week 14 nothing (McBride, ARI, and Lamb, DAL, have backups). The K and DEF on
+// bye in week 13 aren't flagged (owner's choice, round 3: they're streamed).
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, seedMls, loadMlsRankings, callApp, WAIVER_RANKINGS_CSV, FIXTURE_LEAGUE_ID } from './helpers.mjs';
@@ -20,11 +21,9 @@ const lineupBox = (page) => page.locator('#optimalLineupContainer .lineup-needs-
 
 const WEEK13 = [
     'Bye Crunch · Week 13: 1 RB short (1 of your 2 RBs on bye)',
-    'Bye Crunch · Week 13: 1 K short (your only K on bye)',
-    'Bye Crunch · Week 13: 1 DEF short (your only DEF on bye)',
 ];
 // One bullet per player (owner's request, round 2).
-const WEEK13_PLAYERS = [['Derrick Henry (BAL) on bye'], ['Justin Tucker (BAL) on bye'], ['Baltimore Ravens on bye']];
+const WEEK13_PLAYERS = [['Derrick Henry (BAL) on bye']];
 // An item's headline (its own text, without the list or a button) and its bullets.
 const itemParts = (items) => items.evaluateAll(ls => ls.map(l => ({
     head: [...l.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').replace(/\u00a0/g, ' ').trim(),
@@ -52,17 +51,19 @@ async function open(page, week, opts) {
 }
 
 test.describe('Bye Crunch', () => {
-    test('week 12: week 13\'s short slots on the league card and in the Lineup box, as notes, with Find buttons', async ({ page }) => {
+    test('week 12: week 13\'s short RB slot on the league card and in the Lineup box, as notes, with Find buttons', async ({ page }) => {
         const state = await open(page, 12);
         // A note, not a job: the card says Notes, no amber edge, and the strip doesn't count it.
         await expect(todo(page).locator('.mls-needs-label')).toHaveText('Notes');
         await expect(card(page)).not.toHaveClass(/\bhas-needs\b|\bneeds-you\b/);
         await expect(page.locator('#lineupNeedsBox')).not.toContainText('need you');
         expect(await itemParts(todo(page).locator('.mls-needs-item'))).toEqual(WEEK13.map((head, i) => ({ head, list: WEEK13_PLAYERS[i] })));
-        await expect(todo(page).locator('.mls-needs-item.is-crunch .mls-crunch-icon')).toHaveCount(3);
+        await expect(todo(page).locator('.mls-needs-item.is-crunch .mls-crunch-icon')).toHaveCount(1);
         // Nothing for week 14.
         await expect(todo(page)).not.toContainText('Week 14');
-        for (const pos of ['RB', 'K', 'DEF']) await expect(todo(page).getByRole('button', { name: `Find ${pos} in Fixture League` })).toBeVisible();
+        await expect(todo(page).getByRole('button', { name: 'Find RB in Fixture League' })).toBeVisible();
+        // No K or DEF note, though Tucker and the Ravens (BAL) are on bye in week 13 (round 3).
+        await expect(todo(page).getByRole('button', { name: /^Find (K|DEF) / })).toHaveCount(0);
 
         // Find RB opens Top Available on RB.
         await todo(page).getByRole('button', { name: 'Find RB in Fixture League' }).click();
@@ -74,10 +75,10 @@ test.describe('Bye Crunch', () => {
         await expect(lineupBox(page).locator('.lineup-needs-title')).toContainText('Nothing needs you before kickoff');
         await expect(lineupBox(page)).not.toHaveClass(/\bhas-problems\b/);
         expect(await itemParts(lineupBox(page).locator('.lineup-needs-item'))).toEqual(WEEK13.map((head, i) => ({ head, list: WEEK13_PLAYERS[i] })));
-        for (const pos of ['RB', 'K', 'DEF']) await expect(lineupBox(page).getByRole('button', { name: `Find ${pos}` })).toBeVisible();
+
         await page.locator('[data-action="setWaiverPos"][data-pos="ALL"]').evaluate(b => b.click());
-        await lineupBox(page).getByRole('button', { name: 'Find DEF' }).click();
-        await expect(page.locator('#scoutTab [data-action="setWaiverPos"][data-pos="DEF"]')).toHaveAttribute('aria-pressed', 'true');
+        await lineupBox(page).getByRole('button', { name: 'Find RB' }).click();
+        await expect(page.locator('#scoutTab [data-action="setWaiverPos"][data-pos="RB"]')).toHaveAttribute('aria-pressed', 'true');
         await expectClean(page, state);
     });
 
@@ -86,7 +87,7 @@ test.describe('Bye Crunch', () => {
         await expect(todo(page).locator('.mls-needs-label')).toHaveText('Needs you');
         // Henry alone is short every week (the empty slot); his bye leaves the second RB slot short too in week 13.
         expect((await itemParts(todo(page).locator('.mls-needs-item'))).map(i => i.head)).toEqual(['RB slot is empty',
-            'Bye Crunch · Week 13: 1 RB short (your only RB on bye)', WEEK13[1], WEEK13[2]]);
+            'Bye Crunch · Week 13: 1 RB short (your only RB on bye)']);
         await expect(card(page).locator('.mls-lc-count-todo')).toHaveText('1 to fix');
         await expect(page.locator('#lineupNeedsBox')).toContainText('1 lineup needs you · 1 to fix');
         await expectClean(page, state);

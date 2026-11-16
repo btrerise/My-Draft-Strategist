@@ -177,8 +177,15 @@ export function lineupIssueItems(issues) {
     // Bye Crunch (improvements S52): a coming week when byes leave a slot you can't fill. A note, not a job before
     // kickoff (owner's choice), with a Find button for the slot. issues.crunch is byeCrunch's entries (byeCrunch.js),
     // added by gameInfo.js's getLineupIssues.
-    (issues.crunch || []).forEach(c => items.push({ kind: 'crunch', note: true, find: findChipFor(c.slotType),
-        text: crunchText(c, slotDisplayName), details: crunchDetails(c) }));
+    // Players an earlier item for the same week named, so a FLEX's bullets say "the 3 above" (round 3).
+    const named = new Map();
+    (issues.crunch || []).forEach(c => {
+        if (!named.has(c.week)) named.set(c.week, new Set());
+        const above = named.get(c.week);
+        items.push({ kind: 'crunch', note: true, find: findChipFor(c.slotType),
+            text: crunchText(c, slotDisplayName), details: crunchDetails(c, new Set(above)) });
+        [...c.onBye, ...c.out].forEach(p => above.add(p.id));
+    });
     issues.kept.forEach(k => items.push({ kind: 'kept', muted: true, text: `${name(k.player)} ${k.what} (you locked him in)` }));
     // A note, not a job (improvements F7). The lineup reads who started from your last sync, hence the second sentence.
     (issues.lockEnded || []).forEach(p => items.push({ kind: 'kept', muted: true, note: true,

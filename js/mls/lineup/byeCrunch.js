@@ -15,6 +15,8 @@ export const CRUNCH_WEEKS_AHEAD = 2;
 // W/R, W/T, FLEX and SFLEX. The matching below fills them in this order, so a shortage lands on the strict slot
 // ("1 RB short") when the flex slots behind it can still be filled by someone else.
 const SLOT_ORDER = ['QB', 'RB', 'WR', 'TE', 'WRRB', 'WRTE', 'FLEX', 'SFLEX', 'K', 'DEF'];
+// Slots Bye Crunch leaves alone (owner's choice, S52 round 3): kickers and defenses are streamed.
+export const NOT_CHECKED = ['K', 'DEF'];
 const accepts = (slotType, pos) => !!(SLOT_POSITIONS[slotType] && SLOT_POSITIONS[slotType].includes(pos));
 
 // Statuses that keep a player out now, assumed to last through the weeks checked (and the text says so). Doubtful
@@ -66,14 +68,16 @@ export function byeCrunchWeek(reqs, roster, week, ctx) {
     const withByes = shortSlots(reqs, healthy.filter(p => !onBye(p)), posOf);
     const out = [];
     SLOT_ORDER.forEach(slotType => {
+        // Not K or DEF (owner's choice, S52 round 3): people stream them, so a kicker or defense on bye is routine.
+        if (NOT_CHECKED.includes(slotType)) return;
         const short = (withByes[slotType] || 0) - (without[slotType] || 0);
         if (short <= 0) return;
         const fits = (p) => accepts(slotType, posOf(p));
         const strict = (SLOT_POSITIONS[slotType] || []).length === 1 && SLOT_POSITIONS[slotType][0] === slotType;
         out.push({
             week, slotType, short,
-            onBye: healthy.filter(p => fits(p) && onBye(p)),
-            out: pool.filter(p => fits(p) && !couldStart(p)),
+            onBye: healthy.filter(p => fits(p) && onBye(p)).map(p => ({ ...p, pos: posOf(p) })),
+            out: pool.filter(p => fits(p) && !couldStart(p)).map(p => ({ ...p, pos: posOf(p) })),
             pos: strict ? slotType : null,
             total: strict ? healthy.filter(fits).length : null,
         });
@@ -122,14 +126,39 @@ export function crunchText(c, slotName = (t) => t) {
     return `Bye Crunch · Week ${c.week}: ${what}${count}`;
 }
 
-// One line per player behind it: "Derrick Henry (BAL) on bye" (a team defense without its team again), then who's out
-// now: "Joe Mixon is on IR, assumed still out"; an injured player still in your IR slot "is in your IR slot".
-export function crunchDetails(c) {
-    const team = (p) => (p.team && p.pos !== 'DEF' && !String(p.name || '').includes(p.team) ? ` (${p.team})` : '');
-    return [
-        ...c.onBye.map(p => `${names([p])}${team(p)} on bye`),
-        ...c.out.map(p => `${names([p])} ${OUT_PHRASES[p.inj] || (p.isReserve ? 'is in your IR slot' : `is ${p.inj}`)}, assumed still out`),
-    ];
+const outPhrase = (p) => OUT_PHRASES[p.inj] || (p.isReserve ? 'is in your IR slot' : `is ${p.inj}`);
+const outTag = { OUT: 'Out', IR: 'IR', PUP: 'PUP', SUS: 'suspended', NFI: 'NFI' };
+const FLEX_ORDER = ['QB', 'RB', 'WR', 'TE'];
+
+// The bullets under a headline (S52 rounds 2 and 3). above: ids of players an earlier item for the same week already
+// named, so a FLEX after "1 RB short" doesn't list the same backs again.
+// - A strict slot (RB, WR...): one per player, "Derrick Henry (BAL) on bye", then "Joe Mixon is on IR, assumed still out".
+// - A flex slot (W/R, W/T, FLEX, SFLEX), shorter (owner's request, round 3): one per position, "WRs on bye: Garrett
+//   Wilson and Zay Flowers", "RBs: the 3 above" (or "…, and the 2 above"), then one line for who's out now, "Out now,
+//   assumed still out: Joe Mixon (IR)" (left out when they're all above).
+export function crunchDetails(c, above = new Set()) {
+    if (c.pos != null) {
+        const team = (p) => (p.team && !String(p.name || '').includes(p.team) ? ` (${p.team})` : '');
+        return [
+            ...c.onBye.map(p => `${names([p])}${team(p)} on bye`),
+            ...c.out.map(p => `${names([p])} ${outPhrase(p)}, assumed still out`),
+        ];
+    }
+    const lines = [];
+    const plural = (pos, n) => `${pos}${n === 1 ? '' : 's'}`;
+    FLEX_ORDER.forEach(pos => {
+        const at = c.onBye.filter(p => p.pos === pos);
+        if (!at.length) return;
+        const fresh = at.filter(p => !above.has(p.id));
+        const seen = at.length - fresh.length;
+        if (!fresh.length) lines.push(seen === 1 ? `${pos}: ${names(at)}, above` : `${plural(pos, seen)}: the ${seen} above`);
+        else lines.push(`${plural(pos, at.length)} on bye: ${names(fresh)}${seen ? `, and the ${seen} above` : ''}`);
+    });
+    const freshOut = c.out.filter(p => !above.has(p.id));
+    if (freshOut.length) {
+        lines.push(`Out now, assumed still out: ${freshOut.map(p => `${names([p])} (${outTag[p.inj] || (p.isReserve ? 'in your IR slot' : p.inj)})`).join(', ')}`);
+    }
+    return lines;
 }
 
 // An item's player lines as a bulleted list (S52 round 2), for the league card and the Lineup box; '' without any.
