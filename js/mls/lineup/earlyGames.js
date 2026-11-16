@@ -132,12 +132,18 @@ import { sleeperLineup } from './starterAlertRules.js';
         refreshEarlyGames();
     };
 
+    // Also at start-up (init.js), since the page's switches start checked.
+    export function syncEarlyFromScheduleToggles() {
+        document.querySelectorAll('input[data-action="setEarlyFromSchedule"]').forEach(t => { t.checked = State.earlyFromSchedule; });
+    }
+
     export const setEarlyFromSchedule = function(on) {
         State.earlyFromSchedule = !!on;
         try {
             if (on) localStorage.removeItem(KEYS.mls.earlyFromSchedule);
             else localStorage.setItem(KEYS.mls.earlyFromSchedule, '0');
         } catch (e) { /* storage blocked: the switch still works this visit */ }
+        syncEarlyFromScheduleToggles();
         refreshEarlyGames();
     };
 
@@ -182,8 +188,8 @@ import { sleeperLineup } from './starterAlertRules.js';
     }
 
     function renderEarlyCard() {
-        const toggle = document.getElementById('earlyFromScheduleToggle');
-        if (toggle) toggle.checked = State.earlyFromSchedule;
+        // Every copy of the switch: the Early Games card's and Advanced Settings' (S52 round 8, owner's choice).
+        syncEarlyFromScheduleToggles();
         const desc = document.getElementById('earlyFromScheduleDesc');
         if (desc) desc.textContent = State.earlyFromSchedule
             ? 'Every team playing before Sunday 1:00 PM Eastern, this week.'

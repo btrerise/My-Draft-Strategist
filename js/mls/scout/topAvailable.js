@@ -29,6 +29,7 @@ import { FANTASY_POSITIONS, fantasyPosition } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, isConnectionError } from '../helpers.js';
 import { getByeBadgeHTML } from '../lineup/gameInfo.js';
+import { getByeWeek } from '../../shared/data/byes.js';
 import { findFreeAgents, FLEX_POSITIONS, matchesPosFilter } from './waiverScanner.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { applyWaiverScanSettingsToUI, buildWaiverContext, resolveWaiverBasis, updateWaiverScanSetting, waiverDerivedNotes, WAIVER_MODES } from './waivers.js';
@@ -38,12 +39,32 @@ import { formatUnmatchedNames } from '../../shared/rankings/uploadPreview.js';
 import { getFreshness } from '../../shared/freshness.js';
 import { runScout } from './engine.js';
 import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
+import { CRUNCH_ICON } from '../lineup/byeCrunch.js';
 
     const POSITION_FILTERS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'FLEX', 'K', 'DEF'];
     const PER_GROUP = 5;   // All: top 5 at each position
     const PAGE = 15;       // one position or FLEX: 15 at a time, "Show 15 more"
 
     let pageLimit = PAGE;
+
+    // --- SHOPPING FOR A COMING WEEK (improvements S52 round 7) ---
+    // Bye Crunch's Find buttons say which week the hole is in. Then the list leaves out players on bye that week, and
+    // hides Starts (it answers for this week's lineup, with this week's rankings: there are no rankings for that week
+    // yet; owner's point). { leagueId, week, fresh } or null. In memory only: Show all clears it, and so does coming
+    // back to the Scout tab any other way (fresh is the one showing Find itself causes).
+    let forWeek = null;
+    export function setTopAvailableWeek(leagueId, week) {
+        const w = Number(week);
+        forWeek = week != null && week !== '' && Number.isFinite(w) ? { leagueId, week: w, fresh: true } : null;
+    }
+    export function clearTopAvailableWeek() {
+        forWeek = null;
+        pageLimit = PAGE;
+        renderTopAvailable();
+    }
+    // The week the list is for in this league, or null.
+    const weekFor = (league) => (forWeek && league && forWeek.leagueId === league.leagueId ? forWeek.week : null);
+    const onByeIn = (team, week) => week != null && !!team && getByeWeek(team, State.currentNflSeason) === week;
 
     // --- SLEEPER TRENDING ADDS (S6) ---
     const TRENDING = { lookbackHours: 24, limit: 50 };   // owner's choice before building
@@ -152,6 +173,8 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
 
     // The Scout tab was just shown (nav.js showTab).
     export function onScoutTabShown() {
+        // Bye Crunch's week holds for the visit Find opened, not a later one (round 7).
+        if (forWeek && forWeek.fresh) forWeek.fresh = false; else forWeek = null;
         applyWaiverScanSettingsToUI(); // In-Season Rank shows only in a league with an In-Season set (S23)
         if (!inTopMode()) return;
         pageLimit = PAGE;
@@ -179,7 +202,8 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
         const injBadge = player.inj ? `<span class="badge inj-badge">${escapeHtml(player.inj)}</span>` : '';
         // Only the cheap, positive half of Auto-Find's verdict; Bench/Out pills would turn the list
         // back into Auto-Find.
-        const starts = verdict && verdict.status === 'starts'
+        // Not while shopping for a coming week (round 7): Starts is about this week's lineup.
+        const starts = verdict && verdict.status === 'starts' && ctx.forWeek == null
             ? `<span class="mls-ta-starts" title="Would start for you this week">${STARTS_ICON}Starts</span>` : '';
         return `<li class="mls-ta-row">
             <span class="mls-ta-idx">${i + 1}.</span>
@@ -219,7 +243,7 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
             ? `${escapeHtml(t.pos)}${d.posRank || ''}${Number.isFinite(d.posTier) && d.posTier > 0 ? ` <span class="mls-ta-tier">T${d.posTier}</span>` : ''}`
             : `${escapeHtml(t.pos)} <span class="mls-ta-tier" title="Not in your ${ctx.scan.name} rankings">UR</span>`;
         const injBadge = player.inj ? `<span class="badge inj-badge">${escapeHtml(player.inj)}</span>` : '';
-        const starts = verdict && verdict.status === 'starts'
+        const starts = verdict && verdict.status === 'starts' && ctx.forWeek == null
             ? `<span class="mls-ta-starts" title="Would start for you this week">${STARTS_ICON}Starts</span>` : '';
         return `<li class="mls-ta-row">
             <span class="mls-ta-idx">${i + 1}.</span>
@@ -243,6 +267,7 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
             if (!p || !p.first_name || !FANTASY_POSITIONS.includes(pPos)) return;
             const clean = normalizeName(`${p.first_name} ${p.last_name}`);
             if (league.globalRosterMap[clean] || !matchesPosFilter(pPos, pos)) return;
+            if (onByeIn(p.team, ctx.forWeek)) return;
             items.push({ name: `${p.first_name} ${p.last_name}`, cleanName: clean, pos: pPos, team: p.team || null, count });
         });
         items.sort((a, b) => b.count - a.count);
@@ -297,12 +322,20 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
             const showTrending = !!trendMap && topView === 'trending';
             updateTopViewToggle(!!trendMap);
 
-            const { freeAgents, unresolvedCount, unresolvedNames } = findFreeAgents(scan.rankings, {
+            ctx.forWeek = weekFor(league);
+            const found = findFreeAgents(scan.rankings, {
                 posFilter: pos === 'FLEX' ? 'FLEX' : 'ALL',
                 getPos: ctx.getPos,
                 isRostered: (clean) => !!league.globalRosterMap[clean],
                 isExcluded: (r) => isDraftPickName(r.name)
             });
+            const { unresolvedCount, unresolvedNames } = found;
+            // Shopping for a coming week (round 7): who's on bye that week is left out, and counted for the line.
+            const teamOf = (fa) => (ctx.meta[fa.cleanName] && ctx.meta[fa.cleanName].team) || fa.team || null;
+            const freeAgents = ctx.forWeek == null ? found.freeAgents : found.freeAgents.filter(fa => !onByeIn(teamOf(fa), ctx.forWeek));
+            // Counted for the position on screen (All: every position).
+            const inView = (f) => matchesPosFilter(f.pos, pos);
+            const byeLeftOut = found.freeAgents.filter(inView).length - freeAgents.filter(inView).length;
 
             // How many players the rankings rank at each position, so an empty list can say
             // whether everyone is taken or the file doesn't rank that position at all.
@@ -316,6 +349,10 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
             const groupName = (filter) => filter === 'FLEX' ? 'RB/WR/TE' : filter === 'ALL' ? 'player' : filter;
             const noneText = (filter) => {
                 const n = rankedIn(filter);
+                // Everyone left is on bye in the week you're shopping for (round 7).
+                if (ctx.forWeek != null && found.freeAgents.some(f => matchesPosFilter(f.pos, filter))) {
+                    return `Every ${groupName(filter)} still ${freeWord} in your ${scan.name} rankings is on bye in week ${ctx.forWeek}. Show all to see them.`;
+                }
                 return n > 0
                     ? `Every ${groupName(filter)} in your ${scan.name} rankings (${n} ranked) is already ${takenText}. A deeper rankings file would show who's left.`
                     : `Your ${scan.name} rankings don't include any ${groupName(filter)}.`;
@@ -370,7 +407,11 @@ import { STARTS_ICON, TREND_ICON, trendBadgeMarkup } from '../badges.js';
             const summary = showTrending
                 ? `Sleeper's most-added ${which} in the last ${TRENDING.lookbackHours} hours ${knowsWholeLeague ? 'still available' : 'not on your roster'} in ${leagueName}, most adds first. Beside each: your <strong>${scan.name}</strong> position rank, or UR when your rankings don't include him.`
                 : `${lead} in ${leagueName} by <strong>${scan.name} rank</strong>.`;
-            out.innerHTML = `
+            // The week line (round 7), above the summary: what's different, and the way back.
+            const weekLine = ctx.forWeek == null ? '' : `<p class="mls-ta-week">${CRUNCH_ICON}<span>For week ${ctx.forWeek} (Bye Crunch): `
+                + `${byeLeftOut > 0 ? `${byeLeftOut} player${byeLeftOut === 1 ? '' : 's'} on bye that week left out` : 'nobody here is on bye that week'}`
+                + `; Starts is about this week, so it's hidden.</span> <button type="button" class="btn-bare mls-ta-more-link" data-action="clearTopAvailableWeek">Show all</button></p>`;
+            out.innerHTML = `${weekLine}
             <div class="mls-scan-summary">
                 ${summary}
                 <ul class="mls-scan-notes">${notes.map(n => `<li>${n}</li>`).join('')}</ul>
