@@ -13244,3 +13244,23 @@ short", with Find K), since a streamer has to be picked up all the same.
   Sunday of week 6, James Cook (BUF, bye week 7) is "1 upgrade" and Would Start; Tuesday after week 6 he's "No upgrade"
   and Auto-Find says Bye, "On bye next week". The Tuesday test fails on main (checked by restoring main's
   `waivers.js`: the flag kept "1 upgrade").
+
+**Screenshots: two change, re-taken by CI** (`update-screenshots.yml`). Rendered here, main against this branch in the
+same container (`RENDER_ENV=any`, `npm run pxdiff`): only `desktop/mls-league-guide.png` (1280×10950 → 1280×11090) and
+`phone/mls-league-guide.png` (390×25902 → 390×26246) differ, taller by the Guide's two Bye Crunch sentences and the
+legend's new line. The other 42 are pixel-identical: the screenshot fixture is week 2, with no byes in weeks 3–4, so
+no card or Lineup box shows a Bye Crunch.
+
+**Checks** (full `npm ci && npm run check`, once, before the last push): check-precache OK (178 precached),
+`node --test` 698 passed, Playwright 1104 passed, 72 skipped, 4 failed: `visual.spec.mjs`'s environment check (this
+container's fonts), as on main; the comparison above stands in for it.
+
+**Left over.**
+- **Best Ball**: no Bye Crunch there (no lineup to set, and the Dashboard leaves Best Ball out of its to-dos), though a
+  short week costs points there too. A line on the Best Ball card would be its own small change.
+- **The BYE badge on Top Available and Auto-Find rows** still marks this week's byes on Tuesday (only the verdicts and
+  the upgrade counts read next week's). Small; could follow `lineupWeek` too.
+- **K and DEF**: they count like any slot ("1 DEF short" for a team defense on bye). If that reads as noise for people
+  who stream them, the owner could choose to leave them out.
+- This season it shows only through week 13 (week 14's byes are the last); otherwise it's ready for 2027 once B1 adds
+  2027's byes in May.
