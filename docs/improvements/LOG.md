@@ -13264,3 +13264,9 @@ container's fonts), as on main; the comparison above stands in for it.
   who stream them, the owner could choose to leave them out.
 - This season it shows only through week 13 (week 14's byes are the last); otherwise it's ready for 2027 once B1 adds
   2027's byes in May.
+
+### S52: screenshots re-taken from CI (update-screenshots run 43821201036, commit e2fad61)
+- `desktop/mls-league-guide.png`: the Dashboard step's two Bye Crunch sentences, and the legend's new line (the
+  user-minus icon and "Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye: …)" in orange, its meaning beside it).
+  Opened and checked.
+- `phone/mls-league-guide.png`: the same two sentences (on phones the legend is a sheet, not in the screenshot).
