@@ -13535,3 +13535,8 @@ current example has 5 lines of text that run together." Yes: the item is now a h
   item is a `<div>` so it can hold one). `css/mls.css`: `.mls-crunch-list`. The legend's sample, the Guide's sentence and
   the CHANGELOG line follow. Unit tests and `mls-bye-crunch.spec.mjs` check the headline and the bullets apart.
 - Screenshots: the same two Guide PNGs move again (the Guide's example and the legend's sample), re-taken by CI.
+- Merged main (S50, Early Games) before the push: CHANGELOG and LOG kept both; the two Guide PNGs taken from main,
+  then re-taken by CI on the merged branch (commit bd2838b): the Guide's Bye Crunch sentence and the legend's sample
+  with its bullet. Opened and checked. `CACHE_NAME` v2.10.14 (main's is v2.10.13). After the merge: check-precache,
+  `node --test` (706) and the Bye Crunch, Early Games, lineup-needs, league-card, legend, waiver and backup specs
+  (132) pass.
