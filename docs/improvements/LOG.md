@@ -13662,3 +13662,18 @@ Advanced Settings as well as the Lineup tab ... rather than having to 'hunt it d
   `{desktop,phone}/mls-league-guide.png` (rounds 7–8's Guide sentences). The Lineup tab's are unchanged (Lineup settings
   starts folded). Re-taken by CI.
 - CI re-took the six PNGs (commit 865a806): the Dashboard's Advanced Settings shows the new Lineup fold under Show Player Headshots (closed, like Notifications and FAAB Bids below it); the Guide's sentences as above. Opened and checked.
+
+### S52: the full suite before the pull request (2026-11-16)
+Owner: "Run the full suite and open the PR, watch CI, then merge when green." Branch current with main (S50 merged in
+round 2; nothing newer), `CACHE_NAME` v2.10.14 (main v2.10.13). `npm ci && npm run check`: check-precache OK (179
+precached), `node --test` 708 passed, Playwright 1134 passed, 72 skipped, 4 failed: `visual.spec.mjs`'s environment
+check (this container's fonts), as on main; the screenshots were compared main against this branch here and re-taken by
+CI in each round.
+
+### Left over
+- Best Ball leagues get no Bye Crunch (no lineup to set; the Dashboard leaves them out of its to-dos), though a short
+  week costs points there too.
+- The BYE badge on Top Available and Auto-Find rows marks this week's byes on Tuesday (the verdicts and upgrade counts
+  read next week's, round 1). Small; could follow `lineupWeek`.
+- Got it has no undo before that week passes (as Early Games' Got it).
+- This season it shows only through week 13 (week 14's byes are the last); ready for 2027 once B1 adds its byes.
