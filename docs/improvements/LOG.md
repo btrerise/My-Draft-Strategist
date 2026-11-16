@@ -13599,3 +13599,4 @@ like the rank and status chips.)
   the Dashboard redraws; the Lineup tab's fold as before).
 - Screenshots: the two Guide PNGs, re-taken by CI.
 - The legend's sample draws the fold open with its heading as text (`CRUNCH_ICON` + `crunchRowsHTML`), not a `<summary>`: a legend row isn't a control, and `touch-targets.spec.mjs` caught the sample's 23px summary on phones. The real folds' summaries use the shared 48px TOUCH TARGETS area, as every `.mls-change-fold` does.
+- CI re-took the two Guide PNGs (commit 1af871b): the legend's sample is the open fold with a slot heading and bullets; the Guide's sentence says it's folded until you tap it. Opened and checked.
