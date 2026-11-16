@@ -4,6 +4,7 @@
 // getLineupIssues supplies the State-backed parts (statuses, kickoffs, byes, locks, the league's IR rules).
 import { SLOT_POSITIONS, slotDisplayName } from '../constants.js';
 import { pickForSlot } from './flexChoice.js';
+import { crunchText } from './byeCrunch.js';
 
 const slotTypeOf = (slot) => String(slot || '').replace(/[0-9]/g, '');
 const accepts = (slotType, pos) => !!(SLOT_POSITIONS[slotType] && SLOT_POSITIONS[slotType].includes(pos));
@@ -145,10 +146,10 @@ const slotWho = (slotType) => joinAnd(SLOT_POSITIONS[slotType] || [slotType], 'o
 
 // What to do, one item per thing: [{ kind, text, muted?, note?, swap?: { out, in }, find?: chip }]. kind is for
 // the item's color: 'ir' (the IR badge's purple: activations and moves), 'injured' (red), 'bye', 'empty', 'kept'
-// (muted). Neither a muted item (a starter you kept) nor a note (an IR move: a tip, not a job before kickoff;
+// (muted), 'crunch' (Bye Crunch, a note). Neither a muted item (a starter you kept) nor a note (an IR move: a tip, not a job before kickoff;
 // owner's choice, S11 round 6) counts toward "needs you". text is plain (the caller escapes it: player names are Sleeper's); names use no-break
 // spaces, so a phone wraps between words but never inside a name. Order: activations (Sleeper won't start him
-// until you do it), injuries, byes, empty slots, IR moves, then what you kept.
+// until you do it), injuries, byes, empty slots, IR moves, Bye Crunch, then what you kept.
 export function lineupIssueItems(issues) {
     const name = (p) => String((p && p.name) || 'Unknown player').replace(/ /g, ' ');
     const full = issues.rosterFull ? ' (roster full: drop someone first)' : '';
@@ -173,6 +174,11 @@ export function lineupIssueItems(issues) {
     const more = issues.moveToIr.length > issues.irSlotsOpen
         ? ` (${issues.irSlotsOpen} IR slot${issues.irSlotsOpen === 1 ? '' : 's'} open)` : '';
     issues.moveToIr.forEach(p => items.push({ kind: 'ir', note: true, text: `Move ${name(p)} to IR to free a spot${more}` }));
+    // Bye Crunch (improvements S52): a coming week when byes leave a slot you can't fill. A note, not a job before
+    // kickoff (owner's choice), with a Find button for the slot. issues.crunch is byeCrunch's entries (byeCrunch.js),
+    // added by gameInfo.js's getLineupIssues.
+    (issues.crunch || []).forEach(c => items.push({ kind: 'crunch', note: true, find: findChipFor(c.slotType),
+        text: crunchText(c, slotDisplayName) }));
     issues.kept.forEach(k => items.push({ kind: 'kept', muted: true, text: `${name(k.player)} ${k.what} (you locked him in)` }));
     // A note, not a job (improvements F7). The lineup reads who started from your last sync, hence the second sentence.
     (issues.lockEnded || []).forEach(p => items.push({ kind: 'kept', muted: true, note: true,

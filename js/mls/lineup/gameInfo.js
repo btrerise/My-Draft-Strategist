@@ -18,6 +18,7 @@ import { normalizeName } from '../../shared/names.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
 import { rankedOpponentBadgeHTML, weeklyOpponentInfo } from '../opponent.js';
 import { leagueNeeds, lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } from './issues.js';
+import { CRUNCH_ICON, byeCrunch, crunchWeeks } from './byeCrunch.js';
 
     // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
     // currently-known NFL week) -- not just whenever they have a bye scheduled at some point
@@ -474,7 +475,7 @@ import { leagueNeeds, lineupIssueItems, lineupIssues, sleeperLineupChanges, stat
                 const label = i.find === 'ALL' ? 'Find players' : `Find ${i.find}`;
                 button = ` <button type="button" class="btn btn-secondary mls-btn-sm lineup-needs-btn" data-action="findLeaguePlayers" data-league-id="${leagueId}" data-pos="${escapeHtml(i.find)}">${label}</button>`;
             }
-            return `<li class="lineup-needs-item is-${i.kind}">${escapeHtml(i.text)}${button}</li>`;
+            return `<li class="lineup-needs-item is-${i.kind}">${i.kind === 'crunch' ? CRUNCH_ICON : ''}${escapeHtml(i.text)}${button}</li>`;
         }).join('');
 
         // The strip's and the cards' rule (leagueNeeds, lineup/issues.js; improvements F12): a change to set on Sleeper
@@ -586,7 +587,7 @@ import { leagueNeeds, lineupIssueItems, lineupIssues, sleeperLineupChanges, stat
     // parts filled in: statuses, kickoffs, this week's byes, your locks, and the league's IR rules and roster size
     // (recorded at a Sleeper sync since round 4). The Lineup tab's box above and the Dashboard's box both read it.
     export function getLineupIssues(starters, league, bench = []) {
-        return lineupIssues(starters, {
+        const issues = lineupIssues(starters, {
             bestBall: isBestBallLeague(league),
             outStatuses: SIM_EXCLUDE_STATUSES,
             kickedOff: hasKickedOff,
@@ -606,6 +607,23 @@ import { leagueNeeds, lineupIssueItems, lineupIssues, sleeperLineupChanges, stat
             unmatched: league && league.injuryUnmatched
                 ? league.injuryUnmatched.filter(n => (league.roster || []).some(p => p.name === n)) : [],
         }, bench);
+        // Bye Crunch (improvements S52): the next 2 weeks' slots byes leave short. Not in Best Ball (no lineup to set,
+        // and the Dashboard leaves Best Ball leagues out of the to-dos).
+        if (league && !isBestBallLeague(league)) issues.crunch = getByeCrunch(league);
+        return issues;
+    }
+
+    // A league's Bye Crunch (js/mls/lineup/byeCrunch.js): for each of the next 2 NFL weeks after Sleeper's current
+    // one (on Tuesday, once the week's games are over, Sleeper's week is still the finished one, so the first is the
+    // coming week), the starting slots nobody on the roster can fill: on bye that week, or Out or on IR now (assumed
+    // still out). [] when nothing's short, or the week or season isn't known.
+    export function getByeCrunch(league) {
+        if (!league || State.currentNflWeek == null || State.currentNflSeason == null) return [];
+        const posMap = league.globalPosMap || {};
+        return byeCrunch(league.reqs, league.roster || [], crunchWeeks(State.currentNflWeek), {
+            byeWeek: team => getByeWeek(team, State.currentNflSeason),
+            posOf: p => (p.pos && p.pos !== 'FLEX' ? p.pos : posMap[p.cleanName] || p.pos),
+        });
     }
 
     // Sleeper's own snapshot of who's actually starting, as of the last sync -- the ground

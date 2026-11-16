@@ -198,6 +198,14 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Bye Crunch: a heads-up two weeks ahead.** When byes in one of the next 2 weeks leave a starting spot nobody on your
+  roster can fill, the league's Dashboard card and the Lineup tab's box say so, for example "Bye Crunch · Week 13: 1 RB
+  short (3 of your 4 RBs on bye: …)", naming the players on bye (and anyone Out or on IR now, assumed still out), with a
+  Find button that opens Top Available on that position. It's a note, not counted in "N lineups need you".
+- **Tuesday's waiver checks use next week's byes.** Once the week's games are over, Best available, Auto-Find and Check
+  a List ask about next week, and now that includes its byes: a free agent on bye next week isn't an upgrade, and
+  Auto-Find says "On bye next week".
+
 - **No flash when you tap on a phone.** The grey-blue box the phone's browser drew over whatever you tapped is gone. A
   tap still answers with the app's own light tint while your finger is down, and now things that open something
   without being a button answer the same way: every fold (Recent Sync Logs, Notifications, Danger Zone, Lineup

@@ -16,10 +16,19 @@ import { State } from './state.js';
     // findBestStarterIndex), in which case they're started anyway rather than leaving a slot
     // empty. Locked players bypass this check entirely at the call sites below: a lock is an
     // explicit instruction to start someone regardless of bye/injury status.
-    export function isUnavailableThisWeek(p) {
-        const onBye = State.currentNflWeek != null && getByeWeek(p.team, State.currentNflSeason) === State.currentNflWeek;
+    // week: the NFL week to ask about (default Sleeper's current one). The waiver tools pass lineupWeek(weekOver), so
+    // on Tuesday, once the week's games are over, a player on bye next week isn't an upgrade (improvements S52).
+    export function isUnavailableThisWeek(p, week = State.currentNflWeek) {
+        const onBye = week != null && getByeWeek(p.team, State.currentNflSeason) === week;
         const hardOut = p.inj && HARD_OUT_STATUSES.includes(p.inj);
         return onBye || hardOut;
+    }
+
+    // The week a lineup decision is about (improvements S52, S34's leftover): Sleeper's current week, or once its games
+    // are over (isWeekOver, scout/waiverStatus.js; Tuesday until Sleeper's week moves on Wednesday), the coming one.
+    export function lineupWeek(weekOver) {
+        if (State.currentNflWeek == null) return null;
+        return weekOver ? Number(State.currentNflWeek) + 1 : State.currentNflWeek;
     }
 
     // Canonical short injury-status code for a raw Sleeper player object -- 'Q', 'D', 'OUT',

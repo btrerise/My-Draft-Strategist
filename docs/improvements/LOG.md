@@ -12188,7 +12188,6 @@ Not run again (rule 7); CI runs it on the pull request.
 - **Seth McGowan's quick re-add** (round 8): if a pattern shows (a player dropped the day he was added skipping
   waivers), add it to the rule.
 - **A short gap on a cold Dashboard** (round 5, point 2): if it matters, the count could wait for the chips.
-- **Next week's byes on Tuesday** (round 4, above).
 - `daily_waivers_days` isn't decoded (above). If a league marks some days "Locked" or "FA", the chip can be wrong on
   those days; a session with the league's settings screen open (or Sleeper's help pages reachable) could map the bits.
 - Sleeper's state week may move to the next week before Wednesday's run; then this week's kickoffs are next week's and
@@ -13171,3 +13170,77 @@ Owner: "Looks good. Run the suite, then open PR, watch CI, and merge when green"
 (`npm ci && npm run check`, once): check-precache OK (177 precached), `node --test` 688 passed, Playwright 1094 passed,
 72 skipped, 4 failed. The 4 are `visual.spec.mjs`'s environment guard (this container's fonts), as on main; the
 screenshots themselves were compared main against this branch in the same container (identical, above).
+
+
+## S52 — Bye Crunch: weeks when byes leave a starting slot short
+
+From the owner's notes of 2026-11-12 (sent 2026-11-14): "Bye week checker (need a better name): check rosters for when
+bye weeks overlap to the point of impacting your starting lineup". Read first: S11 (to-dos), S12 (league cards), F12
+(what needs you) and S34 round 4 (byes on Tuesday).
+
+**Owner's decisions (asked before building, 2026-11-16).**
+1. Name: **Bye Crunch**.
+2. How far ahead: **the next 2 weeks** (not next week only, the rest of the season or the playoffs).
+3. What counts as short: **a slot nobody available can fill** (not also one you'd fill with an unranked player).
+4. Where: **a to-do on the league's Dashboard card and in the Lineup tab's box** (no week-by-week Roster view).
+5. **Not counted** in "N lineups need you" (F12's rule): a heads-up, not a lineup to set.
+
+**User-visible effect.**
+- A league card and the Lineup tab's box list, for each of the next 2 NFL weeks, each slot type byes leave short:
+  "Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye: Derrick Henry, Breece Hall and Ashton Jeanty)", with a
+  user-minus icon in the BYE badge's orange and a **Find RB** button (Top Available on that position; W/R, W/T and FLEX
+  find FLEX, SFLEX All, as the empty-slot item does). Players Out (or on IR, PUP, NFI, suspended) now are named after
+  it, "· Joe Mixon is on IR, assumed still out"; an injured player still in your IR slot "is in your IR slot".
+  Wording for a strict slot: "1 of your 2 RBs on bye", "all 2 of your QBs on bye", "your only K on bye"; for a flex
+  slot: "1 FLEX short (on bye: …)".
+- It's a note: a card with only Bye Crunch says "Notes" (no amber, no count), the Lineup box's title stays "Nothing
+  needs you before kickoff", the strip and Optimize All / Sync All toasts don't count it, and starter alerts (N2)
+  never name it.
+- Not in Best Ball leagues (the Dashboard leaves them out of the to-dos).
+- **Tuesday's waiver checks read next week's byes** (S34's leftover, removed from its Left over list): once the week's
+  games are over (`isWeekOver`), the Dashboard's Best available, Auto-Find and Check a List treat a player on bye next
+  week as unavailable, so he isn't an upgrade; Auto-Find's Bye verdict says "On bye next week - a stash, not a start."
+  (and "can't start next week" for an injured one). Before Tuesday nothing changes. The BYE badge on rows still marks
+  this week's byes, and the Lineup tab's optimizer is unchanged (out of scope).
+
+**Which weeks.** Sleeper's week + 1 and + 2 (`crunchWeeks`). Sleeper's week stays on the finished week until
+Wednesday, so on Tuesday "next week" is already the coming one, as the card asked; from Wednesday the current week's
+byes are the Lineup box's own items ("X is on bye: no healthy RB on your bench [Find RB]"). Byes end at week 14, so
+from week 13 on nothing shows (week 13: week 14's; week 14 on: none).
+
+**What counts as short.** A maximum matching of starting slots to available players, filled in the optimizer's slot
+order (strict slots, then W/R, W/T, FLEX, SFLEX, K, DEF), so the shortage lands on the strict slot when a spare player
+can still take the FLEX, and a W/T isn't short because FLEX took the only WR. It never depends on your rankings (the
+optimizer's choices are out of scope). Only what the byes add counts: a slot short every week anyway (no TE on the
+roster) is the Lineup box's "TE slot is empty", not a Bye Crunch. Available: not taxi; in your Sleeper IR slot only
+when healthy (you'd activate him); not Out, IR, PUP, NFI or suspended now (assumed still out). Doubtful and
+Questionable count as available a week or more out. K and DEF count like any slot (a BAL kicker in week 13 is "1 K
+short", with Find K), since a streamer has to be picked up all the same.
+
+**What changed, and where.**
+- `js/mls/lineup/byeCrunch.js` (new, pure): `shortSlots`, `byeCrunchWeek`, `byeCrunch`, `crunchWeeks`, `couldStart`,
+  `crunchText`, `CRUNCH_ICON`. In `PRECACHE_ASSETS`.
+- `js/mls/lineup/issues.js`: `lineupIssueItems` adds `issues.crunch` as `{ kind: 'crunch', note: true, find }` items,
+  after IR moves. Notes never count (`needsYouCount`, `leagueNeeds`), so F12's rule is unchanged.
+- `js/mls/lineup/gameInfo.js`: `getLineupIssues` adds `issues.crunch` from the new `getByeCrunch(league)` (Sleeper's week
+  and season, the bye table, positions from the roster or the league's `globalPosMap`); the Lineup box draws the icon.
+  `js/mls/render/dashboard.js`: the card's item draws the icon. `css/mls.css`: `.is-crunch`, `.mls-crunch-icon`.
+- `js/mls/helpers.js`: `isUnavailableThisWeek(p, week = State.currentNflWeek)` and `lineupWeek(weekOver)`.
+  `js/mls/scout/waivers.js`: `lineupCheckDeps` passes `lineupWeek(weekOver)`; `buildWaiverContext` returns `weekOver`
+  and `byeWeek`, which `waiverVerdictParts` reads for the Bye pill and its line.
+- Legend (`js/mls/legend.js`): a line after "This lineup needs you", drawn with the same markup. Guide
+  (`lineup/index.html`, the Dashboard step): two sentences on Bye Crunch. CHANGELOG: two lines under Lineup Strategist.
+- No storage key. `CACHE_NAME` v2.10.12 → v2.10.13.
+
+**Tests.**
+- `tests/unit/byeCrunch.test.mjs` (10): the matching (strict first; W/T not starved by FLEX); 2 RB slots with 3 of 4
+  RBs on bye; FLEX covering the WR byes with a spare RB (and short without one); superflex (a QB on bye leaves SFLEX to
+  an RB/WR/TE, short when none is left; both QBs on bye); an IR player (named, assumed still out), a healthy IR-slot
+  player counted, a Questionable one in the IR slot not, taxi never; a slot short without byes not reported; the weeks;
+  the items (notes, Find chips, never counted).
+- `tests/mls-bye-crunch.spec.mjs` (5 × desktop and phone): week 12 shows week 13's RB, K and DEF on the card ("Notes",
+  icons, Find RB to Top Available on RB) and in the Lineup box (title unchanged, Find DEF); beside the empty RB slot
+  only the empty slot counts ("1 to fix", "1 lineup needs you · 1 to fix"); week 2, nothing anywhere (the empty state);
+  Sunday of week 6, James Cook (BUF, bye week 7) is "1 upgrade" and Would Start; Tuesday after week 6 he's "No upgrade"
+  and Auto-Find says Bye, "On bye next week". The Tuesday test fails on main (checked by restoring main's
+  `waivers.js`: the flag kept "1 upgrade").

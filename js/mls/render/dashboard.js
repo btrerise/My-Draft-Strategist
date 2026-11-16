@@ -12,6 +12,7 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { setToastsSuppressed, showToast } from '../../shared/ui/toast.js';
 import { optimizeLineup } from './lineup.js';
 import { ensureLineupProjections, formatKickoffLabel, getLineupIssues, getSleeperLineupChanges, lineupBuiltBeforeKickoff, sleeperChangesHTML } from '../lineup/gameInfo.js';
+import { CRUNCH_ICON } from '../lineup/byeCrunch.js';
 import { findChips, leagueNeedKeys, leagueNeeds, lineupIssueItems, needKindsText, needsLineupButton, needsYou } from '../lineup/issues.js';
 import { updateWaiverScanSetting } from '../scout/waivers.js';
 import { isManualLeague, refreshManualInjuries } from '../leagues/manualInjuries.js';
@@ -162,7 +163,7 @@ import { lastSyncedSummary } from '../leagues/lastSynced.js';
         const soon = Number.isFinite(ms) && ms - Date.now() < DAY_MS;
         const label = needs ? 'Needs you' : 'Notes';
         // One item per line, as on the Lineup tab: a league with several reads as a list, not a run-on sentence.
-        const items = (n ? n.items : []).map(i => `<span class="mls-needs-item is-${i.kind}">${escapeHtml(i.text)}</span>`);
+        const items = (n ? n.items : []).map(i => `<span class="mls-needs-item is-${i.kind}">${i.kind === 'crunch' ? CRUNCH_ICON : ''}${escapeHtml(i.text)}</span>`);
         // "Set on Sleeper:" says what kind of job it is, under the one "Needs you" label (improvements F12). An injured or
         // bye player starting there is urgent (S12 round 6): the item takes the injury color.
         if (sl) items.push(`<span class="mls-needs-item is-sleeper${urgentSleeper ? ' is-urgent' : ''}" title="As of your last sync: set it on Sleeper, then Sync All to clear this.">Set on Sleeper: ${sleeperChangesHTML(sl.changes)}</span>`);
