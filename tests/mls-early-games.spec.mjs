@@ -286,6 +286,14 @@ test.describe('Early Games from the schedule', () => {
         await expectClean(page, state);
     });
 
+    test('a visit with nothing to keep writes no Early Games keys (a restored backup stays as it was)', async ({ page }) => {
+        const state = await open(page, { espn: false });
+        await showTab(page, 'lineup');
+        await expect(page.locator('#earlyTeamChips')).toContainText('haven\u2019t loaded yet');
+        expect(await page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('mls_early')))).toEqual([]);
+        await expectClean(page, state);
+    });
+
     test('kickoffs that don\'t load: what was saved for the week stays; with nothing saved, the card says so', async ({ page }) => {
         const state = await open(page, { espn: false, storage: {
             mls_early_week: { week: '2026-2', schedule: ['BAL', 'BUF'], removed: [] },

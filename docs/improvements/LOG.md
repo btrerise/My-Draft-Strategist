@@ -13411,3 +13411,15 @@ the list (a slot named twice is plural; one swap keeps its single sentence).
 a new test builds a two-FLEX league's swaps and checks the title, the lead line and list, the plural Got it name and the
 Dashboard line. Ran check-precache, `node --test` (696), `mls-early-games`, `mls-lineup-needs`, `mls-keyboard`,
 `focus-ring`: all passed. No screenshot changes (nothing here shows offline).
+
+### S50: the full suite before the pull request (2026-11-16)
+
+Owner: "After that, you're good to open a PR, watch CI, and then merge when green." **The full check** (`npm ci && npm run
+check`, once): check-precache OK (178 precached), `node --test` 696 passed, Playwright 1112 passed, 72 skipped, 6 failed.
+Four are `visual.spec.mjs`'s environment guard (this container's fonts), as on main; the screenshots were compared main
+and branch in the same container each round (above). The other two were real: `backup.spec.mjs`, "MLS restores a backup
+file saved before the 6B key rename" (both widths): after a restore and reload, the page had written `mls_early_week`,
+which wasn't in the backup. `noteEarlyWeek` saved the week's stamp on any first visit; now it saves only with something to
+keep (teams you added, the schedule's, or removed ones), and the schedule saves its own week when the kickoffs load. A
+new spec checks a visit with nothing to keep writes no `mls_early_*` key. Re-ran `backup`, `mls-early-games` (11 per
+width) and `key-migration`: all passed.

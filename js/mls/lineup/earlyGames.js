@@ -56,8 +56,12 @@ import { sleeperLineup } from './starterAlertRules.js';
             State.earlyTeams = [];
             saveAdded();
             saveWeek({ week: stamp, schedule: [], removed: [] });
-        } else {
+        } else if ((State.earlyTeams || []).length || w.schedule.length || w.removed.length) {
+            // An install from before S50 with picks: they're this week's now. With nothing to keep, nothing is written
+            // (a fresh visit, or one just restored from a backup, gets no key it didn't have; backup.spec.mjs).
             saveWeek({ ...w, week: stamp });
+        } else {
+            return;
         }
         refreshEarlyGames();
     }
