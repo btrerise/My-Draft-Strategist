@@ -13633,3 +13633,4 @@ judged for a coming week, since rankings are built week to week, so it's hidden 
   Find RB from week 13's note leaves him out, hides Starts, says so; the chips keep the week; Show all brings him back;
   the week doesn't stick to a later visit; Got it hides the note on both, sets the key, and holds after a reload).
 - Screenshots: the two Guide PNGs, re-taken by CI.
+- CI re-took the two Guide PNGs (commit 380d8e5): the legend's meaning and the Guide's sentence now mention Find for that week and Got it. Opened and checked.
