@@ -3,6 +3,7 @@
 //   cd tests && PERF_BACKUP=<backup.json> npx playwright test -c tools/playwright.config.mjs backup-perf --project phone
 //   PERF_REF=<git ref> …      serves the site from that commit instead of the working tree (git show), for a bisect
 //   PERF_PROFILE=1 …          also prints the functions that took the most time
+//   PERF_NOW=<ISO time> …     the page's clock reads this time (timers still run), e.g. just before a kickoff
 //
 // The backup (Lineup Strategist's Backup & Restore file) is written straight into localStorage before the page loads.
 // Every request that leaves localhost is answered from PERF_NET (default: perf-net.json next to the backup): recorded
@@ -21,6 +22,7 @@ const ROUNDS = Number(process.env.PERF_ROUNDS || 3);
 const SYNCS = Number(process.env.PERF_SYNCS || 2);
 const PROFILE = !!process.env.PERF_PROFILE;
 const AFTER_MS = Number(process.env.PERF_AFTER_MS || 4000);
+const LOAD_S = Number(process.env.PERF_LOAD_S || 15);
 const FROM_TABS = ['lineup', 'roster', 'scoreboard', 'scout'];
 const TYPES = {
     '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
@@ -79,8 +81,22 @@ test('Sync All and switches to the Dashboard, with a backup, 4x CPU', async ({ p
         sessionStorage.setItem('__perfSeeded', '1');
     }, data);
 
+    // A clock that starts at PERF_NOW and runs (timers fire as they would).
+    if (process.env.PERF_NOW) await page.clock.install({ time: new Date(process.env.PERF_NOW) });
+    // What opening the page does by itself, in its first LOAD_S seconds (unthrottled).
+    let loadReqs = 0;
+    const countLoad = (r) => { if (new URL(r.url()).hostname !== 'localhost') loadReqs++; };
+    page.on('request', countLoad);
     await page.goto('/lineup/');
     await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(LOAD_S * 1000);
+    page.off('request', countLoad);
+    // The starter alert's plan (Advanced Settings' line under its switch), when it's on.
+    const alertPlan = await page.evaluate(async () => {
+        const { State } = await import('/js/mls/state.js');
+        const times = Object.values(State.gameTimesByTeam || {}).map(t => new Date(t).getTime()).filter(Number.isFinite);
+        return { line: document.getElementById('starterAlertsNext')?.textContent || '', now: new Date().toISOString(), week: State.currentNflWeek, kickoffs: [...new Set(times)].sort().map(t => new Date(t).toISOString()) };
+    });
     const cdp = await page.context().newCDPSession(page);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
     await page.evaluate(() => {
@@ -164,9 +180,23 @@ test('Sync All and switches to the Dashboard, with a backup, 4x CPU', async ({ p
         }, AFTER_MS)));
         await page.waitForLoadState('networkidle');
     }
+    // The same switches once a sync has run: the Dashboard then has new data to draw (Best Available re-reads each
+    // league's transactions after its sync).
+    if (SYNCS > 0) {
+        for (let round = 0; round < ROUNDS; round++) {
+            for (const from of FROM_TABS) {
+                await showTab(from);
+                await page.waitForLoadState('networkidle');
+                await page.waitForTimeout(500);
+                reqs = [];
+                push(`${from} → setup, after`, await profiled(`${from} → setup, after`, () => showTab('setup')));
+            }
+        }
+    }
     if (recorded) writeFileSync(NET, JSON.stringify(net));
 
     const lines = [`${REF || 'working tree'}, ${testInfo.project.name}, ${data.mls_leagues ? JSON.parse(data.mls_leagues).length : 0} leagues: median (ms)`,
+        `opening the page: ${loadReqs} requests in its first ${LOAD_S} s; starter alert: ${JSON.stringify(alertPlan)}`,
         `what                 to done   longest task   long tasks total   to frame after   long tasks in the next ${AFTER_MS / 1000}s (longest)`];
     for (const [name, rs] of results) {
         lines.push(`${name.padEnd(20)}${String(Math.round(median(rs.map(r => r.update)))).padStart(9)}${String(Math.round(median(rs.map(r => r.longest)))).padStart(15)}${String(Math.round(median(rs.map(r => r.longSum)))).padStart(19)}${String(Math.round(median(rs.map(r => r.total)))).padStart(17)}${String(Math.round(median(rs.map(r => r.afterSum)))).padStart(20)} (${Math.round(median(rs.map(r => r.afterLongest)))})   ${median(rs.map(r => r.requests))} requests   style ${Math.round(median(rs.map(r => r.style)))} (${median(rs.map(r => r.styleCount))}×)  layout ${Math.round(median(rs.map(r => r.layout)))}  script ${Math.round(median(rs.map(r => r.script)))}`);

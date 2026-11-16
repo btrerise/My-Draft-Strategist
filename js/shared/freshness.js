@@ -27,6 +27,16 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 const startOfDay = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
 
+// Formatters built once and reused (improvements F25): a new one per call was about half a second of each Sync All on a
+// phone, with a label per league card and row. The same text as toLocaleTimeString / toLocaleDateString.
+const formats = new Map();
+function format(opts) {
+    const key = JSON.stringify(opts);
+    let f = formats.get(key);
+    if (!f) { f = new Intl.DateTimeFormat(undefined, opts); formats.set(key, f); }
+    return f;
+}
+
 export function getFreshness(timestamp, staleAfterDays, verb = 'Updated') {
     if (!timestamp) return null;
     const at = Number(timestamp);
@@ -39,14 +49,14 @@ export function getFreshness(timestamp, staleAfterDays, verb = 'Updated') {
     else label = `${verb} ${days} days ago`;
 
     const when = new Date(at);
-    const time = when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const time = format({ hour: 'numeric', minute: '2-digit' }).format(when);
     let detail;
     if (days <= 1) detail = `${label} at ${time}`;
     else {
         const sameYear = when.getFullYear() === new Date(now).getFullYear();
-        const date = when.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
+        const date = format({ weekday: 'short', month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) }).format(when);
         detail = `${label} (${date} at ${time})`;
     }
-    const full = when.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    const full = format({ weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(when);
     return { label, detail, title: `${verb} ${full} at ${time}`, isStale: days > staleAfterDays };
 }

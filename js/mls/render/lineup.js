@@ -597,6 +597,9 @@ import { refreshThisWeek } from '../main.js';
         if (!bar) return;
         if (name) bar.querySelector('.mls-swap-snackbar-text').textContent = `Tap another player's \u21c4 to swap with ${name}.`;
         bar.hidden = !name;
+        // For css/mls.css (room under the Lineup tab, toasts above the bar): a class, not `body:has(.mls-swap-snackbar…)`,
+        // which re-checked the whole page after every change anywhere in it (improvements F25).
+        document.body.classList.toggle('mls-swap-pending', !!name);
     }
 
     // The snackbar's Cancel (data-action="cancelSwap"): the same as tapping the ✕, and focus goes to that player's swap button.

@@ -3285,7 +3285,10 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 }
 @starting-style { .mls-swap-snackbar { opacity: 0; transform: translateY(12px); } }
 .mls-swap-snackbar[hidden] { display: none; }
-#mainApp:has(#lineupTab:not(.active)) .mls-swap-snackbar { display: none; }
+/* Only while the Lineup tab shows. body[data-tab] and .mls-swap-pending are set by js/mls/nav.js and render/lineup.js
+   (improvements F25): page-wide :has() selectors here made Chrome re-check the whole page after every change, which
+   slowed Sync All on phones by about a third. */
+body:not([data-tab="lineup"]) .mls-swap-snackbar { display: none; }
 .mls-swap-snackbar-text { flex: 1; min-width: 0; padding: 10px 0; }
 .mls-swap-snackbar-action {
     flex: none;
@@ -3299,7 +3302,7 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
     font-weight: 700;
     cursor: pointer;
 }
-body:has(#lineupTab.active):has(.mls-swap-snackbar:not([hidden])) .mds-toast { margin-bottom: 80px; }
+body[data-tab="lineup"].mls-swap-pending .mds-toast { margin-bottom: 80px; }
 /* Round 4: on tablets and computers it sits at the content's start edge, bottom left (Material 3's place for a snackbar
    on a large screen), clear of the rows' swap buttons at the right; toasts stay at the right. On phones it runs across the
    screen above the tab bar, and the Lineup tab gets room at its foot while it shows, so the page scrolls clear of it. */
@@ -3310,7 +3313,7 @@ body:has(#lineupTab.active):has(.mls-swap-snackbar:not([hidden])) .mds-toast { m
 }
 @media (max-width: 599.98px) {
     .mls-swap-snackbar { left: 16px; right: 16px; max-width: none; bottom: calc(90px + env(safe-area-inset-bottom)); }
-    body:has(.mls-swap-snackbar:not([hidden])) #lineupTab.active { padding-bottom: 96px; }
+    body.mls-swap-pending #lineupTab.active { padding-bottom: 96px; }
 }
 @media (min-width: 840px) {
     .has-nav-bar .mls-swap-snackbar { bottom: calc(24px + env(safe-area-inset-bottom)); }

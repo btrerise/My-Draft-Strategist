@@ -827,8 +827,12 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
                 loadActiveLeagueData();
             }
             
-            optimizeLineup(true); 
-            loadRosterTab();
+            // A bulk sync (skipSave: Sync All, Import All) computes each league's lineup without drawing it or saving the
+            // lineup maps: the caller saves once and redraws the league you're on once after its loop (improvements F25).
+            // Drawing here redrew the Lineup and Roster tabs, Power Rankings and the Scoreboard once per league, hidden
+            // or not, and saved every league's lineups each time: most of Sync All's time on a phone.
+            optimizeLineup(true, false, { batch: skipSave });
+            if (!skipSave) loadRosterTab();
             
             if (btn) flashButton(btn, isRefresh ? "Sync Complete" : "Synced Successfully", false, isRefresh ? 'Sync Sleeper Waivers & Trades' : "Sync Sleeper");
 

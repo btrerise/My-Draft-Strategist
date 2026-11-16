@@ -125,6 +125,9 @@ import { closeMenuOnBack, menuClosed, menuOpened, setBackdrop } from '../shared/
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         const targetTab = document.getElementById(tabId + 'Tab');
         if (targetTab) targetTab.classList.add('active');
+        // The open tab, for CSS that depends on it (improvements F25): a `body:has(#lineupTab.active)` selector made
+        // Chrome re-check the whole page after every change anywhere in it, which slowed Sync All on phones.
+        document.body.dataset.tab = tabId;
 
         document.querySelectorAll('.nav-bar .nav-btn').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
         const activeNavBtn = document.querySelector(`.nav-bar .nav-btn[data-target="${tabId}"]`);

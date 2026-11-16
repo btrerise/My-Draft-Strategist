@@ -373,6 +373,12 @@ done or dropped, remove its line here in the same change. Background for each is
   the legend on its own) in `visual.spec.mjs`, or find what M17 made too tall to paint.
 
 **Needs the owner's decision first**
+- What Sync All downloads (improvements F25): every Sync All re-downloads Sleeper's whole player file (14.7 MB) for the
+  injury news, asks ESPN for the same week's scoreboard once per league (21 times) and Sleeper for your user once per
+  league, and the starter alert runs the same Sync All, quietly, whenever the page opens in the hour before a kickoff.
+  Since F25 a sync is a few seconds of work on a phone, but on mobile data the 14.7 MB is most of its time. Options:
+  keep the player file for an hour (injury news an hour old), ask ESPN and Sleeper once per sync, or have the alert's
+  check sync only the rosters.
 - Manual leagues can't be dynasty (improvements S23, round 12). They have no league type, so they always count as
   redraft: no In-Season rankings, no Future column, no draft picks in trades. A "League type" choice for manual leagues
   (beside League style on the Setup tab) would fix that, but the owner noted the payoff is small: Power Rankings need a

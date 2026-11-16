@@ -46,13 +46,28 @@ export function waiverSettingsFrom(settings) {
     };
 }
 
-// The wall-clock parts of a moment in a time zone.
+// The wall-clock parts of a moment in a time zone. One formatter per time zone, and the answers remembered (improvements
+// F25): building an Intl.DateTimeFormat costs about a millisecond on a phone, and this runs for every player in every
+// league several times a draw, so a new one per call made the Dashboard take over 3 s to appear with 20 leagues.
+const zoneFormats = new Map();
+const zonedCache = new Map();
+const ZONED_CACHE_MAX = 5000;
 function zonedParts(ms, tz) {
-    const f = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', weekday: 'short' });
+    const key = `${tz}|${ms}`;
+    const hit = zonedCache.get(key);
+    if (hit) return hit;
+    let f = zoneFormats.get(tz);
+    if (!f) {
+        f = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', weekday: 'short' });
+        zoneFormats.set(tz, f);
+    }
     const p = {};
     f.formatToParts(new Date(ms)).forEach(x => { p[x.type] = x.value; });
     const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(p.weekday);
-    return { y: +p.year, m: +p.month, d: +p.day, h: +p.hour % 24, min: +p.minute, s: +p.second, wd };
+    const parts = Object.freeze({ y: +p.year, m: +p.month, d: +p.day, h: +p.hour % 24, min: +p.minute, s: +p.second, wd });
+    if (zonedCache.size >= ZONED_CACHE_MAX) zonedCache.clear();
+    zonedCache.set(key, parts);
+    return parts;
 }
 
 // The moment a wall-clock time in a time zone happens (y, m 1-12, d, h).
@@ -153,9 +168,17 @@ export function nextWeeklyRun(waivers, after) {
 // The week's games are over: every kickoff is more than a game's length ago (kickoffs: { team: ISO or ms }). From then
 // until Sleeper's week moves on (Wednesday about 12 AM PT, with the weekly run; LOG S34 round 3) the claims you make
 // are for next week, so the Weekly checks stop holding kickoffs against anyone (round 4). False without kickoffs.
+// The week's last kickoff, worked out once per kickoffs object (it's asked for every player).
+const lastKickoffOf = new WeakMap();
 export function isWeekOver(kickoffs, now) {
-    const all = Object.values(kickoffs || {}).map(toMs).filter(v => v != null);
-    return all.length > 0 && Math.max(...all) + GAME_LENGTH < now;
+    if (!kickoffs) return false;
+    let last = lastKickoffOf.get(kickoffs);
+    if (last === undefined) {
+        const all = Object.values(kickoffs).map(toMs).filter(v => v != null);
+        last = all.length ? Math.max(...all) : null;
+        lastKickoffOf.set(kickoffs, last);
+    }
+    return last != null && last + GAME_LENGTH < now;
 }
 
 const toMs = (v) => (v == null ? null : (typeof v === 'number' ? v : (Number.isFinite(Date.parse(v)) ? Date.parse(v) : null)));

@@ -13501,3 +13501,59 @@ The "Update screenshots" run for ee046f9 succeeded and committed exactly the sev
 `mds-empty-guide`, `mds-empty-setup`, `mls-empty-setup`, `mls-league-guide`, `mls-league-roster`, `mls-league-setup`,
 `tscore-researchTab`. Each differs only where prose now wraps at 70 characters (the Guides are taller); no other
 screenshot changed.
+
+## F25 — Slow Sync All and Dashboard on phones (owner's report, 2026-11-16)
+
+**Asked:** "The last few days using my app on mobile, I've hit performance issues. Especially while syncing all leagues,
+or switching to the Dashboard tab from another tab. Those two are fairly consistent." With the owner's backup (20
+leagues, 19 on Sleeper). The owner suspected a merge from the last few days.
+
+**How it was measured:** a new opt-in tool, `tests/tools/backup-perf.tool.mjs` (TESTING.md, the opt-in tools): the
+backup written into localStorage, a 390px phone, the CPU slowed 4x, every request to Sleeper and ESPN recorded once and
+replayed, so each commit is measured on the same data; switches into the Dashboard from four tabs, before and after a
+Sync All, and Sync All itself; long tasks, requests and Chrome's own style / layout / script time; `PERF_REF` serves any
+commit, `PERF_PROFILE` the busiest functions, `PERF_NOW` the page's clock. One trap: ESPN refuses a headless browser's
+scoreboard request from a cloud container (403 "Access Denied"; curl with a browser user agent gets it), and **without
+kickoff times the regression doesn't show at all**: the first rounds measured nothing wrong. With the real scoreboard
+patched into the recording it reproduced every time.
+
+**Bisect** (each merge to main since 2026-11-11, phone, 4x CPU, the owner's backup, kickoffs loaded): the Dashboard switch
+took 0.15 to 0.2 s up to #250 and **3.3 to 3.6 s from #251 (S34, waiver claim or free agent) on**; Sync All went from
+8.7 s to **82 s**. The profile: `zonedParts` in `js/mls/scout/waiverStatus.js`, 3.1 s of the 3.2 s switch. It built a new
+`Intl.DateTimeFormat` on every call (about a millisecond each on a phone), and the waiver chips call it for every
+player in every league, several times per draw (4,620 formatters for 600 players in the unit test below). Sync All was
+82 s because each league's sync redrew the Dashboard's Best Available, among everything else (below).
+
+**Fixed:**
+- `zonedParts`: one formatter per time zone, its answers remembered (up to 5,000); `isWeekOver` works out the week's
+  last kickoff once per kickoff table (`State.gameTimesByTeam` is always replaced whole, never edited).
+- Sync All no longer draws per league. Each league's sync (`processSleeperData` with `skipSave`, the bulk flag) ran
+  `optimizeLineup(true)` and `loadRosterTab()`, so with the Dashboard showing, one Sync All redrew the Lineup tab 20
+  times, the Roster tab 21, Power Rankings 22, the Scoreboard and the league cards 23, analysed Best Available 361 times,
+  and saved every league's lineups 19 times. Now each league's lineup is computed in batch mode (`optimizeLineup`'s
+  existing `{ batch: true }`, as Optimize All does), Sync All and Import All save the lineup maps once after the loop,
+  and Sync All's existing end (the league restored, the cards, Roster and Lineup redrawn) draws once.
+- `formatUploadTime` (the rank-move chips) and `getFreshness` (the "Synced 2 days ago" labels): formatters built once
+  (the same text); together about 1.4 s of each old Sync All.
+- S32's three page-wide `:has()` selectors (`body:has(#lineupTab.active)…`, `#mainApp:has(#lineupTab:not(.active))`)
+  replaced by `body[data-tab]` (set by `applyTab` in `js/mls/nav.js`) and `body.mls-swap-pending` (the swap snackbar):
+  they made Chrome re-check the whole page after every change (style time in Sync All 625 → 986 ms at #253). M17's
+  `:has(> .settings-card)` costs about 100 ms per Sync All too; left, since it's smaller now that Sync All draws once.
+
+**After** (same data, phone, 4x CPU, medians): the Dashboard switch 0.17 to 0.24 s (main: 3.2 to 3.5 s); Sync All 2.6 s
+(main: 82 s), long tasks 1.2 s (main: 72 s), style 41 ms (main: 1,062).
+
+**The starter alert (N2) and the "switching to the Dashboard" part.** With the alert on (the owner's backup has it on,
+60 minutes), opening the page in the hour before a kickoff runs a quiet Sync All about a minute after load (the check
+waits for the week's kickoffs); before F25 that was the 82 s sync, running under whatever the owner tapped. It's the same
+2.6 s now. Its downloads are an open follow-up (TESTING.md, "Needs the owner's decision first"), as are Sync All's 14.7
+MB player file and its repeated ESPN and Sleeper-user requests.
+
+**Tests:** `tests/unit/dateFormatters.test.mjs` (600 players' waiver status build at most one formatter; it fails on the
+old code with 4,620; freshness labels a formatter per format). `tests/mls-sync-all-batch.spec.mjs`: after Sync All both
+fixture leagues' lineups are saved, you're on the same league, and the Lineup tab was drawn once (3 with the old
+per-league draws: checked by putting them back). Ran check-precache, `node --test` (701), and mls-waiver-status,
+mls-best-available, mls-top-available, mls-waiver-insights, mls-faab-bid, mls-rankings-change, mls-freshness,
+mds-freshness, mls-last-synced, mls-phone-rows, mls-keyboard, mls-lineup-row-actions, smoke, mls-sync-all-batch,
+mls-leagues, mls-sync-league-switch, mls-starter-alert, backup, mls-early-games, tscore-refresh: all passed. Screenshots:
+the previous commit and this one rendered in the same container, all 44 pixel-identical.

@@ -213,6 +213,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Much faster on phones with many leagues.** Opening the Dashboard took over 3 seconds with 20 leagues, and Sync All
+  over a minute on a phone, since the waiver chips (Free agent / On waivers) arrived; both are back to a fraction of a
+  second and a few seconds. Sync All also no longer redraws every tab for each league it syncs: it draws once, at the
+  end. The starter alert's background check, which runs a sync before each kickoff window, is just as quick now.
 - **Motion follows Material 3 Expressive.** Everything that moves now uses Material's own motion: things that move
   (a chevron turning, a switch's handle, a pressed button's corners, the phone tab slide) settle with a slight spring,
   and fades and colour changes are quicker and smooth. Tab and league fades on wider screens take 300 ms instead of

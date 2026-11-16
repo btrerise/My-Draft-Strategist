@@ -550,10 +550,9 @@ export const syncAllLeagues = function(btn, { quiet = false } = {}) {
                     hydrateRankingsForLeague(l);
                     optimizeLineup(true, false, { batch: true });
                 });
-                if (manualChecked.length > 0) {
-                    localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
-                    localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
-                }
+                // Every league's new lineup, once (each league's sync computes it without saving: improvements F25).
+                localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
+                localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
 
                 // Single write after the loop instead of one localStorage.setItem per league. The
                 // active league is put back first so the one saved is yours, not the last synced.
