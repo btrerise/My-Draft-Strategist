@@ -3,7 +3,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { byeCrunch, byeCrunchWeek, crunchText, crunchDetails, crunchListHTML, crunchWeeks, shortSlots, couldStart } from '../../js/mls/lineup/byeCrunch.js';
+import { byeCrunch, byeCrunchWeek, crunchGroup, crunchGroups, crunchRowsHTML, crunchWeeks, shortSlots, couldStart } from '../../js/mls/lineup/byeCrunch.js';
 import { lineupIssueItems, lineupIssues, needsYouCount, leagueNeeds, findChips } from '../../js/mls/lineup/issues.js';
 import { slotDisplayName } from '../../js/mls/constants.js';
 
@@ -13,6 +13,8 @@ const pl = (name, pos, team, extra = {}) => ({ id: String(nextId++), name, pos, 
 const BYES = { BAL: 13, IND: 13, LV: 13, NYJ: 13, ARI: 14, DAL: 14 };
 const ctx = { byeWeek: (t) => BYES[t] ?? null };
 const plain = (s) => s.replace(/ /g, ' ');
+// One week's heading and rows, as the card and the Lineup box show them (round 4).
+const group = (entries) => { const g = crunchGroup(entries, slotDisplayName); return [plain(g.text), ...g.rows.map(r => plain(r.text))]; };
 
 describe('shortSlots: the matching', () => {
     test('strict slots fill first; FLEX takes whoever is left', () => {
@@ -34,9 +36,8 @@ describe('byeCrunchWeek', () => {
         assert.equal(out.length, 1);
         assert.deepEqual({ ...out[0], onBye: out[0].onBye.map(p => p.name) },
             { week: 13, slotType: 'RB', short: 1, onBye: ['Derrick Henry', 'Breece Hall', 'Ashton Jeanty'], out: [], pos: 'RB', total: 4 });
-        assert.equal(plain(crunchText(out[0], slotDisplayName)), 'Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye)');
-        // One line per player (owner's request, round 2).
-        assert.deepEqual(crunchDetails(out[0]).map(plain), ['Derrick Henry (BAL) on bye', 'Breece Hall (NYJ) on bye', 'Ashton Jeanty (LV) on bye']);
+        assert.deepEqual(group(out), ['Bye Crunch · Week 13: 1 starter short',
+            'RB: 1 short · 3 of 4 on bye: Derrick Henry, Breece Hall and Ashton Jeanty']);
         // Another week: nothing.
         assert.deepEqual(byeCrunchWeek({ QB: 1, RB: 2, WR: 2 }, roster, 14, ctx), []);
     });
@@ -48,9 +49,7 @@ describe('byeCrunchWeek', () => {
         // Without the spare RB, it's FLEX that's short, not a WR slot.
         const out = byeCrunchWeek({ RB: 2, WR: 2, FLEX: 1 }, roster.slice(0, 6), 13, ctx);
         assert.deepEqual(out.map(c => [c.slotType, c.short, c.pos, c.onBye.map(p => p.name)]), [['FLEX', 1, null, ['W1', 'W2']]]);
-        assert.equal(plain(crunchText(out[0], slotDisplayName)), 'Bye Crunch · Week 13: 1 FLEX short');
-        // A flex slot's bullets are one per position (round 3).
-        assert.deepEqual(crunchDetails(out[0]).map(plain), ['WRs on bye: W1 and W2']);
+        assert.deepEqual(group(out), ['Bye Crunch · Week 13: 1 starter short', 'FLEX: 1 short · on bye: W1 (WR) and W2 (WR)']);
     });
 
     test('superflex: a second QB on bye leaves SFLEX to an RB, WR or TE; short only when none is left', () => {
@@ -62,7 +61,7 @@ describe('byeCrunchWeek', () => {
         // Both QBs on bye: the QB slot is short; SFLEX too.
         const both = byeCrunchWeek(reqs, [pl('Q1', 'QB', 'BAL'), pl('Q2', 'QB', 'LV'), pl('R', 'RB', 'MIN'), pl('W', 'WR', 'MIN')], 13, ctx);
         assert.deepEqual(both.map(c => [c.slotType, c.short]), [['QB', 1], ['SFLEX', 1]]);
-        assert.equal(plain(crunchText(both[0])), 'Bye Crunch · Week 13: 1 QB short (all 2 of your QBs on bye)');
+        assert.deepEqual(group(both), ['Bye Crunch · Week 13: 2 starters short', 'QB: 1 short · all 2 on bye: Q1 and Q2', 'SFLEX: 1 short']);
     });
 
     test('an IR player: out now counts as still out and is named; an IR-slot player only when healthy; taxi never', () => {
@@ -74,15 +73,15 @@ describe('byeCrunchWeek', () => {
         const out = byeCrunchWeek(reqs, [mixon, henry, cook, taxi], 13, ctx);
         assert.deepEqual(out.map(c => [c.slotType, c.short, c.onBye.map(p => p.name), c.out.map(p => p.name)]),
             [['RB', 1, ['Derrick Henry'], ['Joe Mixon']]]);
-        assert.equal(plain(crunchText(out[0])), 'Bye Crunch · Week 13: 1 RB short (1 of your 2 RBs on bye)');
-        assert.deepEqual(crunchDetails(out[0]).map(plain), ['Derrick Henry (BAL) on bye', 'Joe Mixon is on IR, assumed still out']);
+        assert.deepEqual(group(out), ['Bye Crunch · Week 13: 1 starter short',
+            'RB: 1 short · Derrick Henry (BAL) on bye; Joe Mixon is on IR, assumed still out']);
         // Healthy in your IR slot: he'd be activated, so he fills it.
         const healthyIr = pl('Healthy IR', 'RB', 'MIN', { isReserve: true });
         assert.deepEqual(byeCrunchWeek(reqs, [mixon, henry, cook, healthyIr], 13, ctx), []);
         // Questionable but still in the IR slot: not counted, and named.
         const qIr = pl('Q IR', 'RB', 'MIN', { isReserve: true, inj: 'Q' });
-        assert.deepEqual(crunchDetails(byeCrunchWeek(reqs, [henry, cook, qIr], 13, ctx)[0]).map(plain),
-            ['Derrick Henry (BAL) on bye', 'Q IR is in your IR slot, assumed still out']);
+        assert.deepEqual(group(byeCrunchWeek(reqs, [henry, cook, qIr], 13, ctx)).slice(1),
+            ['RB: 1 short · Derrick Henry (BAL) on bye; Q IR is in your IR slot, assumed still out']);
         assert.equal(couldStart(pl('D', 'RB', 'MIN', { inj: 'D' })), true);
     });
 
@@ -108,15 +107,19 @@ describe('the weeks, and the items', () => {
         const issues = lineupIssues([], { bestBall: false, outStatuses: [], kickedOff: () => false, onBye: () => false, roster: [] });
         issues.crunch = byeCrunch({ RB: 2, WRTE: 1 }, [pl('R1', 'RB', 'BAL'), pl('R2', 'RB', 'MIN'), pl('W', 'WR', 'LV')], [13], ctx);
         const items = lineupIssueItems(issues);
-        assert.deepEqual(items.map(i => [i.kind, i.note, i.find]), [['crunch', true, 'RB'], ['crunch', true, 'FLEX']]);
-        assert.equal(plain(items[1].text), 'Bye Crunch · Week 13: 1 W/T short');
-        assert.deepEqual(items[1].details, ['WR on bye: W']);
-        // The list escapes names.
-        assert.equal(crunchListHTML({ details: ['A & <B>'] }), '<ul class="mls-crunch-list"><li>A &amp; &lt;B&gt;</li></ul>');
-        assert.equal(crunchListHTML({}), '');
+        assert.deepEqual(items.map(i => [i.kind, i.note, i.find]), [['crunch', true, undefined]]);
+        // One item for the week (round 4): the heading, a row per slot with its Find chip.
+        assert.equal(items.length, 1);
+        assert.equal(plain(items[0].text), 'Bye Crunch · Week 13: 2 starters short');
+        assert.deepEqual(items[0].rows.map(r => [plain(r.text), r.find]), [['RB: 1 short · R1 (BAL) on bye', 'RB'], ['W/T: 1 short · also W (WR) on bye', 'FLEX']]);
+        // The rows' HTML: the slot a shade brighter, names escaped, a button per row.
+        assert.equal(crunchRowsHTML({ rows: [{ head: 'RB: 1 short', detail: 'A & <B> on bye' }] }, () => '<b>'),
+            '<ul class="mls-crunch-list"><li><span class="mls-crunch-head">RB: 1 short</span> · A &amp; &lt;B&gt; on bye<b></li></ul>');
+        assert.equal(crunchRowsHTML({}), '');
         assert.equal(needsYouCount(items), 0);
         assert.deepEqual(leagueNeeds({ items }), { needs: false, fix: 0, set: false });
-        assert.deepEqual(findChips(items), ['RB', 'FLEX']);
+        // The card's right-hand buttons leave Bye Crunch alone: its rows carry their own.
+        assert.deepEqual(findChips(items), []);
     });
 
     test('K and DEF are left out (round 3): they\'re streamed', () => {
@@ -124,7 +127,7 @@ describe('the weeks, and the items', () => {
         assert.deepEqual(byeCrunchWeek({ RB: 1, K: 1, DEF: 1 }, roster, 13, ctx), []);
     });
 
-    test('a FLEX after the RB note: one line per position, and the backs already named are "the 3 above" (round 3)', () => {
+    test('a FLEX after the RB row names only who the rows above it didn\'t (round 4)', () => {
         const rbs = [pl('Derrick Henry', 'RB', 'BAL'), pl('Breece Hall', 'RB', 'NYJ'), pl('Ashton Jeanty', 'RB', 'LV'), pl('James Cook', 'RB', 'BUF')];
         const wrs = [pl('Garrett Wilson', 'WR', 'NYJ'), pl('Zay Flowers', 'WR', 'BAL'), pl('A', 'WR', 'MIN'), pl('B', 'WR', 'MIN')];
         const mixon = pl('Joe Mixon', 'RB', 'HOU', { inj: 'IR' });
@@ -132,12 +135,15 @@ describe('the weeks, and the items', () => {
         const issues = lineupIssues([], { bestBall: false, outStatuses: [], kickedOff: () => false, onBye: () => false, roster: [] });
         issues.crunch = byeCrunch({ RB: 2, WR: 2, FLEX: 1 }, roster, [13], ctx);
         const items = lineupIssueItems(issues);
-        assert.deepEqual(items.map(i => plain(i.text)), ['Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye)', 'Bye Crunch · Week 13: 1 FLEX short']);
-        assert.deepEqual(items[0].details.map(plain), ['Derrick Henry (BAL) on bye', 'Breece Hall (NYJ) on bye', 'Ashton Jeanty (LV) on bye', 'Joe Mixon is on IR, assumed still out']);
-        assert.deepEqual(items[1].details.map(plain), ['RBs: the 3 above', 'WRs on bye: Garrett Wilson and Zay Flowers', 'Out now, assumed still out: Sam LaPorta (Out)']);
-        // On its own (nothing above), every name, and one partly above.
-        assert.deepEqual(crunchDetails(issues.crunch[1]).map(plain), ['RBs on bye: Derrick Henry, Breece Hall and Ashton Jeanty',
-            'WRs on bye: Garrett Wilson and Zay Flowers', 'Out now, assumed still out: Joe Mixon (IR), Sam LaPorta (Out)']);
-        assert.deepEqual(crunchDetails(issues.crunch[1], new Set([rbs[0].id])).map(plain)[0], 'RBs on bye: Breece Hall and Ashton Jeanty, and the 1 above');
+        assert.equal(items.length, 1);
+        assert.deepEqual([plain(items[0].text), ...items[0].rows.map(r => plain(r.text))], ['Bye Crunch · Week 13: 2 starters short',
+            'RB: 1 short · 3 of 4 on bye: Derrick Henry, Breece Hall and Ashton Jeanty; Joe Mixon is on IR, assumed still out',
+            'FLEX: 1 short · also Garrett Wilson (WR) and Zay Flowers (WR) on bye; Sam LaPorta is Out, assumed still out']);
+        // Without the RB row above it, the FLEX names everyone.
+        assert.deepEqual(group(issues.crunch.slice(1)).slice(1), ['FLEX: 1 short · on bye: Derrick Henry (RB), Breece Hall (RB), '
+            + 'Ashton Jeanty (RB), Garrett Wilson (WR) and Zay Flowers (WR); Joe Mixon is on IR, Sam LaPorta is Out, assumed still out']);
+        // Two weeks: one item each, in week order.
+        assert.deepEqual(crunchGroups(byeCrunch({ RB: 2 }, [pl('R1', 'RB', 'BAL'), pl('R2', 'RB', 'ARI')], [13, 14], ctx)).map(g => g.text),
+            ['Bye Crunch · Week 13: 1 starter short', 'Bye Crunch · Week 14: 1 starter short']);
     });
 });

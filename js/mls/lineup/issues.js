@@ -4,7 +4,7 @@
 // getLineupIssues supplies the State-backed parts (statuses, kickoffs, byes, locks, the league's IR rules).
 import { SLOT_POSITIONS, slotDisplayName } from '../constants.js';
 import { pickForSlot } from './flexChoice.js';
-import { crunchDetails, crunchText } from './byeCrunch.js';
+import { crunchGroups } from './byeCrunch.js';
 
 const slotTypeOf = (slot) => String(slot || '').replace(/[0-9]/g, '');
 const accepts = (slotType, pos) => !!(SLOT_POSITIONS[slotType] && SLOT_POSITIONS[slotType].includes(pos));
@@ -144,7 +144,7 @@ export const statusPhrase = (inj) => STATUS_PHRASES[inj] || `is ${inj}`;
 // "RB", "RB, WR or TE": who can take a slot, for "no healthy RB on your bench".
 const slotWho = (slotType) => joinAnd(SLOT_POSITIONS[slotType] || [slotType], 'or');
 
-// What to do, one item per thing: [{ kind, text, muted?, note?, swap?: { out, in }, find?: chip, details?: [lines] }]. kind is for
+// What to do, one item per thing: [{ kind, text, muted?, note?, swap?: { out, in }, find?: chip, rows?: [{ text, find }] }]. kind is for
 // the item's color: 'ir' (the IR badge's purple: activations and moves), 'injured' (red), 'bye', 'empty', 'kept'
 // (muted), 'crunch' (Bye Crunch, a note). Neither a muted item (a starter you kept) nor a note (an IR move: a tip, not a job before kickoff;
 // owner's choice, S11 round 6) counts toward "needs you". text is plain (the caller escapes it: player names are Sleeper's); names use no-break
@@ -175,17 +175,10 @@ export function lineupIssueItems(issues) {
         ? ` (${issues.irSlotsOpen} IR slot${issues.irSlotsOpen === 1 ? '' : 's'} open)` : '';
     issues.moveToIr.forEach(p => items.push({ kind: 'ir', note: true, text: `Move ${name(p)} to IR to free a spot${more}` }));
     // Bye Crunch (improvements S52): a coming week when byes leave a slot you can't fill. A note, not a job before
-    // kickoff (owner's choice), with a Find button for the slot. issues.crunch is byeCrunch's entries (byeCrunch.js),
-    // added by gameInfo.js's getLineupIssues.
-    // Players an earlier item for the same week named, so a FLEX's bullets say "the 3 above" (round 3).
-    const named = new Map();
-    (issues.crunch || []).forEach(c => {
-        if (!named.has(c.week)) named.set(c.week, new Set());
-        const above = named.get(c.week);
-        items.push({ kind: 'crunch', note: true, find: findChipFor(c.slotType),
-            text: crunchText(c, slotDisplayName), details: crunchDetails(c, new Set(above)) });
-        [...c.onBye, ...c.out].forEach(p => above.add(p.id));
-    });
+    // kickoff (owner's choice). One item per week (round 4): its heading in text, and a row per slot with its own Find
+    // chip. issues.crunch is byeCrunch's entries (byeCrunch.js), added by gameInfo.js's getLineupIssues.
+    crunchGroups(issues.crunch || [], slotDisplayName).forEach(g => items.push({ kind: 'crunch', note: true, week: g.week,
+        text: g.text, rows: g.rows.map(r => ({ ...r, find: findChipFor(r.slotType) })) }));
     issues.kept.forEach(k => items.push({ kind: 'kept', muted: true, text: `${name(k.player)} ${k.what} (you locked him in)` }));
     // A note, not a job (improvements F7). The lineup reads who started from your last sync, hence the second sentence.
     (issues.lockEnded || []).forEach(p => items.push({ kind: 'kept', muted: true, note: true,

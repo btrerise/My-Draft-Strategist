@@ -112,58 +112,56 @@ const names = (ps) => {
 };
 const OUT_PHRASES = { OUT: 'is Out', IR: 'is on IR', PUP: 'is on PUP', SUS: 'is suspended', NFI: 'is on NFI' };
 
-// One entry's headline: "Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye)". The players are crunchDetails'
-// lines, one per bullet (owner's request, S52 round 2: names in one sentence ran together). slotName turns a slot type
-// into its label ('WRTE' -> 'W/T').
-export function crunchText(c, slotName = (t) => t) {
-    const what = `${c.short} ${slotName(c.slotType)} short`;
-    let count = '';
-    if (c.onBye.length && c.pos != null) {
-        const pl = (n) => `${c.pos}${n === 1 ? '' : 's'}`;
-        count = c.total === c.onBye.length ? (c.total === 1 ? ` (your only ${pl(1)} on bye)` : ` (all ${c.total} of your ${pl(c.total)} on bye)`)
-            : ` (${c.onBye.length} of your ${c.total} ${pl(c.total)} on bye)`;
-    }
-    return `Bye Crunch · Week ${c.week}: ${what}${count}`;
-}
-
 const outPhrase = (p) => OUT_PHRASES[p.inj] || (p.isReserve ? 'is in your IR slot' : `is ${p.inj}`);
-const outTag = { OUT: 'Out', IR: 'IR', PUP: 'PUP', SUS: 'suspended', NFI: 'NFI' };
-const FLEX_ORDER = ['QB', 'RB', 'WR', 'TE'];
+const team = (p) => (p.team && !String(p.name || '').includes(p.team) ? ` (${p.team})` : '');
+const isOut = (ps) => ps.map(p => `${names([p])} ${outPhrase(p)}`);
 
-// The bullets under a headline (S52 rounds 2 and 3). above: ids of players an earlier item for the same week already
-// named, so a FLEX after "1 RB short" doesn't list the same backs again.
-// - A strict slot (RB, WR...): one per player, "Derrick Henry (BAL) on bye", then "Joe Mixon is on IR, assumed still out".
-// - A flex slot (W/R, W/T, FLEX, SFLEX), shorter (owner's request, round 3): one per position, "WRs on bye: Garrett
-//   Wilson and Zay Flowers", "RBs: the 3 above" (or "…, and the 2 above"), then one line for who's out now, "Out now,
-//   assumed still out: Joe Mixon (IR)" (left out when they're all above).
-export function crunchDetails(c, above = new Set()) {
-    if (c.pos != null) {
-        const team = (p) => (p.team && !String(p.name || '').includes(p.team) ? ` (${p.team})` : '');
-        return [
-            ...c.onBye.map(p => `${names([p])}${team(p)} on bye`),
-            ...c.out.map(p => `${names([p])} ${outPhrase(p)}, assumed still out`),
-        ];
-    }
-    const lines = [];
-    const plural = (pos, n) => `${pos}${n === 1 ? '' : 's'}`;
-    FLEX_ORDER.forEach(pos => {
-        const at = c.onBye.filter(p => p.pos === pos);
-        if (!at.length) return;
-        const fresh = at.filter(p => !above.has(p.id));
-        const seen = at.length - fresh.length;
-        if (!fresh.length) lines.push(seen === 1 ? `${pos}: ${names(at)}, above` : `${plural(pos, seen)}: the ${seen} above`);
-        else lines.push(`${plural(pos, at.length)} on bye: ${names(fresh)}${seen ? `, and the ${seen} above` : ''}`);
+// One week's Bye Crunch as a heading and a row per slot type (owner's choice A, S52 round 4: "Bye Crunch · Week 13:"
+// on every note repeated itself, and a FLEX's bullets were bookkeeping).
+// entries: one week's byeCrunchWeek entries, in slot order. slotName turns a slot type into its label ('WRTE' -> 'W/T').
+// Returns { week, short, text, rows: [{ slotType, head, detail, text }] } (text: head · detail):
+//   text  "Bye Crunch · Week 13: 3 starters short"
+//   rows  a strict slot: "RB: 1 short · Derrick Henry (BAL) on bye", "WR: 1 short · 5 of 6 on bye: Ja'Marr Chase, …";
+//         a flex slot names only who the rows above it didn't: "FLEX: 1 short · also Brock Bowers (TE) on bye", or
+//         "FLEX: 1 short · on bye: Derrick Henry (RB) and Ja'Marr Chase (WR)" when it's the first row. Who's out now
+//         follows, "; Joe Mixon is on IR, assumed still out".
+export function crunchGroup(entries, slotName = (t) => t) {
+    const week = entries[0].week;
+    const short = entries.reduce((n, c) => n + c.short, 0);
+    const named = new Set();
+    const rows = entries.map(c => {
+        const head = `${slotName(c.slotType)}: ${c.short} short`;
+        let bye, out;
+        if (c.pos != null) {
+            const n = c.onBye.length;
+            bye = n === 0 ? '' : n === 1 ? `${names(c.onBye)}${team(c.onBye[0])} on bye`
+                : `${c.total === n ? `all ${n}` : `${n} of ${c.total}`} on bye: ${names(c.onBye)}`;
+            out = c.out;
+        } else {
+            const fresh = c.onBye.filter(p => !named.has(p.id));
+            const tagged = fresh.map(p => ({ ...p, name: `${p.name} (${p.pos})` }));
+            bye = !fresh.length ? '' : `${named.size ? 'also ' : 'on bye: '}${names(tagged)}${named.size ? ' on bye' : ''}`;
+            out = c.out.filter(p => !named.has(p.id));
+        }
+        [...c.onBye, ...c.out].forEach(p => named.add(p.id));
+        const parts = [bye, out.length ? `${isOut(out).join(', ')}, assumed still out` : ''].filter(Boolean);
+        const detail = parts.join('; ');
+        return { slotType: c.slotType, head, detail, text: `${head}${detail ? ` · ${detail}` : ''}` };
     });
-    const freshOut = c.out.filter(p => !above.has(p.id));
-    if (freshOut.length) {
-        lines.push(`Out now, assumed still out: ${freshOut.map(p => `${names([p])} (${outTag[p.inj] || (p.isReserve ? 'in your IR slot' : p.inj)})`).join(', ')}`);
-    }
-    return lines;
+    return { week, short, rows, text: `Bye Crunch · Week ${week}: ${short} starter${short === 1 ? '' : 's'} short` };
 }
 
-// An item's player lines as a bulleted list (S52 round 2), for the league card and the Lineup box; '' without any.
+// byeCrunch's entries (any weeks) as crunchGroup's, one per week in week order.
+export function crunchGroups(entries, slotName) {
+    const weeks = [...new Set((entries || []).map(c => c.week))];
+    return weeks.map(w => crunchGroup(entries.filter(c => c.week === w), slotName));
+}
+
+// A week's rows as a list, for the league card and the Lineup box (round 4); button(row) gives each row's Find button.
 const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-export function crunchListHTML(item) {
-    const lines = (item && item.details) || [];
-    return lines.length ? `<ul class="mls-crunch-list">${lines.map(l => `<li>${esc(l)}</li>`).join('')}</ul>` : '';
+export function crunchRowsHTML(item, button = () => '') {
+    const rows = (item && item.rows) || [];
+    // The slot ("RB: 1 short") a shade brighter than who's behind it, so the rows scan.
+    const row = (r) => (r.head ? `<span class="mls-crunch-head">${esc(r.head)}</span>${r.detail ? ` · ${esc(r.detail)}` : ''}` : esc(r.text));
+    return rows.length ? `<ul class="mls-crunch-list">${rows.map(r => `<li>${row(r)}${button(r)}</li>`).join('')}</ul>` : '';
 }

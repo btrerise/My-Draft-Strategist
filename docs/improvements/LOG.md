@@ -13555,3 +13555,26 @@ Owner: "Leave K and DEF out of Bye Crunch. If you are able to shorten the FLEX n
   now expects only the RB note in week 13 (the fixture's BAL kicker and defense are on bye and not flagged).
 - Screenshots: the two Guide PNGs again (the Guide's sentence and the legend's meaning), re-taken by CI.
 - CI re-took the two Guide PNGs (commit 5fd4e22): the legend's meaning now ends "kickers and defenses aren't checked", and the Guide's sentence says the same. Opened and checked.
+
+### S52, round 4: a review as a user; one heading per week, and folded on the Lineup tab (owner: "A + B to start")
+My review (a heavy week on the fixture league: week 13 leaves an RB, a WR and FLEX short; phone and desktop, the card
+and the Lineup tab): helpful and honest, but clunky when there's more than one note. (1) "Bye Crunch · Week 13:"
+repeated on every note; (2) the Lineup tab's box said "Nothing needs you before kickoff" above a wall of orange about
+next week, pushing this week's lineup ~350px down on a phone; (3) long lists, and the FLEX's "the 5 above" bookkeeping;
+(4) no bottom line ("3 starters short"); (5) on the desktop card the Find buttons stacked away from their notes.
+Options: A (one heading per week with the total, a row per slot), B (fold it on the Lineup tab), C (fold it on the
+card too). The owner took **A + B**, C to revisit if needed.
+- **A.** One item per week (`crunchGroup` / `crunchGroups` in `byeCrunch.js`, replacing `crunchText` and
+  `crunchDetails`): "Bye Crunch · Week 13: 3 starters short", then a row per slot type, "RB: 1 short · Derrick Henry
+  (BAL) on bye", "WR: 1 short · 5 of 6 on bye: Ja'Marr Chase, …", "FLEX: 1 short · also Brock Bowers (TE) on bye; George
+  Kittle is Out, assumed still out" (a flex row names only who the rows above it didn't; first in the week it's
+  "on bye: Derrick Henry (RB) and …"). The slot ("RB: 1 short") is bold in the main text color, the rest muted; no
+  bullets. Each row has its own Find button at its end (`crunchRowsHTML(item, button)`), on the card too, so the card's
+  right-hand column no longer collects Bye Crunch's buttons (`findChips` sees no `find` on the item).
+- **B.** On the Lineup tab the item is a fold (`details.lineup-needs-crunch`, the "What changed?" fold's chevron),
+  closed to its heading; it stays open across the box's redraws (a swap, a lock, Optimize). The Dashboard card shows it
+  open.
+- Legend sample, Guide sentence and CHANGELOG line follow. Tests: unit (the heading's total, rows for strict and flex
+  slots, "also", the rows' HTML, one item per week); `mls-bye-crunch.spec.mjs` (heading and rows on the card, the Find
+  button on its row, the Lineup tab's fold closed then open, kept open after Optimize).
+- Screenshots: the two Guide PNGs (the Guide's sentence and the legend's sample), re-taken by CI.
