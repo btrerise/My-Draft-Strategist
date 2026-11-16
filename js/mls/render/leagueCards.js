@@ -34,7 +34,7 @@ import { getFreshness } from '../../shared/freshness.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { State } from '../state.js';
 import { isBestBallLeague } from '../helpers.js';
-import { isEarlyPlayer } from '../lineup/earlyGames.js';
+import { earlySwapCardLine, isEarlyPlayer } from '../lineup/earlyGames.js';
 import { getValidSleeperStarterIds, hasKickedOff } from '../lineup/gameInfo.js';
 import { bestBallBadgeMarkup, leagueStatusChipMarkup, paidBadgeMarkup } from '../badges.js';
 import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, reoptimizeKickedOffLeagues, renderLastSynced, renderLineupNeeds, syncChangesFor, syncChangesHTML } from './dashboard.js';
@@ -149,6 +149,9 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         const todo = line || sleeper ? leagueTodoHTML(line, sleeper) : '';
         // What this visit's Sync All changed on the roster, under the status row so a folded card shows it too.
         const synced = syncChangesFor(l.leagueId);
+        // An early-game swap to make (improvements S50, round 5): under the status row, so a folded card shows it too.
+        // A suggestion: it isn't counted, and doesn't make the card amber.
+        const earlyLine = showNeeds && !isBestBallLeague(l) ? earlySwapCardLine(l) : '';
         const n = State.leagues.length;
         return `
             <li class="mls-lc-card${active ? ' is-active' : ''}${needsYou ? ' needs-you' : ''}${collapsed ? ' is-collapsed' : ''}" data-league-id="${id}">
@@ -169,6 +172,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
                     ${statusChipsHTML(st)}
                     <span class="mls-lc-counts">${count > 0 ? `<span class="mls-lc-count-todo">${count} to fix</span>` : ''}${need.set ? '<span class="mls-lc-count-sleeper">1 to set</span>' : ''}<span class="mls-lc-count-upgrades" data-league-id="${id}">${ctx.upgrades.get(l.leagueId) || ''}</span></span>
                 </div>
+                ${earlyLine ? `<p class="mls-lc-early">${earlyLine}</p>` : ''}
                 ${synced ? `<p class="mls-lc-synced"><span class="mls-lc-synced-label">Synced:</span> ${syncChangesHTML(synced)}</p>` : ''}
                 <div class="mls-lc-body"${collapsed ? ' hidden' : ''}>
                     ${todo ? `<div class="mls-lc-todo">${todo}</div>` : ''}

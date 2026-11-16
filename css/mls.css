@@ -88,6 +88,12 @@
 .lineup-needs-box .lineup-needs-title + .lineup-needs-sleeper { margin-top: 0.4rem; }
 .lineup-needs-sleeper-text { margin: 0.4rem 0 0; color: var(--text-muted); line-height: 1.45; }
 .lineup-needs-note { margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--text-muted); }
+/* Early-game swaps (improvements S50, round 4): a fold of the box, or under its title when they're all it has. Got it
+   sits after the note, on its line. */
+.lineup-needs-early-body { margin-top: 0.15rem; }
+.early-swap-list { margin: 0.25rem 0; padding-left: 1.1rem; }
+.early-swap-note { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.early-swap-note .lineup-needs-btn { margin-left: 0; }
 
 .sim-lookup-card {
     background: rgba(0, 0, 0, 0.15);
@@ -297,21 +303,6 @@ body.mls-hide-headshots .mls-headshot { display: none; }
     font-size: 0.9rem;
 }
 
-/* Early Games Warning Banner */
-.early-warning-banner {
-    background: rgba(245, 158, 11, 0.1);
-    border: 1px solid rgba(245, 158, 11, 0.3);
-    color: #fde047;
-    padding: 1rem;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    margin-bottom: 1.25rem;
-    display: none;
-    align-items: flex-start;
-    gap: 0.75rem;
-    line-height: 1.5;
-}
-
 /* Early Games Control Group */
 .early-games-stack {
     display: flex;
@@ -325,6 +316,44 @@ body.mls-hide-headshots .mls-headshot { display: none; }
     flex-wrap: wrap;
     gap: 0.5rem;
 }
+/* Early Games' chips, one row per day (improvements S50, round 2): the day the schedule's teams play in your time,
+   "Schedule" before this visit's kickoffs load, then "Added" for the teams you picked. The chips are compact: the ✕
+   keeps its 44px tap area by reaching past the chip's edges (negative margins), and the rows are 44px apart, so
+   neighbouring tap areas don't overlap. Teams you took off the schedule's list sit under them with Put back. */
+.early-days {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    column-gap: 1rem;
+}
+/* The empty line ("No teams selected.") spans the grid, so it wraps instead of widening the label column. */
+.early-days > .early-empty { grid-column: 1 / -1; }
+/* Each row's label and chips sit in the card's one grid, so the labels ("Thu 5:15 PM") share a column. */
+.early-day { display: contents; }
+.early-day-label,
+.early-day-teams { min-height: 44px; display: flex; align-items: center; }
+.early-day-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.early-day-teams {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px 1.25rem;
+}
+.early-day .team-chip {
+    gap: 0.25rem;
+    padding: 0.2rem 0.25rem 0.2rem 0.65rem;
+}
+.early-day .team-chip .close-chip {
+    margin: -14px -10px -14px -8px;
+}
+.early-removed {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+.early-removed-team { white-space: nowrap; }
 
 /* Weekly Rankings Feedback */
 .weekly-meta-display {
@@ -1962,6 +1991,8 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
    injury red (owner's choice, round 10). It's news; red is for what you have to act on, like "Bench X (Out)". */
 .mls-lc-synced { margin: 0.35rem 0 0 calc(28px + 0.4rem); font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; }
 .mls-lc-synced-label { font-weight: 600; }
+/* An early-game swap to make (improvements S50, round 5): muted, like the Synced line; a suggestion, never amber. */
+.mls-lc-early { margin: 0.35rem 0 0 calc(28px + 0.4rem); font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; }
 .mls-lc-synced-add { color: #86efac; }
 .mls-lc-synced-drop { color: #9ca3af; }
 .mls-lc-synced-out { color: var(--text-muted); }
@@ -1977,7 +2008,7 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 /* Phones: the status row starts at the card's edge, under the chevron, so the chips get the full width. */
 @media (max-width: 600px) {
     .mls-lc-card { padding-top: 0.5rem; padding-bottom: 0.55rem; padding-left: 12px; padding-right: 12px; }
-    .mls-lc-status, .mls-lc-synced { margin-left: 0; }
+    .mls-lc-status, .mls-lc-synced, .mls-lc-early { margin-left: 0; }
 }
 
 /* --- SCOREBOARD (js/mls/week/thisWeek.js, improvements S21) ---

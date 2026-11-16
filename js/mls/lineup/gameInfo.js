@@ -461,10 +461,12 @@ import { CRUNCH_ICON, byeCrunch, crunchListHTML, crunchWeeks } from './byeCrunch
     // Unchanged from the warnings it replaces: nothing in Best Ball (no lineup to set), and nothing about a player
     // whose game has kicked off (his spot is locked; his row says Started or Final). The lineup PNG leaves the
     // whole box out (js/mls/trade/export.js): it's for you, not the league chat (S9 round 7).
-    export function getLineupNeedsHTML(starters, league, bench = []) {
+    // early: the early-game swaps (lineup/earlyGames.js, earlySwapNeeds; improvements S50 round 4), or null. A suggestion:
+    // its own fold, and it never counts toward "needs you" (here, the strip or the Dashboard).
+    export function getLineupNeedsHTML(starters, league, bench = [], early = null) {
         const items = lineupIssueItems(getLineupIssues(starters, league, bench));
         const sleeper = getSleeperLineupChanges(league, starters);
-        if (items.length === 0 && !sleeper) return "";
+        if (items.length === 0 && !sleeper && !early) return "";
 
         const leagueId = escapeHtml(league ? league.leagueId : '');
         const itemHTML = items.map(i => {
@@ -482,8 +484,10 @@ import { CRUNCH_ICON, byeCrunch, crunchListHTML, crunchWeeks } from './byeCrunch
         // needs you too, so this never says "Nothing needs you" above a lineup you still have to set.
         const need = leagueNeeds({ items, sleeper, bestBall: isBestBallLeague(league) });
         const counted = need.fix + (need.set ? 1 : 0);
+        const onlyEarly = !!early && items.length === 0 && !sleeper;
         const title = need.fix > 0 ? 'This lineup needs you'
-            : need.set ? 'This lineup needs you: set it on Sleeper' : 'Nothing needs you before kickoff';
+            : need.set ? 'This lineup needs you: set it on Sleeper'
+            : onlyEarly ? early.title : 'Nothing needs you before kickoff';
         // Re-renders are frequent (every swap and lock); keep the fold as the person left it.
         const wasOpen = !!document.querySelector('#optimalLineupContainer .lineup-needs-sleeper[open]');
         const n = sleeper ? sleeper.start.length + sleeper.bench.length : 0;
@@ -493,13 +497,20 @@ import { CRUNCH_ICON, byeCrunch, crunchListHTML, crunchWeeks } from './byeCrunch
                 <p class="lineup-needs-sleeper-text">${sleeperChangesHTML(sleeper)}</p>
                 <p class="lineup-needs-note">As of your last sync: set it on Sleeper, then sync to clear this.</p>
             </details>`;
+        // The early-game swaps: their own fold, closed until you open it; alone in the box they show under its title.
+        const earlyWasOpen = !!document.querySelector('#optimalLineupContainer .lineup-needs-early[open]');
+        const earlyHTML = !early ? '' : onlyEarly ? `<div class="lineup-needs-early-body">${early.body}</div>` : `
+            <details class="mls-change-fold lineup-needs-sleeper lineup-needs-early"${earlyWasOpen ? ' open' : ''}>
+                <summary>${FOLD_CHEVRON}<span>${escapeHtml(early.summary)}</span></summary>
+                ${early.body}
+            </details>`;
         // Collapsible, and remembered (owner's choice, S11 round 6): someone who won't follow a tip can fold the box
         // to its title line, which still counts what's open ("This lineup needs you · 3"), so a new problem shows.
         const collapsed = !!State.lineupNeedsCollapsed;
         const countText = counted > 0 ? ` · ${counted}` : '';
         return `<div class="lineup-needs-box${need.needs ? ' has-problems' : ''}${collapsed ? ' is-collapsed' : ''}">
             <button type="button" class="btn-bare lineup-needs-title" data-action="toggleLineupNeeds" aria-expanded="${collapsed ? 'false' : 'true'}">${need.needs ? WARNING_ICON : INFO_ICON}<span>${title}${collapsed ? countText : ''}</span>${FOLD_CHEVRON}</button>
-            ${collapsed ? '' : `${items.length ? `<ul class="lineup-needs-list">${itemHTML}</ul>` : ''}${fold}`}
+            ${collapsed ? '' : `${items.length ? `<ul class="lineup-needs-list">${itemHTML}</ul>` : ''}${fold}${earlyHTML}`}
         </div>`;
     }
 
