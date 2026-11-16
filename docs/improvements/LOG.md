@@ -13661,3 +13661,4 @@ Advanced Settings as well as the Lineup tab ... rather than having to 'hunt it d
   `{desktop,phone}/mls-league-setup.png` (50px taller: the Lineup fold in Advanced Settings), and
   `{desktop,phone}/mls-league-guide.png` (rounds 7–8's Guide sentences). The Lineup tab's are unchanged (Lineup settings
   starts folded). Re-taken by CI.
+- CI re-took the six PNGs (commit 865a806): the Dashboard's Advanced Settings shows the new Lineup fold under Show Player Headshots (closed, like Notifications and FAAB Bids below it); the Guide's sentences as above. Opened and checked.
