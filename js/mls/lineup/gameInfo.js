@@ -18,7 +18,7 @@ import { normalizeName } from '../../shared/names.js';
 import { BYE_BADGE_HTML, INFO_ICON, WARNING_ICON, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup } from '../badges.js';
 import { rankedOpponentBadgeHTML, weeklyOpponentInfo } from '../opponent.js';
 import { leagueNeeds, lineupIssueItems, lineupIssues, sleeperLineupChanges, statusPhrase } from './issues.js';
-import { byeCrunch, crunchFoldHTML, crunchWeeks } from './byeCrunch.js';
+import { byeCrunch, crunchDismissHTML, crunchFoldHTML, crunchWeeks } from './byeCrunch.js';
 
     // Returns a "BYE" badge only when the player's team is on a bye THIS week (per the
     // currently-known NFL week) -- not just whenever they have a bye scheduled at some point
@@ -481,8 +481,11 @@ import { byeCrunch, crunchFoldHTML, crunchWeeks } from './byeCrunch.js';
             // Bye Crunch folds to its heading (owner's choice B, S52 round 4): it's about a coming week, so this week's
             // lineup stays near the top; a tap opens the rows, each with its Find button. Kept open across redraws.
             if (i.rows) {
-                const findBtn = (r) => ` <button type="button" class="btn btn-secondary mls-btn-sm lineup-needs-btn" data-action="findLeaguePlayers" data-league-id="${leagueId}" data-pos="${escapeHtml(r.find)}">${r.find === 'ALL' ? 'Find players' : `Find ${escapeHtml(r.find)}`}</button>`;
-                return `<li class="lineup-needs-item is-${i.kind}">${crunchFoldHTML(i, { key: `${league ? league.leagueId : ''}:${i.week}`, open: openCrunch.has(`${league ? league.leagueId : ''}:${i.week}`), chevron: FOLD_CHEVRON, button: findBtn })}</li>`;
+                // Find carries the week (round 7): Top Available then leaves out players on bye that week.
+                const findBtn = (r) => ` <button type="button" class="btn btn-secondary mls-btn-sm lineup-needs-btn" data-action="findLeaguePlayers" data-league-id="${leagueId}" data-pos="${escapeHtml(r.find)}" data-week="${escapeHtml(String(i.week))}">${r.find === 'ALL' ? 'Find players' : `Find ${escapeHtml(r.find)}`}</button>`;
+                const key = `${league ? league.leagueId : ''}:${i.week}`;
+                return `<li class="lineup-needs-item is-${i.kind}">${crunchFoldHTML(i, { key, open: openCrunch.has(key), chevron: FOLD_CHEVRON, button: findBtn,
+                    dismiss: crunchDismissHTML(league ? league.leagueId : '', i.week, league ? league.name : undefined) })}</li>`;
             }
             return `<li class="lineup-needs-item is-${i.kind}">${escapeHtml(i.text)}${button}</li>`;
         }).join('');
@@ -638,11 +641,43 @@ import { byeCrunch, crunchFoldHTML, crunchWeeks } from './byeCrunch.js';
     export function getByeCrunch(league) {
         if (!league || State.currentNflWeek == null || State.currentNflSeason == null) return [];
         const posMap = league.globalPosMap || {};
-        return byeCrunch(league.reqs, league.roster || [], crunchWeeks(State.currentNflWeek), {
+        // Weeks you hid with Got it (round 7) aren't checked.
+        const hidden = [...crunchDismissedWeeks(league.leagueId),
+            ...[...crunchHiddenThisVisit].filter(k => k.startsWith(`${league.leagueId}:`)).map(k => Number(k.split(':').pop()))];
+        return byeCrunch(league.reqs, league.roster || [], crunchWeeks(State.currentNflWeek).filter(w => !hidden.includes(w)), {
             byeWeek: team => getByeWeek(team, State.currentNflSeason),
             posOf: p => (p.pos && p.pos !== 'FLEX' ? p.pos : posMap[p.cleanName] || p.pos),
         });
     }
+
+    // Bye Crunch's Got it (owner's request, S52 round 7): hides one league's note for one week, on its card and its
+    // Lineup tab, until that week has passed (KEYS.mls.byeCrunchDismissed, { [leagueId]: [week] }).
+    function readCrunchDismissed() {
+        try {
+            const v = JSON.parse(localStorage.getItem(KEYS.mls.byeCrunchDismissed));
+            return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+        } catch (e) { return {}; }
+    }
+    export function crunchDismissedWeeks(leagueId) {
+        const weeks = readCrunchDismissed()[leagueId];
+        return Array.isArray(weeks) ? weeks.map(Number).filter(Number.isFinite) : [];
+    }
+    export function dismissByeCrunch(leagueId, week) {
+        const w = Number(week);
+        if (!leagueId || !Number.isFinite(w)) return;
+        const now = Number(State.currentNflWeek);
+        const all = readCrunchDismissed();
+        // Weeks already reached are dropped, so the key never grows past a few entries.
+        Object.keys(all).forEach(id => {
+            all[id] = (Array.isArray(all[id]) ? all[id] : []).map(Number).filter(x => Number.isFinite(x) && !(Number.isFinite(now) && x <= now));
+            if (!all[id].length) delete all[id];
+        });
+        all[leagueId] = [...new Set([...(all[leagueId] || []), w])];
+        try { localStorage.setItem(KEYS.mls.byeCrunchDismissed, JSON.stringify(all)); } catch (e) { /* storage blocked: hidden for this visit only */ }
+        crunchHiddenThisVisit.add(`${leagueId}:${w}`);
+    }
+    // Storage blocked (a private window): Got it still hides it until a reload.
+    const crunchHiddenThisVisit = new Set();
 
     // Sleeper's own snapshot of who's actually starting, as of the last sync -- the ground
     // truth for "did this player actually get started in real life" once their game has

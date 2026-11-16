@@ -62,6 +62,9 @@ export const KEYS = {
         earlyWeek: 'mls_early_week',
         // Early-game swaps you dismissed with Got it in "This lineup needs you" (S50 round 4): { week, keys: ['early>later'] }.
         earlyDismissed: 'mls_early_dismissed',
+        // Bye Crunch weeks you hid with Got it (improvements S52 round 7): { [leagueId]: [week] }. Weeks before the coming
+        // one are dropped the next time one is hidden; js/mls/lineup/gameInfo.js reads it.
+        byeCrunchDismissed: 'mls_bye_crunch_dismissed',
         earlyFromSchedule: 'mls_early_from_schedule', // '0' while Early Games' "Fill in from the schedule" is off; unset = on
         leagues: 'mls_leagues',
         locksMap: 'mls_locks_map',

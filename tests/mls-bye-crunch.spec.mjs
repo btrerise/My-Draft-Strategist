@@ -168,6 +168,89 @@ async function autoFindCook(page) {
 }
 const upgradeCount = (page) => card(page).locator('.mls-lc-count-upgrades');
 
+// Round 7: Find from a week's note shops for that week, and Got it hides the note for that week. The waiver rankings
+// (fixtures/rankings-waivers.csv) rank free-agent RBs; James Cook (BUF) is moved to NYJ here, on bye in week 13.
+async function openWithFreeAgents(page) {
+    const state = await openApp(page, '/lineup/', { beforeGoto: async (p) => {
+        await routeWeek(p, 12);
+        await p.route(/sleeper\.app\/v1\/players\/nfl$/, r => {
+            const players = fixture('players-nfl.json');
+            const cook = Object.keys(players).find(id => players[id].first_name === 'James' && players[id].last_name === 'Cook');
+            players[cook].team = 'NYJ';
+            return r.fulfill({ json: players });
+        });
+    } });
+    await seedMls(page);
+    await callApp(page, 'switchActiveLeague', FIXTURE_LEAGUE_ID);
+    await page.setInputFiles('#weeklyFileInput', { name: 'rankings.csv', mimeType: 'text/csv', buffer: Buffer.from(WAIVER_RANKINGS_CSV) });
+    await expect(page.locator('#rankingsPreviewOverlay')).toBeVisible();
+    await callApp(page, 'confirmRankingsPreview');
+    await expect(page.locator('#rankingsPreviewOverlay')).toBeHidden();
+    await showTab(page, 'setup');
+    return state;
+}
+const taNames = (page) => page.locator('#waiverOutput .mls-ta-row .mls-ta-name').allTextContents();
+
+test.describe('Bye Crunch: Find for that week, and Got it (round 7)', () => {
+    test('Find RB leaves out free agents on bye in week 13 and hides Starts; Show all brings them back', async ({ page }) => {
+        const state = await openWithFreeAgents(page);
+        // Without the week: Cook is listed.
+        await showTab(page, 'scout');
+        await callApp(page, 'setWaiverMode', 'top');
+        await page.locator('#scoutTab [data-action="setWaiverPos"][data-pos="RB"]').click();
+        await expect(page.locator('#waiverOutput .mls-ta-row').first()).toBeVisible();
+        expect(await taNames(page)).toContain('James Cook');
+        await expect(page.locator('#waiverOutput .mls-ta-week')).toHaveCount(0);
+
+        // From week 13's note: Cook (NYJ, on bye in week 13) is left out, and the line says so.
+        await showTab(page, 'setup');
+        await todo(page).locator('details.mls-crunch-fold > summary').click();
+        await todo(page).getByRole('button', { name: 'Find RB in Fixture League' }).click();
+        await expect(page.locator('#scoutTab')).toHaveClass(/\bactive\b/);
+        const line = page.locator('#waiverOutput .mls-ta-week');
+        await expect(line).toContainText('For week 13 (Bye Crunch): 1 player on bye that week left out; Starts is about this week, so it\'s hidden.');
+        await expect(page.locator('#waiverOutput .mls-ta-row').first()).toBeVisible();
+        expect(await taNames(page)).not.toContain('James Cook');
+        await expect(page.locator('#waiverOutput .mls-ta-starts')).toHaveCount(0);
+        // The position chips keep the week.
+        await page.locator('#scoutTab [data-action="setWaiverPos"][data-pos="ALL"]').click();
+        await expect(line).toBeVisible();
+
+        // Show all: back to this week's list.
+        await line.getByRole('button', { name: 'Show all' }).click();
+        await expect(page.locator('#waiverOutput .mls-ta-week')).toHaveCount(0);
+        expect(await taNames(page)).toContain('James Cook');
+
+        // Find again, then the Scout tab some other way: the week doesn't stick.
+        await showTab(page, 'setup');
+        await todo(page).getByRole('button', { name: 'Find RB in Fixture League' }).click();
+        await expect(page.locator('#waiverOutput .mls-ta-week')).toBeVisible();
+        await showTab(page, 'lineup');
+        await showTab(page, 'scout');
+        await expect(page.locator('#waiverOutput .mls-ta-row').first()).toBeVisible();
+        await expect(page.locator('#waiverOutput .mls-ta-week')).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
+    test('Got it hides that week\'s note on the card and the Lineup tab, after a reload too', async ({ page }) => {
+        const state = await open(page, 12);
+        await todo(page).locator('details.mls-crunch-fold > summary').click();
+        await expect(todo(page).locator('.mls-crunch-dismiss')).toContainText('Hides it for week 13');
+        await todo(page).getByRole('button', { name: "Got it: hide week 13's Bye Crunch in Fixture League" }).click();
+        await expect(page.locator('#leagueCards .mls-crunch-fold')).toHaveCount(0);
+        // Nothing else was there, so the card has no notes line left.
+        await expect(todo(page)).toHaveCount(0);
+        await showTab(page, 'lineup');
+        await expect(page.locator('#optimalLineupContainer .mls-crunch-fold')).toHaveCount(0);
+        expect(await page.evaluate(() => JSON.parse(localStorage.getItem('mls_bye_crunch_dismissed')))).toEqual({ [FIXTURE_LEAGUE_ID]: [13] });
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await showTab(page, 'setup');
+        await expect(page.locator('#leagueCards .mls-crunch-fold')).toHaveCount(0);
+        await expectClean(page, state);
+    });
+});
+
 test.describe('Waiver tools on Tuesday read next week\'s byes (S52, S34\'s leftover)', () => {
     test('Sunday of week 6: Cook would start for you', async ({ page }) => {
         const state = await waiverSetup(page);

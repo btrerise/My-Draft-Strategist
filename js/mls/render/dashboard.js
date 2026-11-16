@@ -12,9 +12,10 @@ import { KEYS } from '../../shared/storage/keys.js';
 import { setToastsSuppressed, showToast } from '../../shared/ui/toast.js';
 import { optimizeLineup } from './lineup.js';
 import { FOLD_CHEVRON, ensureLineupProjections, formatKickoffLabel, getLineupIssues, getSleeperLineupChanges, lineupBuiltBeforeKickoff, sleeperChangesHTML } from '../lineup/gameInfo.js';
-import { crunchFoldHTML } from '../lineup/byeCrunch.js';
+import { crunchDismissHTML, crunchFoldHTML } from '../lineup/byeCrunch.js';
 import { findChips, leagueNeedKeys, leagueNeeds, lineupIssueItems, needKindsText, needsLineupButton, needsYou } from '../lineup/issues.js';
 import { updateWaiverScanSetting } from '../scout/waivers.js';
+import { setTopAvailableWeek } from '../scout/topAvailable.js';
 import { isManualLeague, refreshManualInjuries } from '../leagues/manualInjuries.js';
 import { INFO_ICON, WARNING_ICON } from '../badges.js';
 import { showTab, updateDrawerActiveState } from '../nav.js';
@@ -165,14 +166,16 @@ import { lastSyncedSummary } from '../leagues/lastSynced.js';
         // One item per line, as on the Lineup tab: a league with several reads as a list, not a run-on sentence.
         // A Bye Crunch item is a fold (owner's choice C, S52 round 5): closed to its week's heading, then a row per slot
         // with its own Find button and a bullet per player. Kept open across the Dashboard's redraws.
-        const findButton = (chip) => {
+        // Find carries the week (round 7): Top Available then leaves out players on bye that week.
+        const findButton = (chip, week) => {
             const label = chip === 'ALL' ? 'Find players' : `Find ${chip}`;
-            return ` <button type="button" class="btn btn-secondary mls-btn-sm mls-needs-find mls-crunch-find" data-action="findLeaguePlayers" data-league-id="${id}" data-pos="${escapeHtml(chip)}" aria-label="${label} in ${name}">${label}</button>`;
+            return ` <button type="button" class="btn btn-secondary mls-btn-sm mls-needs-find mls-crunch-find" data-action="findLeaguePlayers" data-league-id="${id}" data-pos="${escapeHtml(chip)}" data-week="${escapeHtml(String(week))}" aria-label="${label} in ${name}">${label}</button>`;
         };
         const openCrunch = new Set([...document.querySelectorAll('#leagueCards .mls-crunch-fold[open]')].map(d => d.dataset.crunchKey));
         const crunchKey = (i) => `${league.leagueId}:${i.week}`;
         const items = (n ? n.items : []).map(i => i.rows
-            ? `<div class="mls-needs-item is-${i.kind}">${crunchFoldHTML(i, { key: crunchKey(i), open: openCrunch.has(crunchKey(i)), chevron: FOLD_CHEVRON, button: r => findButton(r.find) })}</div>`
+            ? `<div class="mls-needs-item is-${i.kind}">${crunchFoldHTML(i, { key: crunchKey(i), open: openCrunch.has(crunchKey(i)), chevron: FOLD_CHEVRON, button: r => findButton(r.find, i.week),
+                dismiss: crunchDismissHTML(league.leagueId, i.week, league.name || 'Unnamed league') })}</div>`
             : `<span class="mls-needs-item is-${i.kind}">${escapeHtml(i.text)}</span>`);
         // "Set on Sleeper:" says what kind of job it is, under the one "Needs you" label (improvements F12). An injured or
         // bye player starting there is urgent (S12 round 6): the item takes the injury color.
@@ -297,9 +300,12 @@ import { lastSyncedSummary } from '../leagues/lastSynced.js';
 
     // "Find RB": nobody on that league's bench can fill the slot, so its Top Available on the Scout tab,
     // filtered to the position (as the Best Available card's View does).
-    export function findLeaguePlayers(leagueId, pos) {
+    // week (Bye Crunch's Find, S52 round 7): Top Available leaves out players on bye that week, until Show all or the
+    // next visit to the Scout tab some other way.
+    export function findLeaguePlayers(leagueId, pos, week = null) {
         if (!(State.leagues || []).some(l => l.leagueId === leagueId)) return;
         if (leagueId !== State.activeLeagueId) switchActiveLeague(leagueId);
+        setTopAvailableWeek(leagueId, week);
         updateWaiverScanSetting('mode', 'top');
         updateWaiverScanSetting('pos', pos || 'ALL');
         showTab('scout');

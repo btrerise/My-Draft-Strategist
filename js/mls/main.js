@@ -20,7 +20,7 @@ import { goToSetupStep, onload } from './init.js';
 import { toggleMlsHeadshots } from './lineup/headshots.js';
 import './players.js';
 import { addEarlyTeam, dismissEarlySwaps, removeEarlyTeam, restoreEarlyTeam, setEarlyFromSchedule } from './lineup/earlyGames.js';
-import { explainIrSlot, toggleLineupNeeds, toggleLockCountdown } from './lineup/gameInfo.js';
+import { dismissByeCrunch, explainIrSlot, toggleLineupNeeds, toggleLockCountdown } from './lineup/gameInfo.js';
 import { activeOwnRankings, activePowerRankings, activeSeasonRankings, addAndSyncLeague, leagueQbMarketPricing, setQbMarketPrices, createManualLeague, cycleLeague, deleteLeagueManager, getLeagueRankings, getLeagueSeasonRankings, moveLeague, saveRequirements, setLeagueStyle, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
 import './leagues/scoutResults.js';
 import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDraftStrategistRoster } from './leagues/handoff.js';
@@ -31,7 +31,7 @@ import { setMatchupReversed } from './opponent.js';
 import './trade/verdict.js';
 import { runScout } from './scout/engine.js';
 import { applyWaiverScanSettingsToUI, autoFindWaiverUpgrades, openFaabBidSheet, rerunWaiverScanForFaab, setWaiverCompare, setWaiverIntent, setWaiverScope, updateWaiverScanSetting } from './scout/waivers.js';
-import { onScoutTabShown, refreshTopAvailable, setTopAvailableView, setWaiverMode, setWaiverPos, showMoreTopAvailable } from './scout/topAvailable.js';
+import { clearTopAvailableWeek, onScoutTabShown, refreshTopAvailable, setTopAvailableView, setWaiverMode, setWaiverPos, showMoreTopAvailable } from './scout/topAvailable.js';
 import { setFaabBidsOn, setFaabStyle as chooseFaabStyle } from './scout/faabSettings.js';
 import { bestAvailableUpload, dismissBestAvailable, renderBestAvailable, restoreBestAvailable, setBestAvailableBasis, viewLeagueTopAvailable } from './scout/bestAvailable.js';
 import './power/allLeagues.js';
@@ -128,7 +128,19 @@ const clickActions = {
     optimizeAllLineups() { optimizeAllLineups(this); },
     // The "lineups need you" to-dos (improvements S11): the strip under those two buttons and each league card's.
     openLeagueLineup() { openLeagueLineup(this.dataset.leagueId); },
-    findLeaguePlayers() { findLeaguePlayers(this.dataset.leagueId, this.dataset.pos); },
+    findLeaguePlayers() { findLeaguePlayers(this.dataset.leagueId, this.dataset.pos, this.dataset.week || null); },
+    // Bye Crunch (improvements S52 round 7): Top Available's Show all, and Got it on a week's note.
+    clearTopAvailableWeek() { clearTopAvailableWeek(); },
+    dismissByeCrunch() {
+        const card = this.closest('.mls-lc-card');
+        dismissByeCrunch(this.dataset.leagueId, this.dataset.week);
+        renderLineupUI();
+        if (card) renderLeagueCards();
+        // The button is gone with the redraw: keep keyboard focus nearby (the card's fold toggle, or the Lineup box's title).
+        const leagueCard = card && [...document.querySelectorAll('#leagueCards > .mls-lc-card')].find(c => c.querySelector(`[data-league-id="${CSS.escape(this.dataset.leagueId)}"]`));
+        ((leagueCard && leagueCard.querySelector('[data-action="toggleLeagueCard"]'))
+            || document.querySelector('#optimalLineupContainer .lineup-needs-title'))?.focus();
+    },
     checkSleeperNow() { checkSleeperNow(); },
     dismissLineupNeeds() { dismissLineupNeeds(); },
     addAndSyncLeague() { addAndSyncLeague(this); },

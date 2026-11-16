@@ -166,7 +166,15 @@ export function crunchRowsHTML(item, button = () => '') {
 
 // A week's Bye Crunch as a fold, closed to its heading (owner's choices: B on the Lineup tab in round 4, C on the
 // Dashboard card in round 5). key: what the renderer remembers it open by; open: whether it was open before a redraw.
-export function crunchFoldHTML(item, { key, open = false, chevron = '', button } = {}) {
+// dismiss: the Got it button's HTML (round 7), after the rows.
+export function crunchFoldHTML(item, { key, open = false, chevron = '', button, dismiss = '' } = {}) {
     return `<details class="mls-change-fold mls-crunch-fold" data-crunch-key="${esc(key)}"${open ? ' open' : ''}>`
-        + `<summary>${chevron}${CRUNCH_ICON}<span>${esc(item.text)}</span></summary>${crunchRowsHTML(item, button)}</details>`;
+        + `<summary>${chevron}${CRUNCH_ICON}<span>${esc(item.text)}</span></summary>${crunchRowsHTML(item, button)}`
+        + (dismiss ? `<p class="mls-crunch-dismiss">${dismiss}</p>` : '') + `</details>`;
+}
+
+// The Got it button for a league's week (round 7): hides that week's Bye Crunch for the league until the week has
+// passed. leagueName for its label.
+export function crunchDismissHTML(leagueId, week, leagueName = 'this league') {
+    return `<button type="button" class="btn btn-secondary mls-btn-sm mls-crunch-got-it" data-action="dismissByeCrunch" data-league-id="${esc(leagueId)}" data-week="${esc(week)}" aria-label="Got it: hide week ${esc(week)}'s Bye Crunch in ${esc(leagueName)}">Got it</button> <span class="mls-crunch-dismiss-note">Hides it for week ${esc(week)}</span>`;
 }

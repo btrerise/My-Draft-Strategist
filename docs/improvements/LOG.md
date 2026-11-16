@@ -13608,3 +13608,28 @@ like the rank and status chips.)
   pulled the eye and made the bullets harder to scan. Not taken.
 - **Italic and dimmer** (the app's "aside" look, as for kept starters): mocked. Owner: "I don't necessarily need *less*
   emphasis, I just didn't want it standing out so much with the red." Not taken; the bullets stay as round 5 left them.
+
+### S52, round 7: a review as a user; Find for that week, and Got it (owner: "Let's do both")
+My review (the everyday case, both weeks short, the heavy week, phone and desktop, where Find leads): quiet and
+compact folded, easy to read open. Two findings: (1) Find opened Top Available as it is for *this* week, so its best
+free agent at the position could be on bye in the very week you're filling; (2) no way to dismiss a note you've
+decided to live with (Early Games has Got it). The owner took both, and corrected my plan for (1): "Starts" can't be
+judged for a coming week, since rankings are built week to week, so it's hidden there rather than re-judged.
+- **Find for that week.** Bye Crunch's Find buttons carry `data-week`; `findLeaguePlayers(leagueId, pos, week)` calls
+  `setTopAvailableWeek`. Top Available (`js/mls/scout/topAvailable.js`) then leaves out free agents on bye that week
+  (ranked list and Trending), hides the Starts flag, and puts a line on top: "For week 13 (Bye Crunch): 1 player on bye
+  that week left out; Starts is about this week, so it's hidden. Show all" (`clearTopAvailableWeek`). The count is for
+  the position on screen. An empty list says "Every RB still available … is on bye in week 13. Show all to see them."
+  In memory only: the position chips keep it; Show all clears it, and so does coming back to the Scout tab any other
+  way (the first showing after Find is marked `fresh`).
+- **Got it.** In the open fold, after the rows: "Got it · Hides it for week 13" (`crunchDismissHTML`). It hides that
+  league's note for that week on the card and the Lineup tab (`getByeCrunch` skips the week). New key
+  `KEYS.mls.byeCrunchDismissed` (`mls_bye_crunch_dismissed`, `{ [leagueId]: [week] }`; weeks already reached are
+  dropped when the next one is hidden), so it lasts across reloads and goes in Backup and Factory Reset with the other
+  `mls_` keys; with storage blocked it still hides it for the visit. Focus moves to the card's toggle (or the Lineup
+  box's title) once the button is gone. No way to bring a hidden week back short of that week passing (as Early
+  Games' Got it); say if you want one.
+- Guide sentence, legend meaning and CHANGELOG line updated. Tests: `mls-bye-crunch.spec.mjs` (Cook moved to NYJ:
+  Find RB from week 13's note leaves him out, hides Starts, says so; the chips keep the week; Show all brings him back;
+  the week doesn't stick to a later visit; Got it hides the note on both, sets the key, and holds after a reload).
+- Screenshots: the two Guide PNGs, re-taken by CI.

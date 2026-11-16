@@ -135,7 +135,7 @@ const GROUPS = [
         [`<ul class="lineup-needs-list"><li class="lineup-needs-item is-crunch"><div class="mls-crunch-fold">${CRUNCH_ICON}<span>Bye Crunch · Week 13: 2 starters short</span>${crunchRowsHTML({ rows: [
             { head: 'RB: 1 short', note: '3 of 4 on bye', players: ['Player (BAL)', 'Player (NYJ)', 'Player (LV)'] },
             { head: 'FLEX: 1 short', note: '', players: ['Player (WR, BAL)'] }] })}</div></li></ul>`,
-            'Bye Crunch: in one of the next 2 weeks, byes leave a starting spot nobody on your roster can fill (players Out or on IR now are assumed still out; kickers and defenses aren\'t checked). Folded to its heading: tap to open a line per position, with a Find button, and a bullet per player. A heads-up in time to add someone; it doesn\'t count as a lineup that needs you.'],
+            'Bye Crunch: in one of the next 2 weeks, byes leave a starting spot nobody on your roster can fill (players Out or on IR now are assumed still out; kickers and defenses aren\'t checked). Folded to its heading: tap to open a line per position, with a Find button, and a bullet per player. Find leaves out players on bye that week, and Got it hides the note for that week. A heads-up in time to add someone; it doesn\'t count as a lineup that needs you.'],
         [pill('mls-verdict-start', 'Would Start'),
             'In Auto-Find and Check a List: he\'d make your lineup this week. The line under it names who he\'d replace.'],
         [pill('mls-verdict-bench', 'Bench') + pill('mls-verdict-bench', 'Locked') + pill('mls-verdict-bench', 'No Slot'),

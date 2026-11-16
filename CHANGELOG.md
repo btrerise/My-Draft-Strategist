@@ -203,7 +203,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   starters short". Tap it to see each position ("RB: 1 short · 3 of 4 on bye") with a Find button that opens Top
   Available on that position, and a bullet per player, including anyone Out or on IR now (assumed still out). A FLEX
   line lists only players not already named above it. Kickers and defenses aren't checked. It's a note, not counted in
-  "N lineups need you".
+  "N lineups need you". Its Find opens Top Available for that week: players on bye then are left out (Show all brings
+  them back), and Starts, which is about this week, is hidden. **Got it** hides a week's note for that league.
 - **Tuesday's waiver checks use next week's byes.** Once the week's games are over, Best available, Auto-Find and Check
   a List ask about next week, and now that includes its byes: a free agent on bye next week isn't an upgrade, and
   Auto-Find says "On bye next week".
