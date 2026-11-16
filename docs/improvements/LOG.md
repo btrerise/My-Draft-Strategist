@@ -13554,3 +13554,4 @@ Owner: "Leave K and DEF out of Bye Crunch. If you are able to shorten the FLEX n
 - Tests: unit (K and DEF left out; the FLEX after an RB note, on its own, and partly above); `mls-bye-crunch.spec.mjs`
   now expects only the RB note in week 13 (the fixture's BAL kicker and defense are on bye and not flagged).
 - Screenshots: the two Guide PNGs again (the Guide's sentence and the legend's meaning), re-taken by CI.
+- CI re-took the two Guide PNGs (commit 5fd4e22): the legend's meaning now ends "kickers and defenses aren't checked", and the Guide's sentence says the same. Opened and checked.
