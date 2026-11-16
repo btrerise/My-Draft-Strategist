@@ -253,6 +253,10 @@ import { sleeperLineup } from './starterAlertRules.js';
         const add = String(keys || '').split(',').filter(Boolean);
         writeJSON(KEYS.mls.earlyDismissed, { week: weekStamp(), keys: [...new Set([...dismissedKeys(), ...add])] });
         renderLineupUI();
+        // The button is gone with the redraw: keep keyboard focus in the box (its title line), not the top of the page
+        // (round 6).
+        (document.querySelector('#optimalLineupContainer .lineup-needs-title')
+            || document.querySelector('#lineupTab [data-action="optimizeLineup"]'))?.focus();
     };
 
     // The swaps as part of "This lineup needs you" (round 4, owner's choice: the amber banner above the lineup took
@@ -280,15 +284,21 @@ import { sleeperLineup } from './starterAlertRules.js';
         const n = swaps.length, s = n === 1 ? '' : 's';
         const who = (p, slot) => `<strong class="text-main">${escapeHtml(p.name)}</strong> (${escapeHtml(slotDisplayName(slot))}, ${escapeHtml(kickoffOf(p.team).label)})`;
         const items = swaps.map(w => `${who(w.early, w.earlySlot)} with ${who(w.later, w.laterSlot)}`);
-        const slots = [...new Set(swaps.map(w => slotDisplayName(w.earlySlot)))];
-        const why = `so your ${slots.join(' and ')} ${slots.length > 1 ? 'hold' : 'holds'} the later game${s}.`;
-        const text = n === 1 ? `Swap ${items[0]}, ${why}` : `Swap:<ul class="early-swap-list">${items.map(i => `<li>${i}</li>`).join('')}</ul>${why[0].toUpperCase()}${why.slice(1)}`;
+        // One swap is one sentence; several lead with why, then the list (round 6): "Swap these, so your FLEX slots hold
+        // the later games:" (a slot named twice is plural).
+        const slotNames = [...new Set(swaps.map(w => w.earlySlot))].map(t => {
+            const many = swaps.filter(w => w.earlySlot === t).length > 1;
+            return `${slotDisplayName(t)}${many ? ' slots' : ''}`;
+        });
+        const plural = n > 1;
+        const why = `so your ${slotNames.join(' and ')} ${plural ? 'hold' : 'holds'} the later game${s}`;
+        const text = n === 1 ? `Swap ${items[0]}, ${why}.` : `Swap these, ${why}:<ul class="early-swap-list">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
         const synced = league && league.lastSyncedAt ? formatKickoffLabel(new Date(league.lastSyncedAt).toISOString()) : '';
         const note = onSleeper
             ? `On Sleeper, as of your last sync${synced ? `, ${escapeHtml(synced)}` : ''}.`
             : 'Use ⇄ Swap on his row.';
         const body = `<p class="lineup-needs-sleeper-text">${text}</p>`
-            + `<p class="lineup-needs-note early-swap-note"><span>${note}</span> <button type="button" class="btn btn-secondary mls-btn-sm lineup-needs-btn" data-action="dismissEarlySwaps" data-keys="${escapeHtml(swaps.map(swapKey).join(','))}">Got it</button></p>`;
+            + `<p class="lineup-needs-note early-swap-note"><span>${note}</span> <button type="button" class="btn btn-secondary mls-btn-sm lineup-needs-btn" data-action="dismissEarlySwaps" data-keys="${escapeHtml(swaps.map(swapKey).join(','))}" aria-label="Got it: hide ${n === 1 ? 'this early-game swap' : 'these early-game swaps'} for the week">Got it</button></p>`;
         return {
             count: n,
             onSleeper,

@@ -149,8 +149,12 @@ test.describe('Early Games from the schedule', () => {
         await expect.poll(() => chipTeams(page)).toEqual(EARLY);
         const fold = page.locator('#optimalLineupContainer .lineup-needs-early');
         await fold.locator('summary').click();
-        await fold.getByRole('button', { name: 'Got it' }).click();
+        await expect(fold.getByRole('button', { name: 'Got it: hide this early-game swap for the week' })).toBeVisible();
+        // With the keyboard, as round 6 checked: focus stays in the box (its title) rather than the top of the page.
+        await fold.getByRole('button', { name: 'Got it' }).focus();
+        await page.keyboard.press('Enter');
         await expect(earlyNeeds(page)).toHaveCount(0);
+        await expect(page.locator('#optimalLineupContainer .lineup-needs-title')).toBeFocused();
         await expect(page.locator('#optimalLineupContainer')).toContainText('Matches your active Sleeper lineup');
         expect(await stored(page, 'mls_early_dismissed')).toEqual({ week: '2026-2', keys: ['6794>4866'] });
         await page.reload();
@@ -161,6 +165,30 @@ test.describe('Early Games from the schedule', () => {
         await expect(earlyNeeds(page)).toHaveCount(0);
         await showTab(page, 'setup');
         await expect(page.locator('.mls-lc-early')).toHaveCount(0);
+        await expectClean(page, state);
+    });
+
+    test('two swaps: one line leading the list, the slot plural', async ({ page }) => {
+        const state = await open(page);
+        await seedMls(page);
+        await loadMlsRankings(page);
+        await showTab(page, 'lineup');
+        await expect.poll(() => chipTeams(page)).toEqual(EARLY);
+        // A league with two FLEX slots: Jefferson (Sun 9:30 AM ET) and Puka Nacua (Sat) in them, Chase and Lamb at WR.
+        const html = await page.evaluate(async () => {
+            const e = await import('/js/mls/lineup/earlyGames.js');
+            const { getActiveLeague } = await import('/js/mls/helpers.js');
+            const lg = getActiveLeague();
+            const two = { ...lg, starterSlots: ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'FLEX', 'K', 'DEF'],
+                sleeperStarters: ['4984', '3198', '0', '4866', '6786', '11604', '6794', '9493', '17', 'BAL'] };
+            return { needs: e.earlySwapNeeds(two), line: e.earlySwapCardLine(two) };
+        });
+        expect(html.needs.title).toBe('Early games: 2 swaps to consider');
+        const decode = (h) => h.replace(/&#39;/g, "'");
+        const text = decode(html.needs.body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
+        expect(text).toContain("Swap these, so your FLEX slots hold the later games: Justin Jefferson (FLEX, Sun 1:30 PM) with Ja'Marr Chase (WR, Sun 5:00 PM) Puka Nacua (FLEX, Sat 8:30 PM) with CeeDee Lamb (WR, Sun 5:00 PM)");
+        expect(html.needs.body).toContain('aria-label="Got it: hide these early-game swaps for the week"');
+        expect(decode(html.line)).toBe("Early games: swap Justin Jefferson (FLEX) with Ja'Marr Chase (WR); Puka Nacua (FLEX) with CeeDee Lamb (WR) on Sleeper");
         await expectClean(page, state);
     });
 

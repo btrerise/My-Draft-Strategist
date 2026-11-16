@@ -13393,3 +13393,21 @@ check-precache, `node --test` (696), `mls-early-games`, `mls-league-cards`, `mls
 all passed. The full suite hasn't run.
 
 **Screenshots.** Round 4's branch against this one in the same container: all 44 pixel-identical (no swap offline).
+
+### S50, round 6: a last review as a user; the owner took all three (2026-11-16)
+
+Checked the Guide and legend wording, the keyboard path through the card (the switch, each ✕, the picker; a removed
+chip's focus moves to the next ✕), a league with two FLEX slots (two swaps, each with its own later WR) and the Dashboard
+chip. Findings: (1) Got it dropped keyboard focus to the top of the page (the box redraws without the button); (2) Got it
+said only "Got it" to a screen reader; (3) two swaps read "Swap:", the list, then "So your FLEX holds the later games."
+Owner: "Yes. After that, you're good to open a PR, watch CI, and then merge when green."
+
+**What changed** (`js/mls/lineup/earlyGames.js`): after Got it, focus goes to the box's title line (or, with nothing left
+in the box, the Optimize button); Got it's accessible name is "Got it: hide this early-game swap for the week" ("these
+… swaps" for several); several swaps lead with one line, "Swap these, so your FLEX slots hold the later games:", then
+the list (a slot named twice is plural; one swap keeps its single sentence).
+
+**Tests.** `mls-early-games.spec.mjs` (10 per width): Got it by keyboard leaves focus on the box's title, and its name;
+a new test builds a two-FLEX league's swaps and checks the title, the lead line and list, the plural Got it name and the
+Dashboard line. Ran check-precache, `node --test` (696), `mls-early-games`, `mls-lineup-needs`, `mls-keyboard`,
+`focus-ring`: all passed. No screenshot changes (nothing here shows offline).
