@@ -198,6 +198,22 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Early Games fills itself in.** Each week the Lineup tab's Early Games list picks up every team playing before
+  Sunday 1:00 PM Eastern (Thursday, Friday, Saturday and the international morning games), so the EARLY badges and the
+  Dashboard's EARLY chip appear on their own. The card lists the teams by kickoff, in your time, then the ones you
+  added.
+  You can still add a team or remove one for that week (with Put back), and the list clears when a new NFL week starts,
+  so last Thursday's teams no longer stay picked. Turn off "Fill in from the schedule" on the card to pick the teams
+  yourself.
+- **Early-game swaps in "This lineup needs you".** The Early Game Reminder banner is gone. When an early player sits in
+  a FLEX-type slot and a later player at his position could take it, the box above your lineup gets one line, "Early
+  games: 1 swap on Sleeper", that opens to the swap ("Swap Justin Jefferson (FLEX, Sun 6:30 AM) with Ja'Marr Chase (WR,
+  Sun 10:00 AM)"). In a synced league it reads your Sleeper lineup as of your last sync, so it catches what still needs
+  changing there. Got it hides it for the week. The Dashboard's league card names the swap too, so one look covers
+  every league. It's a suggestion, so it doesn't add to the lineups that need you. While one is waiting on Sleeper the
+  lineup says "Same starters as your Sleeper lineup" rather than "Matches". A player's EARLY badge goes once his game
+  starts, as on the Dashboard.
+
 - **No flash when you tap on a phone.** The grey-blue box the phone's browser drew over whatever you tapped is gone. A
   tap still answers with the app's own light tint while your finger is down, and now things that open something
   without being a button answer the same way: every fold (Recent Sync Logs, Notifications, Danger Zone, Lineup

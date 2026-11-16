@@ -7,10 +7,10 @@ import { getByeWeek } from '../../shared/data/byes.js';
 import { pushLineupUndoSnapshot, State } from '../state.js';
 import { isUnavailableThisWeek, rankingIndex, renderHTMLInto, getActiveLeague } from '../helpers.js';
 import { ensureHeadshotNameIndex, playerHeadshotHTML } from '../lineup/headshots.js';
-import { isEarlyPlayer } from '../lineup/earlyGames.js';
+import { earlySwapNeeds, isEarlyPlayer } from '../lineup/earlyGames.js';
 import { optimizeFlexKickoffOrder } from '../lineup/kickoffOrder.js';
 import { pickForSlot } from '../lineup/flexChoice.js';
-import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, kickoffFreeze, lineupBuiltBeforeKickoff, lineupProjectionsLoaded, noteLineupOptimized, refreshLineupStats } from '../lineup/gameInfo.js';
+import { getByeBadgeHTML, getGameInfoHTML, getInjuryBadgeHTML, getIrSlotBadgeHTML, getLineupNeedsHTML, getLineupProjection, getNextLockCountdownHTML, getPlayerPointsHTML, getValidSleeperStarterIds, hasKickedOff, kickoffFreeze, lineupBuiltBeforeKickoff, lineupProjectionsLoaded, noteLineupOptimized, refreshLineupStats } from '../lineup/gameInfo.js';
 import { activeSeasonRankings, getLeagueRankingsStamp, renderLeagueManager } from '../leagues/sync.js';
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { leadLockMarkup, rankBadgeParts, rowMoreMarkup, sleeperLineupBadgeMarkup } from '../badges.js';
@@ -673,7 +673,9 @@ import { refreshThisWeek } from '../main.js';
         // What this lineup needs from you, in one box: injured, bye and IR-slot starters, empty slots, IR moves,
         // and the differences from your Sleeper lineup (improvements S11, round 4; it replaces the red and purple
         // warnings and the amber "Differs from Sleeper lineup" line). The green line below stays for a match.
-        html += getLineupNeedsHTML(starters, league, benchPool);
+        // Early-game swaps (improvements S50, round 4: in this box, not a banner of their own).
+        const earlyNeeds = earlySwapNeeds(league);
+        html += getLineupNeedsHTML(starters, league, benchPool, earlyNeeds);
 
         if (validSleeperStarters.length > 0) {
             let sleeperSet = new Set(validSleeperStarters);
@@ -681,7 +683,10 @@ import { refreshThisWeek } from '../main.js';
             let isMatch = sleeperSet.size === optSet.size && [...sleeperSet].every(id => optSet.has(id));
             
             if (isMatch) {
-                html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: var(--primary-green); display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Matches your active Sleeper lineup</div>`;
+                // The same starters, but with an early-game swap still to make there (improvements S50, round 5), it
+                // doesn't match yet: "Matches" under "1 swap on Sleeper" read as a contradiction.
+                const matchText = earlyNeeds && earlyNeeds.onSleeper ? 'Same starters as your Sleeper lineup' : 'Matches your active Sleeper lineup';
+                html += `<div class="mb-3 text-center" style="font-size: 0.85rem; font-weight: 600; color: var(--primary-green); display: flex; align-items: center; justify-content: center; gap: 6px;"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> ${matchText}</div>`;
             }
         }
 
@@ -732,7 +737,8 @@ import { refreshThisWeek } from '../main.js';
 
                 let rankBadge = lineupRankBadge(p, rankedByRos, rankDisplay);
 
-                let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
+                // EARLY until his game starts (improvements S50, round 2), as on the Dashboard's league cards.
+                let earlyTag = isEarlyPlayer(p.team) && !hasKickedOff(p) ? `<span class="badge early-badge">EARLY</span>` : "";
                 const byeWeek = getByeWeek(p.team, State.currentNflSeason);
                 let byeStr = byeWeek ? ` (${byeWeek})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);
@@ -827,7 +833,8 @@ import { refreshThisWeek } from '../main.js';
                 let lockClass = State.swapSourceId === p.id ? "swapping" : "";
                 let rankBadge = lineupRankBadge(p, rankedByRos, rankDisplay);
 
-                let earlyTag = isEarlyPlayer(p.team) ? `<span class="badge early-badge">EARLY</span>` : "";
+                // EARLY until his game starts (improvements S50, round 2), as on the Dashboard's league cards.
+                let earlyTag = isEarlyPlayer(p.team) && !hasKickedOff(p) ? `<span class="badge early-badge">EARLY</span>` : "";
                 const byeWeek = getByeWeek(p.team, State.currentNflSeason);
                 let byeStr = byeWeek ? ` (${byeWeek})` : "";
                 let byeBadge = getByeBadgeHTML(p.team);

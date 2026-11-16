@@ -13171,3 +13171,255 @@ Owner: "Looks good. Run the suite, then open PR, watch CI, and merge when green"
 (`npm ci && npm run check`, once): check-precache OK (177 precached), `node --test` 688 passed, Playwright 1094 passed,
 72 skipped, 4 failed. The 4 are `visual.spec.mjs`'s environment guard (this container's fonts), as on main; the
 screenshots themselves were compared main against this branch in the same container (identical, above).
+
+## S50 — Early Games filled in for you from the week's kickoffs
+
+From the owner's notes of 2026-11-12 (sent 2026-11-14): "Could we make the 'Early Games' feature on the Lineup tab
+automatic? Might want to make it optional if so." Before, Early Games was a list of teams you picked by hand
+(`KEYS.mls.earlyTeams`) that never cleared, so last Thursday's teams stayed picked until you removed them.
+
+**User-visible effect.** The Lineup tab's Early Games card has a "Fill in from the schedule" switch, on by default. With it
+on, the list fills itself each week with every team playing before Sunday 1:00 PM Eastern (Thursday, Friday, Saturday
+and the international morning games; not Monday night), so the EARLY badges, the Early Game Reminder banner and the
+Dashboard league cards' EARLY chip appear on their own. Each chip says where it came from: the schedule's show their
+kickoff in your local time ("Thu 8:15 PM"; "Schedule" while this visit's kickoffs haven't loaded), yours say "Added".
+You can still add a team, or remove one the schedule filled in; a removed one is listed under the chips ("Removed this
+week: DET Put back"). Everything clears when a new NFL week starts, switch on or off. With the switch off you pick by
+hand as before (and those picks also clear weekly). The card's tooltip, the switch's line and the Guide's step 5 say it's
+automatic; the Guide legend's EARLY line says "a team under Early Games: filled in from the schedule, or one you added".
+Empty states: "No games before Sunday 1:00 PM Eastern this week." (kickoffs loaded, none early), "This week's kickoff
+times haven't loaded yet. You can add teams yourself." (switch on, no kickoffs), "No teams selected." (switch off).
+
+**The owner's decisions** (2026-11-15, all four suggestions):
+1. Early = before Sunday 1:00 PM Eastern (Thursday, Friday, Saturday, international mornings); Monday night isn't.
+2. On by default, the switch on the Early Games card (S45's Settings page isn't merged).
+3. With it on you can still add a team and remove one the schedule added, for that week only.
+4. The list follows the NFL week: last week's teams clear on their own, even with the switch off.
+
+**What changed.**
+- `js/mls/lineup/earlyRule.js` (new, no imports): `earlyTeamsFromKickoffs(gameTimesByTeam)`. Worked out in Eastern time
+  with `Intl.DateTimeFormat` (`America/New_York`), whatever the device's zone. "Sunday" is the week's main Sunday (the
+  Eastern Sunday with the most kickoffs), so a Christmas Wednesday or a week-18 Saturday counts and nothing after it
+  does; a week with no Sunday games falls back to Wednesday–Saturday.
+- `js/mls/lineup/earlyGames.js`: the list is now `getEarlyTeams()`: the schedule's teams less the ones you removed, then
+  yours (`State.earlyTeams`, the same key as before, so old installs keep their picks). `noteEarlyWeek()` (called from
+  `refreshCurrentNflWeek` in `state.js` once Sleeper names the week) clears your teams and the week's state when the
+  week differs from the saved one; an install with no saved week adopts the current one, so its picks count as this
+  week's and clear next week. `noteEarlyKickoffs()` (called from `refreshGameTimes` when ESPN's kickoffs arrive) saves
+  the schedule's teams for the week. Until they load, what was saved stays (the badges show at once on the next visit).
+  New actions `restoreEarlyTeam` (Put back) and `setEarlyFromSchedule` (the switch, a change action) in `main.js`.
+- Storage (`keys.js`, no renamed keys): `mls_early_week` = `{ week: '2026-11', schedule: [team], removed: [team] }`
+  (the season-week stamp as `locksWeek` and starter alerts use), and `mls_early_from_schedule` = `'0'` while the switch
+  is off (unset = on). Both `mls_`, so Backup, Restore and Factory Reset pick them up.
+- `lineup/index.html`: the switch row, the "Removed this week" line, the tooltip and Guide step 5. `css/mls.css`: the
+  chip's muted note and the removed line. `js/mls/legend.js`: the EARLY meaning. `sw.js`: `earlyRule.js` precached,
+  `CACHE_NAME` v2.10.13. CHANGELOG line under Lineup Strategist.
+- Not touched (out of scope): the optimizer (EARLY stays a reminder) and FLEX Kickoff Optimization.
+
+**Tests.** `tests/unit/earlyRule.test.mjs` (5): a November week with Thursday, Saturday and a 9:30 AM Madrid game fills
+exactly those six teams (not 1:00 PM, 4:25, SNF or MNF); a September (daylight time) week with 12:59 vs 1:00 PM; a
+Christmas Wednesday; empty and bad input; the new keys are MLS-owned. Passes with `TZ=America/Phoenix` too.
+`tests/mls-early-games.spec.mjs` (6 per width), with a stubbed ESPN scoreboard: on by default fills exactly the
+Thursday, Saturday and international teams with their kickoffs, the banner and EARLY on Josh Allen and Justin Jefferson
+but not Ja'Marr Chase; add and remove for the week, Put back, kept across a reload; switch off picks by hand and stays
+off; the next NFL week clears last week's teams (switch off) and the schedule refills when it's turned on; a pre-S50
+install keeps its picks as this week's; kickoffs that fail keep what was saved, then show the not-loaded empty state.
+Ran check-precache, `node --test` (693), `mls-early-games` and the specs that stub kickoffs or read EARLY
+(`mls-auto-sub`, `mls-final-window`, `mls-flex-choice`, `mls-keyboard`, `mls-mvp-lvp`, `mls-opponent-strength`,
+`mls-root-for`, `mls-root-kickoff-find`, `mls-starter-alert`, `mls-this-week`, `nav-rail`, `tooltip-closed-space`,
+`tooltips-onscreen`, `touch-targets`, `mls-lineup-needs`, `mls-phone-rows`, `key-migration`): 338 passed. The full suite
+hasn't run (rule 7: once, when the owner asks for the pull request).
+
+**Screenshots.** Main and this branch rendered in the same container (`npm run pxdiff`): 40 of 44 identical. Changed, as
+intended, and re-taken on CI (`[update screenshots: …]` in the commit after this entry):
+- `desktop/mls-league-lineup.png`, `phone/mls-league-lineup.png`: the Early Games card's new switch row and its empty
+  line. The tests are offline (ESPN aborted), so the card shows "This week's kickoff times haven't loaded yet. You can add
+  teams yourself." where main said "No teams selected."; no EARLY badges either way.
+- `desktop/mls-league-guide.png`, `phone/mls-league-guide.png`: Guide step 5's longer Early Games sentence.
+
+CI re-took exactly those four (`e8448ec`, "Screenshots re-taken on CI (4 PNGs)"); nothing else changed. Opened each
+against main's: the Lineup ones differ from the Early Games card down (the card, then everything below moved by the
+taller card: desktop 2808 → 2882px, phone 3028 → 3131px), and the Guide ones from step 5 down (desktop 10601 → 10645px,
+phone 24709 → 24845px). One more spot: on the desktop Lineup PNG, rows 39–55 (the header) differ by 1 level out of 255,
+not visible, most likely the taller page's background rendering; nothing there changed.
+
+**Left over.** Nothing required. Possible follow-ups, not built: the switch could move to S45's Settings page once it
+merges (the owner chose the card for now); a page left open across the week change picks up the new week only with F24.
+
+### S50, round 2: a review as a user; the owner took all four (2026-11-15)
+
+I looked at the card filled in (a fixture week, one team added, one removed) at 390 and 1280px. Findings:
+1. On phones each team was a 56px pill on its own row (the ✕'s 44px tap area plus the kickoff time made two too wide
+   to share a row): six early teams took ~400px.
+2. The kickoff times repeated what each player's row already shows beside EARLY.
+3. The Early Game Reminder showed whenever any team was early, which with the schedule filling the list is every week,
+   even with no early player in your lineup.
+4. EARLY stayed on a player after his game started (the Dashboard's chip already dropped it).
+5. The picker sat above the list, though with the switch on adding a team is the exception.
+
+Owner: "All four" (the four changes proposed: rows by day, the reminder only when it applies, EARLY off at kickoff, the
+picker under the list).
+
+**What changed.**
+- `js/mls/lineup/earlyGames.js`: the chips in rows, one per day the schedule's teams play (your local weekday; "Schedule"
+  while this visit's kickoffs haven't loaded), then "Added". A chip is the team and an SVG ✕ (was the ✕ character).
+  `checkEarlyBannerVisibility` (now exported) shows the reminder only when a starter in the open league's lineup is on an
+  early team and his game hasn't started; `render/lineup.js` calls it on every redraw.
+- `js/mls/render/lineup.js`: EARLY on starter and bench rows only until `hasKickedOff`.
+- `lineup/index.html`: the picker under the chips and the removed line. `css/mls.css`: `.early-day` rows (a 4.25rem
+  label column, 44px rows); compact chips whose ✕ keeps its 44px tap area through negative margins, 18px between wrapped
+  lines so tap areas don't overlap. `js/mls/legend.js`: EARLY "goes once his game starts". CHANGELOG lines updated.
+- The phone card with six early teams, one added and one removed: ~440px with the switch (was ~620px).
+
+**Tests.** `mls-early-games.spec.mjs` (7 per width now): the rows' day labels (Fri, Sat, Sun in UTC; Added; Schedule);
+after Thursday's kickoff Josh Allen loses EARLY while Justin Jefferson keeps it and the reminder stays; after every early
+kickoff no EARLY and no reminder; a new test: the reminder hides with only KC picked (nobody in the lineup) and shows
+with CIN (Ja'Marr Chase starts). Ran check-precache, `node --test` (693), `mls-early-games`, `touch-targets`,
+`mls-phone-rows`, `mls-lineup-needs`, `mls-keyboard`, `focus-ring`, `svg-icons`, `badge-legend`, `tap-feedback`: all
+passed. The full suite hasn't run.
+
+**Screenshots.** Round 1's branch against this one in the same container: three changed, re-taken on CI with the
+commit after this entry. `desktop/mls-league-lineup.png` and `phone/mls-league-lineup.png`: the picker now under the
+card's empty line (offline, so no teams and no reminder either way); `desktop/mls-league-guide.png`: the legend's EARLY
+line is longer. The phone Guide didn't change in this container.
+CI re-took exactly those three ("Screenshots re-taken on CI (3 PNGs)"); same sizes as round 1's, and each differs only
+there: the Lineup ones in the Early Games card (desktop y 2246–2315, phone y 2323–2407: the empty line, then the
+picker), the desktop Guide in one legend line (y 8761–8772).
+
+### S50, round 3: a second review as a user; the owner took 2–5, and 1 as "check Sleeper's slots" (2026-11-15)
+
+A walk through a week in Phoenix time (Tuesday, Thursday night after kickoff, the Dashboard, the switch off, the tooltip).
+Findings: (1) the reminder still showed with nothing to do: it says to move early starters out of FLEX, but FLEX Kickoff
+Optimization (on by default) already does, and no early starter was in FLEX; (2) its wording said "before Sunday",
+though the list includes Sunday-morning games abroad; (3) it sat between the starters and the Bench Priorities heading;
+(4) the card's tooltip was six lines of prose; (5) a row labelled just "Sun" left you wondering why Sunday was listed;
+(6) chips stay plain after their game (left as is, optional).
+
+Owner: "Do 2-5 for sure. For 1, my only thought is the reminder is helpful to ensure the user makes the change on Sleeper,
+if synced. Just because it looks right on our app, doesn't mean the player is in the correct place on Sleeper." Asked
+which rule: **check Sleeper's slots** (the suggestion) over keeping round 2's rule with new words.
+
+**What changed.**
+- `js/mls/lineup/earlyRule.js`: `earlySwaps(starters, …)`: an early starter whose game hasn't started, in a slot taking
+  several positions (FLEX, SFLEX, W/R, W/T), paired with the latest-kicking starter in his own position's slot who can
+  play that flex slot and hasn't started. No partner, no swap (the advice would be impossible).
+- `js/mls/lineup/earlyGames.js`: the reminder reads Sleeper's lineup (`sleeperLineup`, starterAlertRules.js: each slot
+  as of the last sync) in a synced league with a lineup set there, else this app's lineup; shows only when there's a
+  swap, and names it: "On Sleeper, swap Justin Jefferson (FLEX, Sun 6:30 AM) with Ja'Marr Chase (WR, Sun 10:00 AM), so
+  your FLEX holds the later game." plus "From your Sleeper lineup as of your last sync, Tue 9:00 AM." (several swaps:
+  a list). In a manual league it says to use ⇄ Swap. The chips' rows are one per kickoff, labelled with it in your
+  time ("Sun 6:30 AM"), in one grid so the labels share a column.
+- `lineup/index.html`: the reminder moved into the Optimal Lineup card, under Lineup settings and above the lineup; the
+  tooltip down to two lines; Guide step 5 says what the reminder does. `css/mls.css`: the list and note in the reminder,
+  the grid. Found by `touch-targets` along the way: the empty line in the new grid's `max-content` column made the phone
+  Lineup scroll sideways by 115px; it now spans the grid.
+- Round 2's rule (any early starter) is gone with it: the reminder no longer shows every week.
+
+**Tests.** `tests/unit/earlyRule.test.mjs` (8): the swap with the latest partner, slot labels with and without a number,
+no swap (no later partner, his own slot, a position that can't take the slot, either game started), two flex slots and
+SFLEX. `mls-early-games.spec.mjs` (8 per width): row labels by kickoff; no reminder with this app's lineup (Lamb's
+1:00 PM game in FLEX); with a Sleeper lineup that has Jefferson in FLEX the reminder names the swap with Chase and the
+sync time, sits in the Optimal Lineup card, and goes once Jefferson's game starts; no reminder when Sleeper already
+has Jefferson at WR. Ran check-precache, `node --test` (696), `mls-early-games`, `touch-targets`, `mls-phone-rows`,
+`mls-lineup-needs`, `mls-keyboard`, `mls-starter-alert`, `tooltip-closed-space`, `tooltips-onscreen`, `svg-icons`,
+`badge-legend`, `mls-flex-choice`, `mls-sflex-kickoff`, `mls-2qb-kickoff`: all passed (after the fix above). The full
+suite hasn't run.
+
+**Screenshots.** Round 2's branch against this one in the same container: only `desktop/mls-league-guide.png` and
+`phone/mls-league-guide.png` (step 5's new sentence), re-taken on CI with the commit after this entry. The Lineup ones
+are identical: offline, there are no early teams, so the reminder is hidden in both.
+CI re-took exactly those two ("Screenshots re-taken on CI (2 PNGs)"): from step 5's paragraph down (desktop 10645 →
+10668px, phone 24845 → 24938px), the new sentence in place. The desktop one again differs by 1 level of 255 in the header
+(rows 39–55), as in round 1: the page's new height, nothing that changed there.
+
+### S50, round 4: the reminder into "This lineup needs you" (owner, 2026-11-15)
+
+Owner: "Could we combine the reminder with one of the other items beneath the 'Optimize Lineup' button? I'm thinking it
+could at least be collapsible and/or dismissable. With its new location, on a phone, it's quite the scroll before you
+actually see the Lineup." I suggested the "This lineup needs you" box (where Sleeper to-dos already go, folding and
+remembered), with a Got it for the week and no change to the needs counts; owner: "Yes, go with your initial suggestion".
+
+**What changed.**
+- The amber Early Game Reminder banner is gone (`lineup/index.html`, its CSS in `css/mls.css`).
+- `js/mls/lineup/earlyGames.js`, `earlySwapNeeds(league)`: round 3's swaps as { title, summary, body, count } for
+  `getLineupNeedsHTML` (`gameInfo.js`, a new optional 4th argument; `render/lineup.js` passes it). With anything else in
+  the box they're a fold like the Sleeper one, closed until opened ("Early games: 1 swap on Sleeper"); alone they show
+  under the box's title, "Early games: 1 swap to consider", with the info icon (not the warning one). The body: "Swap
+  Justin Jefferson (FLEX, Sun 6:30 AM) with Ja'Marr Chase (WR, Sun 10:00 AM), so your FLEX holds the later game." and
+  "On Sleeper, as of your last sync, Tue 9:00 AM." (manual: "Use ⇄ Swap on his row.") beside **Got it**.
+- Not counted: the box's folded count, its title, the Lineup strip and the Dashboard keep F12's rule (`leagueNeeds`
+  untouched), so a league with only an early swap doesn't "need you".
+- Got it (`dismissEarlySwaps`, a click action in `main.js`) stores the swaps it hid in a new key, `mls_early_dismissed` =
+  `{ week: '2026-11', keys: ['earlyId>laterId'] }` (`keys.js`), read only for the week it names. A different swap (Sleeper's
+  lineup changed) shows again.
+- Guide step 5: the swap appears in "This lineup needs you".
+- On a phone, the first player now starts at 619px instead of 774px (155px higher); on desktop 637 instead of 711
+  (Sleeper lineup with Jefferson in FLEX and an empty RB slot, the spec's fixture).
+
+**Tests.** `mls-early-games.spec.mjs` (9 per width): the fold, closed, in the box with "Early games: 1 swap on Sleeper";
+opened, the swap and the sync time; folding the box leaves "Early" out of its count line; gone at Jefferson's kickoff;
+a new test: Got it hides it and stores `{ week: '2026-2', keys: ['6794>4866'] }`, still hidden after a reload; none with
+this app's lineup or with Sleeper's Jefferson at WR. The alone-in-the-box look checked by eye (a throwaway render). Ran
+check-precache, `node --test` (696), `mls-early-games`, `touch-targets`, `mls-phone-rows`, `mls-lineup-needs`,
+`mls-keyboard`, `mls-starter-alert`, `badge-legend`, `svg-icons`, `focus-ring`, `chevrons`, `mls-locked-kickoff`: all
+passed. The full suite hasn't run.
+
+**Screenshots.** Round 3's branch against this one: only `desktop/mls-league-guide.png` and `phone/mls-league-guide.png`
+(step 5's sentence), re-taken on CI with this commit. The Lineup ones are identical (offline: no early teams).
+CI re-took exactly those two ("Screenshots re-taken on CI (2 PNGs)"): same sizes as round 3's, each different only in
+step 5's last sentence (desktop y 3748–3784, phone y 10141–10223).
+
+### S50, round 5: a third review as a user; the owner took 1 and 2 (2026-11-15)
+
+Findings: (1) "Early games: 1 swap on Sleeper" sat right above "✓ Matches your active Sleeper lineup" (that line compares
+who starts, not which slot): read top to bottom, a contradiction; (2) the Dashboard's league card showed EARLY but not the
+swap, so with 20 leagues you'd open each Lineup tab on a Thursday to find which have one; (3) Got it can't be undone
+that week (small; left as is, the owner didn't take it). Owner: "Yes" to 1 and 2.
+
+**What changed.**
+- `js/mls/render/lineup.js`: while a swap on Sleeper is showing, the green line reads "Same starters as your Sleeper
+  lineup"; after the swap is made (next sync) or Got it, "Matches your active Sleeper lineup" again.
+- `js/mls/render/leagueCards.js`, `js/mls/lineup/earlyGames.js` (`earlySwapCardLine`): a muted line under the card's
+  status row, "Early games: swap Justin Jefferson (FLEX) with Ja'Marr Chase (WR) on Sleeper" (several: joined with
+  "; "), so a folded card shows it too. Not counted (the card's "to fix", its amber, the strip: F12's rule), none in
+  Best Ball, and Got it hides it here as on the Lineup tab. The swaps for a league now read its own lineup
+  (`manualStartersMap[league.leagueId]`, was the active league's) for manual leagues. `css/mls.css`: `.mls-lc-early`,
+  like `.mls-lc-synced`.
+
+**Tests.** `mls-early-games.spec.mjs` (9 per width): with the Sleeper swap, "Same starters as your Sleeper lineup" and not
+"Matches"; the Dashboard card's line, with "1 to fix" unchanged; after Got it, "Matches" again and no card line. Ran
+check-precache, `node --test` (696), `mls-early-games`, `mls-league-cards`, `mls-lineup-needs`, `mls-phone-rows`,
+`touch-targets`, `mls-keyboard`, `mls-last-synced`, `mls-best-available`, `mls-tab-redraws`, `mls-sync-league-switch`:
+all passed. The full suite hasn't run.
+
+**Screenshots.** Round 4's branch against this one in the same container: all 44 pixel-identical (no swap offline).
+
+### S50, round 6: a last review as a user; the owner took all three (2026-11-16)
+
+Checked the Guide and legend wording, the keyboard path through the card (the switch, each ✕, the picker; a removed
+chip's focus moves to the next ✕), a league with two FLEX slots (two swaps, each with its own later WR) and the Dashboard
+chip. Findings: (1) Got it dropped keyboard focus to the top of the page (the box redraws without the button); (2) Got it
+said only "Got it" to a screen reader; (3) two swaps read "Swap:", the list, then "So your FLEX holds the later games."
+Owner: "Yes. After that, you're good to open a PR, watch CI, and then merge when green."
+
+**What changed** (`js/mls/lineup/earlyGames.js`): after Got it, focus goes to the box's title line (or, with nothing left
+in the box, the Optimize button); Got it's accessible name is "Got it: hide this early-game swap for the week" ("these
+… swaps" for several); several swaps lead with one line, "Swap these, so your FLEX slots hold the later games:", then
+the list (a slot named twice is plural; one swap keeps its single sentence).
+
+**Tests.** `mls-early-games.spec.mjs` (10 per width): Got it by keyboard leaves focus on the box's title, and its name;
+a new test builds a two-FLEX league's swaps and checks the title, the lead line and list, the plural Got it name and the
+Dashboard line. Ran check-precache, `node --test` (696), `mls-early-games`, `mls-lineup-needs`, `mls-keyboard`,
+`focus-ring`: all passed. No screenshot changes (nothing here shows offline).
+
+### S50: the full suite before the pull request (2026-11-16)
+
+Owner: "After that, you're good to open a PR, watch CI, and then merge when green." **The full check** (`npm ci && npm run
+check`, once): check-precache OK (178 precached), `node --test` 696 passed, Playwright 1112 passed, 72 skipped, 6 failed.
+Four are `visual.spec.mjs`'s environment guard (this container's fonts), as on main; the screenshots were compared main
+and branch in the same container each round (above). The other two were real: `backup.spec.mjs`, "MLS restores a backup
+file saved before the 6B key rename" (both widths): after a restore and reload, the page had written `mls_early_week`,
+which wasn't in the backup. `noteEarlyWeek` saved the week's stamp on any first visit; now it saves only with something to
+keep (teams you added, the schedule's, or removed ones), and the schedule saves its own week when the kickoffs load. A
+new spec checks a visit with nothing to keep writes no `mls_early_*` key. Re-ran `backup`, `mls-early-games` (11 per
+width) and `key-migration`: all passed.
