@@ -23,6 +23,8 @@ import { noteEarlyKickoffs, noteEarlyWeek } from './lineup/earlyGames.js';
         // Early Games' week and what the schedule filled in (improvements S50, lineup/earlyGames.js), and its switch.
         earlyWeek: readJSON(KEYS.mls.earlyWeek, null),
         earlyFromSchedule: localStorage.getItem(KEYS.mls.earlyFromSchedule) !== '0',
+        // Bye Crunch's switch (improvements S52 round 8, lineup/gameInfo.js): on unless turned off.
+        byeCrunchOn: localStorage.getItem(KEYS.mls.byeCrunch) !== '0',
         rosRankings: readJSON(KEYS.mls.ros, []),
         weeklyRankings: readJSON(KEYS.mls.weekly, []),
         rosRankingsUpdatedAt: localStorage.getItem(KEYS.mls.rosUpdated) || null,

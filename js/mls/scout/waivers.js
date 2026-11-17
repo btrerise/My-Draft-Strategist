@@ -6,7 +6,7 @@ import { buildRankDisplayIndex, checkAgainstLineup, compareForScan, findFreeAgen
 import { escapeHtml } from '../../shared/html.js';
 import { FANTASY_POSITIONS, RANKING_TYPE_CONFIG, fantasyPosition, slotDisplayName, tierTag } from '../constants.js';
 import { State } from '../state.js';
-import { getActiveLeague, getShortInjuryStatus, isConnectionError, isUnavailableThisWeek, rankingIndex } from '../helpers.js';
+import { getActiveLeague, getShortInjuryStatus, isConnectionError, isUnavailableThisWeek, lineupWeek, rankingIndex } from '../helpers.js';
 import { getByeBadgeHTML, getGameInfoHTML, getLineupProjection, hasKickedOff, kickoffFreeze } from '../lineup/gameInfo.js';
 import { getSoSBadgeHTML } from '../sos.js';
 import { rankedOpponentBadgeHTML, weeklyOpponentInfo } from '../opponent.js';
@@ -309,10 +309,12 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         // locked in, bench players too, so the Dashboard's fresh best lineup put a benched Thursday player in it.
         // A lock gives way only to a kickoff that left him on your Sleeper bench, as in the optimizer (improvements F7).
         const freeze = (p) => (weekOver ? null : kickoffFreeze(league, p));
+        const byeWeek = lineupWeek(weekOver);
         return {
             rankOf: (p) => byName[p.cleanName] || null,
             isLocked: (p) => (locks.includes(p.id) && freeze(p) !== 'out') || freeze(p) === 'in',
-            isUnavailable: (p) => isUnavailableThisWeek(p),
+            // Byes for the week the check is about: next week's once this one's games are over (improvements S52).
+            isUnavailable: (p) => isUnavailableThisWeek(p, byeWeek),
             cannotStart: (p) => freeze(p) === 'out',
             // Sleeper's projection, the FLEX rule's tiebreak between positions, as the optimizer uses it (S12).
             projOf: (p) => getLineupProjection(p.id, league)
@@ -459,6 +461,8 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         // 'overall' -- "ROS Flex" isn't a number any ROS source actually publishes.
         return {
             league, meta, getPos, evaluate, hasPlayed, lineupReady, checkIsWeekly, waiverStatusOf, bidHTML,
+            // The week the verdicts are about: next week's byes once this week's games are over (improvements S52).
+            weekOver, byeWeek: lineupWeek(weekOver),
             checkLabel: checkIsWeekly ? 'Wk' : seasonRankings === State.rosRankings ? rosName(false) : 'In-Season',
             // The same, written out for the notes ("using In-Season ranks"; S23, round 5).
             checkName: checkIsWeekly ? 'Weekly' : seasonRankings === State.rosRankings ? rosName(false) : 'In-Season',
@@ -722,7 +726,9 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     export function waiverVerdictParts(ctx, { player, verdict }, { withMatchup = false } = {}) {
         if (!verdict) return { pill: '', line: '' };
         const pill = scoutPillMarkup;
-        const onBye = !!getByeBadgeHTML(player.team);
+        // On bye in the week the check is about (next week from Tuesday, once this week's games are over; S52).
+        const onBye = ctx && ctx.byeWeek != null ? isUnavailableThisWeek({ team: player.team }, ctx.byeWeek) : !!getByeBadgeHTML(player.team);
+        const byeWhen = ctx && ctx.weekOver ? 'next week' : 'this week';
         switch (verdict.status) {
             case 'starts':
                 return {
@@ -734,7 +740,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
             case 'bench':
                 return { pill: pill('mls-verdict-bench', 'Bench'), line: waiverCompareLine(player, verdict.bubble, verdict.bubbleSlotType, 'Would need to pass', ctx.checkDisplay, ctx.checkLabel, 'auto', ctx.checkCross, withMatchup) };
             case 'unavailable':
-                return { pill: pill('mls-verdict-out', onBye ? 'Bye' : 'Out'), line: onBye ? 'On bye this week - a stash, not a start.' : `Listed ${escapeHtml(player.inj || 'out')} - can't start this week.` };
+                return { pill: pill('mls-verdict-out', onBye ? 'Bye' : 'Out'), line: onBye ? `On bye ${byeWhen} - a stash, not a start.` : `Listed ${escapeHtml(player.inj || 'out')} - can't start ${byeWhen}.` };
             case 'kickedOff':
                 return { pill: pill('mls-verdict-out', 'Played'), line: 'His game already kicked off - no help this week.' };
             case 'tooLate':

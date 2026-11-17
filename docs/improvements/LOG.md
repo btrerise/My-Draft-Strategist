@@ -12188,7 +12188,6 @@ Not run again (rule 7); CI runs it on the pull request.
 - **Seth McGowan's quick re-add** (round 8): if a pattern shows (a player dropped the day he was added skipping
   waivers), add it to the rule.
 - **A short gap on a cold Dashboard** (round 5, point 2): if it matters, the count could wait for the chips.
-- **Next week's byes on Tuesday** (round 4, above).
 - `daily_waivers_days` isn't decoded (above). If a league marks some days "Locked" or "FA", the chip can be wrong on
   those days; a session with the league's settings screen open (or Sleeper's help pages reachable) could map the bits.
 - Sleeper's state week may move to the next week before Wednesday's run; then this week's kickoffs are next week's and
@@ -13424,6 +13423,260 @@ keep (teams you added, the schedule's, or removed ones), and the schedule saves 
 new spec checks a visit with nothing to keep writes no `mls_early_*` key. Re-ran `backup`, `mls-early-games` (11 per
 width) and `key-migration`: all passed.
 
+
+## S52 — Bye Crunch: weeks when byes leave a starting slot short
+
+From the owner's notes of 2026-11-12 (sent 2026-11-14): "Bye week checker (need a better name): check rosters for when
+bye weeks overlap to the point of impacting your starting lineup". Read first: S11 (to-dos), S12 (league cards), F12
+(what needs you) and S34 round 4 (byes on Tuesday).
+
+**Owner's decisions (asked before building, 2026-11-16).**
+1. Name: **Bye Crunch**.
+2. How far ahead: **the next 2 weeks** (not next week only, the rest of the season or the playoffs).
+3. What counts as short: **a slot nobody available can fill** (not also one you'd fill with an unranked player).
+4. Where: **a to-do on the league's Dashboard card and in the Lineup tab's box** (no week-by-week Roster view).
+5. **Not counted** in "N lineups need you" (F12's rule): a heads-up, not a lineup to set.
+
+**User-visible effect.**
+- A league card and the Lineup tab's box list, for each of the next 2 NFL weeks, each slot type byes leave short:
+  "Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye: Derrick Henry, Breece Hall and Ashton Jeanty)", with a
+  user-minus icon in the BYE badge's orange and a **Find RB** button (Top Available on that position; W/R, W/T and FLEX
+  find FLEX, SFLEX All, as the empty-slot item does). Players Out (or on IR, PUP, NFI, suspended) now are named after
+  it, "· Joe Mixon is on IR, assumed still out"; an injured player still in your IR slot "is in your IR slot".
+  Wording for a strict slot: "1 of your 2 RBs on bye", "all 2 of your QBs on bye", "your only K on bye"; for a flex
+  slot: "1 FLEX short (on bye: …)".
+- It's a note: a card with only Bye Crunch says "Notes" (no amber, no count), the Lineup box's title stays "Nothing
+  needs you before kickoff", the strip and Optimize All / Sync All toasts don't count it, and starter alerts (N2)
+  never name it.
+- Not in Best Ball leagues (the Dashboard leaves them out of the to-dos).
+- **Tuesday's waiver checks read next week's byes** (S34's leftover, removed from its Left over list): once the week's
+  games are over (`isWeekOver`), the Dashboard's Best available, Auto-Find and Check a List treat a player on bye next
+  week as unavailable, so he isn't an upgrade; Auto-Find's Bye verdict says "On bye next week - a stash, not a start."
+  (and "can't start next week" for an injured one). Before Tuesday nothing changes. The BYE badge on rows still marks
+  this week's byes, and the Lineup tab's optimizer is unchanged (out of scope).
+
+**Which weeks.** Sleeper's week + 1 and + 2 (`crunchWeeks`). Sleeper's week stays on the finished week until
+Wednesday, so on Tuesday "next week" is already the coming one, as the card asked; from Wednesday the current week's
+byes are the Lineup box's own items ("X is on bye: no healthy RB on your bench [Find RB]"). Byes end at week 14, so
+from week 13 on nothing shows (week 13: week 14's; week 14 on: none).
+
+**What counts as short.** A maximum matching of starting slots to available players, filled in the optimizer's slot
+order (strict slots, then W/R, W/T, FLEX, SFLEX, K, DEF), so the shortage lands on the strict slot when a spare player
+can still take the FLEX, and a W/T isn't short because FLEX took the only WR. It never depends on your rankings (the
+optimizer's choices are out of scope). Only what the byes add counts: a slot short every week anyway (no TE on the
+roster) is the Lineup box's "TE slot is empty", not a Bye Crunch. Available: not taxi; in your Sleeper IR slot only
+when healthy (you'd activate him); not Out, IR, PUP, NFI or suspended now (assumed still out). Doubtful and
+Questionable count as available a week or more out. K and DEF count like any slot (a BAL kicker in week 13 is "1 K
+short", with Find K), since a streamer has to be picked up all the same.
+
+**What changed, and where.**
+- `js/mls/lineup/byeCrunch.js` (new, pure): `shortSlots`, `byeCrunchWeek`, `byeCrunch`, `crunchWeeks`, `couldStart`,
+  `crunchText`, `CRUNCH_ICON`. In `PRECACHE_ASSETS`.
+- `js/mls/lineup/issues.js`: `lineupIssueItems` adds `issues.crunch` as `{ kind: 'crunch', note: true, find }` items,
+  after IR moves. Notes never count (`needsYouCount`, `leagueNeeds`), so F12's rule is unchanged.
+- `js/mls/lineup/gameInfo.js`: `getLineupIssues` adds `issues.crunch` from the new `getByeCrunch(league)` (Sleeper's week
+  and season, the bye table, positions from the roster or the league's `globalPosMap`); the Lineup box draws the icon.
+  `js/mls/render/dashboard.js`: the card's item draws the icon. `css/mls.css`: `.is-crunch`, `.mls-crunch-icon`.
+- `js/mls/helpers.js`: `isUnavailableThisWeek(p, week = State.currentNflWeek)` and `lineupWeek(weekOver)`.
+  `js/mls/scout/waivers.js`: `lineupCheckDeps` passes `lineupWeek(weekOver)`; `buildWaiverContext` returns `weekOver`
+  and `byeWeek`, which `waiverVerdictParts` reads for the Bye pill and its line.
+- Legend (`js/mls/legend.js`): a line after "This lineup needs you", drawn with the same markup. Guide
+  (`lineup/index.html`, the Dashboard step): two sentences on Bye Crunch. CHANGELOG: two lines under Lineup Strategist.
+- No storage key. `CACHE_NAME` v2.10.12 → v2.10.13.
+
+**Tests.**
+- `tests/unit/byeCrunch.test.mjs` (10): the matching (strict first; W/T not starved by FLEX); 2 RB slots with 3 of 4
+  RBs on bye; FLEX covering the WR byes with a spare RB (and short without one); superflex (a QB on bye leaves SFLEX to
+  an RB/WR/TE, short when none is left; both QBs on bye); an IR player (named, assumed still out), a healthy IR-slot
+  player counted, a Questionable one in the IR slot not, taxi never; a slot short without byes not reported; the weeks;
+  the items (notes, Find chips, never counted).
+- `tests/mls-bye-crunch.spec.mjs` (5 × desktop and phone): week 12 shows week 13's RB, K and DEF on the card ("Notes",
+  icons, Find RB to Top Available on RB) and in the Lineup box (title unchanged, Find DEF); beside the empty RB slot
+  only the empty slot counts ("1 to fix", "1 lineup needs you · 1 to fix"); week 2, nothing anywhere (the empty state);
+  Sunday of week 6, James Cook (BUF, bye week 7) is "1 upgrade" and Would Start; Tuesday after week 6 he's "No upgrade"
+  and Auto-Find says Bye, "On bye next week". The Tuesday test fails on main (checked by restoring main's
+  `waivers.js`: the flag kept "1 upgrade").
+
+**Screenshots: two change, re-taken by CI** (`update-screenshots.yml`). Rendered here, main against this branch in the
+same container (`RENDER_ENV=any`, `npm run pxdiff`): only `desktop/mls-league-guide.png` (1280×10950 → 1280×11090) and
+`phone/mls-league-guide.png` (390×25902 → 390×26246) differ, taller by the Guide's two Bye Crunch sentences and the
+legend's new line. The other 42 are pixel-identical: the screenshot fixture is week 2, with no byes in weeks 3–4, so
+no card or Lineup box shows a Bye Crunch.
+
+**Checks** (full `npm ci && npm run check`, once, before the last push): check-precache OK (178 precached),
+`node --test` 698 passed, Playwright 1104 passed, 72 skipped, 4 failed: `visual.spec.mjs`'s environment check (this
+container's fonts), as on main; the comparison above stands in for it.
+
+**Left over.**
+- **Best Ball**: no Bye Crunch there (no lineup to set, and the Dashboard leaves Best Ball out of its to-dos), though a
+  short week costs points there too. A line on the Best Ball card would be its own small change.
+- **The BYE badge on Top Available and Auto-Find rows** still marks this week's byes on Tuesday (only the verdicts and
+  the upgrade counts read next week's). Small; could follow `lineupWeek` too.
+- **K and DEF**: they count like any slot ("1 DEF short" for a team defense on bye). If that reads as noise for people
+  who stream them, the owner could choose to leave them out.
+- This season it shows only through week 13 (week 14's byes are the last); otherwise it's ready for 2027 once B1 adds
+  2027's byes in May.
+
+### S52: screenshots re-taken from CI (update-screenshots run 43821201036, commit e2fad61)
+- `desktop/mls-league-guide.png`: the Dashboard step's two Bye Crunch sentences, and the legend's new line (the
+  user-minus icon and "Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye: …)" in orange, its meaning beside it).
+  Opened and checked.
+- `phone/mls-league-guide.png`: the same two sentences (on phones the legend is a sheet, not in the screenshot).
+
+### S52, round 2: one player per line (owner, 2026-11-16, after trying it on a league where it applies)
+Owner: "Would it be better to have each player that Bye Crunch lists in bullet point form for easier readability? My
+current example has 5 lines of text that run together." Yes: the item is now a headline and a bulleted list.
+- Headline: "Bye Crunch · Week 13: 1 RB short (3 of your 4 RBs on bye)" (no names in it any more; a flex slot reads
+  "1 FLEX short"). Under it, one bullet per player: "Derrick Henry (BAL) on bye", then "Joe Mixon is on IR, assumed
+  still out" (a team defense without its team again: "Baltimore Ravens on bye"). The bullets are the muted text color,
+  so the orange headline stays the thing to read; the Find button stays beside the headline.
+- Where: `crunchText` (the headline) and the new `crunchDetails` (the lines) and `crunchListHTML` (the `<ul>`) in
+  `byeCrunch.js`; the item carries `details`; `getLineupNeedsHTML` and `leagueTodoHTML` add the list (on the card the
+  item is a `<div>` so it can hold one). `css/mls.css`: `.mls-crunch-list`. The legend's sample, the Guide's sentence and
+  the CHANGELOG line follow. Unit tests and `mls-bye-crunch.spec.mjs` check the headline and the bullets apart.
+- Screenshots: the same two Guide PNGs move again (the Guide's example and the legend's sample), re-taken by CI.
+- Merged main (S50, Early Games) before the push: CHANGELOG and LOG kept both; the two Guide PNGs taken from main,
+  then re-taken by CI on the merged branch (commit bd2838b): the Guide's Bye Crunch sentence and the legend's sample
+  with its bullet. Opened and checked. `CACHE_NAME` v2.10.14 (main's is v2.10.13). After the merge: check-precache,
+  `node --test` (706) and the Bye Crunch, Early Games, lineup-needs, league-card, legend, waiver and backup specs
+  (132) pass.
+
+### S52, round 3: no K or DEF, and a shorter FLEX note (owner, 2026-11-16)
+Owner: "Leave K and DEF out of Bye Crunch. If you are able to shorten the FLEX note, that would be great."
+- **K and DEF** are never checked (`NOT_CHECKED` in `byeCrunch.js`): people stream them, so a kicker or defense on bye is
+  routine. The Guide and the legend say so.
+- **A flex slot's bullets** (W/R, W/T, FLEX, SFLEX) are one per position, not one per player, and players an earlier
+  item for the same week already named aren't listed again:
+  "Bye Crunch · Week 13: 1 FLEX short" · "RBs: the 3 above" · "WRs on bye: Garrett Wilson and Zay Flowers" · "Out now,
+  assumed still out: Sam LaPorta (Out)". Partly named above: "RBs on bye: Breece Hall and Ashton Jeanty, and the 1
+  above"; one: "RB: Derrick Henry, above". A strict slot (RB, WR…) keeps one bullet per player (round 2), since its
+  list is short by nature. `crunchDetails(c, above)`; `lineupIssueItems` passes the ids each week's earlier items named.
+- Tests: unit (K and DEF left out; the FLEX after an RB note, on its own, and partly above); `mls-bye-crunch.spec.mjs`
+  now expects only the RB note in week 13 (the fixture's BAL kicker and defense are on bye and not flagged).
+- Screenshots: the two Guide PNGs again (the Guide's sentence and the legend's meaning), re-taken by CI.
+- CI re-took the two Guide PNGs (commit 5fd4e22): the legend's meaning now ends "kickers and defenses aren't checked", and the Guide's sentence says the same. Opened and checked.
+
+### S52, round 4: a review as a user; one heading per week, and folded on the Lineup tab (owner: "A + B to start")
+My review (a heavy week on the fixture league: week 13 leaves an RB, a WR and FLEX short; phone and desktop, the card
+and the Lineup tab): helpful and honest, but clunky when there's more than one note. (1) "Bye Crunch · Week 13:"
+repeated on every note; (2) the Lineup tab's box said "Nothing needs you before kickoff" above a wall of orange about
+next week, pushing this week's lineup ~350px down on a phone; (3) long lists, and the FLEX's "the 5 above" bookkeeping;
+(4) no bottom line ("3 starters short"); (5) on the desktop card the Find buttons stacked away from their notes.
+Options: A (one heading per week with the total, a row per slot), B (fold it on the Lineup tab), C (fold it on the
+card too). The owner took **A + B**, C to revisit if needed.
+- **A.** One item per week (`crunchGroup` / `crunchGroups` in `byeCrunch.js`, replacing `crunchText` and
+  `crunchDetails`): "Bye Crunch · Week 13: 3 starters short", then a row per slot type, "RB: 1 short · Derrick Henry
+  (BAL) on bye", "WR: 1 short · 5 of 6 on bye: Ja'Marr Chase, …", "FLEX: 1 short · also Brock Bowers (TE) on bye; George
+  Kittle is Out, assumed still out" (a flex row names only who the rows above it didn't; first in the week it's
+  "on bye: Derrick Henry (RB) and …"). The slot ("RB: 1 short") is bold in the main text color, the rest muted; no
+  bullets. Each row has its own Find button at its end (`crunchRowsHTML(item, button)`), on the card too, so the card's
+  right-hand column no longer collects Bye Crunch's buttons (`findChips` sees no `find` on the item).
+- **B.** On the Lineup tab the item is a fold (`details.lineup-needs-crunch`, the "What changed?" fold's chevron),
+  closed to its heading; it stays open across the box's redraws (a swap, a lock, Optimize). The Dashboard card shows it
+  open.
+- Legend sample, Guide sentence and CHANGELOG line follow. Tests: unit (the heading's total, rows for strict and flex
+  slots, "also", the rows' HTML, one item per week); `mls-bye-crunch.spec.mjs` (heading and rows on the card, the Find
+  button on its row, the Lineup tab's fold closed then open, kept open after Optimize).
+- Screenshots: the two Guide PNGs (the Guide's sentence and the legend's sample), re-taken by CI.
+- CI re-took the two Guide PNGs (commit b204bd1): the legend's sample is now the heading "Bye Crunch · Week 13: 2 starters short" with an RB row and a FLEX row, and its meaning says the Lineup tab folds it; the Guide's sentence says the same. Opened and checked.
+
+### S52, round 5: folded on the card too, and bullets again (owner, 2026-11-16)
+Owner: "I think we should do Option C as well." And, on round 4's one-line rows: "I am torn … it saves vertical space
+… it's hard to scan/read … Perhaps now that we're doing folds we can go back to bullets? Do you have another idea?"
+My view: with the item folded in both places, the space a run-on line saved no longer matters, so bullets, keeping
+round 4's structure. (Another idea, not taken: names as inline chips; compact, but a new badge style that would read
+like the rank and status chips.)
+- **C:** the Dashboard card's Bye Crunch is a fold like the Lineup tab's, closed to "Bye Crunch · Week 13: 3 starters
+  short"; open folds stay open across redraws (keyed by league and week, on both). One helper draws both,
+  `crunchFoldHTML(item, { key, open, chevron, button })`.
+- **Rows:** a slot heading, "RB: 1 short", with "· 5 of 6 on bye" when several are on bye (a flex slot whose players
+  are all listed above: "· the players above"), its Find button, then a bullet per player: "Derrick Henry (BAL)" (the
+  heading says they're on bye), "George Kittle (TE) · Out, assumed still out". A flex row bullets only players the rows
+  above didn't, with their position: "Brock Bowers (TE, LV)". `crunchGroup` returns `{ head, note, players }` per row;
+  `crunchRowsHTML` draws them.
+- Legend sample (drawn with `crunchFoldHTML`, open), Guide sentence and CHANGELOG line follow. Tests: unit (the rows'
+  bullets and notes, the fold's markup); spec (the card's fold closed, then open with Find on its row; still open after
+  the Dashboard redraws; the Lineup tab's fold as before).
+- Screenshots: the two Guide PNGs, re-taken by CI.
+- The legend's sample draws the fold open with its heading as text (`CRUNCH_ICON` + `crunchRowsHTML`), not a `<summary>`: a legend row isn't a control, and `touch-targets.spec.mjs` caught the sample's 23px summary on phones. The real folds' summaries use the shared 48px TOUCH TARGETS area, as every `.mls-change-fold` does.
+- CI re-took the two Guide PNGs (commit 1af871b): the legend's sample is the open fold with a slot heading and bullets; the Guide's sentence says it's folded until you tap it. Opened and checked.
+
+### S52, round 6: chips, a red tint, italics: mocked up, not taken (owner, 2026-11-16)
+- **Chips** (names as small pills, wrapping): mocked on the real card. About half the height on desktop, about the same
+  on phones, and they'd read like the site's rank and status badges. Owner: keep bullets.
+- **A red Out tint** (round 5's mock-up, two ways: only the status red, or the whole bullet): the owner found the red
+  pulled the eye and made the bullets harder to scan. Not taken.
+- **Italic and dimmer** (the app's "aside" look, as for kept starters): mocked. Owner: "I don't necessarily need *less*
+  emphasis, I just didn't want it standing out so much with the red." Not taken; the bullets stay as round 5 left them.
+
+### S52, round 7: a review as a user; Find for that week, and Got it (owner: "Let's do both")
+My review (the everyday case, both weeks short, the heavy week, phone and desktop, where Find leads): quiet and
+compact folded, easy to read open. Two findings: (1) Find opened Top Available as it is for *this* week, so its best
+free agent at the position could be on bye in the very week you're filling; (2) no way to dismiss a note you've
+decided to live with (Early Games has Got it). The owner took both, and corrected my plan for (1): "Starts" can't be
+judged for a coming week, since rankings are built week to week, so it's hidden there rather than re-judged.
+- **Find for that week.** Bye Crunch's Find buttons carry `data-week`; `findLeaguePlayers(leagueId, pos, week)` calls
+  `setTopAvailableWeek`. Top Available (`js/mls/scout/topAvailable.js`) then leaves out free agents on bye that week
+  (ranked list and Trending), hides the Starts flag, and puts a line on top: "For week 13 (Bye Crunch): 1 player on bye
+  that week left out; Starts is about this week, so it's hidden. Show all" (`clearTopAvailableWeek`). The count is for
+  the position on screen. An empty list says "Every RB still available … is on bye in week 13. Show all to see them."
+  In memory only: the position chips keep it; Show all clears it, and so does coming back to the Scout tab any other
+  way (the first showing after Find is marked `fresh`).
+- **Got it.** In the open fold, after the rows: "Got it · Hides it for week 13" (`crunchDismissHTML`). It hides that
+  league's note for that week on the card and the Lineup tab (`getByeCrunch` skips the week). New key
+  `KEYS.mls.byeCrunchDismissed` (`mls_bye_crunch_dismissed`, `{ [leagueId]: [week] }`; weeks already reached are
+  dropped when the next one is hidden), so it lasts across reloads and goes in Backup and Factory Reset with the other
+  `mls_` keys; with storage blocked it still hides it for the visit. Focus moves to the card's toggle (or the Lineup
+  box's title) once the button is gone. No way to bring a hidden week back short of that week passing (as Early
+  Games' Got it); say if you want one.
+- Guide sentence, legend meaning and CHANGELOG line updated. Tests: `mls-bye-crunch.spec.mjs` (Cook moved to NYJ:
+  Find RB from week 13's note leaves him out, hides Starts, says so; the chips keep the week; Show all brings him back;
+  the week doesn't stick to a later visit; Got it hides the note on both, sets the key, and holds after a reload).
+- Screenshots: the two Guide PNGs, re-taken by CI.
+- CI re-took the two Guide PNGs (commit 380d8e5): the legend's meaning and the Guide's sentence now mention Find for that week and Got it. Opened and checked.
+
+### S52, round 8: on by default, with a switch in two places; Early Games' switch in Advanced Settings too (owner, 2026-11-16)
+The owner asked whether it should be opt-in (a toast suggesting it, as FAAB Bids does), to keep features and visual
+noise down. My view: unlike FAAB bids, which add numbers to rows every week, Bye Crunch shows nothing except when a
+coming week can't be filled, folded to one line; an opt-in toast would fire exactly then and ask for a trip to a setting,
+so more interruption, and a dismissed toast loses the one warning that matters. I suggested on by default with an off
+switch. Owner: "On, perhaps the setting lives in both places? Frankly, I'm thinking the Early Games switch should live in
+Advanced Settings as well as the Lineup tab ... rather than having to 'hunt it down'."
+- **Bye Crunch's switch**, on unless turned off: in the Lineup tab's Lineup settings ("Bye Crunch: Warn when byes in the
+  next 2 weeks leave a starting spot you can't fill.") and in a new **Lineup** fold in the Dashboard's Advanced Settings
+  (first after Show Player Headshots). New key `KEYS.mls.byeCrunch` (`mls_bye_crunch`, '0' while off; unset = on), read
+  into `State.byeCrunchOn`; `setByeCrunchOn` in `gameInfo.js` and `getByeCrunch` returns nothing while it's off. Flipping
+  either copy updates the other and redraws the Lineup tab and the cards.
+- **Early Games' "Fill in from the schedule"** (S50's, done here at the owner's request): the same switch in the Lineup
+  fold, "Early Games: fill in from the schedule". Both copies share `data-action="setEarlyFromSchedule"`;
+  `syncEarlyFromScheduleToggles` (earlyGames.js) keeps them together.
+- Start-up sets every copy from storage (`init.js` calls both syncs; a top-of-module call ran inside a circular import
+  before `State` existed, caught by the spec).
+- Guide: the Dashboard step says where to turn Bye Crunch off; the Lineup step says the Early Games switch is in
+  Advanced Settings too. CHANGELOG: two lines.
+- Tests: `mls-bye-crunch.spec.mjs` (off in Advanced Settings: no note on the card or the Lineup tab, the key is '0', it
+  holds after a reload, Lineup settings shows it off; on again from Lineup settings: both notes back, the Advanced copy
+  checked, the key gone; Early Games' two copies follow each other, and the card's description says it's off).
+- Screenshots: main against this branch in this container, six differ: `{desktop,phone}/mls-empty-setup.png` and
+  `{desktop,phone}/mls-league-setup.png` (50px taller: the Lineup fold in Advanced Settings), and
+  `{desktop,phone}/mls-league-guide.png` (rounds 7–8's Guide sentences). The Lineup tab's are unchanged (Lineup settings
+  starts folded). Re-taken by CI.
+- CI re-took the six PNGs (commit 865a806): the Dashboard's Advanced Settings shows the new Lineup fold under Show Player Headshots (closed, like Notifications and FAAB Bids below it); the Guide's sentences as above. Opened and checked.
+
+### S52: the full suite before the pull request (2026-11-16)
+Owner: "Run the full suite and open the PR, watch CI, then merge when green." Branch current with main (S50 merged in
+round 2; nothing newer), `CACHE_NAME` v2.10.14 (main v2.10.13). `npm ci && npm run check`: check-precache OK (179
+precached), `node --test` 708 passed, Playwright 1134 passed, 72 skipped, 4 failed: `visual.spec.mjs`'s environment
+check (this container's fonts), as on main; the screenshots were compared main against this branch here and re-taken by
+CI in each round.
+
+### Left over
+- Best Ball leagues get no Bye Crunch (no lineup to set; the Dashboard leaves them out of its to-dos), though a short
+  week costs points there too.
+- The BYE badge on Top Available and Auto-Find rows marks this week's byes on Tuesday (the verdicts and upgrade counts
+  read next week's, round 1). Small; could follow `lineupWeek`.
+- Got it has no undo before that week passes (as Early Games' Got it).
+- This season it shows only through week 13 (week 14's byes are the last); ready for 2027 once B1 adds its byes.
 ## M18 — Material 3 Expressive: a review against the sources, corrections to earlier values, and what's built
 
 **For every later M card, S18 and the light-theme card: read `docs/improvements/material3-review-3.md` first. Where it

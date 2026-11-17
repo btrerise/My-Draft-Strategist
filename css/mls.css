@@ -1918,6 +1918,27 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 .mls-needs-item.is-injured, .lineup-needs-item.is-injured { color: #fca5a5; }
 .mls-needs-item.is-ir, .lineup-needs-item.is-ir { color: #d6bcfa; }
 .mls-needs-item.is-sleeper { color: var(--text-main); }
+/* Bye Crunch (improvements S52): a coming week byes leave short. The BYE badge's orange, a user-minus icon before it. */
+.mls-needs-item.is-crunch, .lineup-needs-item.is-crunch { color: #fdba74; }
+.mls-crunch-icon { color: #fb923c; vertical-align: -2px; margin-right: 0.3rem; }
+/* A week's rows (round 4): the slot a shade brighter, its Find button, then a bullet per player (round 5). */
+.mls-crunch-list { margin: 0.25rem 0 0; padding-left: 1.3rem; list-style: none; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.35rem; }
+.mls-crunch-list li { line-height: 1.45; }
+.mls-crunch-head { color: var(--text-main); font-weight: 600; }
+.mls-crunch-list .mls-crunch-find { margin-left: 0.35rem; font-size: 0.75rem; padding: 2px 10px; }
+.mls-crunch-players { margin: 0.1rem 0 0; padding-left: 1.1rem; list-style: disc; display: flex; flex-direction: column; gap: 0.05rem; }
+/* The fold (rounds 4 and 5, the Lineup box and the league card): the "What changed?" fold's chevron, in the item's
+   orange and weight. */
+.mls-change-fold.mls-crunch-fold { margin-top: 0; }
+.mls-change-fold.mls-crunch-fold > summary { color: inherit; font-size: inherit; font-weight: inherit; flex-wrap: nowrap; gap: 0.3rem; }
+.mls-crunch-fold > summary .mls-crunch-icon { margin-right: 0; flex-shrink: 0; }
+/* Got it (round 7): after the rows, with what it does beside it. */
+.mls-crunch-dismiss { margin: 0.4rem 0 0 1.3rem; display: flex; align-items: center; flex-wrap: wrap; gap: 0.3rem 0.5rem; font-size: 0.75rem; color: var(--text-muted); }
+.mls-crunch-dismiss .mls-crunch-got-it { font-size: 0.75rem; padding: 2px 10px; }
+/* Top Available opened from Bye Crunch (round 7): the week it's for, and Show all. */
+.mls-ta-week { margin: 0 0 0.6rem; padding: 0.5rem 0.7rem; border-radius: 8px; background: rgba(249, 115, 22, 0.08);
+  border: 1px solid rgba(249, 115, 22, 0.3); color: #fdba74; font-size: 0.82rem; line-height: 1.45; }
+.mls-ta-week .mls-ta-more-link { margin-left: 0.3rem; }
 .mls-needs-hurt { color: #fca5a5; font-weight: 600; }
 .mls-needs-why { color: var(--text-muted); }
 .mls-needs-item.is-kept, .lineup-needs-item.is-kept, .mls-needs-item.is-unmatched, .lineup-needs-item.is-unmatched { opacity: 0.7; font-style: italic; }
