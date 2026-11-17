@@ -22,7 +22,14 @@ export const showToast = function(message, options = {}) {
   // options.action, { label, onClick } (improvements S35): a button in the toast that does the thing it suggests ("Turn
   // on"); the toast closes after it runs. A toast with one stays longer, so there's time to reach the button.
   const action = options.action && options.action.label && typeof options.action.onClick === 'function' ? options.action : null;
-  const duration = options.duration || (isError ? 6000 : action ? 8000 : 3500);
+  // Material 3's snackbar (improvements M18): an error stays until ✕ (it's what explains a failure, and a timed one is
+  // easy to miss); a toast with an action gets 8s; anything else 4s plus 1s per 40 characters, at most 8s.
+  const duration = options.duration || (isError ? Infinity : action ? 8000 : Math.min(8000, 4000 + 1000 * Math.floor(String(message).length / 40)));
+  // Never over a dialog or a sheet: one that's open holds the toast until it closes (the latest toast wins).
+  if (openModal()) { waitForModal(() => showToast(message, options)); return; }
+  // Shown now, so an older toast still waiting for a dialog to close is dropped: the latest wins (one that waited and
+  // came out later covered this one: a rankings upload's toast over the trade sync's, mls-past-trade.spec.mjs).
+  pendingToast = null;
 
   const toast = getToastElement();
   const messageEl = toast.querySelector('.toast-message');
@@ -63,6 +70,23 @@ export const showToast = function(message, options = {}) {
 // so on those only hovering or focusing the ✕ pauses them, and taps pass through to the lineup
 // underneath. toastRemaining carries the time left across a pause, so leaving the toast
 // resumes rather than restarts the countdown.
+// A dialog or sheet on screen: every one in the three apps says aria-modal="true" (sheet.js, confirm.js, prompt.js, the
+// upload previews); hidden ones have no boxes.
+const openModal = () => [...document.querySelectorAll('[aria-modal="true"]')].some((el) => el.getClientRects().length > 0);
+let pendingToast = null;
+function waitForModal(show) {
+  const waiting = !!pendingToast;
+  pendingToast = show;
+  if (waiting) return;
+  const check = () => {
+    if (openModal()) { setTimeout(check, 250); return; }
+    const run = pendingToast;
+    pendingToast = null;
+    if (run) run();
+  };
+  setTimeout(check, 250);
+}
+
 function getToastElement() {
   let toast = document.getElementById('mds-toast');
   if (toast) return toast;
@@ -127,6 +151,7 @@ function resumeToastTimer(toast) {
   clearTimeout(toast.hideTimeout);
   toast.hideTimeout = null;
   if (!toast.classList.contains('show') || toast.toastHovered || toast.toastFocused || toast.toastPinned) return;
+  if (!Number.isFinite(toast.toastRemaining)) return; // an error: until ✕
   // Always leave a moment to finish reading after the pointer/focus moves off.
   const remaining = Math.max(toast.toastRemaining, 1500);
   toast.toastStartedAt = Date.now();

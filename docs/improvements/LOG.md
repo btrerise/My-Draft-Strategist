@@ -13677,3 +13677,256 @@ CI in each round.
   read next week's, round 1). Small; could follow `lineupWeek`.
 - Got it has no undo before that week passes (as Early Games' Got it).
 - This season it shows only through week 13 (week 14's byes are the last); ready for 2027 once B1 adds its byes.
+## M18 — Material 3 Expressive: a review against the sources, corrections to earlier values, and what's built
+
+**For every later M card, S18 and the light-theme card: read `docs/improvements/material3-review-3.md` first. Where it
+and your card's text disagree on a Material value, the review wins** (it was checked against material-web's labs and
+token files and Compose's tokens; the cards' values came from an earlier session that couldn't read m3.material.io).
+
+**Asked** (owner, 2026-11-16): review the site against Material 3 Expressive from git sources (material-web `labs/gb`,
+androidx Compose's tokens and adaptive layouts, the skydashnet M3 skill), check M3, S18, M17 and other cards' Material
+values, group the findings, then: "Build and/or fold-in all numbers, please. This includes fixes to past choices I've
+made."
+
+**What the review found** (details, sources and numbers in the review): M3's six motion curves are cubic-bezier
+approximations of Compose's Expressive springs (right peak and length, up to 10% off in shape); labs already writes the
+fast one as `linear()`. M2's focus ring was 2px where Material's is 3px. M3's toast entrance (an overshoot) isn't labs'
+snackbar (a 150 ms grow, a 75 ms fade). S16's fades (500 ms) and the marker (500 ms) are slower than Material's. Rules
+at `max-width: 600px` and `min-width: 600px` both applied at exactly 600px. About 20 text styles under 4.5:1, text down
+to 9.28px, Guide lines to 143 characters, 26 corner radii, ~570 colour literals outside `:root`. Self-audit 7/16.
+
+**Built here** (the owner's past choices changed are marked):
+- Motion tokens in `css/base.css` (`:root`, MOTION): the six Expressive springs as `linear()` easings with their
+  lengths, Material's emphasized curves and durations, the snackbar's and the state layers' timings; a cubic-bezier
+  fallback under `@supports not (transition-timing-function: linear(0, 1))`. Every transition and animation in the four
+  stylesheets moved onto them by one rule: colour, background, border and shadow → effects fast; opacity → effects
+  default (slow above 200 ms); transform and size → spatial fast (small things, 200 ms or less before) or default.
+  Drawers, the sheet and the expanded rail keep emphasized decelerate 400 ms / accelerate 200 ms (an overshoot would
+  open a gap at the screen's edge). The switch handle, chevrons, the league name's roll and the press morph: fast spatial.
+- **Changed past choices:** view transitions: phone slides and the Dashboard's cards on the default spatial spring
+  (500 ms, was 275 / 375 ms); tab and league fades on effects slow, 300 ms at every width (was 275 ms on phones and the
+  owner's 500 ms wider, S16 round 6); the tab bar's marker 200 ms emphasized (was 500 ms wider, S26). Chevrons 350 ms
+  fast spatial (were the Dashboard's 275 / 375 ms). The focus ring 3px (owner's 2px, M2); text fields stay 2px (Material's
+  focused field). State layers: hover 15 ms, press 100 ms (were 150 ms). The sync spinner fades instead of turning under
+  Reduce Motion.
+- Toasts as Material's snackbar (M3's asks 1–5, with the owner's "build all" taken as yes to the card's suggestions,
+  corrected where labs differs): centred over the page and clear of the rail (`--rail-inset`), 24px from the bottom on
+  computers, above the tab bar below 840px; z-index 1900 (under dialogs and sheets, 2000); one that arrives while an
+  `aria-modal="true"` element is on screen waits, checking every 250 ms, and the latest wins; success 4s + 1s per 40
+  characters up to 8s, with an action 8s, an error until ✕; it grows from its bottom edge (`scale`, 150 ms legacy
+  decelerate) and fades out at full size (75 ms legacy accelerate); with Reduce Motion it only fades. The site's navy
+  card and green / red edge stay (identity). Its width is up to 672px (labs).
+- Breakpoints: `max-width: 600px` → 599.98px (24 queries); 767 / 768 → 839.98 / 840 (16 + 12), so 768–839px windows
+  get the tablet layout that goes with the bottom bar. 480 / 520 / 900 / 1024 stay as content tweaks inside a size class.
+  Checked: no sideways scroll on any tab of the three pages at 600, 700, 768, 800, 839 and 840px.
+- Reading width: `--reading-width: 70ch` on the Guides' paragraphs and lists, the setup steps' explanations, T-Score's
+  Research, notes and About.
+- `tests/unit/motionTokens.test.mjs`: the tokens re-derived from the springs (and the fast one equal to labs'); no
+  literal curve or time in any transition or animation (allowlist: 0s, the 1 ms view-transition cut, `linear`, the four
+  endless pulses and the spinner); media queries only on the allowed widths. Checked that it fails on a planted
+  `transition: color 0.2s ease` and `@media (max-width: 767px)`. `tests/snackbar.spec.mjs` (4 per width): placement,
+  waiting for a dialog and the z-index, the timings, the entrance and Reduce Motion. `focus-ring.spec.mjs` now wants 3px
+  (2px for fields); `chevrons.spec.mjs` the fast spatial spring; `tap-feedback.spec.mjs`'s comment.
+
+**Folded into cards, with their values in the review:** M3 (now only progress and loading: 4px bar with a 4px gap and a
+4px stop dot; a 38px loading shape in 48px), M4 (2px between grouped buttons, inner corners 8 → 4px), M6 (the measured
+contrast list), M7 / M8 (the small-text counts), M9 (one filled primary per group), M10 (hero moments, emphasized type),
+M12 / M13 (two panes from 1200px, a 360px side pane, a 24px gap), M14 (Material's corner scale, buttons 12 → 8px or
+8 → 4px, every colour on tokens, fewer shadows). **New card: a light theme** after M14 (the owner chose to build it): a
+light set of the tokens, Light / Dark / System in Settings, contrast in both, screenshots in both. S18 uses the motion
+tokens (page-to-page fades on effects slow, 300 ms). The runbook's cards still show their old values until it's updated;
+the review overrides them.
+
+**Screenshots** (main and this branch rendered in the same container, `npm run pxdiff`): the desktop PNGs whose prose now
+wraps at 70 characters change (`desktop/mds-empty-guide.png`, `desktop/mds-empty-setup.png`,
+`desktop/mls-empty-setup.png`, `desktop/mls-league-guide.png`, `desktop/mls-league-roster.png`,
+`desktop/mls-league-setup.png`, `desktop/tscore-researchTab.png`); every phone PNG and every other desktop PNG is
+identical. S52 (open) re-takes the two Guide and setup screenshots too: whichever merges second re-takes them.
+
+**Tests run:** check-precache; `node --test` (699); chevrons, focus-ring, tap-feedback, nav-rail, view-transitions,
+touch-targets, support, analytics, tscore-refresh, mls-phone-rows, mls-trade-sides-align, sheet, room-on-phones, smoke,
+mls-replace-set-dialog, mls-busy-spinner, tooltips-onscreen, tooltip-closed-space, mls-keyboard and the new snackbar
+spec: all passed.
+
+### M18: screenshots re-taken on CI (2026-11-16)
+
+The "Update screenshots" run for ee046f9 succeeded and committed exactly the seven predicted desktop PNGs (933564a):
+`mds-empty-guide`, `mds-empty-setup`, `mls-empty-setup`, `mls-league-guide`, `mls-league-roster`, `mls-league-setup`,
+`tscore-researchTab`. Each differs only where prose now wraps at 70 characters (the Guides are taller); no other
+screenshot changed.
+
+## F25 — Slow Sync All and Dashboard on phones (owner's report, 2026-11-16)
+
+**Asked:** "The last few days using my app on mobile, I've hit performance issues. Especially while syncing all leagues,
+or switching to the Dashboard tab from another tab. Those two are fairly consistent." With the owner's backup (20
+leagues, 19 on Sleeper). The owner suspected a merge from the last few days.
+
+**How it was measured:** a new opt-in tool, `tests/tools/backup-perf.tool.mjs` (TESTING.md, the opt-in tools): the
+backup written into localStorage, a 390px phone, the CPU slowed 4x, every request to Sleeper and ESPN recorded once and
+replayed, so each commit is measured on the same data; switches into the Dashboard from four tabs, before and after a
+Sync All, and Sync All itself; long tasks, requests and Chrome's own style / layout / script time; `PERF_REF` serves any
+commit, `PERF_PROFILE` the busiest functions, `PERF_NOW` the page's clock. One trap: ESPN refuses a headless browser's
+scoreboard request from a cloud container (403 "Access Denied"; curl with a browser user agent gets it), and **without
+kickoff times the regression doesn't show at all**: the first rounds measured nothing wrong. With the real scoreboard
+patched into the recording it reproduced every time.
+
+**Bisect** (each merge to main since 2026-11-11, phone, 4x CPU, the owner's backup, kickoffs loaded): the Dashboard switch
+took 0.15 to 0.2 s up to #250 and **3.3 to 3.6 s from #251 (S34, waiver claim or free agent) on**; Sync All went from
+8.7 s to **82 s**. The profile: `zonedParts` in `js/mls/scout/waiverStatus.js`, 3.1 s of the 3.2 s switch. It built a new
+`Intl.DateTimeFormat` on every call (about a millisecond each on a phone), and the waiver chips call it for every
+player in every league, several times per draw (4,620 formatters for 600 players in the unit test below). Sync All was
+82 s because each league's sync redrew the Dashboard's Best Available, among everything else (below).
+
+**Fixed:**
+- `zonedParts`: one formatter per time zone, its answers remembered (up to 5,000); `isWeekOver` works out the week's
+  last kickoff once per kickoff table (`State.gameTimesByTeam` is always replaced whole, never edited).
+- Sync All no longer draws per league. Each league's sync (`processSleeperData` with `skipSave`, the bulk flag) ran
+  `optimizeLineup(true)` and `loadRosterTab()`, so with the Dashboard showing, one Sync All redrew the Lineup tab 20
+  times, the Roster tab 21, Power Rankings 22, the Scoreboard and the league cards 23, analysed Best Available 361 times,
+  and saved every league's lineups 19 times. Now each league's lineup is computed in batch mode (`optimizeLineup`'s
+  existing `{ batch: true }`, as Optimize All does), Sync All and Import All save the lineup maps once after the loop,
+  and Sync All's existing end (the league restored, the cards, Roster and Lineup redrawn) draws once.
+- `formatUploadTime` (the rank-move chips) and `getFreshness` (the "Synced 2 days ago" labels): formatters built once
+  (the same text); together about 1.4 s of each old Sync All.
+- S32's three page-wide `:has()` selectors (`body:has(#lineupTab.active)…`, `#mainApp:has(#lineupTab:not(.active))`)
+  replaced by `body[data-tab]` (set by `applyTab` in `js/mls/nav.js`) and `body.mls-swap-pending` (the swap snackbar):
+  they made Chrome re-check the whole page after every change (style time in Sync All 625 → 986 ms at #253). M17's
+  `:has(> .settings-card)` costs about 100 ms per Sync All too; left, since it's smaller now that Sync All draws once.
+
+**After** (same data, phone, 4x CPU, medians): the Dashboard switch 0.17 to 0.24 s (main: 3.2 to 3.5 s); Sync All 2.6 s
+(main: 82 s), long tasks 1.2 s (main: 72 s), style 41 ms (main: 1,062).
+
+**The starter alert (N2) and the "switching to the Dashboard" part.** With the alert on (the owner's backup has it on,
+60 minutes), opening the page in the hour before a kickoff runs a quiet Sync All about a minute after load (the check
+waits for the week's kickoffs); before F25 that was the 82 s sync, running under whatever the owner tapped. It's the same
+2.6 s now. Its downloads are an open follow-up (TESTING.md, "Needs the owner's decision first"), as are Sync All's 14.7
+MB player file and its repeated ESPN and Sleeper-user requests.
+
+**Tests:** `tests/unit/dateFormatters.test.mjs` (600 players' waiver status build at most one formatter; it fails on the
+old code with 4,620; freshness labels a formatter per format). `tests/mls-sync-all-batch.spec.mjs`: after Sync All both
+fixture leagues' lineups are saved, you're on the same league, and the Lineup tab was drawn once (3 with the old
+per-league draws: checked by putting them back). Ran check-precache, `node --test` (701), and mls-waiver-status,
+mls-best-available, mls-top-available, mls-waiver-insights, mls-faab-bid, mls-rankings-change, mls-freshness,
+mds-freshness, mls-last-synced, mls-phone-rows, mls-keyboard, mls-lineup-row-actions, smoke, mls-sync-all-batch,
+mls-leagues, mls-sync-league-switch, mls-starter-alert, backup, mls-early-games, tscore-refresh: all passed. Screenshots:
+the previous commit and this one rendered in the same container, all 44 pixel-identical.
+
+## F26 — Less data and less waiting in Sync All (owner, 2026-11-16)
+
+**Asked:** after F25, trim what Sync All downloads without making injury news late ("users tend to check lineups once
+they get a notification that a player is 'Out'… about 90 minutes before kickoff"), and is there a lighter source than
+ESPN. The owner picked: Sleeper's player file only when it changed, unpacked in the background and slimmed; ESPN and the
+Sleeper user once per sync; leagues fetched side by side.
+
+**What was measured first** (2026-11-16, curl from this container):
+
+| Source | Over the network | Unpacked | Notes |
+| --- | --- | --- | --- |
+| Sleeper `players/nfl` | 2.6 MB gzip | 14.7 MB | `Cache-Control: s-maxage=600`; an ETag; a 304 with 0 bytes to `If-None-Match` |
+| ESPN scoreboard | 20 KB | 0.24 MB | kickoffs and live state |
+| Sleeper `schedule/nfl/regular/<season>` | 3 KB | 27 KB | dates and status only: **no kickoff times**, so it can't replace ESPN |
+| ESPN `injuries` | 354 KB | 8.7 MB | ESPN's designations, not Sleeper's, and a big parse |
+| Sleeper live week stats | 71 KB | 0.48 MB | `s-maxage=30` |
+
+Sampled once a minute for 15 minutes on Monday evening: Sleeper's CDN hands out one copy for 10 minutes (its `age`
+climbs to about 600 s, then resets), and each new copy had a new ETag. Sleeper's CORS rules expose `etag` but don't
+allow `If-None-Match` from a page; the browser's own cache can still revalidate (`cache: 'no-cache'`), which a page's
+fetch doesn't count as its header.
+
+**Correction to F25's write-up:** the "ESPN scoreboard 21 times per sync" was this container's doing (ESPN refused the
+headless browser, so no kickoff times were ever kept and every caller asked again). With the real scoreboard,
+`refreshGameTimes` already asks once; nothing to change there. The Sleeper user (19 times) and last week's
+transactions (19 extra) were real.
+
+**Built:**
+- `js/shared/api/playerMapSlim.js`: the 12 player fields the apps read (plus five small injury details), and
+  `slimPlayerMap`. `tests/unit/playerMapSlim.test.mjs` fails when any js/ file reads a distinctive Sleeper field the list
+  leaves out (checked by planting `p.espn_id`).
+- `js/shared/api/playerMapWorker.js` (module worker, `new Worker(new URL(…, import.meta.url))`): downloads with
+  `cache: 'no-cache'`, compares Sleeper's ETag with the saved copy's (unchanged: cancels the body, unpacks nothing),
+  else parses and slims off the main thread. `getSleeperPlayerMap` (sleeper.js) runs it, or the same steps on the page if
+  a worker can't start. IndexedDB keeps `{ data (slim), fetchedAt, etag, fields: 1 }`; a copy without `fields: 1` (the
+  old full one) is downloaded again. `forceRefresh` takes `keepFor`: Sync All you tap passes 0 (always checks: the
+  owner's "Out" case), the starter alert's quiet Sync All keeps a copy under 10 minutes (the CDN's own lifetime). An
+  unchanged copy isn't written to IndexedDB again. `scripts/check-precache.mjs` now follows `new Worker(new URL(…,
+  import.meta.url))`; both files are in `PRECACHE_ASSETS`.
+- `fetchAhead` / `endFetchAhead` in sleeper.js: Sync All starts every league's league, users, rosters and (except
+  redraft leagues) traded-picks requests up front, 6 at a time; the per-league sync, still one league at a time (it
+  reads and writes the app's state), takes each answer once. The user is looked up once per username.
+- `recentDrops.js`: a week before the current one is read once a visit (only the current week again after a sync).
+- **A fix to M18 found here:** a toast that waited for a dialog could come out after a newer toast and cover it
+  (`mls-past-trade.spec.mjs` failed: the rankings upload's toast, queued while its preview closed, covered the trade
+  sync's summary). Showing a toast now drops any older one still waiting; `snackbar.spec.mjs` has the race (it fails
+  without the fix). It passed on main, so M18's own runs missed it: the full suite before the pull request should run.
+
+**After** (the owner's backup, phone, 4x CPU, `PERF_RTT_MS=150 PERF_KBPS=1250`, the player file replayed without an ETag,
+so every tapped sync downloads it: the worst case): Sync All 18.5 s with F25 only, **3.6 s** now; 130 requests → 93 (user
+19 → 1, transactions 38 → 19); main thread busy 0.8 s. Data per Sync All, from the recorded answers' gzip sizes: 2.31 MB
+before; **0.11 MB** when the player file hasn't changed (or the quiet check keeps it); 2.29 MB when it has.
+
+**Tests:** `unit/sleeperPlayerMap.test.mjs` (updated for the 10-minute keep, a clock moved on; new: a tapped sync asks
+at once, an unchanged ETag isn't unpacked, a new one replaces it slimmed), `unit/playerMapSlim.test.mjs`,
+`mls-sync-all-batch.spec.mjs` (the user once, each league's requests once), `snackbar.spec.mjs` (the race). Ran
+check-precache, `node --test` (705), and smoke, mls-leagues, mls-sync-all-batch, mls-sync-league-switch, mls-lineup-needs,
+mls-starter-alert, mls-waiver-status, mls-best-available, mls-top-available, mls-faab-bid, mls-headshots, mds-headshots,
+mds-sync, mds-upload-preview, mls-sim, mls-this-week, mls-mvp-lvp, mls-final-window, mls-auto-sub, backup, key-migration,
+mls-trending, mls-trade-picks-market, mls-past-trade, mls-player-lookup, mls-early-games, mls-byes, snackbar: all passed
+after the toast fix. Screenshots: the previous commit and this one rendered in the same container, all 44 identical.
+
+## F27 — A review as a user of M18, F25 and F26, and three fixes (owner, 2026-11-17)
+
+**Asked:** "Put on your 'user hat'. How do these adjustments feel? Are they visually pleasing? Does they feel clunky? Are
+they helpful?" Then "Yes" to fixing the three things found.
+
+**How:** main and this branch served side by side (a worktree of origin/main on port 4174, the branch on 4175), the
+owner's backup and the recorded Sleeper / ESPN answers, Playwright at 390, 800 and 1280px; animations slowed 20x through
+CDP `Animation.setPlaybackRate` for frames; a probe of `document.elementFromPoint` during a transition. The scripts are
+throwaway (scratchpad), not in the repo.
+
+**Found good:** the speed (the Dashboard and Sync All, F25 / F26) is the headline; toasts centred and calmer (labs'
+grow-in), long enough to read; desktop tab and league fades snappier (300 ms against main's 500); the 3px focus ring;
+the phone slide's spring indistinguishable from main's curve (90% of the way in 153 ms against 149).
+
+**Found off, and fixed:**
+1. **600 to 839px windows got the phone header stretched across them** (M18 moved the 767 / 768 rules to 840): the app's
+   name hidden, a league picker about 700px wide, page margins of 8px. Main did the same from 600 to 767. Now the
+   header (css/base.css's header block and HEADER PICKER) and the page and card padding switch at 600 (Material 3's
+   compact window); from 600 to 839 the picker is at most 22rem and narrows to fit, and the buttons beside it keep their
+   width (at 600px the drop-down's own width made the page scroll sideways 29px; Draft Strategist's Sync lost its width
+   and its word spilled out). The bigger league arrows stay up to 840 (touch screens). Content rules (rows, the Draft
+   Board, trade tiles) still switch at 840. Checked: no sideways scroll on any tab at 600, 700 and 800px with the
+   owner's data, and the headers at each width.
+2. **The Dashboard cards' fold and reorder transition ran 500 ms** (M18's default spatial spring at its own length), and
+   the browser sends taps to the page behind a running view transition (probed: `elementFromPoint` is `<html>` at 100 to
+   400 ms in). `--vt-ms` is now 300 ms (Material's medium2) with the same spring shape. **A correction to the review:** I
+   first said tab switches ran 500 ms on phones; they didn't: tab and league kinds already use `--vt-fade-ms` (300 ms)
+   at every width, phone slides included. The spec below caught it.
+3. **The Guide's paragraphs stopped at 70ch inside a full-width card**, leaving about 40% of it empty and the "About this
+   project" box wider than the text. The Guide card itself (`#guideTab > .settings-card`, both apps) is now a centred
+   column `calc(var(--reading-width) + 3rem)` wide; its paragraphs are no longer capped separately.
+
+**Tests:** `tests/medium-windows.spec.mjs`: at 600, 700 and 839px the app's name shows, the page doesn't scroll
+sideways, the container has 24px side padding and Draft Strategist's Sync fits its word; 599px keeps the compact
+header; on a phone a tab switch's and a league card fold's view-transition animations last 300 ms at most (500 on the
+old CSS: checked); the Guide card is under 800px wide and centred in both apps. 4 of its 6 fail on the previous CSS.
+Ran check-precache, `node --test` (705), nav-rail, view-transitions, room-on-phones, touch-targets, focus-ring,
+chevrons, smoke, mds-setup, mls-keyboard, snackbar, tap-feedback, mls-phone-rows, sheet, badge-legend, medium-windows:
+all passed. **Screenshots:** main and the branch rendered in the same container: `desktop/mls-league-guide.png` and
+`desktop/mds-empty-guide.png` change (the narrower column makes them taller); the other 42 are identical.
+
+### F27: screenshots re-taken on CI (2026-11-17)
+
+The "Update screenshots" run for 723f1a1 succeeded and committed exactly the two predicted PNGs:
+`desktop/mls-league-guide.png` and `desktop/mds-empty-guide.png` (the Guide as a centred column, so taller). No other
+screenshot changed.
+
+### M18 / F25–F27: merged with main (S52) and the full suite before the pull request (2026-11-17)
+
+Owner: "Proceed with opening PR, watching CI, and merging when green." **Merge:** main (S52, #257) into the branch;
+CHANGELOG and LOG kept both sides; the three desktop PNGs both changed (`mls-empty-setup`, `mls-league-guide`,
+`mls-league-setup`) taken from main, then re-taken by CI's update-screenshots run with this branch's reading width and
+Guide column (predicted first: main and the branch rendered in the same container; the same 7 desktop PNGs as in M18
+differ from main, the other 4 already this branch's). `CACHE_NAME` v2.10.15, above main's v2.10.14. S52's new CSS passes
+`motionTokens.test.mjs`. **The full check** (`npm ci && npm run check`, once): check-precache OK (181 precached),
+`node --test` 717 passed, Playwright 1152 passed, 78 skipped, 4 failed: all four `visual.spec.mjs`'s environment guard
+(this container's fonts), as on main.

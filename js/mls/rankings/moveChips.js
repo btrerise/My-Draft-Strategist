@@ -12,13 +12,25 @@ import { showToast } from '../../shared/ui/toast.js';
 import { moveChipMarkup } from '../badges.js';
 import { seasonSetFor } from './season.js';
 
-// "Tue 9/15, 4:10 PM": when an upload happened, for the chips and the card's "Compared with" line.
+// "Tue 9/15, 4:10 PM": when an upload happened, for the chips and the card's "Compared with" line. Each player row with
+// a chip asks for the same time, so the formatters are built once and the last answer kept (improvements F25: building
+// them on every call was about a second of each Sync All on a phone). The same text toLocale*String gives.
+let uploadFormats = null;
+let lastUpload = { ms: NaN, text: '' };
 export function formatUploadTime(ms) {
     const d = new Date(ms);
     if (!Number.isFinite(d.getTime())) return '';
-    const day = `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}`;
-    const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-    return `${day}, ${time}`;
+    if (lastUpload.ms === d.getTime()) return lastUpload.text;
+    if (!uploadFormats) {
+        uploadFormats = {
+            weekday: new Intl.DateTimeFormat(undefined, { weekday: 'short' }),
+            date: new Intl.DateTimeFormat(undefined, { month: 'numeric', day: 'numeric' }),
+            time: new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }),
+        };
+    }
+    const text = `${uploadFormats.weekday.format(d)} ${uploadFormats.date.format(d)}, ${uploadFormats.time.format(d)}`;
+    lastUpload = { ms: d.getTime(), text };
+    return text;
 }
 
 // Chips go away on their own (owner's choice, round 5): a Weekly set's when its rankings week ends

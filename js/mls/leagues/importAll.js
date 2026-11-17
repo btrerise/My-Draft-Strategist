@@ -64,6 +64,9 @@ import { showToast } from '../../shared/ui/toast.js';
             // Single write after the loop instead of one localStorage.setItem per league.
             localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
             localStorage.setItem(KEYS.mls.activeLeague, State.activeLeagueId);
+            // Each league's lineup, computed by its sync without saving (improvements F25), saved once.
+            localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
+            localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
 
             refreshLeagueDropdown();
             if (State.leagues.length > 0 && !State.activeLeagueId) {

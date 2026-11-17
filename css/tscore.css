@@ -73,8 +73,8 @@
     border: 0;
     box-shadow: none;
     opacity: 0;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
-    transition: opacity 0.2s ease, visibility 0.2s ease, display 0.2s allow-discrete;
+    transition: opacity var(--motion-effects-default-ms) var(--motion-effects-default), visibility var(--motion-effects-default-ms) linear;
+    transition: opacity var(--motion-effects-default-ms) var(--motion-effects-default), visibility var(--motion-effects-default-ms) linear, display var(--motion-effects-default-ms) allow-discrete;
     /* Improvements M3: M3's motion tokens here too (see the shared tooltip in css/base.css). */
     pointer-events: none;
     /* Slid back inside the window by js/shared/ui/tooltips.js (place), as the shared tooltip is. */
@@ -148,7 +148,7 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
 }
-@media (max-width: 600px) {
+@media (max-width: 599.98px) {
     .tscore-nav-wrapper {
         top: 49px;
     }
@@ -163,7 +163,7 @@
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
-    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+    transition: color var(--motion-effects-fast-ms) var(--motion-effects-fast), background-color var(--motion-effects-fast-ms) var(--motion-effects-fast), border-color var(--motion-effects-fast-ms) var(--motion-effects-fast);
 }
 
 .tscore-nav-btn:hover {
@@ -337,7 +337,7 @@
     font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
-    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+    transition: color var(--motion-effects-fast-ms) var(--motion-effects-fast), background-color var(--motion-effects-fast-ms) var(--motion-effects-fast), border-color var(--motion-effects-fast-ms) var(--motion-effects-fast);
 }
 
 .pos-toggle-btn:hover {
@@ -443,7 +443,7 @@
 .tscore-compare-table td:nth-child(2) { position: static; box-shadow: none; }
 /* Below the sticky header and tab bar when "How it differs…" scrolls to it. */
 #inSeasonModel { scroll-margin-top: 140px; }
-@media (max-width: 600px) {
+@media (max-width: 599.98px) {
     /* All three columns on a phone's width, no sideways scroll. */
     .tscore-compare-table th,
     .tscore-compare-table td { padding: 0.6rem 0.5rem; font-size: 0.82rem; white-space: normal; }

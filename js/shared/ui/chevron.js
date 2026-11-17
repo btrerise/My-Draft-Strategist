@@ -1,6 +1,6 @@
 // Chevrons that turn with their fold (improvements F11). The turn itself is CSS: the shared .chevron rule in
 // css/base.css (CHEVRONS) sets each chevron's angle from its toggle's state ([open] on a <details>, or
-// aria-expanded on a button) and eases between them at the Dashboard's speed (--vt-ms, --vt-ease), with no turn
+// aria-expanded on a button) and eases between them on the fast spatial spring (--motion-spatial-fast), with no turn
 // under Reduce Motion. That works whenever a fold flips its state in place.
 //
 // A few folds redraw their whole box on every click (the Lineup tab's "This lineup needs you" title, Draft

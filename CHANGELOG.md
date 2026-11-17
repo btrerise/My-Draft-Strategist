@@ -15,6 +15,24 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Sleeper's player list is lighter.** The app keeps only the parts it uses (a tenth of the 15 MB), unpacks it in the
+  background, and downloads it again only when Sleeper has changed it.
+- **Motion follows Material 3 Expressive.** Everything that moves now uses Material's own motion: things that move
+  (a chevron turning, a switch's handle, a pressed button's corners, the phone tab slide) settle with a slight spring,
+  and fades and colour changes are quicker and smooth. Tab and league fades on wider screens take 300 ms instead of
+  half a second, and the tab bar's marker moves in 200 ms. With Reduce Motion nothing moves, and the sync spinner fades
+  softly instead of turning.
+- **Toasts behave like Material 3's snackbar.** They sit centred at the bottom of the page (clear of the rail on a
+  computer, above the tab bar on a phone), grow up into place instead of bouncing in, and never cover an open dialog:
+  one that arrives while a dialog is open waits until it closes. A message stays longer the longer it is (4 to 8
+  seconds), and an error stays until you close it with ✕.
+- **A bolder keyboard focus ring.** The green ring around whatever has keyboard focus is 3px, Material 3's size, on
+  every page (text fields keep their 2px outline).
+- **Easier reading on wide screens.** The Guide is a centred column about 70 characters wide, and long explanations
+  (the setup steps, and T-Score's Research and notes) stop at that width instead of running across the whole window.
+- **Tablets and narrow windows (600 to 839 pixels wide)** show the app's name and a league picker of normal width in the
+  header, with comfortable margins, instead of the phone header stretched across the screen; a window exactly 600
+  pixels wide gets one layout instead of a mix of two.
 - **No flash when you tap on a phone.** The grey-blue box the phone's browser drew over whatever you tapped is gone,
   here and on the T-Score page. A tap still answers with the app's own light tint while your finger is down, and now
   folds (T-Score's "How it's projected" and the like), the "Switch to My Lineup Strategist" banner and the menu's links
@@ -198,6 +216,37 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Dashboard cards fold and move quicker.** Folding a league card (or Fold all) settles in 0.3 seconds instead of 0.5,
+  and a tap right after it no longer goes unanswered.
+- **Sync All uses a fraction of the data, and doesn't wait on each league in turn.** Your leagues are fetched side by
+  side instead of one after another, your Sleeper account is looked up once instead of once per league, and last week's
+  waiver moves once a visit. Sleeper's 15 MB player list (where injury news comes from) is only downloaded again when
+  Sleeper has changed it, and it's unpacked in the background, so the screen no longer freezes for a moment. A Sync All
+  you tap always checks Sleeper for the latest injury news; the starter alert's background check reuses a copy under
+  10 minutes old (Sleeper itself updates that list every 10 minutes). On a phone network with 20 leagues a sync takes
+  about 4 seconds and, when the player list hasn't changed, about 0.1 MB instead of 2.3 MB.
+- **A toast never covers a newer one.** One that waited for a dialog to close could come out after, and over, a later
+  message (the summary of a sync for a trade, for example).
+- **Much faster on phones with many leagues.** Opening the Dashboard took over 3 seconds with 20 leagues, and Sync All
+  over a minute on a phone, since the waiver chips (Free agent / On waivers) arrived; both are back to a fraction of a
+  second and a few seconds. Sync All also no longer redraws every tab for each league it syncs: it draws once, at the
+  end. The starter alert's background check, which runs a sync before each kickoff window, is just as quick now.
+- **Motion follows Material 3 Expressive.** Everything that moves now uses Material's own motion: things that move
+  (a chevron turning, a switch's handle, a pressed button's corners, the phone tab slide) settle with a slight spring,
+  and fades and colour changes are quicker and smooth. Tab and league fades on wider screens take 300 ms instead of
+  half a second, and the tab bar's marker moves in 200 ms. With Reduce Motion nothing moves, and the sync spinner fades
+  softly instead of turning.
+- **Toasts behave like Material 3's snackbar.** They sit centred at the bottom of the page (clear of the rail on a
+  computer, above the tab bar on a phone), grow up into place instead of bouncing in, and never cover an open dialog:
+  one that arrives while a dialog is open waits until it closes. A message stays longer the longer it is (4 to 8
+  seconds), and an error stays until you close it with ✕.
+- **A bolder keyboard focus ring.** The green ring around whatever has keyboard focus is 3px, Material 3's size, on
+  every page (text fields keep their 2px outline).
+- **Easier reading on wide screens.** The Guide is a centred column about 70 characters wide, and long explanations
+  (the setup steps) stop at that width instead of running across the whole window.
+- **Tablets and narrow windows (600 to 839 pixels wide)** show the app's name and a league picker of normal width in the
+  header, with comfortable margins, instead of the phone header stretched across the screen; a window exactly 600
+  pixels wide gets one layout instead of a mix of two.
 - **Bye Crunch: a heads-up two weeks ahead.** When byes in one of the next 2 weeks leave a starting spot nobody on your
   roster can fill, the league's Dashboard card and the Lineup tab's box show one line per week, "Bye Crunch · Week 13: 2
   starters short". Tap it to see each position ("RB: 1 short · 3 of 4 on bye") with a Find button that opens Top

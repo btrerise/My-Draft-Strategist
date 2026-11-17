@@ -39,9 +39,22 @@ export function dropsFromTransactions(lists, playerMap) {
 
 const eligible = (league) => !!(league && league.waivers && league.leagueId && !String(league.leagueId).startsWith('manual_'));
 
+// A week before this one doesn't change any more, so its list is read once a visit and kept, even when the league syncs
+// again (improvements F26: Sync All re-read both weeks of every league, 38 requests for 19 leagues; now 19). A failed
+// read isn't kept.
+const pastWeekLists = new Map(); // `${leagueId}:${week}` -> promise of the list
+function transactionsFor(leagueId, w, week) {
+    if (w >= week) return getSleeperTransactions(leagueId, w);
+    const key = `${leagueId}:${w}`;
+    if (!pastWeekLists.has(key)) {
+        pastWeekLists.set(key, getSleeperTransactions(leagueId, w).catch(e => { pastWeekLists.delete(key); throw e; }));
+    }
+    return pastWeekLists.get(key);
+}
+
 function load(league, week) {
     const weeks = [week, week - 1].filter(w => w >= 1);
-    return Promise.all([Promise.all(weeks.map(w => getSleeperTransactions(league.leagueId, w))), getSleeperPlayerMap()])
+    return Promise.all([Promise.all(weeks.map(w => transactionsFor(league.leagueId, w, week))), getSleeperPlayerMap()])
         .then(([lists, map]) => {
             const byWeek = {};
             weeks.forEach((w, i) => { byWeek[w] = lists[i]; });

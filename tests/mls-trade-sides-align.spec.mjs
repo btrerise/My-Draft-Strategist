@@ -44,7 +44,7 @@ async function asDynasty(page) {
 
 test.describe('Trade Analyzer: the two sides line up', () => {
     test('desktop (1280px): Sleeper league, From on both sides; rows level with one, two and many players, picks shown', async ({ page }) => {
-        test.skip(test.info().project.name !== 'desktop', 'side by side from 768px');
+        test.skip(test.info().project.name !== 'desktop', 'side by side from 840px');
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
         await loadMlsRankings(page);
@@ -79,7 +79,7 @@ test.describe('Trade Analyzer: the two sides line up', () => {
     });
 
     test('desktop (1280px): a long username ends in "…" on one line', async ({ page }) => {
-        test.skip(test.info().project.name !== 'desktop', 'side by side from 768px');
+        test.skip(test.info().project.name !== 'desktop', 'side by side from 840px');
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
         await page.evaluate(async () => {
@@ -101,7 +101,7 @@ test.describe('Trade Analyzer: the two sides line up', () => {
     });
 
     test('desktop (1280px): manual league, no From on either side; rows level', async ({ page }) => {
-        test.skip(test.info().project.name !== 'desktop', 'side by side from 768px');
+        test.skip(test.info().project.name !== 'desktop', 'side by side from 840px');
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
         await loadMlsRankings(page);

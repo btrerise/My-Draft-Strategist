@@ -19,6 +19,7 @@
 // league, keep going" behavior is preserved on purpose rather than by accident.
 import { IDB_DATABASES } from '../storage/keys.js';
 import { mdsFetch, MDS_LONG_FETCH_TIMEOUT_MS } from '../net.js';
+import { PLAYER_FIELDS_VERSION, slimPlayerMap } from './playerMapSlim.js';
 
 /**
  * Fetches Sleeper's current NFL state (week, season, etc). Returns null on a non-ok
@@ -26,6 +27,44 @@ import { mdsFetch, MDS_LONG_FETCH_TIMEOUT_MS } from '../net.js';
  * load, and the season lookup before listing a user's leagues) already treat "no data" as
  * a normal, recoverable case, not an error worth surfacing to the user.
  */
+// --- ONE SYNC'S REQUESTS, STARTED AHEAD (improvements F26) ---
+// Sync All works through the leagues one at a time (each league's sync reads and writes the app's state), and each
+// league's 4 or 5 requests went one after another: with 20 leagues on a phone, 80 to 100 round trips of 0.1 to 0.3 s
+// each spent waiting. fetchAhead starts a list of requests in the background, 6 at a time; the functions below take a
+// started request's answer when they ask for that address, once (anything later asks Sleeper again). endFetchAhead drops
+// what's left. A request that fails fails the same way for the caller as it would have on its own.
+const FETCH_AHEAD_PARALLEL = 6;
+let _ahead = null; // url -> { start, promise }
+export function fetchAhead(urls) {
+    if (!_ahead) _ahead = new Map();
+    const queue = [];
+    for (const url of urls) {
+        if (_ahead.has(url)) continue;
+        let started = false, resolve;
+        const promise = new Promise(r => { resolve = r; });
+        const start = () => { if (!started) { started = true; resolve(mdsFetch(url)); } return promise; };
+        _ahead.set(url, { start, promise });
+        queue.push(start);
+    }
+    let next = 0;
+    const lane = async () => { while (next < queue.length) { try { await queue[next++](); } catch (e) { /* the caller sees it */ } } };
+    for (let i = 0; i < Math.min(FETCH_AHEAD_PARALLEL, queue.length); i++) lane();
+}
+export function endFetchAhead() { _ahead = null; }
+function sleeperFetch(url) {
+    const hit = _ahead && _ahead.get(url);
+    if (!hit) return mdsFetch(url);
+    _ahead.delete(url);
+    return hit.start();
+}
+// The addresses a league's sync asks for (sync.js, processSleeperData): the league, its users, its rosters, and its
+// traded picks unless it's a redraft league (by its last sync; a league never synced gets them too).
+export const sleeperUserUrl = (username) => `https://api.sleeper.app/v1/user/${username}`;
+export function sleeperLeagueSyncUrls(league) {
+    const base = `https://api.sleeper.app/v1/league/${league.leagueId}`;
+    return [base, `${base}/users`, `${base}/rosters`, ...(league.leagueType === 'redraft' ? [] : [`${base}/traded_picks`])];
+}
+
 export async function getNflState() {
     const res = await mdsFetch('https://api.sleeper.app/v1/state/nfl');
     return res.ok ? res.json() : null;
@@ -36,7 +75,7 @@ export async function getNflState() {
  * Draft Strategist's draft sync passes its own wording as `notFoundMessage` (refactor 2C).
  */
 export async function getSleeperUser(username, { notFoundMessage = "User not found." } = {}) {
-    const res = await mdsFetch(`https://api.sleeper.app/v1/user/${username}`);
+    const res = await sleeperFetch(sleeperUserUrl(username));
     if (!res.ok) throw new Error(notFoundMessage);
     return res.json();
 }
@@ -46,7 +85,7 @@ export async function getSleeperUser(username, { notFoundMessage = "User not fou
  * Draft Strategist's draft sync treats the league as optional (a mock draft has none).
  */
 export async function getSleeperLeague(leagueId, { nullIfNotOk = false } = {}) {
-    const res = await mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}`);
+    const res = await sleeperFetch(`https://api.sleeper.app/v1/league/${leagueId}`);
     if (!res.ok) {
         if (nullIfNotOk) return null;
         throw new Error("League ID not found.");
@@ -59,14 +98,14 @@ export async function getSleeperLeague(leagueId, { nullIfNotOk = false } = {}) {
  * as JSON. `nullIfNotOk` returns null for a non-ok response instead (Draft Strategist).
  */
 export async function getSleeperLeagueUsers(leagueId, { nullIfNotOk = false } = {}) {
-    const res = await mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
+    const res = await sleeperFetch(`https://api.sleeper.app/v1/league/${leagueId}/users`);
     if (nullIfNotOk && !res.ok) return null;
     return res.json();
 }
 
 /** No ok-check, matching the original -- a non-ok response's body still gets parsed as JSON. */
 export async function getSleeperLeagueRosters(leagueId) {
-    const res = await mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
+    const res = await sleeperFetch(`https://api.sleeper.app/v1/league/${leagueId}/rosters`);
     return res.json();
 }
 
@@ -76,7 +115,7 @@ export async function getSleeperLeagueRosters(leagueId) {
  * non-ok response, so a league still syncs without it.
  */
 export async function getSleeperTradedPicks(leagueId) {
-    const res = await mdsFetch(`https://api.sleeper.app/v1/league/${leagueId}/traded_picks`);
+    const res = await sleeperFetch(`https://api.sleeper.app/v1/league/${leagueId}/traded_picks`);
     if (!res.ok) return null;
     return res.json();
 }
@@ -196,6 +235,12 @@ const SLEEPER_PLAYER_DB_NAME = IDB_DATABASES.sleeperPlayerMap.name;
 const SLEEPER_PLAYER_STORE = IDB_DATABASES.sleeperPlayerMap.stores[0];
 const SLEEPER_PLAYER_CACHE_KEY = 'nfl_player_map';
 const SLEEPER_PLAYER_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // matches Sleeper's own "once a day" guidance
+// An automatic refresh (the starter alert's background Sync All) within this long of the last download keeps it
+// (improvements F26): Sleeper's servers hand out one copy of the file for 10 minutes (Cache-Control: s-maxage=600), so
+// asking sooner rarely brings newer injury news. A Sync All you tap passes keepFor: 0 and always asks: when you've just
+// seen an "Out" on Sleeper, its copy may already have it.
+const SLEEPER_PLAYER_REFRESH_MS = 10 * 60 * 1000;
+const SLEEPER_PLAYERS_URL = 'https://api.sleeper.app/v1/players/nfl';
 
 function openSleeperCacheDB() {
     return new Promise((resolve, reject) => {
@@ -233,12 +278,12 @@ async function getCachedSleeperPlayerMap() {
 // Fire-and-forget from the caller's perspective -- persisting the cache is a nice-to-have,
 // not required for correctness. If it fails (quota, no IndexedDB support, etc.), the in-memory
 // cache from this session still works fine; it just won't survive a page reload.
-async function setCachedSleeperPlayerMap(data) {
+async function setCachedSleeperPlayerMap(data, etag) {
     try {
         const db = await openSleeperCacheDB();
         await new Promise((resolve, reject) => {
             const tx = db.transaction(SLEEPER_PLAYER_STORE, 'readwrite');
-            tx.objectStore(SLEEPER_PLAYER_STORE).put({ data, fetchedAt: Date.now() }, SLEEPER_PLAYER_CACHE_KEY);
+            tx.objectStore(SLEEPER_PLAYER_STORE).put({ data, fetchedAt: Date.now(), etag: etag || null, fields: PLAYER_FIELDS_VERSION }, SLEEPER_PLAYER_CACHE_KEY);
             tx.oncomplete = () => resolve();
             tx.onerror = () => reject(tx.error);
         });
@@ -270,33 +315,97 @@ function sleeperResponseError(message) {
 // Consolidated Sleeper DB Cache
 let _sleeperPlayerMapCache = null;
 let _sleeperPlayerMapPromise = null;
+// The download, in a worker (playerMapWorker.js) so unpacking the file never freezes the screen; here, the same way, if
+// a worker can't start. Resolves to { unchanged: true } (Sleeper's version tag matches knownEtag: the saved copy is
+// current) or { data, etag } (the slim map); throws as mdsFetch and the checks below do.
+let _playerMapWorker = null;
+function downloadPlayerMap(knownEtag) {
+    const failed = (msg) => {
+        if (msg.timeout) {
+            const err = new Error("Sleeper didn't respond in time. Check your connection and try again.");
+            err.name = 'TimeoutError';
+            err.isTimeout = true;
+            throw err;
+        }
+        if (msg.status) throw sleeperResponseError(`Sleeper's player list request failed (HTTP ${msg.status}).`);
+        throw new TypeError(msg.error || 'Failed to fetch');
+    };
+    const onThisThread = async () => {
+        const res = await mdsFetch(SLEEPER_PLAYERS_URL, { cache: 'no-cache' }, MDS_LONG_FETCH_TIMEOUT_MS);
+        if (!res.ok) failed({ status: res.status });
+        const etag = res.headers && res.headers.get ? res.headers.get('etag') : null;
+        if (etag && knownEtag && etag === knownEtag) {
+            if (res.body && res.body.cancel) res.body.cancel().catch(() => {});
+            return { unchanged: true, etag };
+        }
+        return { data: slimPlayerMap(await res.json()), etag };
+    };
+    let worker;
+    try {
+        worker = _playerMapWorker || (_playerMapWorker = new Worker(new URL('./playerMapWorker.js', import.meta.url), { type: 'module' }));
+    } catch (e) {
+        return onThisThread();
+    }
+    return new Promise((resolve, reject) => {
+        const done = () => { worker.onmessage = null; worker.onerror = null; };
+        worker.onmessage = (e) => {
+            done();
+            const msg = e.data || {};
+            try {
+                if (msg.unchanged || msg.data) resolve(msg);
+                else failed(msg);
+            } catch (err) { reject(err); }
+        };
+        // The worker itself failed (its file didn't load, a browser that can't run module workers): this thread.
+        worker.onerror = (e) => {
+            if (e && e.preventDefault) e.preventDefault();
+            done();
+            _playerMapWorker = null;
+            onThisThread().then(resolve, reject);
+        };
+        worker.postMessage({ url: SLEEPER_PLAYERS_URL, knownEtag: knownEtag || null, timeoutMs: MDS_LONG_FETCH_TIMEOUT_MS });
+    });
+}
+
+// The saved copy, if it's a slim map of this version (an older full or differently slimmed copy is downloaded again).
+const usableCache = (cached) => cached && cached.fields === PLAYER_FIELDS_VERSION && isSleeperPlayerMap(cached.data) ? cached : null;
+
+// Sleeper's player file as { id: player } with the fields in playerMapSlim.js. Saved in IndexedDB and kept for a day.
+// forceRefresh (Sync All, which is also the starter alert's "check Sleeper now" for injury news) checks Sleeper again,
+// unless the copy is younger than keepFor (10 minutes unless given: SLEEPER_PLAYER_REFRESH_MS). When Sleeper's file
+// hasn't changed since (the same version tag), the saved copy is kept without unpacking anything, and usually without
+// downloading it: the request goes through the browser's cache, which asks Sleeper "changed since?" and gets a 304.
+let _sleeperPlayerMapFetchedAt = 0;
+let _sleeperPlayerMapEtag = null;
 export function getSleeperPlayerMap(options = {}) {
-    if (_sleeperPlayerMapCache && !options.forceRefresh) return Promise.resolve(_sleeperPlayerMapCache);
-    if (_sleeperPlayerMapPromise && !options.forceRefresh) return _sleeperPlayerMapPromise;
+    const force = !!options.forceRefresh;
+    const keepFor = Number.isFinite(options.keepFor) ? options.keepFor : SLEEPER_PLAYER_REFRESH_MS;
+    const fresh = () => Date.now() - _sleeperPlayerMapFetchedAt < keepFor;
+    if (_sleeperPlayerMapCache && (!force || fresh())) return Promise.resolve(_sleeperPlayerMapCache);
+    if (_sleeperPlayerMapPromise) return _sleeperPlayerMapPromise;
 
     _sleeperPlayerMapPromise = (async () => {
         try {
-            // forceRefresh (used by the injury-status league scanner, which wants the absolute
-            // latest data) skips straight past both the in-memory AND IndexedDB caches.
-            if (!options.forceRefresh) {
-                const cached = await getCachedSleeperPlayerMap();
-                // isSleeperPlayerMap: skip (and so replace) a bad entry an older version of this
-                // file may have saved, back when it cached whatever Sleeper sent.
-                if (cached && (Date.now() - cached.fetchedAt) < SLEEPER_PLAYER_CACHE_MAX_AGE_MS && isSleeperPlayerMap(cached.data)) {
+            const cached = usableCache(await getCachedSleeperPlayerMap());
+            if (cached) {
+                const age = Date.now() - cached.fetchedAt;
+                if (age < (force ? keepFor : SLEEPER_PLAYER_CACHE_MAX_AGE_MS)) {
                     _sleeperPlayerMapCache = cached.data;
+                    _sleeperPlayerMapFetchedAt = cached.fetchedAt;
+                    _sleeperPlayerMapEtag = cached.etag || null;
                     return cached.data;
                 }
             }
-
-            // The long timeout, not the 12s default: this payload is ~15MB (see the cache
-            // comment above) and a healthy download of it on a slow phone connection can
-            // legitimately outlast the ceiling an ordinary JSON call gets.
-            const res = await mdsFetch('https://api.sleeper.app/v1/players/nfl', {}, MDS_LONG_FETCH_TIMEOUT_MS);
-            if (!res.ok) throw sleeperResponseError(`Sleeper's player list request failed (HTTP ${res.status}).`);
-            const data = await res.json();
+            const knownEtag = cached ? cached.etag : (_sleeperPlayerMapCache ? _sleeperPlayerMapEtag : null);
+            const got = await downloadPlayerMap(knownEtag);
+            const data = got.unchanged ? (cached ? cached.data : _sleeperPlayerMapCache) : got.data;
             if (!isSleeperPlayerMap(data)) throw sleeperResponseError("Sleeper's player list came back in an unexpected format.");
             _sleeperPlayerMapCache = data;
-            setCachedSleeperPlayerMap(data); // don't await -- this shouldn't delay callers
+            _sleeperPlayerMapFetchedAt = Date.now();
+            _sleeperPlayerMapEtag = got.etag || null;
+            // Saved again only when it changed (an unchanged copy is 1 to 2 MB to write for nothing). Its saved time then
+            // stays the older one, so after a reload the next refresh asks a little sooner: harmless.
+            if (!got.unchanged) setCachedSleeperPlayerMap(data, got.etag); // don't await -- this shouldn't delay callers
             return data;
         } finally {
             _sleeperPlayerMapPromise = null;

@@ -2,7 +2,7 @@
 // sync-log accordion (renderSyncLogs) and the Optimize All / Sync All buttons.
 // Improvements S11 added the "lineups need you" box under the buttons (renderLineupNeeds); since S12 its to-dos
 // are in the league cards (render/leagueCards.js) and the box is a one-line strip.
-import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
+import { endFetchAhead, fetchAhead, getSleeperPlayerMap, getSleeperUser, sleeperLeagueSyncUrls, sleeperUserUrl } from '../../shared/api/sleeper.js';
 import { escapeHtml } from '../../shared/html.js';
 import { refreshGameTimes, State } from '../state.js';
 import { isBestBallLeague } from '../helpers.js';
@@ -503,11 +503,20 @@ export const syncAllLeagues = function(btn, { quiet = false } = {}) {
             // the same way optimizeAllLineups restores it.
             const originalActiveId = State.activeLeagueId;
             try {
+                // Every league's requests start now, in the background, 6 at a time, while the leagues are still
+                // worked through one by one below (improvements F26: on a phone the waiting was most of a sync).
+                const usernames = [...new Set(sleeperLeagues.map(l => l.username))];
+                fetchAhead([...usernames.map(sleeperUserUrl), ...sleeperLeagues.flatMap(sleeperLeagueSyncUrls)]);
                 // Preload the heavy player map ONCE to save massive API bandwidth
                 // forceRefresh: Sync All is also the "check Sleeper now" for injuries (it replaced the
-                // Global Injury Auditor, which did the same), so it wants today's statuses, not the cached map.
+                // Global Injury Auditor, which did the same), so it wants today's statuses, not the cached map
+                // (since F26: a Sync All you tap always asks, the quiet one keeps a copy under 10 minutes old, and an
+                // unchanged file is neither downloaded nor unpacked again).
                 // This week's projections too, so every league re-optimized below can use them (S12 round 5).
-                const [playerMap] = await Promise.all([getSleeperPlayerMap({ forceRefresh: true }), ensureLineupProjections(), refreshGameTimes()]);
+                // Each Sleeper user once, not once per league (F26); a failed lookup leaves it to that league's sync.
+                const userIds = new Map();
+                const [playerMap] = await Promise.all([getSleeperPlayerMap({ forceRefresh: true, keepFor: quiet ? undefined : 0 }), ensureLineupProjections(), refreshGameTimes(),
+                    ...usernames.map(u => getSleeperUser(u).then(user => { if (user && user.user_id) userIds.set(u, user.user_id); }).catch(() => {}))]);
                 const preloaded = { playerMap }; 
 
                 let successCount = 0;
@@ -539,7 +548,7 @@ export const syncAllLeagues = function(btn, { quiet = false } = {}) {
                     // league gets a lineup built from the originally active league's rankings.
                     hydrateRankingsForLeague(l);
                     // isRefresh = true, suppressErrorToast = true, showChangeSummary = true, skipSave = true
-                    let result = await processSleeperData(l.username, l.leagueId, null, true, preloaded, true, true, true);
+                    let result = await processSleeperData(l.username, l.leagueId, null, true, { ...preloaded, userId: userIds.get(l.username) }, true, true, true);
                     
                     if (result) {
                         successCount++;
@@ -567,10 +576,9 @@ export const syncAllLeagues = function(btn, { quiet = false } = {}) {
                     hydrateRankingsForLeague(l);
                     optimizeLineup(true, false, { batch: true });
                 });
-                if (manualChecked.length > 0) {
-                    localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
-                    localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
-                }
+                // Every league's new lineup, once (each league's sync computes it without saving: improvements F25).
+                localStorage.setItem(KEYS.mls.manualStarters, JSON.stringify(State.manualStartersMap));
+                localStorage.setItem(KEYS.mls.manualBench, JSON.stringify(State.manualBenchMap));
 
                 // Single write after the loop instead of one localStorage.setItem per league. The
                 // active league is put back first so the one saved is yours, not the last synced.
@@ -637,6 +645,7 @@ export const syncAllLeagues = function(btn, { quiet = false } = {}) {
                     : "An error occurred while syncing leagues.";
                 if (!quiet) showToast(msg, { isError: true, force: true });
             } finally {
+                endFetchAhead();
                 setToastsSuppressed(false);
 
                 if (btn) {

@@ -35,7 +35,7 @@
     background: #3b82f6; 
     cursor: pointer;
     box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
-    transition: transform 0.1s ease;
+    transition: transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast);
 }
 .mds-slider::-webkit-slider-thumb:hover {
     transform: scale(1.2);
@@ -48,7 +48,7 @@
     cursor: pointer;
     border: none;
     box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
-    transition: transform 0.1s ease;
+    transition: transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast);
 }
 .mds-slider::-moz-range-thumb:hover {
     transform: scale(1.2);
@@ -94,7 +94,7 @@
     font-size: 0.75rem; 
     cursor: pointer; 
     font-family: inherit;
-    transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-radius var(--press-morph);
+    transition: color var(--motion-effects-fast-ms) var(--motion-effects-fast), background-color var(--motion-effects-fast-ms) var(--motion-effects-fast), border-color var(--motion-effects-fast-ms) var(--motion-effects-fast), box-shadow var(--motion-effects-fast-ms) var(--motion-effects-fast), opacity var(--motion-effects-default-ms) var(--motion-effects-default), border-radius var(--press-morph);
     letter-spacing: 0.3px;
 }
 
@@ -222,7 +222,7 @@
     padding: 1rem; 
     display: flex; 
     flex-direction: column;
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast), border-color var(--motion-effects-fast-ms) var(--motion-effects-fast), box-shadow var(--motion-effects-fast-ms) var(--motion-effects-fast);
 }
 
 .player-card:hover {
@@ -245,7 +245,7 @@
     content-visibility: auto;
     contain-intrinsic-size: auto 80px;
 }
-@media (max-width: 767px) {
+@media (max-width: 839.98px) {
     #playerPool .player-card { contain-intrinsic-size: auto 74px; }
 }
 /* content-visibility: auto implies paint containment, which clips anything that overflows the
@@ -490,7 +490,7 @@
     justify-content: center; 
     align-items: center; 
     text-align: center; 
-    transition: filter 0.2s;
+    transition: filter var(--motion-effects-fast-ms) var(--motion-effects-fast);
     gap: 2px;
     overflow: hidden;
     position: relative;
@@ -542,7 +542,7 @@
 .draft-cell.K { background-color: var(--pos-k); border-left: 3px solid var(--pos-k-border); }
 .draft-cell.DEF { background-color: var(--pos-def); border-left: 3px solid var(--pos-def-border); }
 
-@media (min-width: 768px) {
+@media (min-width: 840px) {
     .draft-cell-first {
         font-size: 0.65rem;
     }
@@ -644,7 +644,7 @@
     display: none;
 }
 /* Mobile-specific adjustments for Draft Board edge-to-edge bleed */
-@media (max-width: 767px) {
+@media (max-width: 839.98px) {
     .draft-board-container {
         /* Pull container out to the absolute edges. Must match .container's MOBILE padding
            (0.5rem, not its 1.5rem desktop padding) or this overshoots and causes real
@@ -698,7 +698,7 @@
 }
 /* --- ACCESSIBILITY & MICRO-INTERACTIONS --- */
 .player-card {
-  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: transform var(--motion-spatial-fast-ms) var(--motion-spatial-fast), border-color var(--motion-effects-fast-ms) var(--motion-effects-fast), box-shadow var(--motion-effects-fast-ms) var(--motion-effects-fast);
 }
 
 /* The card itself is no longer a tab stop (its buttons are), so this marks which card a
@@ -760,13 +760,13 @@ button.edit-link {
 }
 
 /* Mobile Default: Details hidden only if setting is enabled.
-   (Consolidated from what used to be two overlapping @media(max-width:600px) blocks here plus
+   (Consolidated from what used to be two overlapping @media(max-width: 599.98px) blocks here plus
    a third small one further down -- see the single block near the PLAYER CARD GRID LAYOUT
    section below for the live rules.) */
 
 /* Desktop Default: Details always visible, expand button hidden.
    (Previously declared 3 times near-identically across this file -- consolidated to one.) */
-@media (min-width: 768px) {
+@media (min-width: 840px) {
     .card-details {
         display: block !important; /* Force visible */
         margin-top: 0.25rem;
@@ -871,7 +871,7 @@ button.edit-link {
 }
 
 /* --- MOBILE COLLAPSIBLE CARDS CONDITIONAL LAYOUT --- */
-@media (max-width: 767px) {
+@media (max-width: 839.98px) {
     body.enable-mobile-collapse .card-grid {
         /* When enabled: Actions stay on top row, Stats span full width below */
         grid-template-areas:
@@ -901,7 +901,7 @@ button.edit-link {
     display: inline-block;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 839.98px) {
     .methodology-link {
         display: block; /* Forces it to its own line */
         margin-left: 0;

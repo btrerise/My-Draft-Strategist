@@ -230,6 +230,14 @@ shot and S10 took four runs for 14.)
   to 21, the CPU slowed 4x, each tab switch timed five times; `PERF_REF=<ref>` for another commit, `PERF_PROFILE=1` for
   the functions that took the time. Both are how `docs/improvements/performance.md` was measured: rerun them the same
   way for a before/after.
+- **Backup timing** (`tests/tools/backup-perf.tool.mjs`, improvements F25): `PERF_BACKUP=<a Lineup Strategist backup
+  file> npx playwright test -c tools/playwright.config.mjs backup-perf --project phone` loads that backup, slows the CPU 4x
+  and times switches to the Dashboard and Sync All: long tasks, the 4 s after, requests, and Chrome's own style, layout
+  and script time. Every request leaving localhost is recorded the first time and replayed after (`perf-net.json` beside
+  the backup), so `PERF_REF=<git ref>` compares commits on the same data; `PERF_PROFILE=1` adds the busiest functions;
+  `PERF_RTT_MS=150 PERF_KBPS=1250` delays each answer like a phone network (F26). Record ESPN's scoreboard by hand if a
+  cloud container is refused it (LOG F25): without kickoff times several features do no work.
+  A backup holds the owner's data: keep it and its `perf-net.json` out of the repo.
 - `tests/tools/playwright.config.mjs` matches `*.tool.mjs`, so the default config never runs these (each `npm run`
   script names its own file).
 
@@ -330,6 +338,12 @@ shot and S10 took four runs for 14.)
   area (the spec then reports it as short). The spec waits for every animation that ends before it measures: a tab
   measured on the first frame of its fade-in is at opacity 0, and `checkVisibility()` drops all of its controls (that
   was why T-Score's tabs were measured only now and then).
+- **Motion and window sizes** (improvements M18, Material 3 Expressive): every `transition` and `animation` takes its curve
+  and time from the `--motion-*` tokens in `css/base.css`'s `:root` (springs as `linear()` easings: spatial for what moves,
+  effects for colour and opacity; emphasized decelerate / accelerate for what enters or leaves past the screen's edge).
+  Media queries use Material's window sizes, `max-width: 599.98px` / `min-width: 600px` and `839.98px` / `840px`, plus
+  the few content tweaks listed in `tests/unit/motionTokens.test.mjs`, which fails on anything else. Material values
+  come from `docs/improvements/material3-review-3.md`, which names the source files.
 - **Image exports** (improvements S19, round 12): html2canvas draws text without the page's `tabular-nums`, so a new
   export calls `useProportionalDigits(clonedRoot)` (`js/shared/ui/exportImage.js`) in its `onclone`;
   `export-numerals.spec.mjs` checks three exports' clones; the Scoreboard's Export (improvements S22) is checked in

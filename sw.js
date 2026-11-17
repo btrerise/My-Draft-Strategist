@@ -34,7 +34,7 @@
 //   * Middle number (v2.8.x -> v2.9.0): when this file's own behavior changes -- the caching
 //     strategy, what works offline, how old caches are cleared -- as v2.8.0 marked the strategy
 //     change above. App features don't move it; they go in CHANGELOG.md and the apps' footer versions.
-const CACHE_NAME = 'draft-strategist-v2.10.14';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.10.15';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -232,6 +232,8 @@ const PRECACHE_ASSETS = [
     // their static imports outside js/mls/, and theirs:
     '/js/shared/rankings/parse.js',   // -> names.js
     '/js/shared/api/sleeper.js',
+    '/js/shared/api/playerMapSlim.js',   // F26: the player fields the apps keep
+    '/js/shared/api/playerMapWorker.js', // F26: downloads and slims the player file off the main thread
     '/js/shared/api/market.js',       // -> names.js
     '/js/shared/api/ffc.js',          // Fantasy Football Calculator, via /api/ffc/ (refactor 7A)
     '/js/shared/api/sleeperStats.js', // -> storage/idb.js
