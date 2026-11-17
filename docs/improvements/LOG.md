@@ -13919,3 +13919,14 @@ all passed. **Screenshots:** main and the branch rendered in the same container:
 The "Update screenshots" run for 723f1a1 succeeded and committed exactly the two predicted PNGs:
 `desktop/mls-league-guide.png` and `desktop/mds-empty-guide.png` (the Guide as a centred column, so taller). No other
 screenshot changed.
+
+### M18 / F25–F27: merged with main (S52) and the full suite before the pull request (2026-11-17)
+
+Owner: "Proceed with opening PR, watching CI, and merging when green." **Merge:** main (S52, #257) into the branch;
+CHANGELOG and LOG kept both sides; the three desktop PNGs both changed (`mls-empty-setup`, `mls-league-guide`,
+`mls-league-setup`) taken from main, then re-taken by CI's update-screenshots run with this branch's reading width and
+Guide column (predicted first: main and the branch rendered in the same container; the same 7 desktop PNGs as in M18
+differ from main, the other 4 already this branch's). `CACHE_NAME` v2.10.15, above main's v2.10.14. S52's new CSS passes
+`motionTokens.test.mjs`. **The full check** (`npm ci && npm run check`, once): check-precache OK (181 precached),
+`node --test` 717 passed, Playwright 1152 passed, 78 skipped, 4 failed: all four `visual.spec.mjs`'s environment guard
+(this container's fonts), as on main.
