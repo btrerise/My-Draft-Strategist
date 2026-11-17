@@ -13660,3 +13660,9 @@ Ran check-precache, `node --test` (705), nav-rail, view-transitions, room-on-pho
 chevrons, smoke, mds-setup, mls-keyboard, snackbar, tap-feedback, mls-phone-rows, sheet, badge-legend, medium-windows:
 all passed. **Screenshots:** main and the branch rendered in the same container: `desktop/mls-league-guide.png` and
 `desktop/mds-empty-guide.png` change (the narrower column makes them taller); the other 42 are identical.
+
+### F27: screenshots re-taken on CI (2026-11-17)
+
+The "Update screenshots" run for 723f1a1 succeeded and committed exactly the two predicted PNGs:
+`desktop/mls-league-guide.png` and `desktop/mds-empty-guide.png` (the Guide as a centred column, so taller). No other
+screenshot changed.
