@@ -262,7 +262,10 @@ body {
 }
 
 /* --- Header League Select --- */
-@media (max-width: 839.98px) {
+/* Phones only (under 600px, Material 3's compact window; improvements F27): from 600px a window has the room for the
+   app's name and a league picker of normal width, as a computer does, instead of the phone header stretched across it.
+   The bigger league arrows below stay up to 840px, where the screen is usually a touch screen. */
+@media (max-width: 599.98px) {
     /* 1. Reduce the wide left/right padding on the ends of the header */
     .header {
         padding: 0.5rem 0.5rem; 
@@ -286,6 +289,8 @@ body {
     
     /* 5. (Draft Strategist's draft drop-down used to be capped at 130px here; since improvements M2 it takes the free
        space like Lineup Strategist's: HEADER PICKER.) */
+}
+@media (max-width: 839.98px) {
 
     /* 6. Bigger, easier-to-tap prev/next league buttons on mobile. Desktop keeps the
        original compact size (set inline via .league-nav-btn's base rule below) --
@@ -742,7 +747,18 @@ html { scroll-padding-top: 5rem; }
     color: var(--text-main);
     pointer-events: none;
 }
-@media (max-width: 839.98px) {
+/* From 600 to 839px (F27) the picker sits beside the app's name, at most its usual 22rem, and narrows to fit when the
+   window is narrow (at 600px the drop-down's own width, its longest league's name, made the page scroll sideways). */
+@media (min-width: 600px) and (max-width: 839.98px) {
+    .header:has(.header-picker) .header-controls { min-width: 0; }
+    .header:has(.header-picker) .header-controls > .cluster { flex: 0 1 auto; min-width: 0; }
+    .header-picker { flex: 0 1 22rem; }
+    .header-picker > select.form-input { width: 100%; }
+    /* The picker narrows, not the buttons beside it (Draft Strategist's Sync kept its word but lost its width). */
+    .header-controls > .cluster > :not(.header-picker) { flex: none; }
+}
+/* Phones only (F27): from 600px the picker keeps its normal width beside the app's name. */
+@media (max-width: 599.98px) {
     .header:has(.header-picker) .logo-container { display: none; }
     .header:has(.header-picker) .header-controls { flex: 1 1 auto; min-width: 0; justify-content: flex-end; }
     .header:has(.header-picker) .header-controls > .cluster { flex: 1 1 auto; min-width: 0; }
@@ -1665,10 +1681,12 @@ label.toggle-title,
 }
 /* --- READING WIDTH (improvements M18) ---
    Material 3 bounds line length on wide windows: running text stops at about 70 characters a line instead of stretching
-   across a 1,100px card (the Guides' paragraphs reached 143). Only prose: the Guides, the setup steps' explanations and
-   T-Score's Research, notes and the About text. Narrower windows never reach the cap. */
+   across a 1,100px card (the Guides' paragraphs reached 143). Only prose: the Guides (a centred column, below), the
+   setup steps' explanations and T-Score's Research, notes and the About text. Narrower windows never reach the cap. */
 :root { --reading-width: 70ch; }
-.guide-content :where(p, li),
+/* The Guides (both apps) are one card of prose: the card itself is a centred reading column (F27), so its boxes and
+   paragraphs share one width. Capping only the paragraphs (M18) left a third of the wide card empty beside them. */
+#guideTab > .settings-card { max-width: calc(var(--reading-width) + 3rem); margin-left: auto; margin-right: auto; }
 .setup-step-how,
 #researchTab :where(p, li),
 .tscore-article-note,
@@ -1840,8 +1858,9 @@ input[type="file"]::-webkit-file-upload-button:hover {
 .close-banner-btn:hover {
     color: var(--text-main);
 }
-/* Reclaim horizontal space for player cards on mobile */
-@media (max-width: 839.98px) {
+/* Reclaim horizontal space for player cards on mobile. Phones only (F27): from 600px the page keeps 24px margins,
+   Material 3's for a medium window, and cards their own padding. */
+@media (max-width: 599.98px) {
     .container {
         /* Reduces the outer screen edge gap from 1.5rem to 0.5rem */
         padding: 1.25rem 0.5rem; 
@@ -2593,9 +2612,13 @@ button.pos-filter {
 :root {
     /* On the motion tokens since improvements M18 (they were 275 ms on phones, 375 ms wider, and 500 ms for the wider
        fades, all on cubic-bezier(0.2, 0, 0, 1)). What moves (the phone slide, the Dashboard's cards) uses Material 3
-       Expressive's default spatial spring; the fades ("soft + rise", tab and league) are effects, the slow one, 300 ms
+       Expressive's default spatial spring, in 300 ms (F27, below); the fades ("soft + rise", tab and league) are effects, the slow one, 300 ms
        at every width (a fade has no overshoot, and Material keeps effects at 300 ms or less). */
-    --vt-ms: var(--motion-spatial-default-ms);
+    /* 300 ms, not the spring's own 500 (improvements F27): while a view transition runs the browser sends taps to the
+       page behind it, so a tap right after a Dashboard card folded or moved did nothing for half a second, though the
+       move looked done at 200 ms. The same spring shape, played in Material's 300 ms (medium2). (Tab and league
+       switches use --vt-fade-ms below, 300 ms already.) */
+    --vt-ms: var(--motion-duration-medium2);
     --vt-ease: var(--motion-spatial-default);
     --vt-fade-ms: var(--motion-effects-slow-ms);
     --vt-fade-ease: var(--motion-effects-slow);

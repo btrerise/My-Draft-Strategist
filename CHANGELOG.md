@@ -28,10 +28,11 @@ What changed for users in each version of the two apps, in plain language. Newes
   seconds), and an error stays until you close it with ✕.
 - **A bolder keyboard focus ring.** The green ring around whatever has keyboard focus is 3px, Material 3's size, on
   every page (text fields keep their 2px outline).
-- **Easier reading on wide screens.** Long explanations (the Guide, the setup steps, and T-Score's Research and notes) stop at about 70 characters a
-  line instead of running across the whole window.
-- **Tablets between 768 and 839 pixels wide** get the same layout as other tablets (with the tab bar at the bottom), and
-  a window exactly 600 pixels wide gets one layout instead of a mix of two.
+- **Easier reading on wide screens.** The Guide is a centred column about 70 characters wide, and long explanations
+  (the setup steps, and T-Score's Research and notes) stop at that width instead of running across the whole window.
+- **Tablets and narrow windows (600 to 839 pixels wide)** show the app's name and a league picker of normal width in the
+  header, with comfortable margins, instead of the phone header stretched across the screen; a window exactly 600
+  pixels wide gets one layout instead of a mix of two.
 - **No flash when you tap on a phone.** The grey-blue box the phone's browser drew over whatever you tapped is gone,
   here and on the T-Score page. A tap still answers with the app's own light tint while your finger is down, and now
   folds (T-Score's "How it's projected" and the like), the "Switch to My Lineup Strategist" banner and the menu's links
@@ -215,6 +216,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Dashboard cards fold and move quicker.** Folding a league card (or Fold all) settles in 0.3 seconds instead of 0.5,
+  and a tap right after it no longer goes unanswered.
 - **Sync All uses a fraction of the data, and doesn't wait on each league in turn.** Your leagues are fetched side by
   side instead of one after another, your Sleeper account is looked up once instead of once per league, and last week's
   waiver moves once a visit. Sleeper's 15 MB player list (where injury news comes from) is only downloaded again when
@@ -239,10 +242,11 @@ What changed for users in each version of the two apps, in plain language. Newes
   seconds), and an error stays until you close it with ✕.
 - **A bolder keyboard focus ring.** The green ring around whatever has keyboard focus is 3px, Material 3's size, on
   every page (text fields keep their 2px outline).
-- **Easier reading on wide screens.** Long explanations (the Guide, the setup steps) stop at about 70 characters a
-  line instead of running across the whole window.
-- **Tablets between 768 and 839 pixels wide** get the same layout as other tablets (with the tab bar at the bottom), and
-  a window exactly 600 pixels wide gets one layout instead of a mix of two.
+- **Easier reading on wide screens.** The Guide is a centred column about 70 characters wide, and long explanations
+  (the setup steps) stop at that width instead of running across the whole window.
+- **Tablets and narrow windows (600 to 839 pixels wide)** show the app's name and a league picker of normal width in the
+  header, with comfortable margins, instead of the phone header stretched across the screen; a window exactly 600
+  pixels wide gets one layout instead of a mix of two.
 - **Early Games fills itself in.** Each week the Lineup tab's Early Games list picks up every team playing before
   Sunday 1:00 PM Eastern (Thursday, Friday, Saturday and the international morning games), so the EARLY badges and the
   Dashboard's EARLY chip appear on their own. The card lists the teams by kickoff, in your time, then the ones you

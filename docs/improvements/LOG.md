@@ -13619,3 +13619,44 @@ mls-starter-alert, mls-waiver-status, mls-best-available, mls-top-available, mls
 mds-sync, mds-upload-preview, mls-sim, mls-this-week, mls-mvp-lvp, mls-final-window, mls-auto-sub, backup, key-migration,
 mls-trending, mls-trade-picks-market, mls-past-trade, mls-player-lookup, mls-early-games, mls-byes, snackbar: all passed
 after the toast fix. Screenshots: the previous commit and this one rendered in the same container, all 44 identical.
+
+## F27 — A review as a user of M18, F25 and F26, and three fixes (owner, 2026-11-17)
+
+**Asked:** "Put on your 'user hat'. How do these adjustments feel? Are they visually pleasing? Does they feel clunky? Are
+they helpful?" Then "Yes" to fixing the three things found.
+
+**How:** main and this branch served side by side (a worktree of origin/main on port 4174, the branch on 4175), the
+owner's backup and the recorded Sleeper / ESPN answers, Playwright at 390, 800 and 1280px; animations slowed 20x through
+CDP `Animation.setPlaybackRate` for frames; a probe of `document.elementFromPoint` during a transition. The scripts are
+throwaway (scratchpad), not in the repo.
+
+**Found good:** the speed (the Dashboard and Sync All, F25 / F26) is the headline; toasts centred and calmer (labs'
+grow-in), long enough to read; desktop tab and league fades snappier (300 ms against main's 500); the 3px focus ring;
+the phone slide's spring indistinguishable from main's curve (90% of the way in 153 ms against 149).
+
+**Found off, and fixed:**
+1. **600 to 839px windows got the phone header stretched across them** (M18 moved the 767 / 768 rules to 840): the app's
+   name hidden, a league picker about 700px wide, page margins of 8px. Main did the same from 600 to 767. Now the
+   header (css/base.css's header block and HEADER PICKER) and the page and card padding switch at 600 (Material 3's
+   compact window); from 600 to 839 the picker is at most 22rem and narrows to fit, and the buttons beside it keep their
+   width (at 600px the drop-down's own width made the page scroll sideways 29px; Draft Strategist's Sync lost its width
+   and its word spilled out). The bigger league arrows stay up to 840 (touch screens). Content rules (rows, the Draft
+   Board, trade tiles) still switch at 840. Checked: no sideways scroll on any tab at 600, 700 and 800px with the
+   owner's data, and the headers at each width.
+2. **The Dashboard cards' fold and reorder transition ran 500 ms** (M18's default spatial spring at its own length), and
+   the browser sends taps to the page behind a running view transition (probed: `elementFromPoint` is `<html>` at 100 to
+   400 ms in). `--vt-ms` is now 300 ms (Material's medium2) with the same spring shape. **A correction to the review:** I
+   first said tab switches ran 500 ms on phones; they didn't: tab and league kinds already use `--vt-fade-ms` (300 ms)
+   at every width, phone slides included. The spec below caught it.
+3. **The Guide's paragraphs stopped at 70ch inside a full-width card**, leaving about 40% of it empty and the "About this
+   project" box wider than the text. The Guide card itself (`#guideTab > .settings-card`, both apps) is now a centred
+   column `calc(var(--reading-width) + 3rem)` wide; its paragraphs are no longer capped separately.
+
+**Tests:** `tests/medium-windows.spec.mjs`: at 600, 700 and 839px the app's name shows, the page doesn't scroll
+sideways, the container has 24px side padding and Draft Strategist's Sync fits its word; 599px keeps the compact
+header; on a phone a tab switch's and a league card fold's view-transition animations last 300 ms at most (500 on the
+old CSS: checked); the Guide card is under 800px wide and centred in both apps. 4 of its 6 fail on the previous CSS.
+Ran check-precache, `node --test` (705), nav-rail, view-transitions, room-on-phones, touch-targets, focus-ring,
+chevrons, smoke, mds-setup, mls-keyboard, snackbar, tap-feedback, mls-phone-rows, sheet, badge-legend, medium-windows:
+all passed. **Screenshots:** main and the branch rendered in the same container: `desktop/mls-league-guide.png` and
+`desktop/mds-empty-guide.png` change (the narrower column makes them taller); the other 42 are identical.
