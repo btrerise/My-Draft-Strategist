@@ -15,6 +15,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Sleeper's player list is lighter.** The app keeps only the parts it uses (a tenth of the 15 MB), unpacks it in the
+  background, and downloads it again only when Sleeper has changed it.
 - **Motion follows Material 3 Expressive.** Everything that moves now uses Material's own motion: things that move
   (a chevron turning, a switch's handle, a pressed button's corners, the phone tab slide) settle with a slight spring,
   and fades and colour changes are quicker and smooth. Tab and league fades on wider screens take 300 ms instead of
@@ -213,6 +215,15 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Sync All uses a fraction of the data, and doesn't wait on each league in turn.** Your leagues are fetched side by
+  side instead of one after another, your Sleeper account is looked up once instead of once per league, and last week's
+  waiver moves once a visit. Sleeper's 15 MB player list (where injury news comes from) is only downloaded again when
+  Sleeper has changed it, and it's unpacked in the background, so the screen no longer freezes for a moment. A Sync All
+  you tap always checks Sleeper for the latest injury news; the starter alert's background check reuses a copy under
+  10 minutes old (Sleeper itself updates that list every 10 minutes). On a phone network with 20 leagues a sync takes
+  about 4 seconds and, when the player list hasn't changed, about 0.1 MB instead of 2.3 MB.
+- **A toast never covers a newer one.** One that waited for a dialog to close could come out after, and over, a later
+  message (the summary of a sync for a trade, for example).
 - **Much faster on phones with many leagues.** Opening the Dashboard took over 3 seconds with 20 leagues, and Sync All
   over a minute on a phone, since the waiver chips (Free agent / On waivers) arrived; both are back to a fraction of a
   second and a few seconds. Sync All also no longer redraws every tab for each league it syncs: it draws once, at the

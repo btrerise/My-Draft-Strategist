@@ -4,7 +4,9 @@
 // fetch answers from `next` (the real mdsFetch from js/shared/net.js wraps it); indexedDB is a minimal in-memory fake (open, one store,
 // get/put) so the IndexedDB cache path really runs. The module keeps an in-memory copy once a
 // fetch succeeds, so tests run in order: the first one is the only non-forced call that reaches
-// IndexedDB, the rest pass forceRefresh (which skips both caches, as the injury audit does).
+// IndexedDB, the rest pass forceRefresh (Sync All's "check Sleeper now"). Node has no Worker, so the download runs on
+// this thread (sleeper.js's fallback). Since improvements F26 a forced refresh keeps a copy under 10 minutes old, so
+// the clock is moved on (later) before each one, and an unchanged file (the same etag) isn't unpacked again.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -29,8 +31,14 @@ const fakeIndexedDB = {
     },
 };
 
-let next = null; // { status, body } or { status, text } for a non-JSON body
+let next = null; // { status, body, etag? } or { status, text } for a non-JSON body
 let fetches = 0;
+let unpacked = 0; // json() calls: the file read and unpacked
+// The page's clock, moved on by `later` (a forced refresh within 10 minutes of the last download keeps it).
+const realNow = Date.now;
+let offset = 0;
+Date.now = () => realNow() + offset;
+const elevenMinutesLater = () => { offset += 11 * 60 * 1000; };
 globalThis.indexedDB = fakeIndexedDB;
 globalThis.window = { indexedDB: fakeIndexedDB };
 globalThis.fetch = async () => {
@@ -39,7 +47,9 @@ globalThis.fetch = async () => {
     return {
         ok: r.status >= 200 && r.status < 300,
         status: r.status,
+        headers: { get: (name) => (name.toLowerCase() === 'etag' ? r.etag ?? null : null) },
         json: async () => {
+            unpacked++;
             if ('text' in r) throw new SyntaxError(`Unexpected token '<', "${r.text.slice(0, 10)}"... is not valid JSON`);
             return r.body;
         },
@@ -69,6 +79,7 @@ test('a good map is kept in memory: the next call makes no request', async () =>
 });
 
 const rejectsUncached = async (reply, message) => {
+    elevenMinutesLater();
     next = reply;
     await assert.rejects(getSleeperPlayerMap({ forceRefresh: true }), (err) => {
         assert.equal(err.isSleeperResponseError, true);
@@ -99,4 +110,33 @@ test('after a failed refresh the in-memory map is still served', async () => {
     fetches = 0;
     assert.deepEqual(await getSleeperPlayerMap(), GOOD);
     assert.equal(fetches, 0);
+});
+
+test('a forced refresh within 10 minutes of the last download keeps it (Sleeper has nothing newer)', async () => {
+    elevenMinutesLater();
+    next = { status: 200, body: GOOD, etag: 'W/"v1"' };
+    fetches = 0;
+    assert.deepEqual(await getSleeperPlayerMap({ forceRefresh: true }), GOOD);
+    assert.equal(fetches, 1);
+    offset += 5 * 60 * 1000;
+    assert.deepEqual(await getSleeperPlayerMap({ forceRefresh: true }), GOOD);
+    assert.equal(fetches, 1, 'no request 5 minutes later');
+    // A Sync All you tap (keepFor: 0) asks at once.
+    assert.deepEqual(await getSleeperPlayerMap({ forceRefresh: true, keepFor: 0 }), GOOD);
+    assert.equal(fetches, 2, 'a tapped Sync All asks Sleeper');
+});
+
+test('an unchanged file (the same etag) is kept without unpacking it; a new one replaces it, slimmed', async () => {
+    elevenMinutesLater();
+    const CHANGED = { 4866: { player_id: '4866', first_name: "Ja'Marr", last_name: 'Chase', injury_status: 'Out', college: 'LSU', height: '72' } };
+    next = { status: 200, body: CHANGED, etag: 'W/"v1"' };
+    unpacked = 0;
+    assert.deepEqual(await getSleeperPlayerMap({ forceRefresh: true }), GOOD, 'same version tag: the saved copy');
+    assert.equal(unpacked, 0, 'nothing unpacked');
+    elevenMinutesLater();
+    next = { status: 200, body: CHANGED, etag: 'W/"v2"' };
+    const slim = { 4866: { player_id: '4866', first_name: "Ja'Marr", last_name: 'Chase', injury_status: 'Out' } };
+    assert.deepEqual(await getSleeperPlayerMap({ forceRefresh: true }), slim, 'a new version: the new statuses, only the kept fields');
+    await settle();
+    assert.deepEqual(idbStore.get(KEY), { ...idbStore.get(KEY), data: slim, etag: 'W/"v2"', fields: 1 });
 });

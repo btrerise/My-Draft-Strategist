@@ -31,12 +31,23 @@ test('Sync All saves every league\'s new lineup and draws the Lineup tab only at
             .observe(document.getElementById('optimalLineupContainer'), { childList: true, subtree: true });
     });
 
+    // The requests Sync All makes (improvements F26): each league's started ahead and used once, your Sleeper user
+    // looked up once for both leagues (it was once per league).
+    const asked = [];
+    page.on('request', (r) => { const u = new URL(r.url()); if (u.hostname === 'api.sleeper.app') asked.push(u.pathname); });
+
     // Sync All's own function (the Dashboard's button calls it), run while the Lineup tab shows; it resolves when done.
     await page.evaluate(async () => {
         const { syncAllLeagues } = await import('/js/mls/render/dashboard.js');
         await syncAllLeagues(document.getElementById('syncAllBtn'));
     });
     await page.waitForLoadState('networkidle');
+
+    const count = (path) => asked.filter(p => p === path).length;
+    expect(asked.filter(p => p.startsWith('/v1/user/') && !p.includes('/leagues/')).length, 'the user, once').toBe(1);
+    for (const id of [FIXTURE_LEAGUE_ID, FIXTURE_LEAGUE2_ID]) {
+        for (const path of [`/v1/league/${id}`, `/v1/league/${id}/users`, `/v1/league/${id}/rosters`]) expect(count(path), path).toBe(1);
+    }
 
     const saved = await page.evaluate(() => ({
         starters: Object.keys(JSON.parse(localStorage.getItem('mls_manual_starters') || '{}')).sort(),

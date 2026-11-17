@@ -54,7 +54,8 @@ function pageAssets(pageUrl) {
     return out.filter(isLocal).map(u => resolveRef(stripQuery(u), pageUrl));
 }
 
-// Follows static imports from a JS file; Worker targets are resolved against the page.
+// Follows static imports from a JS file; Worker targets are resolved against the page (a string) or against the file
+// itself (new URL(…, import.meta.url)).
 function walkJs(fileUrl, pageUrl, seen) {
     if (seen.has(fileUrl)) return;
     seen.add(fileUrl);
@@ -69,6 +70,9 @@ function walkJs(fileUrl, pageUrl, seen) {
     }
     for (const m of src.matchAll(/new\s+Worker\(\s*['"]([^'"]+)['"]/g)) {
         if (isLocal(m[1])) walkJs(resolveRef(m[1], pageUrl), pageUrl, seen);
+    }    // new Worker(new URL('./x.js', import.meta.url)): resolved against this file, wherever the page is (F26).
+    for (const m of src.matchAll(/new\s+Worker\(\s*new\s+URL\(\s*['"]([^'"]+)['"]\s*,\s*import\.meta\.url\s*\)/g)) {
+        if (isLocal(m[1])) walkJs(resolveRef(m[1], fileUrl), pageUrl, seen);
     }
 }
 

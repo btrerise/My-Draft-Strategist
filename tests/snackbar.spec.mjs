@@ -45,6 +45,25 @@ test.describe('Toasts as snackbars', () => {
         expect(Number(await page.locator('#mds-toast').evaluate((el) => getComputedStyle(el).zIndex))).toBeLessThan(2000);
     });
 
+    test('the latest toast wins: one still waiting for a dialog never covers a newer one', async ({ page }) => {
+        await openApp(page, '/lineup/');
+        await page.evaluate(async () => {
+            const { showConfirm } = await import('/js/shared/ui/confirm.js');
+            window.__answer = showConfirm('Delete it?', { confirmText: 'Delete' });
+        });
+        await expect(page.locator('#mds-confirm-overlay')).toBeVisible();
+        await toastApi(page, 'showToast', 'Older, waiting for the dialog');
+        // The dialog closes, and a newer toast comes before the older one's next check (every 250 ms).
+        await page.evaluate(async () => {
+            document.querySelector('#mds-confirm-overlay .mds-modal-actions button')?.click();
+            const { showToast } = await import('/js/shared/ui/toast.js');
+            showToast('Newer');
+        });
+        await expect(page.locator('#mds-toast.show .toast-message')).toHaveText('Newer');
+        await page.waitForTimeout(700);
+        await expect(page.locator('#mds-toast.show .toast-message')).toHaveText('Newer');
+    });
+
     test('an error stays until ✕; a success toast is timed by its length', async ({ page }) => {
         await openApp(page, '/lineup/');
         await toastApi(page, 'showToast', 'Could not sync', { isError: true });

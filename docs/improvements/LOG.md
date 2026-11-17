@@ -13557,3 +13557,65 @@ mls-best-available, mls-top-available, mls-waiver-insights, mls-faab-bid, mls-ra
 mds-freshness, mls-last-synced, mls-phone-rows, mls-keyboard, mls-lineup-row-actions, smoke, mls-sync-all-batch,
 mls-leagues, mls-sync-league-switch, mls-starter-alert, backup, mls-early-games, tscore-refresh: all passed. Screenshots:
 the previous commit and this one rendered in the same container, all 44 pixel-identical.
+
+## F26 — Less data and less waiting in Sync All (owner, 2026-11-16)
+
+**Asked:** after F25, trim what Sync All downloads without making injury news late ("users tend to check lineups once
+they get a notification that a player is 'Out'… about 90 minutes before kickoff"), and is there a lighter source than
+ESPN. The owner picked: Sleeper's player file only when it changed, unpacked in the background and slimmed; ESPN and the
+Sleeper user once per sync; leagues fetched side by side.
+
+**What was measured first** (2026-11-16, curl from this container):
+
+| Source | Over the network | Unpacked | Notes |
+| --- | --- | --- | --- |
+| Sleeper `players/nfl` | 2.6 MB gzip | 14.7 MB | `Cache-Control: s-maxage=600`; an ETag; a 304 with 0 bytes to `If-None-Match` |
+| ESPN scoreboard | 20 KB | 0.24 MB | kickoffs and live state |
+| Sleeper `schedule/nfl/regular/<season>` | 3 KB | 27 KB | dates and status only: **no kickoff times**, so it can't replace ESPN |
+| ESPN `injuries` | 354 KB | 8.7 MB | ESPN's designations, not Sleeper's, and a big parse |
+| Sleeper live week stats | 71 KB | 0.48 MB | `s-maxage=30` |
+
+Sampled once a minute for 15 minutes on Monday evening: Sleeper's CDN hands out one copy for 10 minutes (its `age`
+climbs to about 600 s, then resets), and each new copy had a new ETag. Sleeper's CORS rules expose `etag` but don't
+allow `If-None-Match` from a page; the browser's own cache can still revalidate (`cache: 'no-cache'`), which a page's
+fetch doesn't count as its header.
+
+**Correction to F25's write-up:** the "ESPN scoreboard 21 times per sync" was this container's doing (ESPN refused the
+headless browser, so no kickoff times were ever kept and every caller asked again). With the real scoreboard,
+`refreshGameTimes` already asks once; nothing to change there. The Sleeper user (19 times) and last week's
+transactions (19 extra) were real.
+
+**Built:**
+- `js/shared/api/playerMapSlim.js`: the 12 player fields the apps read (plus five small injury details), and
+  `slimPlayerMap`. `tests/unit/playerMapSlim.test.mjs` fails when any js/ file reads a distinctive Sleeper field the list
+  leaves out (checked by planting `p.espn_id`).
+- `js/shared/api/playerMapWorker.js` (module worker, `new Worker(new URL(…, import.meta.url))`): downloads with
+  `cache: 'no-cache'`, compares Sleeper's ETag with the saved copy's (unchanged: cancels the body, unpacks nothing),
+  else parses and slims off the main thread. `getSleeperPlayerMap` (sleeper.js) runs it, or the same steps on the page if
+  a worker can't start. IndexedDB keeps `{ data (slim), fetchedAt, etag, fields: 1 }`; a copy without `fields: 1` (the
+  old full one) is downloaded again. `forceRefresh` takes `keepFor`: Sync All you tap passes 0 (always checks: the
+  owner's "Out" case), the starter alert's quiet Sync All keeps a copy under 10 minutes (the CDN's own lifetime). An
+  unchanged copy isn't written to IndexedDB again. `scripts/check-precache.mjs` now follows `new Worker(new URL(…,
+  import.meta.url))`; both files are in `PRECACHE_ASSETS`.
+- `fetchAhead` / `endFetchAhead` in sleeper.js: Sync All starts every league's league, users, rosters and (except
+  redraft leagues) traded-picks requests up front, 6 at a time; the per-league sync, still one league at a time (it
+  reads and writes the app's state), takes each answer once. The user is looked up once per username.
+- `recentDrops.js`: a week before the current one is read once a visit (only the current week again after a sync).
+- **A fix to M18 found here:** a toast that waited for a dialog could come out after a newer toast and cover it
+  (`mls-past-trade.spec.mjs` failed: the rankings upload's toast, queued while its preview closed, covered the trade
+  sync's summary). Showing a toast now drops any older one still waiting; `snackbar.spec.mjs` has the race (it fails
+  without the fix). It passed on main, so M18's own runs missed it: the full suite before the pull request should run.
+
+**After** (the owner's backup, phone, 4x CPU, `PERF_RTT_MS=150 PERF_KBPS=1250`, the player file replayed without an ETag,
+so every tapped sync downloads it: the worst case): Sync All 18.5 s with F25 only, **3.6 s** now; 130 requests → 93 (user
+19 → 1, transactions 38 → 19); main thread busy 0.8 s. Data per Sync All, from the recorded answers' gzip sizes: 2.31 MB
+before; **0.11 MB** when the player file hasn't changed (or the quiet check keeps it); 2.29 MB when it has.
+
+**Tests:** `unit/sleeperPlayerMap.test.mjs` (updated for the 10-minute keep, a clock moved on; new: a tapped sync asks
+at once, an unchanged ETag isn't unpacked, a new one replaces it slimmed), `unit/playerMapSlim.test.mjs`,
+`mls-sync-all-batch.spec.mjs` (the user once, each league's requests once), `snackbar.spec.mjs` (the race). Ran
+check-precache, `node --test` (705), and smoke, mls-leagues, mls-sync-all-batch, mls-sync-league-switch, mls-lineup-needs,
+mls-starter-alert, mls-waiver-status, mls-best-available, mls-top-available, mls-faab-bid, mls-headshots, mds-headshots,
+mds-sync, mds-upload-preview, mls-sim, mls-this-week, mls-mvp-lvp, mls-final-window, mls-auto-sub, backup, key-migration,
+mls-trending, mls-trade-picks-market, mls-past-trade, mls-player-lookup, mls-early-games, mls-byes, snackbar: all passed
+after the toast fix. Screenshots: the previous commit and this one rendered in the same container, all 44 identical.

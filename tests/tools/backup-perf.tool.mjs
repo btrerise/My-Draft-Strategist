@@ -4,6 +4,8 @@
 //   PERF_REF=<git ref> …      serves the site from that commit instead of the working tree (git show), for a bisect
 //   PERF_PROFILE=1 …          also prints the functions that took the most time
 //   PERF_NOW=<ISO time> …     the page's clock reads this time (timers still run), e.g. just before a kickoff
+//   PERF_RTT_MS=150 PERF_KBPS=1250 …  a phone network for the replayed answers: each waits a round trip plus its
+//                             gzipped size at that speed (Chrome's own throttling doesn't apply to fulfilled requests)
 //
 // The backup (Lineup Strategist's Backup & Restore file) is written straight into localStorage before the page loads.
 // Every request that leaves localhost is answered from PERF_NET (default: perf-net.json next to the backup): recorded
@@ -12,6 +14,7 @@ import { test } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join } from 'node:path';
+import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
@@ -22,6 +25,14 @@ const ROUNDS = Number(process.env.PERF_ROUNDS || 3);
 const SYNCS = Number(process.env.PERF_SYNCS || 2);
 const PROFILE = !!process.env.PERF_PROFILE;
 const AFTER_MS = Number(process.env.PERF_AFTER_MS || 4000);
+const RTT_MS = Number(process.env.PERF_RTT_MS || 0);
+const KBPS = Number(process.env.PERF_KBPS || 0);
+const wireMs = new Map(); // key -> ms to deliver it on the simulated network
+const delayFor = (key, body) => {
+    if (!RTT_MS && !KBPS) return 0;
+    if (!wireMs.has(key)) wireMs.set(key, RTT_MS + (KBPS ? gzipSync(body).length / 1024 / KBPS * 1000 : 0));
+    return wireMs.get(key);
+};
 const LOAD_S = Number(process.env.PERF_LOAD_S || 15);
 const FROM_TABS = ['lineup', 'roster', 'scoreboard', 'scout'];
 const TYPES = {
@@ -65,6 +76,11 @@ test('Sync All and switches to the Dashboard, with a backup, 4x CPU', async ({ p
         const req = route.request();
         const key = `${req.method()} ${req.url()}`;
         if (/umami|googletagmanager|google-analytics/.test(req.url())) return route.fulfill({ status: 204, body: '' });
+        if (net[key]) {
+            const body = Buffer.from(net[key].body, 'base64');
+            const wait = delayFor(key, body);
+            if (wait) await new Promise(r => setTimeout(r, wait));
+        }
         if (net[key]) return route.fulfill({ status: net[key].status, body: Buffer.from(net[key].body, 'base64'), headers: { 'content-type': net[key].type || 'application/octet-stream', 'access-control-allow-origin': '*' } });
         try {
             const res = await route.fetch();

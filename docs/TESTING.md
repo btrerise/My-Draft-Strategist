@@ -234,7 +234,9 @@ shot and S10 took four runs for 14.)
   file> npx playwright test -c tools/playwright.config.mjs backup-perf --project phone` loads that backup, slows the CPU 4x
   and times switches to the Dashboard and Sync All: long tasks, the 4 s after, requests, and Chrome's own style, layout
   and script time. Every request leaving localhost is recorded the first time and replayed after (`perf-net.json` beside
-  the backup), so `PERF_REF=<git ref>` compares commits on the same data; `PERF_PROFILE=1` adds the busiest functions.
+  the backup), so `PERF_REF=<git ref>` compares commits on the same data; `PERF_PROFILE=1` adds the busiest functions;
+  `PERF_RTT_MS=150 PERF_KBPS=1250` delays each answer like a phone network (F26). Record ESPN's scoreboard by hand if a
+  cloud container is refused it (LOG F25): without kickoff times several features do no work.
   A backup holds the owner's data: keep it and its `perf-net.json` out of the repo.
 - `tests/tools/playwright.config.mjs` matches `*.tool.mjs`, so the default config never runs these (each `npm run`
   script names its own file).
@@ -373,12 +375,6 @@ done or dropped, remove its line here in the same change. Background for each is
   the legend on its own) in `visual.spec.mjs`, or find what M17 made too tall to paint.
 
 **Needs the owner's decision first**
-- What Sync All downloads (improvements F25): every Sync All re-downloads Sleeper's whole player file (14.7 MB) for the
-  injury news, asks ESPN for the same week's scoreboard once per league (21 times) and Sleeper for your user once per
-  league, and the starter alert runs the same Sync All, quietly, whenever the page opens in the hour before a kickoff.
-  Since F25 a sync is a few seconds of work on a phone, but on mobile data the 14.7 MB is most of its time. Options:
-  keep the player file for an hour (injury news an hour old), ask ESPN and Sleeper once per sync, or have the alert's
-  check sync only the rosters.
 - Manual leagues can't be dynasty (improvements S23, round 12). They have no league type, so they always count as
   redraft: no In-Season rankings, no Future column, no draft picks in trades. A "League type" choice for manual leagues
   (beside League style on the Setup tab) would fix that, but the owner noted the payoff is small: Power Rankings need a

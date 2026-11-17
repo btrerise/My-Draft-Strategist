@@ -27,6 +27,9 @@ export const showToast = function(message, options = {}) {
   const duration = options.duration || (isError ? Infinity : action ? 8000 : Math.min(8000, 4000 + 1000 * Math.floor(String(message).length / 40)));
   // Never over a dialog or a sheet: one that's open holds the toast until it closes (the latest toast wins).
   if (openModal()) { waitForModal(() => showToast(message, options)); return; }
+  // Shown now, so an older toast still waiting for a dialog to close is dropped: the latest wins (one that waited and
+  // came out later covered this one: a rankings upload's toast over the trade sync's, mls-past-trade.spec.mjs).
+  pendingToast = null;
 
   const toast = getToastElement();
   const messageEl = toast.querySelector('.toast-message');
@@ -79,7 +82,7 @@ function waitForModal(show) {
     if (openModal()) { setTimeout(check, 250); return; }
     const run = pendingToast;
     pendingToast = null;
-    run();
+    if (run) run();
   };
   setTimeout(check, 250);
 }

@@ -231,6 +231,8 @@ const PRECACHE_ASSETS = [
     // their static imports outside js/mls/, and theirs:
     '/js/shared/rankings/parse.js',   // -> names.js
     '/js/shared/api/sleeper.js',
+    '/js/shared/api/playerMapSlim.js',   // F26: the player fields the apps keep
+    '/js/shared/api/playerMapWorker.js', // F26: downloads and slims the player file off the main thread
     '/js/shared/api/market.js',       // -> names.js
     '/js/shared/api/ffc.js',          // Fantasy Football Calculator, via /api/ffc/ (refactor 7A)
     '/js/shared/api/sleeperStats.js', // -> storage/idb.js
