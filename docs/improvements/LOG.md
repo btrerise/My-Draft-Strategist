@@ -12182,6 +12182,10 @@ out of the repo: it reads the owner's league data.)
 - **Tue 11/17, 8:30 PM PT** (every week-10 game over): `{"week":11,"leg":11,"display_week":10}`. So the state endpoint
   moves to the next week by Tuesday evening, earlier than the transactions' `leg` (Wednesday about 12 AM PT, round
   3); `display_week` still says 10.
+- **Wed 11/18, 1:01 AM PT** (just after the weekly run): `{"week":11,"leg":11,"display_week":11}`. So Sleeper has two
+  week numbers: `week` moves on early (by Tuesday evening; the exact moment wasn't caught), `display_week` with the
+  weekly run on Wednesday at about 12 AM PT, as the transactions' `leg` does. The app reads `week` for its current week
+  (kickoffs, drops) and `display_week` for the Scoreboard's recap (`State.recapNflWeek`), which suits both.
 - What it means for S34: from that flip the app reads week 11's kickoffs (all still to come), so nobody counts as
   "played": upgrades are counted (right for Tuesday, when claims are for next week), and each player's chip follows the
   league's Tuesday schedule (Waivers or Locked in most of the owner's leagues: W, "until Wed 12 AM"). Drops are read
