@@ -12177,6 +12177,18 @@ out of the repo: it reads the owner's league data.)
   check-precache and the Best available, waiver, Scout, past-trade, league-card and touch-target specs (77 passed). No
   screenshot changes.
 
+### After the merge: Sleeper's week on Tuesday (scheduled readings of `state/nfl`)
+
+- **Tue 11/17, 8:30 PM PT** (every week-10 game over): `{"week":11,"leg":11,"display_week":10}`. So the state endpoint
+  moves to the next week by Tuesday evening, earlier than the transactions' `leg` (Wednesday about 12 AM PT, round
+  3); `display_week` still says 10.
+- What it means for S34: from that flip the app reads week 11's kickoffs (all still to come), so nobody counts as
+  "played": upgrades are counted (right for Tuesday, when claims are for next week), and each player's chip follows the
+  league's Tuesday schedule (Waivers or Locked in most of the owner's leagues: W, "until Wed 12 AM"). Drops are read
+  from weeks 11 and 10, which covers Tuesday's (filed under week 10). The one difference: after the flip, Tuesday's
+  "Everyone who played this week is on waivers until …" line gives way to a W on each player. Between the last game
+  and the flip, round 4's "week over" path does the same job.
+
 ### The full check before the pull request
 
 `npm ci && npm run check` once, on the branch up to date with main: check-precache OK, `node --test` 669 passed,
