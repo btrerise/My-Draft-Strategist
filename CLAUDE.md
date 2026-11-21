@@ -24,13 +24,16 @@ All three share one origin, so one localStorage and one service worker (`sw.js`,
 - `tests/`: Playwright specs, `tests/unit/` (node --test), fixtures, screenshot baselines, opt-in tools.
 - `scripts/`: `check-precache.mjs`, `update-byes.mjs`. `docs/TESTING.md`: the testing and conventions guide.
 - `CHANGELOG.md`: user-visible changes. `docs/refactor/LOG.md`: history of the module-structure refactor.
+- `docs/improvements/LOG.md`: the improvements cards. Read its standing rules (first 20 lines) and grep its index for a
+  card ID; **never read the whole file or `docs/improvements/log/`** (the archive of older entries). `docs/TESTING.md`
+  starts with "Start here": which sections each kind of card needs.
 
 ## Before pushing
 
 While iterating, run only what you touched (a minute or two), and push:
 
 ```sh
-cd tests && node ../scripts/check-precache.mjs && node --test && npx playwright test <spec> …
+cd tests && node ../scripts/check-precache.mjs && node --test --test-reporter=dot && npx playwright test <spec> …
 ```
 
 Run the full suite (about 20 minutes in a cloud session) **once per card: when the owner asks for the pull request**,
@@ -65,6 +68,9 @@ re-taking all of them ("Upgrading Playwright or the CI runner" in `docs/TESTING.
 - Icons are inline SVG (`aria-hidden="true"`, `stroke="currentColor"`), never emoji, in anything users see (owner's rule).
 - Transitions and animations take their curve and time from the `--motion-*` tokens in `css/base.css`; media queries use
   599.98 / 600 and 839.98 / 840 (Material 3's window sizes). `tests/unit/motionTokens.test.mjs` fails otherwise.
+- Keep your `docs/improvements/LOG.md` entry short: about 40 lines (3 KB) at most, however long the session ran. Leave
+  out the step-by-step story, test output, and anything the code, commit messages or `CHANGELOG.md` already say. If you
+  add to an entry over several rounds, edit it down rather than appending a section each round.
 - User-visible change → a line under the app's "Unreleased" in `CHANGELOG.md`.
 - New badge, chip, pill or symbol → a line in that app's Guide legend (`js/mls/legend.js` or `js/mds/legend.js`) in the
   same change, drawn with the same markup (`tests/unit/badgeLegend.test.mjs` fails on a badge class it doesn't list).

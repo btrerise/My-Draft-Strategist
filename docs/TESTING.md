@@ -4,6 +4,18 @@ How to run the checks, how they work, and the conventions that keep the three pa
 refactor chunk 10A (updated for 6C in 10B) from the lasting parts of [`docs/refactor/LOG.md`](refactor/LOG.md),
 which still has the full history (look up an entry by its chunk ID when this guide points to one).
 
+## Start here
+
+Read only what your kind of card needs (this guide is 50 KB; don't read it whole). `grep '^#' docs/TESTING.md` lists the headings.
+
+- **Every card:** "The checks" (what to run, and when the full suite runs) and "Conventions". Open `docs/improvements/LOG.md`
+  for its standing rules (first 20 lines) and **grep its index for your card ID and the cards you build on**; never read
+  the file or `docs/improvements/log/` whole. Your own entry is short: about 40 lines (3 KB).
+- **Bug fix:** the test that shows the bug first ("How the tests work"), then the spec or unit test for the area.
+- **Visual card:** "Screenshots", "Accepting an intended visual change", and "Cloud sessions: let CI re-take them".
+- **Research card:** no code. Conventions only if you propose one; the answer goes in LOG (short) and the runbook page.
+- **Docs-only card:** nothing else. Docs-only pull requests pass CI in seconds (see "CI, docs-only pull requests").
+
 ## The checks
 
 All dev tooling lives in `tests/` (its own `package.json`, so the site's root never has one). From the repo root:
@@ -49,8 +61,12 @@ cd tests && npm ci && npm run check          # all of it: precache + unit tests 
   S30 ran it after every round; made exact on 2026-11-11, after S38 ran it at the end of round 1 and started it again
   after round 2). The whole Playwright suite takes ~20 minutes in a cloud session, and CI runs it on every pull
   request anyway.
-  - **Every push before that**, however finished the round feels: check-precache, `node --test` and the specs for the
-    code you changed (`npx playwright test <spec> …`, a minute or two). Say in your summary that the full suite hasn't
+  - **Every push before that**, however finished the round feels: check-precache, `node --test --test-reporter=dot` and
+    the specs for the code you changed (`npx playwright test <spec> …`, a minute or two). Outside CI, output is quiet
+    (improvements W3): `node --test --test-reporter=dot` prints a row of dots and then nothing but its summary (a bare
+    `node --test` prints about 165 KB of TAP when piped, so use the flag), and Playwright's config uses the dot
+    reporter, so a passing run is the dots plus `N passed (time)`. A failure still prints in full, with its error and
+    the trace paths. Run `npm ci` in `tests/` first: without it `tscoreInSeason.test.mjs` fails on `papaparse`. Say in your summary that the full suite hasn't
     run yet.
   - **When the owner asks for the pull request:** `npm run check` once, then push and open it.
   - **After it has run** (more rounds on an open pull request, review fixes, re-taken screenshots): back to the checks

@@ -11,8 +11,9 @@ export default defineConfig({
     testDir: '.',
     testMatch: /.*\.spec\.mjs$/,
     fullyParallel: true,
-    // CI also writes an HTML report, which .github/workflows/check.yml uploads when a test fails.
-    reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
+    // CI lists every test and also writes an HTML report, which .github/workflows/check.yml uploads when a test fails.
+    // Elsewhere (cloud sessions, laptops) the dot reporter (one character per test; Playwright's line reporter prints every test on its own line when piped) keeps a passing run to a few lines; failures print in full.
+    reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['dot']],
     timeout: 30_000,
     // Baselines are per platform: fallback fonts (Google Fonts is blocked in tests) render differently on
     // each OS. Only Linux's are committed (CI and the Claude Code cloud sessions run Linux); on Windows or
