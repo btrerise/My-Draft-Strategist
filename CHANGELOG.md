@@ -216,6 +216,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Auto-Find no longer picks a star on bye as the player to drop.** With Rank By set to Weekly, a rostered player
+  missing from the weekly rankings (on bye, or not ranked this week) is now judged by his ROS rank when the league has
+  ROS rankings, and the drop-candidate line says why ("On bye: ranked by ROS"). Without ROS rankings it works as before
+  and notes that he's on bye.
 - **The median and guillotine places never read past last.** During live games a league could show "Median: L (13th of
   12)" (or "3rd of 2 alive" on a guillotine line): your own score was counted as a team above you when it had two
   decimals, as Best Ball scores often do. Your place is now among the other teams, so last is "12th of 12", and a
