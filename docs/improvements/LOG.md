@@ -1077,10 +1077,11 @@ run). Round 8: past weekly scores predicted 655 real games no better (Brier 0.18
 **Performance.** 18 leagues, 4x-slowed phone: all numbers ~1.7 s after the cards. The ~1 s stall the starter alert's
 quiet Sync All makes on opening is its own (it used to throw the first run away: round 7).
 
-**Tests.** `tests/unit/playoffs.test.mjs`; `tests/mls-playoff-odds.spec.mjs`. No screenshot changes (fixtures are week 2).
+**Tests.** `tests/unit/playoffs.test.mjs`; `tests/mls-playoff-odds.spec.mjs`. Screenshots: only
+`desktop/` and `phone/mls-league-guide.png` re-taken (two new legend lines; the fixtures are week 2, so no odds show).
 
 **Finished weeks (round 9).** From the end of Monday night's game until Sleeper processes the week (or longer without a
 sync) the records lack it: `withFinals` fetches its final scores (one request a league, cached for the visit),
 `applyFinals` adds them (median too), and only the weeks after it are simulated; Clinched can show on Monday night.
 
-**Left over.** Full suite not yet run.
+**Left over.** None. Full suite run: all passed except `visual.spec.mjs` (cloud fonts, as expected).
