@@ -15,6 +15,7 @@ import { rankMoveChip } from '../rankings/moveChips.js';
 import { posCountChipMarkup, rankBadgeParts, rankGapChipMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { ordinal } from '../week/scoreboard.js';
+import { ODDS_EVENT, ODDS_TITLE, playoffChanceHTML, playoffOddsFor, pctLabel, renderPlayoffPicture, schedulePlayoffOdds } from '../sim/playoffOdds.js';
 import { hasSeasonSlot, seasonOffer, seasonSetFor } from '../rankings/season.js';
 import { rankGap, rankGapTip, superflexQbPrices } from '../rankings/nowAndLater.js';
 import { KEYS } from '../../shared/storage/keys.js';
@@ -346,6 +347,8 @@ import { KEYS } from '../../shared/storage/keys.js';
 // that would start a wrapped line is clipped (.mls-roster-record-list). Hidden for manual leagues, a league synced
 // before S21, and before anyone has played; a league last synced before the standing was added shows the W-L alone.
 function renderRosterRecord(league) {
+    // Every team's playoff chances, under Power Rankings (improvements S55, round 2), drawn with your record.
+    renderPlayoffPicture(league);
     const el = document.getElementById('rosterRecord');
     if (!el) return;
     const r = league && league.record;
@@ -353,6 +356,9 @@ function renderRosterRecord(league) {
     const wl = `${r.wins}\u2013${r.losses}${r.ties ? `\u2013${r.ties}` : ''}`;
     const part = (cls, html) => `<span class="mls-roster-record-part${cls ? ` ${cls}` : ''}">${html}</span>`;
     const divisions = !!(r.division && r.divisionRank);
+    // Your playoff chance (improvements S55), when it's been worked out (sim/playoffOdds.js).
+    const odds = playoffOddsFor(league);
+    schedulePlayoffOdds();
     let seed = '';
     if (divisions && r.seed) {
         seed = (!r.playoffTeams || r.seed <= r.playoffTeams)
@@ -368,10 +374,25 @@ function renderRosterRecord(league) {
         + seed
         + part('mls-roster-record-points', points('PF', 'Points for', r.pfRank, r.pf)
             + '<span class="mls-roster-record-dot" aria-hidden="true">\u00b7</span>' + points('PA', 'Points against', r.paRank, r.pa))
+        // A link to every team's chances, at the foot of the tab (round 7: nothing pointed there).
+        + (odds && document.getElementById('playoffPicture') && !document.getElementById('playoffPicture').hidden
+            ? part('mls-roster-record-odds', `<button type="button" class="btn-bare mls-roster-odds-link" data-action="scrollToPlayoffPicture" aria-label="Playoffs ${pctLabel(odds)}: see every team's chances">Playoffs ${playoffChanceHTML(odds)}</button>`)
+            : odds ? part('mls-roster-record-odds', `Playoffs ${playoffChanceHTML(odds)}`) : '')
         + '</span>';
     el.title = 'This season, as of your last sync. Places go by record, then points for, then points against.'
         + (seed ? ' Seeds: the division winners first, then the best of the rest.' : '')
-        + ' PF / PA: 1st = the most points in your league.';
+        + ' PF / PA: 1st = the most points in your league.'
+        + (odds ? ` Playoffs: ${ODDS_TITLE}` : '');
     el.hidden = false;
 }
 
+
+// Playoff chances arrive after the first paint (improvements S55): the record line and the Playoff picture redraw then.
+if (typeof document !== 'undefined') {
+    document.addEventListener(ODDS_EVENT, () => {
+        if (!document.getElementById('rosterTab')?.classList.contains('active')) return;
+        const league = getActiveLeague();
+        if (!league || !playoffOddsFor(league)) return;
+        renderRosterRecord(league);
+    });
+}

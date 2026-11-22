@@ -1,0 +1,386 @@
+// --- PLAYOFF CHANCES: EVERY LEAGUE'S, AFTER THE FIRST PAINT (improvements S55) ---
+// Each Sleeper league's chance to make the playoffs, get a first-round bye and win the title, from 10,000 runs of the
+// rest of its regular season and its bracket (sim/playoffs.js, in sim/playoffWorker.js). Shown on the Dashboard's
+// league cards (round 2: left out of a folded card once you're eliminated), the Roster tab's record line and the
+// Playoff picture table under Power Rankings (owner's choices).
+//
+// The inputs: what sync saved (league.playoffs, leagues/playoffData.js: standings, the weeks left, every roster), and
+// each team's weekly mean and spread (sim/playoffStrength.js): its best lineup by Sleeper's projections for the first
+// PROJECTED_WEEKS weeks left (one download per week, shared by every league), later weeks and the bracket from those
+// weeks' average, and points for so far when there are no projections (a week's download failed, or nobody's projected).
+//
+// Runs once per sync of a league, in memory (nothing saved), after the page has drawn: schedulePlayoffOdds() from the
+// Dashboard's and the Roster tab's redraws. When numbers arrive, 'mls-playoff-odds' fires on document and those views
+// redraw. "Clinched" and "Eliminated" only when the records prove it (playoffCertainty); otherwise a percent, never
+// 0% or 100% (they read "<1%" and ">99%").
+import { getSleeperMatchups, getSleeperPlayerMap } from '../../shared/api/sleeper.js';
+import { getWeeklyProjections } from '../../shared/api/sleeperStats.js';
+import { escapeHtml } from '../../shared/html.js';
+import { State } from '../state.js';
+import { fantasyPosition } from '../constants.js';
+import { FOLD_CHEVRON, getLeagueScoringKey } from '../lineup/gameInfo.js';
+import { DIVISION_LEADER_MARK } from '../badges.js';
+import { applyFinals, playoffCertainty } from './playoffs.js';
+import { pairsFrom } from '../leagues/playoffData.js';
+import { LASTING_SD, liveStrength, pointsForStrength, projectedStrength } from './playoffStrength.js';
+import { starterIdsOf } from '../week/playerRecap.js';
+import { isBestBallLeague, isExcludedFromSimulation } from '../helpers.js';
+
+export const RUNS = 10000;
+const PROJECTED_WEEKS = 3;
+const WORKER_TIMEOUT_MS = 20000;
+export const ODDS_EVENT = 'mls-playoff-odds';
+
+const results = new Map(); // leagueId -> { key, soft, liveUsed, odds, byes, certain }
+const projections = new Map(); // week -> Promise<data | null>
+let running = null, again = false;
+
+// Which numbers a league's results are for (round 7). key: what the standings say (records, points for, the weeks left,
+// the bracket): when it changes, the old numbers are wrong and are hidden until the new run. soft: the rosters and this
+// week's live scores: when they change the league re-runs, and the last numbers stay up meanwhile. Not lastSyncedAt:
+// every sync re-stamps it, and the starter alert's quiet Sync All when the app opens on a game day used to throw the
+// first run's numbers away (on a slow phone they came 2 s later).
+const keyOf = (l) => {
+    const po = l && l.playoffs;
+    if (!po) return '';
+    return [po.firstWeek, po.start, po.teams, po.median, po.divisions, po.reseed, po.roundType,
+        po.standings.map(s => `${s.rid}:${s.w}-${s.l}-${s.t}:${s.pf}:${s.div}`).join(',')].join('|');
+};
+const rostersOf = (l) => Object.entries((l.playoffs && l.playoffs.players) || {}).map(([rid, ids]) => `${rid}:${ids.join('.')}`).join(',');
+const softKeyOf = (l) => `${rostersOf(l)}|${State.currentNflWeek ?? ''}|${liveKeyOf(l)}`;
+
+// --- This week's live scores (round 4, owner: "why save them for later?") ---
+// While the first unplayed week is being played, the This week card's matchups (State.lineupActualPoints, loaded when
+// the Dashboard, the Scoreboard or the Lineup tab opens, at most every 2 minutes; lineup/gameInfo.js) give every team's
+// score so far, and ESPN's scoreboard (State.gameTimesByTeam, State.gamesByTeam) which games have kicked off and how
+// much of each is left. null before the week's first kickoff, for another week, or before the matchups have loaded.
+const kickedOff = (team) => {
+    const t = team && State.gameTimesByTeam ? State.gameTimesByTeam[team] : null;
+    const ms = t ? new Date(t).getTime() : NaN;
+    return !isNaN(ms) && Date.now() >= ms;
+};
+function liveMatchups(l) {
+    const po = l && l.playoffs, week = State.currentNflWeek;
+    if (!po || week == null || week < po.firstWeek || week >= po.start) return null;
+    const c = State.lineupActualPoints ? State.lineupActualPoints[l.leagueId] : null;
+    if (!c || c.week !== week || !Array.isArray(c.matchups) || !c.matchups.length) return null;
+    if (!Object.keys(State.gameTimesByTeam || {}).some(kickedOff)) return null;
+    return c.matchups;
+}
+const pointsOf = (e) => (typeof e.custom_points === 'number' ? e.custom_points : (Number(e.points) || 0));
+const liveKeyOf = (l) => {
+    const m = liveMatchups(l);
+    if (!m) return '';
+    const games = Object.values(State.gamesByTeam || {}).map(g => `${g.state || ''}`).join('');
+    return m.map(e => `${e.roster_id}:${pointsOf(e).toFixed(2)}`).join(',') + '|' + games;
+};
+// Each starter as liveStrength takes him (the This week card's own rules, week/thisWeek.js's playerInfo).
+function livePlayers(l, entry, { playerMap, data, key }) {
+    const pos = (id) => (playerMap[id] ? fantasyPosition(playerMap[id]) : null);
+    const ids = starterIdsOf(entry, { bestBall: isBestBallLeague(l), slots: l.starterSlots, posOf: pos });
+    const pts = entry.players_points || {};
+    return ids.map(id => {
+        const p = playerMap[id] || {};
+        const team = p.team || (pos(id) === 'DEF' ? id : null);
+        const game = team && State.gamesByTeam ? State.gamesByTeam[team] : null;
+        const proj = data && data[id] ? data[id][key] : undefined;
+        return {
+            id,
+            actual: typeof pts[id] === 'number' && kickedOff(team) ? pts[id] : null,
+            shareLeft: game && game.state === 'in' && typeof game.left === 'number' ? game.left : 0,
+            projected: typeof proj === 'number' ? proj : null,
+            excluded: isExcludedFromSimulation(p),
+        };
+    });
+}
+
+function projectionsFor(week) {
+    if (State.lineupProjections && State.lineupProjections.week === week && State.lineupProjections.data) return Promise.resolve(State.lineupProjections.data);
+    if (!projections.has(week)) {
+        const p = getWeeklyProjections(State.currentNflSeason || undefined, week).catch(() => null);
+        projections.set(week, p);
+        p.then(d => { if (!d) projections.delete(week); }); // a failed week is asked again next time
+    }
+    return projections.get(week);
+}
+
+let worker = null;
+function runInWorker(input) {
+    return new Promise((resolve) => {
+        let w;
+        try {
+            if (!worker) worker = new Worker(new URL('./playoffWorker.js', import.meta.url), { type: 'module' });
+            w = worker;
+        } catch (e) { resolve(null); return; }
+        const id = Math.random();
+        const done = (v) => { clearTimeout(timer); w.removeEventListener('message', onMsg); w.removeEventListener('error', onErr); resolve(v); };
+        const onMsg = (e) => { if (e.data && e.data.id === id) done(e.data.result || null); };
+        const onErr = (e) => { if (e && e.preventDefault) e.preventDefault(); worker = null; done(null); };
+        const timer = setTimeout(() => { worker = null; try { w.terminate(); } catch (e) { /* gone */ } done(null); }, WORKER_TIMEOUT_MS);
+        w.addEventListener('message', onMsg);
+        w.addEventListener('error', onErr);
+        w.postMessage({ id, input });
+    });
+}
+
+const weeksLeftOf = (po) => Math.max(0, po.start - po.firstWeek);
+const isPending = (l) => {
+    if (!l || !l.playoffs || weeksLeftOf(l.playoffs) < 1) return false;
+    const r = results.get(l.leagueId);
+    return !r || r.key !== keyOf(l) || r.soft !== softKeyOf(l);
+};
+
+// One league's simulation input. data: { playerMap, proj: Map week -> projections }. No past weekly scores (round 8).
+// live: this week's matchups (liveMatchups), or null. finals: the standings with finished weeks added and the first week
+// still to play ({ standings, first }, from withFinals), or null (the records as synced).
+export function buildInput(l, { playerMap = {}, proj = new Map(), live = null, finals = null } = {}, runs = RUNS) {
+    const po = { ...l.playoffs, ...(finals ? { standings: finals.standings, firstWeek: finals.first } : {}) };
+    const key = getLeagueScoringKey(l);
+    const posOf = (id) => (playerMap[id] ? fantasyPosition(playerMap[id]) : null);
+    const teamOf = (id) => (playerMap[id] ? playerMap[id].team || null : null);
+    const weeksPlayed = po.firstWeek - 1;
+    const fallback = {};
+    po.standings.forEach(s => { fallback[s.rid] = pointsForStrength(s.pf, weeksPlayed) || [0, 0]; });
+    const projected = new Map(po.standings.map(s => [s.rid, []]));
+    const weeks = [];
+    for (let w = po.firstWeek; w < po.start; w++) {
+        const data = proj.get(w);
+        const strength = {};
+        po.standings.forEach(s => {
+            const got = data ? projectedStrength(l.starterSlots, po.players[s.rid] || [], {
+                projOf: (id) => (data[id] ? data[id][key] : undefined), posOf, teamOf,
+            }) : null;
+            if (got) projected.get(s.rid).push(got);
+            strength[s.rid] = got || null;
+        });
+        weeks.push({ week: w, games: po.schedule[w] || [], strength });
+    }
+    // The week under way: each team's score so far and what's left of it (round 4).
+    let liveWeek = null;
+    if (live && weeks.length && State.currentNflWeek === po.firstWeek) {
+        liveWeek = { strength: {}, share: {} };
+        const data = proj.get(po.firstWeek);
+        live.forEach(entry => {
+            if (!projected.has(entry.roster_id)) return;
+            const [mean, sd, share] = liveStrength(livePlayers(l, entry, { playerMap, data, key }));
+            liveWeek.strength[entry.roster_id] = [mean, sd];
+            liveWeek.share[entry.roster_id] = share;
+        });
+    }
+    // A team's usual week: the average of its projected weeks, else its points for.
+    const usual = {};
+    projected.forEach((list, rid) => {
+        usual[rid] = list.length ? [list.reduce((a, x) => a + x[0], 0) / list.length, list.reduce((a, x) => a + x[1], 0) / list.length] : fallback[rid];
+    });
+    weeks.forEach(w => po.standings.forEach(s => { if (!w.strength[s.rid]) w.strength[s.rid] = usual[s.rid]; }));
+    if (liveWeek) {
+        Object.assign(weeks[0].strength, liveWeek.strength);
+        weeks[0].share = liveWeek.share;
+    }
+    return {
+        teams: po.standings, weeks, median: po.median, playoffTeams: po.teams, divisions: po.divisions,
+        playoffStrength: usual, lastingSd: LASTING_SD, reseed: !!po.reseed, roundType: po.roundType || 0, runs,
+    };
+}
+
+// Finished weeks the records don't include yet (round 9): Sleeper's final scores for each week from the league's first
+// unplayed one up to the app's current NFL week (which moves on when Monday night's game ends), one request a league and
+// week, kept for the visit. Stops at the first week that doesn't load. Returns { standings, first, weeks: [week] }.
+const finalsCache = new Map(); // `${leagueId}:${week}` -> Promise<matchups | null>
+async function withFinals(l) {
+    const po = l.playoffs, now = State.currentNflWeek;
+    const done = [];
+    for (let w = po.firstWeek; now != null && w < now && w < po.start; w++) {
+        const k = `${l.leagueId}:${w}`;
+        if (!finalsCache.has(k)) {
+            const p = getSleeperMatchups(l.leagueId, w).catch(() => null);
+            finalsCache.set(k, p);
+            p.then(m => { if (!Array.isArray(m) || !m.length) finalsCache.delete(k); });
+        }
+        const m = await finalsCache.get(k);
+        if (!Array.isArray(m) || !m.length) break;
+        const points = {};
+        m.forEach(e => { points[e.roster_id] = pointsOf(e); });
+        done.push({ week: w, games: (po.schedule && po.schedule[w]) || pairsFrom(m), points });
+    }
+    return { standings: applyFinals(po.standings, done, po.median), first: po.firstWeek + done.length, weeks: done.map(d => d.week) };
+}
+
+async function compute() {
+    const leagues = (State.leagues || []).filter(isPending);
+    if (!leagues.length) return;
+    let playerMap = {};
+    try { playerMap = (await getSleeperPlayerMap()) || {}; } catch (e) { /* positions unknown: points for only */ }
+    const weeks = new Set();
+    leagues.forEach(l => { for (let w = l.playoffs.firstWeek; w < Math.min(l.playoffs.start, l.playoffs.firstWeek + PROJECTED_WEEKS); w++) weeks.add(w); });
+    const proj = new Map();
+    await Promise.all([...weeks].map(async w => { const d = await projectionsFor(w); if (d) proj.set(w, d); }));
+    // No past weekly scores (round 8, owner's choice): each starter's spread is a share of his projection
+    // (playoffStrength.js), as accurate on the owner's real games and 1-2 s sooner on a slow phone.
+    // About 0.1 s a league in the worker on a phone (4x-slowed CPU), so 20 leagues take 2-3 s: the views redraw as
+    // leagues come in, at most once a second (a Dashboard redraw with 20 leagues isn't free), and once at the end.
+    let lastShown = Date.now(), unshown = false;
+    const show = () => { lastShown = Date.now(); unshown = false; document.dispatchEvent(new CustomEvent(ODDS_EVENT)); };
+    for (const l of leagues) {
+        const k = keyOf(l), live = liveMatchups(l), soft = softKeyOf(l);
+        const finals = await withFinals(l);
+        const input = buildInput(l, { playerMap, proj, live, finals });
+        const out = await runInWorker(input);
+        if (!out) continue;
+        const left = Math.max(0, l.playoffs.start - finals.first);
+        const certain = playoffCertainty({ teams: finals.standings, weeksLeft: left, median: l.playoffs.median, playoffTeams: l.playoffs.teams, divisions: l.playoffs.divisions });
+        results.set(l.leagueId, { key: k, soft, liveUsed: !!live && State.currentNflWeek === finals.first, standings: finals.standings, left, finalWeeks: finals.weeks, odds: out.odds, byes: out.byes, certain });
+        unshown = true;
+        if (Date.now() - lastShown > 1000) show();
+    }
+    if (unshown) show();
+}
+
+// Starts a run after the page has drawn, unless every league's numbers are current. Safe to call on every redraw.
+export function schedulePlayoffOdds() {
+    if (!(State.leagues || []).some(isPending)) return;
+    if (running) { again = true; return; }
+    running = new Promise(resolve => {
+        const go = () => compute().catch(err => console.warn('Playoff chances did not run.', err)).finally(() => {
+            running = null;
+            resolve();
+            if (again) { again = false; schedulePlayoffOdds(); }
+        });
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => setTimeout(go, 0));
+        else setTimeout(go, 0);
+    });
+}
+
+/**
+ * The numbers for one team (yours unless rid is given), or null when there are none (yet).
+ * { playoff, bye, title (shares 0-1), clinched, eliminated, byes (how many the bracket has) }.
+ */
+export function playoffOddsFor(l, rid = l && l.rosterId) {
+    const r = l && results.get(l.leagueId);
+    if (!r || r.key !== keyOf(l) || rid == null || !r.odds[rid]) return null;
+    return { ...r.odds[rid], ...(r.certain[rid] || {}), byes: r.byes };
+}
+
+// "72%", "<1%", ">99%" (10,000 runs that never missed, or never hit, aren't proof).
+export function pctText(share) {
+    const p = share * 100;
+    if (p < 0.5) return '<1%'; // none in 10,000 runs isn't proof either
+    if (p >= 99.5) return '>99%';
+    return `${Math.round(p)}%`;
+}
+
+// Shown as "<1%".
+export const isTiny = (share) => share * 100 < 0.5;
+
+// The playoff number as words, for a label: "Clinched", "Eliminated" or "72%".
+export const pctLabel = (o) => (o.clinched ? 'Clinched' : o.eliminated ? 'Eliminated' : pctText(o.playoff));
+
+// The Roster record's "Playoffs 72%" (round 7): opens the Playoff picture and brings it into view.
+export function scrollToPlayoffPicture() {
+    const el = document.getElementById('playoffPicture');
+    if (!el || el.hidden) return;
+    const fold = el.querySelector('details.mls-pp');
+    if (fold) fold.open = true;
+    const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
+    el.querySelector('summary')?.focus({ preventScroll: true });
+}
+
+// The playoff number in the shared chance colors: green when favored (50% or more), red when not.
+export function playoffChanceHTML(o) {
+    if (o.clinched) return '<span class="mls-week-chance is-fav">Clinched</span>';
+    if (o.eliminated) return '<span class="mls-week-chance is-dog">Eliminated</span>';
+    return `<span class="mls-week-chance ${o.playoff >= 0.5 ? 'is-fav' : 'is-dog'}">${pctText(o.playoff)}</span>`;
+}
+
+export const ODDS_TITLE = `From ${RUNS.toLocaleString('en-US')} runs of the rest of the regular season and the bracket, with each team's best lineup by Sleeper's projections (points so far when there are none). Standings as of your last sync; once this week's games start, its scores so far count. Clinched and Eliminated only when the records make it certain.`;
+
+// The Dashboard card's line: "Playoffs 72% · Bye 18% · Title 9%", or "Playoffs Eliminated".
+export function cardOddsHTML(l) {
+    const o = playoffOddsFor(l);
+    if (!o) return '';
+    const parts = [`<span class="mls-lc-odds-part">Playoffs ${playoffChanceHTML(o)}</span>`];
+    // Bye and Title only when they say something (round 4: "Playoffs <1% · Bye <1% · Title <1%" on a long shot's card
+    // said the same thing three times).
+    if (!o.eliminated) {
+        if (o.byes > 0 && !isTiny(o.bye)) parts.push(`<span class="mls-lc-odds-part">Bye <strong>${pctText(o.bye)}</strong></span>`);
+        if (!isTiny(o.title)) parts.push(`<span class="mls-lc-odds-part">Title <strong>${pctText(o.title)}</strong></span>`);
+    }
+    // Once you're out, a folded card leaves the line out (owner's choice, round 2: nothing left to watch); open, it shows.
+    return `<p class="mls-lc-odds${o.eliminated ? ' is-out' : ''}" title="${escapeHtml(ODDS_TITLE)}">${parts.join('<span class="mls-lc-sep" aria-hidden="true"> · </span>')}</p>`;
+}
+
+// The current seeding: record (a tie counts half), then points for; with divisions, each division's leader first, as
+// Sleeper seeds them (and as scoreboard.js's seasonRecord does).
+export function currentSeeds(po) {
+    const ws = (t) => t.w + t.t / 2;
+    const table = po.standings.slice().sort((a, b) => (ws(b) - ws(a)) || (b.pf - a.pf) || (a.rid - b.rid));
+    if (!po.divisions) return table;
+    const leaders = [];
+    table.forEach(t => { if (!leaders.some(x => x.div === t.div)) leaders.push(t); });
+    return leaders.concat(table.filter(t => !leaders.includes(t)));
+}
+
+// The Roster tab's Playoff picture (owner's choice, round 2: its own table under Power Rankings, not three more columns
+// in it, which crowded phones; in standings order, with the playoff line; a fold, open on each visit). '' without
+// numbers.
+
+// What the league's bracket does differently (round 6), or ''.
+function bracketRules(po) {
+    const rules = [];
+    if (po.reseed) rules.push('re-seeded after each round');
+    if (po.roundType === 1) rules.push('a two-week final');
+    if (po.roundType === 2) rules.push('two weeks a round');
+    if (!rules.length) return '';
+    const text = rules.join('; ');
+    return ` Bracket: ${text}.`;
+}
+
+export function playoffPictureHTML(l) {
+    const r = l && l.playoffs && results.get(l.leagueId);
+    if (!r || r.key !== keyOf(l)) return '';
+    // The standings with any finished week Sleeper's records don't have yet (round 9).
+    const po = { ...l.playoffs, standings: r.standings || l.playoffs.standings };
+    const left = r.left ?? weeksLeftOf(po);
+    // A long shot's Bye and Title, and an eliminated team's dashes, muted so the numbers that matter stand out (round 4).
+    const dash = '<span class="mls-pp-dim">\u2013</span>';
+    const seeds = currentSeeds(po);
+    // With divisions, currentSeeds puts each division's leader first: one per division.
+    const leaders = new Set(po.divisions ? seeds.slice(0, new Set(po.standings.map(t => t.div)).size).map(t => t.rid) : []);
+    const rows = seeds.map((t, k) => {
+        const o = playoffOddsFor(l, t.rid);
+        if (!o) return '';
+        const more = (share) => (o.eliminated ? dash : isTiny(share) ? '<span class="mls-pp-dim">&lt;1%</span>' : pctText(share));
+        const line = k === po.teams && k > 0 ? ' class="mls-pp-first-out"' : '';
+        const you = t.rid === l.rosterId;
+        const rec = `${t.w}\u2013${t.l}${t.t ? `\u2013${t.t}` : ''}`;
+        return `<tr${line}${you ? ' data-you' : ''}><td class="mls-pp-team">${leaders.has(t.rid) ? DIVISION_LEADER_MARK : ''}${escapeHtml(po.owners[t.rid] || `Team ${t.rid}`)}</td><td class="mls-pp-num">${rec}</td>`
+            + `<td class="mls-pp-num">${playoffChanceHTML(o)}</td>${r.byes ? `<td class="mls-pp-num">${more(o.bye)}</td>` : ''}<td class="mls-pp-num">${more(o.title)}</td></tr>`;
+    }).join('');
+    const facts = [left ? `${left} week${left === 1 ? '' : 's'} left` : 'regular season over', `top ${po.teams} make it`];
+    const finalWeeks = r.finalWeeks || [];
+    if (finalWeeks.length) facts.push(`week ${finalWeeks.join(', ')} final`);
+    if (r.liveUsed) facts.push('this week live');
+    return `<details class="mls-change-fold mls-pp" open>
+        <summary>${FOLD_CHEVRON}<span>Playoff picture</span><span class="mls-pp-facts">${facts.join(' \u00b7 ')}</span></summary>
+        <div class="mls-pp-wrap"><table class="mls-pp-table">
+            <thead><tr><th class="mls-pp-team">Team</th><th class="mls-pp-num">Record</th><th class="mls-pp-num" title="${escapeHtml(ODDS_TITLE)}">Playoffs</th>${r.byes ? '<th class="mls-pp-num" title="A first-round bye">Bye</th>' : ''}<th class="mls-pp-num" title="Winning the title">Title</th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table></div>
+        <p class="mls-pp-note">Seeded as things stand; the dashed line is the playoff cut. From ${RUNS.toLocaleString('en-US')} runs of the weeks left and the bracket with Sleeper's projections${r.liveUsed ? " and this week's scores so far" : ''}; standings as of your last sync${finalWeeks.length ? `, with week ${finalWeeks.join(', ')}'s final scores` : ''}.${po.divisions ? ' \u2605 leads a division: division leaders take the top seeds.' : ''}${bracketRules(po)}</p>
+    </details>`;
+}
+
+// Draws (or hides) the Playoff picture under Power Rankings for the active league.
+export function renderPlayoffPicture(l) {
+    const el = typeof document !== 'undefined' ? document.getElementById('playoffPicture') : null;
+    if (!el) return;
+    const html = playoffPictureHTML(l);
+    // A redraw keeps the fold as you left it this visit.
+    const fold = el.querySelector('details.mls-pp');
+    const wasClosed = fold && !fold.open && el.dataset.leagueId === (l && l.leagueId);
+    el.innerHTML = html;
+    el.dataset.leagueId = (l && l.leagueId) || '';
+    if (wasClosed) el.querySelector('details.mls-pp')?.removeAttribute('open');
+    el.hidden = !html;
+}

@@ -52,6 +52,7 @@ import {
     leagueDirection, sideSummary, stepWeek, summarize, swingOrder, teamNamesFrom, tooEarlyToCall, weekFromSearch,
 } from './scoreboard.js';
 import { getPowerLeagueKind } from '../power/directionLabels.js';
+import { schedulePlayoffOdds } from '../sim/playoffOdds.js';
 
 const FRESH_MS = 2 * 60 * 1000;
 // How many matchups "Still in play" lists before "Show all".
@@ -293,6 +294,8 @@ export function refreshThisWeek({ force = false } = {}) {
             // New scores: the Final Window's numbers (which the tiles also show, above) wait for its next run.
             finalView.result = null; finalView.key = '';
             view.loads.set(week, { loadedAt: Date.now(), failed });
+            // New scores: the playoff chances re-run for leagues whose week is under way (improvements S55, round 4).
+            if (week === State.currentNflWeek) schedulePlayoffOdds();
         } finally {
             view.loading = null;
         }

@@ -101,6 +101,7 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - F30 | LOG.md | F30 — Auto-Find no longer picks a star on bye as the drop candidate
 - F28 | LOG.md | F28 — Scoreboard median says "13th of 12"
 - F29 | LOG.md | F29 — First Dashboard load flags starters ruled out after kickoff
+- S55 | LOG.md | S55 — Playoff chances (Monte Carlo)
 
 ## F23 — The flash when tapping things on phones
 
@@ -1044,3 +1045,43 @@ with ESPN held (main: "1 to fix"), and last week's saved times ignored, then the
 never redrawn).
 
 **Left over.** None. The full suite hasn't run (it runs when the pull request is asked for).
+
+## S55 — Playoff chances (Monte Carlo)
+
+**User-visible.** Sleeper leagues with ≤ 5 regular-season weeks left, after a sync: the Dashboard card's "Playoffs 72% ·
+Bye 18% · Title 9%" (Bye/Title only at 1%+; dropped from a folded card once you're eliminated); "Playoffs 72%" in the
+Roster record, a link to the "Playoff picture" under Power Rankings (`#playoffPicture`, a fold open on each visit):
+every team in seeding order, Record / Playoffs / Bye / Title, dashed playoff cut, "<1%" muted, ★ division leaders, a
+note on the league's bracket rules, "this week live" while games count. Chance colors (`mls-week-chance`); "Clinched" /
+"Eliminated" only when the records prove it. Guide legend lines for both.
+
+**Owner's decisions.** All three places; every team's in its own table (round 2: three Power Rankings columns crowded
+phones). Folded cards keep the line unless eliminated; S51's record and place should join it. Strength: Sleeper's
+projections (best lineup, QB stacks), points for without them; team-level draws; divisions count; live scores (round 4);
+each league's bracket rules (round 5); no past weekly scores (round 8, below).
+
+**How.** Sync (`leagues/playoffData.js`) saves `league.playoffs`: standings, settings (`reseed`: `playoff_seed_type` 1,
+`roundType`: `playoff_round_type`), rosters, owners, the remaining schedule (kept across syncs). `sim/playoffOdds.js`
+runs after the first paint, in memory: projections for the next 3 weeks (later weeks and the bracket use their average),
+`playoffStrength.js`, then 10,000 runs a league in a module worker (`playoffWorker.js` → `playoffs.js`). Seeding:
+record, points for, coin flip; fixed or re-seeded bracket; two-week rounds as two weeks' scores. Once the week kicks
+off, the This week card's matchups and ESPN's clocks count as the Simulator does (`liveStrength`). Results are keyed by
+standings (hidden when they change) and rosters / live scores (re-run, numbers stay up); cards patch their line in
+place (`patchOddsLines`). No new storage keys; Q4's Simulator untouched.
+
+**Calibration (owner's backup).** Each "<1%" / ">99%" was 2+ games from the cut with 4 left. Weeks 2-10 (1,312
+team-weeks): real scores spread 26.9 around projections, 8.6 lasting all season (`LASTING_SD`, one miss per team per
+run). Round 8: past weekly scores predicted 655 real games no better (Brier 0.1861 vs 0.1862) and cost a slow phone
+1-2 s, so each starter's spread is 40% of his projection ×1.5 (`WEEKLY_SPREAD_SCALE`).
+
+**Performance.** 18 leagues, 4x-slowed phone: all numbers ~1.7 s after the cards. The ~1 s stall the starter alert's
+quiet Sync All makes on opening is its own (it used to throw the first run away: round 7).
+
+**Tests.** `tests/unit/playoffs.test.mjs`; `tests/mls-playoff-odds.spec.mjs`. Screenshots: only
+`desktop/` and `phone/mls-league-guide.png` re-taken (two new legend lines; the fixtures are week 2, so no odds show).
+
+**Finished weeks (round 9).** From the end of Monday night's game until Sleeper processes the week (or longer without a
+sync) the records lack it: `withFinals` fetches its final scores (one request a league, cached for the visit),
+`applyFinals` adds them (median too), and only the weeks after it are simulated; Clinched can show on Monday night.
+
+**Left over.** None. Full suite run: all passed except `visual.spec.mjs` (cloud fonts, as expected).

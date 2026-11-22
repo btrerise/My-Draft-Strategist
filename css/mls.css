@@ -1682,7 +1682,8 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 #setupSyncCard,
 #rosRankingsCard,
 #weeklyRankingsCard,
-#powerRankingsCard {
+#powerRankingsCard,
+#playoffPicture {
     scroll-margin-top: 5.5rem;
 }
 
@@ -2009,6 +2010,13 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 .mls-lc-synced-label { font-weight: 600; }
 /* An early-game swap to make (improvements S50, round 5): muted, like the Synced line; a suggestion, never amber. */
 .mls-lc-early { margin: 0.35rem 0 0 calc(28px + 0.4rem); font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; }
+/* Playoff chances (improvements S55): the playoff number in the shared chance colors, bye and title plain. */
+.mls-lc-odds { margin: 0.35rem 0 0 calc(28px + 0.4rem); font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; font-variant-numeric: tabular-nums; }
+.mls-lc-odds-part { white-space: nowrap; }
+.mls-lc-odds .mls-week-chance { margin-left: 0; }
+.mls-lc-odds strong { color: var(--text-main); }
+/* Once you're eliminated, a folded card leaves the line out (round 2); unfold it to see it. */
+.mls-lc-card.is-collapsed .mls-lc-odds.is-out { display: none; }
 .mls-lc-synced-add { color: #86efac; }
 .mls-lc-synced-drop { color: #9ca3af; }
 .mls-lc-synced-out { color: var(--text-muted); }
@@ -2024,7 +2032,7 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 /* Phones: the status row starts at the card's edge, under the chevron, so the chips get the full width. */
 @media (max-width: 599.98px) {
     .mls-lc-card { padding-top: 0.5rem; padding-bottom: 0.55rem; padding-left: 12px; padding-right: 12px; }
-    .mls-lc-status, .mls-lc-synced, .mls-lc-early { margin-left: 0; }
+    .mls-lc-status, .mls-lc-synced, .mls-lc-early, .mls-lc-odds { margin-left: 0; }
 }
 
 /* --- SCOREBOARD (js/mls/week/thisWeek.js, improvements S21) ---
@@ -2180,6 +2188,33 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 .mls-roster-record-dot { margin: 0 0.45rem; opacity: 0.7; }
 .mls-roster-record-wl { color: var(--text-main); font-size: 0.95rem; }
 .mls-roster-record abbr { text-decoration: none; }
+.mls-roster-record-odds .mls-week-chance { margin-left: 0; }
+/* A link to the Playoff picture (round 7): the record's own text, underlined like a link. */
+.mls-roster-odds-link { font: inherit; color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; }
+.mls-roster-odds-link:hover { color: var(--text-main); }
+/* The Playoff picture under Power Rankings (improvements S55, round 2): standings order, a dashed line where the
+   playoffs cut off, your row like Power Rankings' (.mls-power-you). */
+.mls-playoff-picture { margin-top: 1rem; }
+.mls-playoff-picture[hidden] { display: none; }
+.mls-change-fold.mls-pp > summary { font-size: 0.95rem; color: var(--text-main); }
+.mls-pp-facts { font-size: 0.78rem; font-weight: 400; color: var(--text-muted); }
+.mls-pp-wrap { margin-top: 0.5rem; overflow-x: auto; max-width: 40rem; } /* columns together on wide screens (round 4) */
+.mls-pp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.mls-pp-table th { padding: 0.35rem 0.5rem; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+.mls-pp-table td { padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); }
+.mls-pp-table .mls-pp-team { text-align: left; max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mls-pp-table .mls-pp-num { text-align: right; white-space: nowrap; }
+.mls-pp-table .mls-week-chance { margin-left: 0; }
+.mls-pp-table .mls-pp-dim { color: var(--text-muted); font-weight: 400; }
+/* A division leader (round 6): before the name, so a long name's ellipsis never hides it. */
+.mls-pp-star { margin-right: 0.3rem; color: var(--primary-green); }
+.mls-pp-table tr[data-you] td { background: rgba(147, 197, 253, 0.08); font-weight: 700; }
+.mls-pp-table tr.mls-pp-first-out td { border-top: 2px dashed var(--text-muted); }
+.mls-pp-note { max-width: 40rem; margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.45; }
+@media (max-width: 599.98px) {
+    .mls-pp-table th, .mls-pp-table td { padding-left: 0.3rem; padding-right: 0.3rem; }
+    .mls-pp-table .mls-pp-team { max-width: 7.5rem; }
+}
 /* Phones: the name across the card, then the format, then the record (S21, owner's request). */
 @media (max-width: 599.98px) {
     .mls-roster-head h3 { display: block; }

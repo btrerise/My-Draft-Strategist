@@ -40,6 +40,7 @@ import { bestBallBadgeMarkup, leagueStatusChipMarkup, paidBadgeMarkup } from '..
 import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, reoptimizeKickedOffLeagues, renderLastSynced, renderLineupNeeds, syncChangesFor, syncChangesHTML } from './dashboard.js';
 import { renderBestAvailable } from '../scout/bestAvailable.js';
 import { refreshThisWeek, renderThisWeek } from '../week/thisWeek.js';
+import { ODDS_EVENT, cardOddsHTML, schedulePlayoffOdds } from '../sim/playoffOdds.js';
 import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/viewTransition.js';
 
     const CHEVRON = `<svg class="chevron mls-lc-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
@@ -152,6 +153,8 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         // An early-game swap to make (improvements S50, round 5): under the status row, so a folded card shows it too.
         // A suggestion: it isn't counted, and doesn't make the card amber.
         const earlyLine = showNeeds && !isBestBallLeague(l) ? earlySwapCardLine(l) : '';
+        // Playoff chances (improvements S55): under the status row, so a folded card shows them too.
+        const odds = cardOddsHTML(l);
         const n = State.leagues.length;
         return `
             <li class="mls-lc-card${active ? ' is-active' : ''}${needsYou ? ' needs-you' : ''}${collapsed ? ' is-collapsed' : ''}" data-league-id="${id}">
@@ -172,6 +175,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
                     ${statusChipsHTML(st)}
                     <span class="mls-lc-counts">${count > 0 ? `<span class="mls-lc-count-todo">${count} to fix</span>` : ''}${need.set ? '<span class="mls-lc-count-sleeper">1 to set</span>' : ''}<span class="mls-lc-count-upgrades" data-league-id="${id}">${ctx.upgrades.get(l.leagueId) || ''}</span></span>
                 </div>
+                ${odds}
                 ${earlyLine ? `<p class="mls-lc-early">${earlyLine}</p>` : ''}
                 ${synced ? `<p class="mls-lc-synced"><span class="mls-lc-synced-label">Synced:</span> ${syncChangesHTML(synced)}</p>` : ''}
                 <div class="mls-lc-body"${collapsed ? ' hidden' : ''}>
@@ -244,6 +248,30 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         // otherwise just redrawn from what it has.
         if (dashboard && dashboard.classList.contains('active')) refreshThisWeek();
         else renderThisWeek();
+        // Playoff chances (improvements S55): worked out after this paint, once per sync; the cards redraw when they arrive.
+        schedulePlayoffOdds();
+    }
+    if (typeof document !== 'undefined') {
+        // Only each card's odds line is replaced (round 7): a whole Dashboard redraw (Best available, the Week Recap...)
+        // just for these stalled a slow phone for about half a second as the numbers came in.
+        document.addEventListener(ODDS_EVENT, patchOddsLines);
+    }
+
+    // The playoff chances' lines (improvements S55), put in place on each card without redrawing the cards. The cards'
+    // HTML no longer matches lastCards, so the next full redraw writes them afresh.
+    function patchOddsLines() {
+        const list = document.getElementById('leagueCards');
+        if (!list) return;
+        const byId = new Map((State.leagues || []).map(l => [l.leagueId, l]));
+        list.querySelectorAll(':scope > .mls-lc-card').forEach(card => {
+            const l = byId.get(card.dataset.leagueId);
+            const html = l ? cardOddsHTML(l) : '';
+            const old = card.querySelector(':scope > .mls-lc-odds');
+            if (old && old.outerHTML === html) return;
+            if (old) old.remove();
+            if (html) card.querySelector(':scope > .mls-lc-status')?.insertAdjacentHTML('afterend', html);
+        });
+        lastCards = null;
     }
 
     // Edit mode's "$ Paid" (improvements S21): marks a league you pay for, saved on the league (so Backup keeps it

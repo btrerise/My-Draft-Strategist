@@ -263,3 +263,6 @@ export function faabBidMarkup(label, data, { sample = false, rough = false } = {
 // The bid sheet's arrows (round 2): what raised the bid and what lowered it.
 export const BID_UP_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>`;
 export const BID_DOWN_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>`;
+
+// A division leader in the Playoff picture (improvements S55, round 6; sim/playoffOdds.js), and in the Guide's legend.
+export const DIVISION_LEADER_MARK = '<span class="mls-pp-star" aria-hidden="true">\u2605</span><span class="sr-only">Division leader: </span>';

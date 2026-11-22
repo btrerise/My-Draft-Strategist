@@ -65,6 +65,7 @@ import './power/futureValue.js';
 import { getPowerLeagueKind } from './power/directionLabels.js';
 import { goToLeagueStyle, goToPowerRankings, goToSeasonPicker, refreshPowerRankings, setPowerCompeting, updatePowerSetting } from './power/rosterCard.js';
 import { scrollToPowerRankings } from './power/snapshot.js';
+import { scrollToPlayoffPicture } from './sim/playoffOdds.js';
 import { selectPastTrade } from './power/tradeLine.js';
 import './scout/waiverInsights.js';
 import { lookupSimPlayer, runMatchupSim } from './sim/matchup.js';
@@ -234,6 +235,8 @@ const clickActions = {
     factoryReset() { factoryReset(); },
     // Roster tab: Power Rankings snapshot (power/snapshot.js) (5C)
     scrollToPowerRankings() { scrollToPowerRankings(); },
+    // The Roster record's playoff chance: to the Playoff picture (improvements S55, round 7).
+    scrollToPlayoffPicture() { scrollToPlayoffPicture(); },
     // Lineup tab (and render/lineup.js, lineup/earlyGames.js, lineup/gameInfo.js)
     optimizeLineup() { optimizeLineup(true, true); },
     copyLineupAsText() { copyLineupAsText(this); },
