@@ -20,7 +20,7 @@ import { fantasyPosition } from '../constants.js';
 import { getLeagueScoringKey } from '../lineup/gameInfo.js';
 import { MIN_RELIABLE_GAMES } from './stats.js';
 import { playoffCertainty } from './playoffs.js';
-import { pointsForStrength, projectedStrength } from './playoffStrength.js';
+import { LASTING_SD, pointsForStrength, projectedStrength } from './playoffStrength.js';
 
 export const RUNS = 10000;
 const PROJECTED_WEEKS = 3;
@@ -97,7 +97,7 @@ export function buildInput(l, { playerMap = {}, proj = new Map(), history = new 
     weeks.forEach(w => po.standings.forEach(s => { if (!w.strength[s.rid]) w.strength[s.rid] = usual[s.rid]; }));
     return {
         teams: po.standings, weeks, median: po.median, playoffTeams: po.teams, divisions: po.divisions,
-        playoffStrength: usual, runs,
+        playoffStrength: usual, lastingSd: LASTING_SD, runs,
     };
 }
 

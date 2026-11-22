@@ -14,6 +14,12 @@ import { getPlayerVarianceProfile } from './stats.js';
 export const QB_STACK_CORRELATION = 0.35;
 // A team's week-to-week spread as a share of its average (fantasy teams typically swing 15-20%).
 export const PF_SPREAD_CV = 0.18;
+// Calibrated (S55 round 2) on the owner's 13 head-to-head leagues, weeks 2-10 of 2026 (1,312 team-weeks): actual
+// scores sat 26.9 points (sd) from the sum of the starters' projections, against the model's 22.2. About 8.6 of that
+// lasts all season (a team that beats or misses its projections keeps doing so: LASTING_SD, drawn once per run in
+// sim/playoffs.js); the rest is week to week, 1.15 times the summed per-player spreads (WEEKLY_SPREAD_SCALE).
+export const WEEKLY_SPREAD_SCALE = 1.15;
+export const LASTING_SD = 8.6;
 
 /**
  * slots: the league's starting slots (league.starterSlots); playerIds: the roster.
@@ -48,7 +54,7 @@ export function projectedStrength(slots, playerIds, { projOf, posOf, teamOf = ()
             for (let j = i + 1; j < ids.length; j++) variance += 2 * QB_STACK_CORRELATION * sds.get(ids[i]) * sds.get(ids[j]);
         }
     });
-    return [mean, Math.sqrt(variance)];
+    return [mean, Math.sqrt(variance) * WEEKLY_SPREAD_SCALE];
 }
 
 // From points for: [mean, sd] per week played, or null before any week.

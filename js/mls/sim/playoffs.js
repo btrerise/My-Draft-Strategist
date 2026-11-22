@@ -72,10 +72,13 @@ function normalSource(random) {
  * weeks: [{ games: [[ridA, ridB], ...], strength: { rid: [mean, sd] } }], in order. Every team scores every week (for the
  *   median and points for), whether it has a game or not.
  * playoffStrength: { rid: [mean, sd] } for the bracket's games.
+ * lastingSd: how far a team's true level can sit from its projections for the rest of the season (points a week). Each
+ *   run draws one such miss per team and adds it to every week: without it, four weeks were treated as four fresh
+ *   coins and long shots read "<1%" too often (S55 round 2, calibrated on the owner's leagues: playoffStrength.js).
  * Returns { odds: { rid: { playoff, bye, title } } (shares 0-1), byes, runs }. Each run puts exactly playoffTeams
  * teams in, so the playoff shares add up to playoffTeams.
  */
-export function simulatePlayoffs({ teams, weeks = [], median = false, playoffTeams, divisions = false, playoffStrength = {}, runs = 10000, random = Math.random }) {
+export function simulatePlayoffs({ teams, weeks = [], median = false, playoffTeams, divisions = false, playoffStrength = {}, lastingSd = 0, runs = 10000, random = Math.random }) {
     const n = teams.length;
     const P = Math.min(Number(playoffTeams) || 0, n);
     const idx = new Map(teams.map((t, i) => [t.rid, i]));
@@ -91,6 +94,8 @@ export function simulatePlayoffs({ teams, weeks = [], median = false, playoffTea
     }));
     const pMean = Float64Array.from(teams, t => (playoffStrength[t.rid] ? playoffStrength[t.rid][0] : 0));
     const pSd = Float64Array.from(teams, t => (playoffStrength[t.rid] ? playoffStrength[t.rid][1] : 0));
+    // Each run's lasting miss per team (see lastingSd above), the same in every week and the bracket.
+    const lasting = new Float64Array(n);
     const byes = byeCount(P);
     const size = bracketSize(P);
     const bracket = bracketOrder(size);
@@ -102,15 +107,16 @@ export function simulatePlayoffs({ teams, weeks = [], median = false, playoffTea
     const table = new Int32Array(n), seeds = new Int32Array(n), isWinner = new Uint8Array(n);
     const round = new Int32Array(size);
     const play = (a, b) => {
-        const sa = pMean[a] + pSd[a] * normal(), sb = pMean[b] + pSd[b] * normal();
+        const sa = pMean[a] + lasting[a] + pSd[a] * normal(), sb = pMean[b] + lasting[b] + pSd[b] * normal();
         return sa > sb || (sa === sb && random() < 0.5) ? a : b;
     };
 
     for (let run = 0; run < runs; run++) {
         wins.set(baseWins); pf.set(basePf);
+        if (lastingSd > 0) for (let i = 0; i < n; i++) lasting[i] = lastingSd * normal();
         for (let wk = 0; wk < plan.length; wk++) {
             const w = plan[wk], g = w.games;
-            for (let i = 0; i < n; i++) { score[i] = w.mean[i] + w.sd[i] * normal(); pf[i] += score[i]; }
+            for (let i = 0; i < n; i++) { score[i] = w.mean[i] + lasting[i] + w.sd[i] * normal(); pf[i] += score[i]; }
             for (let k = 0; k < g.length; k += 2) {
                 const a = g[k], b = g[k + 1];
                 if (score[a] > score[b]) wins[a] += 1;

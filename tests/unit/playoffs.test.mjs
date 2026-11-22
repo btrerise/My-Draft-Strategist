@@ -5,7 +5,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { bracketOrder, byeCount, playoffCertainty, simulatePlayoffs } from '../../js/mls/sim/playoffs.js';
-import { PF_SPREAD_CV, QB_STACK_CORRELATION, pointsForStrength, projectedStrength } from '../../js/mls/sim/playoffStrength.js';
+import { LASTING_SD, PF_SPREAD_CV, QB_STACK_CORRELATION, WEEKLY_SPREAD_SCALE, pointsForStrength, projectedStrength } from '../../js/mls/sim/playoffStrength.js';
 import { MAX_WEEKS_LEFT, pairsFrom, playoffDataFrom } from '../../js/mls/leagues/playoffData.js';
 
 // A seeded generator, so the numbers are the same on every run.
@@ -107,6 +107,16 @@ describe('simulatePlayoffs', () => {
         assert.equal(out.odds[3].playoff, 1);
         assert.equal(out.odds[2].playoff, 0);
     });
+    test('a lasting miss per team gives a long shot more of a chance over several weeks (round 2)', () => {
+        // Two games behind with four to play, against a team projected 20 points a week better.
+        const teams = [{ rid: 1, w: 8, l: 2, t: 0, pf: 1300 }, { rid: 2, w: 6, l: 4, t: 0, pf: 1200 }];
+        const strength = { 1: [140, 25], 2: [120, 25] };
+        const weeks = [1, 2, 3, 4].map(() => ({ games: [], strength }));
+        const run = (lastingSd) => simulatePlayoffs({ teams, weeks, median: true, playoffTeams: 1, playoffStrength: strength, lastingSd, runs: 20000, random: seeded(9) }).odds[2].playoff;
+        const without = run(0), withIt = run(LASTING_SD);
+        assert.ok(withIt > without * 1.3, `${without} -> ${withIt}`);
+        assert.ok(withIt < 0.2);
+    });
     test('the bracket: neighbours play, top seeds get the byes', () => {
         assert.deepEqual(bracketOrder(8), [1, 8, 4, 5, 2, 7, 3, 6]);
         assert.deepEqual([4, 5, 6, 7, 8, 12].map(byeCount), [0, 3, 2, 1, 0, 4]);
@@ -123,7 +133,8 @@ describe('team strength', () => {
         assert.equal(got[0], 47);
         const sd = (x) => x * 0.4;
         const variance = sd(20) ** 2 + sd(15) ** 2 + sd(12) ** 2 + 2 * QB_STACK_CORRELATION * sd(20) * sd(15);
-        assert.ok(Math.abs(got[1] - Math.sqrt(variance)) < 0.05);
+        // Widened to what the owner's leagues showed (round 2).
+        assert.ok(Math.abs(got[1] - Math.sqrt(variance) * WEEKLY_SPREAD_SCALE) < 0.05);
     });
     test('nobody projected: null (points for stands in)', () => {
         assert.equal(projectedStrength(['QB'], ['q'], { projOf: () => undefined, posOf: id => pos[id] }), null);

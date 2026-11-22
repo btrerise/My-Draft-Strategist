@@ -1062,19 +1062,23 @@ the owner's leagues have them, so they count (division winners take the top seed
 **How.** Sync (`leagues/playoffData.js`) saves `league.playoffs`: standings, playoff settings, rosters, owners and
 Sleeper's matchups for the weeks left (kept across syncs; fetched only when ≤ `MAX_WEEKS_LEFT` = 5 weeks remain).
 `sim/playoffOdds.js` runs after the first paint, in memory, once per sync: projections for the first 3 weeks left
-(shared by every league; later weeks and the bracket use those weeks' average), strength in `sim/playoffStrength.js`,
-10,000 runs per league in a module worker (`sim/playoffWorker.js` → `sim/playoffs.js`). Seeding: record, then points
-for, then a coin flip; a fixed bracket (1 v 8, 4 v 5...), byes to the top seeds; a two-week final counts as one game.
-No new storage keys. Q4's Simulator model untouched.
+(later weeks and the bracket use their average), strength in `sim/playoffStrength.js`, 10,000 runs per league in a
+module worker (`sim/playoffWorker.js` → `sim/playoffs.js`). Seeding: record, points for, coin flip; fixed bracket, byes
+to the top seeds. No new storage keys. Q4's Simulator model untouched.
 
-**Performance.** `playoffs.js` alone, 20 leagues × 12 teams, 4x-slowed CPU in Chromium: 2.4 s (3 weeks left), 3.4 s
-with the median, about 0.1-0.2 s a league, all in the worker; views redraw at most once a second as leagues finish.
-5,000 runs would halve it if that feels slow on the owner's phone.
+**Calibration (round 2, owner's backup, 18 leagues).** Checked the "<1%" / ">99%" against real Sleeper data: the shares
+add up in every league, and each extreme is a team 2+ games from the line with 4 games left (one recomputed at 200,000
+runs: 99.66%). Projected vs actual team scores, weeks 2-10, 1,312 team-weeks: single-game chances were close (90%+
+favourites won 93%), but actual scores spread 26.9 points around projections against the model's 22.2, and 8.6 of it
+lasts all season. So weekly spreads ×1.15 (`WEEKLY_SPREAD_SCALE`) and one lasting miss per team per run
+(`LASTING_SD` = 8.6, `lastingSd` in `simulatePlayoffs`). Effect on the backup: "<1%" 32 → 29, ">99%" 35 → 30 of 208.
+
+**Performance.** 20 leagues × 12 teams, 4x-slowed CPU: 2.4 s (3.4 s with the median), all in the worker; views
+redraw at most once a second. 5,000 runs would halve it.
 
 **Tests.** `tests/unit/playoffs.test.mjs` (certainty, shares adding up, median, divisions, bracket, strength, sync data);
-`tests/mls-playoff-odds.spec.mjs` (six teams, three spots, week 14: Ace clinched, Fay eliminated, you in between; the
-sum of Playoffs is 300% within rounding; no projections → points for; schedule failed or 7 weeks left → nothing).
-No screenshot changes (the fixtures are week 2, too far out to show odds).
+`tests/mls-playoff-odds.spec.mjs` (week 14: one clinched, one eliminated, you in between; Playoffs sum to the spots;
+no projections, failed schedule, 7 weeks left). No screenshot changes (fixtures are week 2, too far out).
 
 **Left over.** During a week in progress the current week is simulated from projections, not its live scores (a
 follow-up could feed in the This week card's scores). Sleeper's re-seeding option (`playoff_seed_type`) isn't read. The
