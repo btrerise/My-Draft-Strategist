@@ -1078,13 +1078,12 @@ lasting miss per team per run (`LASTING_SD`).
 each team's week as the Simulator counts it (`liveStrength`); the lasting miss scales with the share left. New scores
 re-run the league (old numbers stay up); a new sync hides them until its run.
 
-**Performance.** 20 leagues, 4x-slowed CPU: sims 2.4 s (3.4 s with the median) in the worker. Round 7 (owner's backup,
-slowed phone): numbers at ~2.4-5 s after the cards; cards patch their odds lines in place (`patchOddsLines`) instead of a
-Dashboard redraw; results keyed by standings, not `lastSyncedAt` (the starter alert's quiet Sync All on opening threw
-the first run away). Its ~1 s stall is the Sync All's, not S55's.
+**Performance.** 20 leagues, 4x CPU: sims 2.4-3.4 s in the worker; the owner's 18 on a slowed phone: numbers 2.4-5 s after
+the cards. Round 7: odds lines patched in place (`patchOddsLines`), results keyed by standings, not `lastSyncedAt` (the
+starter alert's quiet Sync All on opening threw the first run away; its ~1 s stall is its own).
 
-**Tests.** `tests/unit/playoffs.test.mjs`; `tests/mls-playoff-odds.spec.mjs` (clinched / eliminated / between, sums to
-the spots, the Playoff picture and its fold, the folded eliminated card, no projections, failed schedule, too early).
+**Tests.** `tests/unit/playoffs.test.mjs`; `tests/mls-playoff-odds.spec.mjs` (clinched / eliminated / between, sums,
+the picture, folds, live, divisions, bracket rules, quiet re-sync, errors).
 No screenshot changes (fixtures are week 2, too far out).
 
 **Left over.** A week before `firstWeek` that Sleeper hasn't folded into the records (no sync since) isn't read from
