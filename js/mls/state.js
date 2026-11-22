@@ -7,12 +7,27 @@ import { getNflState } from '../shared/api/sleeper.js';
 import { ESPN_TEAM_ALIASES } from './constants.js';
 import { gameShareLeft } from './sim/stats.js';
 import { gameStatusMayBeStale } from './lineup/gameInfo.js';
-import { clearLocksForNewWeek, loadRosterTab, refreshThisWeek, renderBestAvailable, renderLineupUI, optimizeLineup } from './main.js';
+import { clearLocksForNewWeek, loadRosterTab, refreshThisWeek, renderBestAvailable, renderLeagueCards, renderLineupUI, optimizeLineup } from './main.js';
 import { KEYS } from '../shared/storage/keys.js';
 import { showToast } from '../shared/ui/toast.js';
 import { mdsFetch } from '../shared/net.js';
 import { recentDropsFor } from './scout/recentDrops.js';
 import { noteEarlyKickoffs, noteEarlyWeek } from './lineup/earlyGames.js';
+
+    // The kickoff times saved by the last visit (improvements F29): until ESPN answers, the first render of this visit
+    // (the Dashboard's to-dos, the optimizer's kickoff locks) uses them, so a starter ruled Out after his game started
+    // isn't counted as a fix that Sync All then clears. Only while that week can still be on: once 4 hours have passed
+    // since its last kickoff, Sleeper's week has moved on and they're last week's. refreshCurrentNflWeek drops them if
+    // the week they were saved for isn't Sleeper's.
+    const SAVED_KICKOFFS_FOR_MS = 4 * 60 * 60 * 1000;
+    export function savedKickoffs(saved, nowMs) {
+        if (!saved || typeof saved !== 'object' || !saved.times || typeof saved.times !== 'object') return null;
+        const times = Object.fromEntries(Object.entries(saved.times).filter(([team, iso]) => typeof team === 'string' && typeof iso === 'string' && !isNaN(new Date(iso).getTime())));
+        const last = Math.max(...Object.values(times).map(iso => new Date(iso).getTime()));
+        if (!Object.keys(times).length || nowMs >= last + SAVED_KICKOFFS_FOR_MS) return null;
+        return { week: saved.week ?? null, season: saved.season ?? null, times };
+    }
+    const savedAtLoad = savedKickoffs(readJSON(KEYS.mls.kickoffs, null), Date.now());
 
     // --- STATE MANAGEMENT ---
     export const State = {
@@ -116,7 +131,9 @@ import { noteEarlyKickoffs, noteEarlyWeek } from './lineup/earlyGames.js';
         // known. Starts empty and stays empty if the fetch fails; every consumer treats a
         // missing entry as "unknown kickoff" and skips FLEX-kickoff reordering / the kickoff
         // badge for that player rather than guessing.
-        gameTimesByTeam: {},
+        gameTimesByTeam: savedAtLoad ? savedAtLoad.times : {},
+        // The week the saved times above are for (F29), or null once ESPN's have replaced them (or none were saved).
+        savedKickoffsWeek: savedAtLoad ? savedAtLoad.week : null,
         // Which week gameTimesByTeam was last successfully fetched for, so a stale cache from
         // an earlier week doesn't silently get reused if currentNflWeek changes mid-session.
         gameTimesFetchedForWeek: null,
@@ -280,6 +297,12 @@ export function applyLineupSettingsToUI() {
                     // Dashboard draws, so Best available's Free agent / Waivers chips are usually there with its first
                     // lines (with 20 leagues they arrived 1 to 3 s after them). Cached for the visit; errors stay quiet.
                     recentDropsFor(State.leagues, State.currentNflWeek);
+                    // Kickoff times saved for another week (F29) are dropped: this week's come from ESPN below.
+                    if (State.savedKickoffsWeek != null && State.savedKickoffsWeek !== State.currentNflWeek) {
+                        State.gameTimesByTeam = {};
+                        State.savedKickoffsWeek = null;
+                        if (activeTab && activeTab.id === 'setupTab') renderLeagueCards();
+                    }
                     // Kickoff times are keyed by week, so we can't fetch them until we know
                     // which week we're on -- chain it here rather than firing both requests
                     // independently at page load.
@@ -359,6 +382,9 @@ export function applyLineupSettingsToUI() {
                 State.gameTimesByTeam = map;
                 State.gamesByTeam = games;
                 State.gameTimesFetchedForWeek = week;
+                State.savedKickoffsWeek = null;
+                // Saved for the next visit's first render (F29).
+                try { localStorage.setItem(KEYS.mls.kickoffs, JSON.stringify({ season: State.currentNflSeason, week, times: map })); } catch (e) { /* storage blocked */ }
                 // Early Games fills in from these kickoffs (improvements S50).
                 noteEarlyKickoffs();
 
@@ -369,6 +395,9 @@ export function applyLineupSettingsToUI() {
                 if (activeTab && activeTab.id === 'lineupTab') {
                     optimizeLineup(false);
                 }
+                // The Dashboard's to-dos and its "N lineups need you" leave out players whose game has started (F29):
+                // drawn before these arrived, they're drawn again.
+                if (activeTab && activeTab.id === 'setupTab') renderLeagueCards();
             })
             .catch(() => { /* leave State.gameTimesByTeam as {}; see comment above */ })
             .finally(() => { if (gameTimesInFlight && gameTimesInFlight.promise === promise) gameTimesInFlight = null; });

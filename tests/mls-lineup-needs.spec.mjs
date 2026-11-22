@@ -596,6 +596,74 @@ test.describe('Lineups that need you', () => {
     });
 });
 
+// F29: the first Dashboard after a page load judged the saved lineups before ESPN's kickoff times arrived, so a starter
+// ruled Out after his game kicked off (Sleeper has locked him in; nothing to do) read "1 to fix" until Sync All. The
+// kickoff times are saved with the week now, so the first render already knows his game has started; and when the
+// times arrive (a first visit, a new week), the Dashboard is drawn again. George Kittle (SF) is Out and starting on
+// Sleeper; San Francisco's game started at noon, the rest are tonight.
+test.describe('the first Dashboard after a load knows which games have started (F29)', () => {
+    const SLEEPER = [ALLEN, HENRY, BIJAN, '6794', '6786', KITTLE, '7523', '17', 'BAL'];
+    const PAST = '2026-09-15T12:00:00Z', LATER = '2026-09-16T00:20:00Z';
+    const game = (date, away, home, state) => ({ date, status: { type: { state } },
+        competitions: [{ competitors: [{ homeAway: 'home', team: { abbreviation: home } }, { homeAway: 'away', team: { abbreviation: away } }] }] });
+    const SCOREBOARD = { events: [game(PAST, 'SF', 'SEA', 'in'), game(LATER, 'CIN', 'LV', 'pre'), game(LATER, 'NYJ', 'BUF', 'pre'), game(LATER, 'LAR', 'BAL', 'pre')] };
+    // ESPN's scoreboard, answered once open() is called (held: the page draws before the kickoff times arrive).
+    async function routeEspn(page) {
+        let open, held = new Promise(r => { open = r; });
+        await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, async route => {
+            await held;
+            await route.fulfill({ json: SCOREBOARD });
+        });
+        return { open: () => open(), hold: () => { held = new Promise(r => { open = r; }); } };
+    }
+    const fixtureCard = (page) => card(page, 'Fixture League');
+    // Kittle is no fix (the ESPN times are in): only the WR change is left to set, as after Sync All.
+    async function expectAfterKickoff(page) {
+        await expect(fixtureCard(page).locator('.mls-lc-count-todo')).toHaveCount(0);
+        await expect(fixtureCard(page).locator('.mls-needs-hurt')).toHaveCount(0);
+        await expect(box(page).locator('.mls-needs-title')).toHaveText('1 lineup needs you · 1 to set on Sleeper');
+    }
+
+    test('a starter ruled Out after his kickoff is not counted on the first render after a reload', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, injuries: { [KITTLE]: 'Out' }, sleeperStarters: SLEEPER });
+        const espn = await routeEspn(page);
+        espn.open();
+        await seedTwoLeagues(page);
+        await expectAfterKickoff(page);
+        // Next visit: the page draws before ESPN answers.
+        espn.hold();
+        await page.reload();
+        await showTab(page, 'setup');
+        await expect(fixtureCard(page)).toBeVisible();
+        await expectAfterKickoff(page);
+        espn.open();
+        await page.waitForLoadState('networkidle');
+        await expectAfterKickoff(page);
+        await expectClean(page, state);
+    });
+
+    test('with only last week\'s kickoff times saved, the Dashboard is drawn again when this week\'s arrive', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await routeLeagues(page, { chaseInIrSlot: false, lamarDoubtful: false, injuries: { [KITTLE]: 'Out' }, sleeperStarters: SLEEPER });
+        const espn = await routeEspn(page);
+        espn.open();
+        await seedTwoLeagues(page);
+        await expectAfterKickoff(page);
+        // The times saved last week (all of them past) don't count this week: until this week's load, Kittle's game
+        // isn't known to have started.
+        espn.hold();
+        const key = await page.evaluate(async () => (await import('/js/shared/storage/keys.js')).KEYS.mls.kickoffs);
+        await page.evaluate((k) => localStorage.setItem(k, JSON.stringify({ season: '2026', week: 1, times: { SF: '2026-09-08T00:20:00Z', NYJ: '2026-09-08T00:20:00Z' } })), key);
+        await page.reload();
+        await showTab(page, 'setup');
+        await expect(fixtureCard(page).locator('.mls-lc-count-todo')).toHaveText('1 to fix');
+        espn.open();
+        await expectAfterKickoff(page);
+        await expectClean(page, state);
+    });
+});
+
 // Improvements F7 (found by the owner on Sunday of week 6): once a player's game has started, Sleeper won't let you
 // move him, so no card, chip, count or the Lineup tab's fold asks you to. The lineup here was optimized before any
 // kickoff (no kickoff times yet), so it starts Ja'Marr Chase (CIN) and Brock Bowers (LV) where your Sleeper lineup

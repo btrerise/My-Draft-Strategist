@@ -66,6 +66,10 @@ export const KEYS = {
         // one are dropped the next time one is hidden; js/mls/lineup/gameInfo.js reads it.
         byeCrunchDismissed: 'mls_bye_crunch_dismissed',
         byeCrunch: 'mls_bye_crunch', // '0' while Bye Crunch is off (Lineup settings or Advanced Settings, S52 round 8); unset = on
+        // The current week's kickoff times from ESPN's scoreboard (improvements F29, js/mls/state.js): { season, week,
+        // times: { team: ISO kickoff } }, so the first Dashboard after a page load knows whose game has started before
+        // ESPN answers. Read only while that week's last game can still be on (savedKickoffs).
+        kickoffs: 'mls_kickoffs',
         earlyFromSchedule: 'mls_early_from_schedule', // '0' while Early Games' "Fill in from the schedule" is off; unset = on
         leagues: 'mls_leagues',
         locksMap: 'mls_locks_map',

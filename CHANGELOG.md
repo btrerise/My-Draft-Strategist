@@ -216,6 +216,14 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **The median and guillotine places never read past last.** During live games a league could show "Median: L (13th of
+  12)" (or "3rd of 2 alive" on a guillotine line): your own score was counted as a team above you when it had two
+  decimals, as Best Ball scores often do. Your place is now among the other teams, so last is "12th of 12", and a
+  guillotine line's margin is against the next team up.
+- **The Dashboard knows which games have started as soon as it opens.** A starter ruled Out after his game kicked off
+  (Sleeper has locked him in, so there's nothing to do) no longer reads "1 to fix" on the first Dashboard after opening
+  the app until you Sync All. The week's kickoff times are kept from your last visit, and the Dashboard redraws when
+  the latest ones arrive.
 - **Dashboard cards fold and move quicker.** Folding a league card (or Fold all) settles in 0.3 seconds instead of 0.5,
   and a tap right after it no longer goes unanswered.
 - **Sync All uses a fraction of the data, and doesn't wait on each league in turn.** Your leagues are fetched side by
