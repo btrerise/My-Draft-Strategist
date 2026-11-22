@@ -31,13 +31,23 @@ const PROJECTED_WEEKS = 3;
 const WORKER_TIMEOUT_MS = 20000;
 export const ODDS_EVENT = 'mls-playoff-odds';
 
-const results = new Map(); // leagueId -> { key, live, odds, byes, certain }
+const results = new Map(); // leagueId -> { key, soft, liveUsed, odds, byes, certain }
 const projections = new Map(); // week -> Promise<data | null>
 let running = null, again = false;
 
-// A new sync makes a league's numbers stale (they're hidden until the new run); new live scores only re-run it (the
-// last numbers stay up meanwhile).
-const keyOf = (l) => `${l.lastSyncedAt || ''}|${l.playoffs ? l.playoffs.firstWeek : ''}`;
+// Which numbers a league's results are for (round 7). key: what the standings say (records, points for, the weeks left,
+// the bracket): when it changes, the old numbers are wrong and are hidden until the new run. soft: the rosters and this
+// week's live scores: when they change the league re-runs, and the last numbers stay up meanwhile. Not lastSyncedAt:
+// every sync re-stamps it, and the starter alert's quiet Sync All when the app opens on a game day used to throw the
+// first run's numbers away (on a slow phone they came 2 s later).
+const keyOf = (l) => {
+    const po = l && l.playoffs;
+    if (!po) return '';
+    return [po.firstWeek, po.start, po.teams, po.median, po.divisions, po.reseed, po.roundType,
+        po.standings.map(s => `${s.rid}:${s.w}-${s.l}-${s.t}:${s.pf}:${s.div}`).join(',')].join('|');
+};
+const rostersOf = (l) => Object.entries((l.playoffs && l.playoffs.players) || {}).map(([rid, ids]) => `${rid}:${ids.join('.')}`).join(',');
+const softKeyOf = (l) => `${rostersOf(l)}|${liveKeyOf(l)}`;
 
 // --- This week's live scores (round 4, owner: "why save them for later?") ---
 // While the first unplayed week is being played, the This week card's matchups (State.lineupActualPoints, loaded when
@@ -117,7 +127,7 @@ const weeksLeftOf = (po) => Math.max(0, po.start - po.firstWeek);
 const isPending = (l) => {
     if (!l || !l.playoffs || weeksLeftOf(l.playoffs) < 1) return false;
     const r = results.get(l.leagueId);
-    return !r || r.key !== keyOf(l) || r.live !== liveKeyOf(l);
+    return !r || r.key !== keyOf(l) || r.soft !== softKeyOf(l);
 };
 
 // One league's simulation input. data: { playerMap, proj: Map week -> projections, history: Map scoringKey -> {id: []} }.
@@ -201,12 +211,12 @@ async function compute() {
     let lastShown = Date.now(), unshown = false;
     const show = () => { lastShown = Date.now(); unshown = false; document.dispatchEvent(new CustomEvent(ODDS_EVENT)); };
     for (const l of leagues) {
-        const k = keyOf(l), live = liveMatchups(l), liveKey = liveKeyOf(l);
+        const k = keyOf(l), live = liveMatchups(l), soft = softKeyOf(l);
         const input = buildInput(l, { playerMap, proj, history, live });
         const out = await runInWorker(input);
         if (!out) continue;
         const certain = playoffCertainty({ teams: l.playoffs.standings, weeksLeft: weeksLeftOf(l.playoffs), median: l.playoffs.median, playoffTeams: l.playoffs.teams, divisions: l.playoffs.divisions });
-        results.set(l.leagueId, { key: k, live: liveKey, liveUsed: !!live, odds: out.odds, byes: out.byes, certain });
+        results.set(l.leagueId, { key: k, soft, liveUsed: !!live, odds: out.odds, byes: out.byes, certain });
         unshown = true;
         if (Date.now() - lastShown > 1000) show();
     }
@@ -248,6 +258,20 @@ export function pctText(share) {
 
 // Shown as "<1%".
 export const isTiny = (share) => share * 100 < 0.5;
+
+// The playoff number as words, for a label: "Clinched", "Eliminated" or "72%".
+export const pctLabel = (o) => (o.clinched ? 'Clinched' : o.eliminated ? 'Eliminated' : pctText(o.playoff));
+
+// The Roster record's "Playoffs 72%" (round 7): opens the Playoff picture and brings it into view.
+export function scrollToPlayoffPicture() {
+    const el = document.getElementById('playoffPicture');
+    if (!el || el.hidden) return;
+    const fold = el.querySelector('details.mls-pp');
+    if (fold) fold.open = true;
+    const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'start' });
+    el.querySelector('summary')?.focus({ preventScroll: true });
+}
 
 // The playoff number in the shared chance colors: green when favored (50% or more), red when not.
 export function playoffChanceHTML(o) {

@@ -8,7 +8,7 @@
 // for every week are the fixture's week 2 file).
 import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
-import { openApp, expectClean, showTab, seedMls, loadMlsRankings, FIXTURE_LEAGUE_ID } from './helpers.mjs';
+import { openApp, expectClean, showTab, seedMls, loadMlsRankings, FIXTURE_LEAGUE_ID, FIXED_NOW } from './helpers.mjs';
 
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/sleeper/${name}`, import.meta.url), 'utf8'));
 const NAMES = { 1: 'mds_test', 2: 'Ace', 3: 'Cam', 4: 'Dee', 5: 'Eve', 6: 'Fay' };
@@ -133,6 +133,15 @@ test.describe('Playoff chances', () => {
         await showTab(page, 'roster');
         await expect(page.locator('#powerRankingsOutput .mls-power-table thead th')).toHaveCount(7);
         await expect(page.locator('#powerRankingsOutput .mls-power-table')).not.toContainText('Playoffs');
+
+        // The record's "Playoffs NN%" links to the picture (round 7): it opens the closed fold and brings it into view.
+        await page.evaluate(() => window.scrollTo(0, 0));
+        const link = page.locator('#rosterRecord .mls-roster-odds-link');
+        await expect(link).toHaveAccessibleName(`Playoffs ${Math.round(mine)}%: see every team's chances`);
+        await link.click();
+        await expect(pic.locator('details.mls-pp')).toHaveAttribute('open', '');
+        await expect(pic.locator('table')).toBeInViewport();
+        await expect(pic.locator('summary')).toBeFocused();
         await expectClean(page, state);
     });
 
@@ -194,6 +203,44 @@ test.describe('Playoff chances', () => {
         const note = pic.locator('.mls-pp-note');
         await expect(note).toContainText('\u2605 leads a division: division leaders take the top seeds.');
         await expect(note).toContainText('Bracket: re-seeded after each round; a two-week final.');
+        await expectClean(page, state);
+    });
+
+    test('new numbers replace only the cards\' odds lines, not the cards (round 7)', async ({ page }) => {
+        const state = await open(page);
+        const odds = card(page).locator('.mls-lc-odds');
+        await expect(odds).toBeVisible();
+        await card(page).evaluate(el => { window.__card = el; el.querySelector('.mls-lc-odds').remove(); });
+        await expect(odds).toHaveCount(0);
+        await page.evaluate(() => document.dispatchEvent(new CustomEvent('mls-playoff-odds')));
+        await expect(odds).toBeVisible();
+        expect(await card(page).evaluate(el => el === window.__card)).toBe(true);
+        // Right under the status row, as a full redraw draws it.
+        expect(await odds.evaluate(el => el.previousElementSibling.classList.contains('mls-lc-status'))).toBe(true);
+        await expectClean(page, state);
+    });
+
+    test('a sync that changes nothing keeps the numbers up (round 7)', async ({ page }) => {
+        const state = await open(page);
+        const odds = card(page).locator('.mls-lc-odds');
+        await expect(odds).toBeVisible();
+        const before = await odds.textContent();
+        // Watch every redraw of the cards through the sync: the Fixture League's card never lacks its line.
+        await page.evaluate(() => {
+            window.__gaps = 0;
+            const list = document.getElementById('leagueCards');
+            new MutationObserver(() => {
+                const c = [...list.children].find(li => li.querySelector('.mls-lc-name')?.textContent.includes('Fixture League'));
+                if (c && !c.querySelector('.mls-lc-odds')) window.__gaps++;
+            }).observe(list, { childList: true, subtree: true });
+        });
+        // A minute later (the tests' clock is fixed, and a sync stamps the time).
+        await page.clock.setFixedTime(new Date(FIXED_NOW.getTime() + 60 * 1000));
+        await seedMls(page);
+        await page.waitForTimeout(500);
+        await expect(odds).toBeVisible();
+        expect(await page.evaluate(() => window.__gaps)).toBe(0);
+        expect(await odds.textContent()).toBe(before);
         await expectClean(page, state);
     });
 

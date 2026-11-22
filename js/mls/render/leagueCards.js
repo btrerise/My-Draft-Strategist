@@ -252,9 +252,26 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         schedulePlayoffOdds();
     }
     if (typeof document !== 'undefined') {
-        document.addEventListener(ODDS_EVENT, () => {
-            if (document.getElementById('setupTab')?.classList.contains('active')) renderLeagueCards();
+        // Only each card's odds line is replaced (round 7): a whole Dashboard redraw (Best available, the Week Recap...)
+        // just for these stalled a slow phone for about half a second as the numbers came in.
+        document.addEventListener(ODDS_EVENT, patchOddsLines);
+    }
+
+    // The playoff chances' lines (improvements S55), put in place on each card without redrawing the cards. The cards'
+    // HTML no longer matches lastCards, so the next full redraw writes them afresh.
+    function patchOddsLines() {
+        const list = document.getElementById('leagueCards');
+        if (!list) return;
+        const byId = new Map((State.leagues || []).map(l => [l.leagueId, l]));
+        list.querySelectorAll(':scope > .mls-lc-card').forEach(card => {
+            const l = byId.get(card.dataset.leagueId);
+            const html = l ? cardOddsHTML(l) : '';
+            const old = card.querySelector(':scope > .mls-lc-odds');
+            if (old && old.outerHTML === html) return;
+            if (old) old.remove();
+            if (html) card.querySelector(':scope > .mls-lc-status')?.insertAdjacentHTML('afterend', html);
         });
+        lastCards = null;
     }
 
     // Edit mode's "$ Paid" (improvements S21): marks a league you pay for, saved on the league (so Backup keeps it

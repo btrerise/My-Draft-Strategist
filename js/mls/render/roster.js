@@ -15,7 +15,7 @@ import { rankMoveChip } from '../rankings/moveChips.js';
 import { posCountChipMarkup, rankBadgeParts, rankGapChipMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { ordinal } from '../week/scoreboard.js';
-import { ODDS_EVENT, ODDS_TITLE, playoffChanceHTML, playoffOddsFor, renderPlayoffPicture, schedulePlayoffOdds } from '../sim/playoffOdds.js';
+import { ODDS_EVENT, ODDS_TITLE, playoffChanceHTML, playoffOddsFor, pctLabel, renderPlayoffPicture, schedulePlayoffOdds } from '../sim/playoffOdds.js';
 import { hasSeasonSlot, seasonOffer, seasonSetFor } from '../rankings/season.js';
 import { rankGap, rankGapTip, superflexQbPrices } from '../rankings/nowAndLater.js';
 import { KEYS } from '../../shared/storage/keys.js';
@@ -374,7 +374,10 @@ function renderRosterRecord(league) {
         + seed
         + part('mls-roster-record-points', points('PF', 'Points for', r.pfRank, r.pf)
             + '<span class="mls-roster-record-dot" aria-hidden="true">\u00b7</span>' + points('PA', 'Points against', r.paRank, r.pa))
-        + (odds ? part('mls-roster-record-odds', `Playoffs ${playoffChanceHTML(odds)}`) : '')
+        // A link to every team's chances, at the foot of the tab (round 7: nothing pointed there).
+        + (odds && document.getElementById('playoffPicture') && !document.getElementById('playoffPicture').hidden
+            ? part('mls-roster-record-odds', `<button type="button" class="btn-bare mls-roster-odds-link" data-action="scrollToPlayoffPicture" aria-label="Playoffs ${pctLabel(odds)}: see every team's chances">Playoffs ${playoffChanceHTML(odds)}</button>`)
+            : odds ? part('mls-roster-record-odds', `Playoffs ${playoffChanceHTML(odds)}`) : '')
         + '</span>';
     el.title = 'This season, as of your last sync. Places go by record, then points for, then points against.'
         + (seed ? ' Seeds: the division winners first, then the best of the rest.' : '')
