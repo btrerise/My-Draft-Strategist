@@ -143,6 +143,39 @@ describe('team strength', () => {
     });
 });
 
+describe('the bracket\'s rules (round 5)', () => {
+    // Six teams, seeded 1-6 by record. 3, 4 and 5 can't win a game; 1, 2 and 6 are even. 6 beats 3 and 4 beats 5.
+    const teams = [1, 2, 3, 4, 5, 6].map(rid => ({ rid, w: 12 - rid, l: rid, t: 0, pf: 1000 }));
+    const even = [100, 20], none = [-1000, 1];
+    const strength = { 1: even, 2: even, 3: none, 4: none, 5: none, 6: even };
+    const run = (opts) => simulatePlayoffs({ teams, playoffTeams: 6, playoffStrength: strength, runs: 20000, random: seeded(21), ...opts }).odds;
+    test('fixed: 1 plays the winner of 4 v 5, 2 plays 6', () => {
+        const o = run({});
+        assert.ok(Math.abs(o[1].title - 0.5) < 0.02 && Math.abs(o[2].title - 0.25) < 0.02 && Math.abs(o[6].title - 0.25) < 0.02, JSON.stringify(o));
+    });
+    test('re-seeded: the best seed left plays the worst, so 1 gets 6 and 2 gets 4', () => {
+        const o = run({ reseed: true });
+        assert.ok(Math.abs(o[1].title - 0.25) < 0.02 && Math.abs(o[2].title - 0.5) < 0.02 && Math.abs(o[6].title - 0.25) < 0.02, JSON.stringify(o));
+        assert.ok(Math.abs(Object.values(o).reduce((a, x) => a + x.title, 0) - 1) < 1e-9);
+    });
+    test('re-seeding with odd numbers: 5 and 7 teams', () => {
+        for (const P of [3, 5, 7]) {
+            const t = Array.from({ length: 8 }, (_, i) => ({ rid: i + 1, w: 20 - i, l: i, t: 0, pf: 1000 }));
+            const o = simulatePlayoffs({ teams: t, playoffTeams: P, reseed: true, runs: 2000, random: seeded(P) }).odds;
+            assert.ok(Math.abs(Object.values(o).reduce((a, x) => a + x.title, 0) - 1) < 1e-9, `P=${P}`);
+            assert.equal(Object.values(o).filter(x => x.title > 0).length, P);
+        }
+    });
+    test('a two-week final favours the stronger team', () => {
+        const two = [{ rid: 1, w: 9, l: 1, t: 0, pf: 1 }, { rid: 2, w: 8, l: 2, t: 0, pf: 1 }];
+        const ps = { 1: [110, 20], 2: [100, 20] };
+        const odds = (roundType) => simulatePlayoffs({ teams: two, playoffTeams: 2, playoffStrength: ps, roundType, runs: 40000, random: seeded(8) }).odds[1].title;
+        const one = odds(0), double = odds(1);
+        assert.ok(Math.abs(one - 0.638) < 0.015, `${one}`);
+        assert.ok(Math.abs(double - 0.691) < 0.015, `${double}`);
+    });
+});
+
 describe('live scores (round 4)', () => {
     test('final, in progress, not started, and out', () => {
         const [mean, sd, share] = liveStrength([
@@ -179,6 +212,10 @@ describe('playoffDataFrom (sync)', () => {
         assert.deepEqual(got.schedule, { 14: [[1, 4], [2, 3]] });
         assert.deepEqual(got.standings[0], { rid: 1, w: 11, l: 2, t: 0, pf: 1001.5, div: 0 });
         assert.deepEqual(got.owners, { 1: 'u1', 2: 'u2', 3: 'u3', 4: 'u4' });
+        assert.equal(got.reseed, false);
+        assert.equal(got.roundType, 0);
+        const rs = await playoffDataFrom('L', league({ playoff_seed_type: 1, playoff_round_type: 1 }), rosters, { ownerOf: r => r.owner_id, fetchMatchups: async (id, w) => weekOf(w) });
+        assert.deepEqual([rs.reseed, rs.roundType], [true, 1]);
     });
     test('kept weeks are not asked again; a week that fails, too far out, or a guillotine: null', async () => {
         const asked = [];

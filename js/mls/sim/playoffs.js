@@ -73,13 +73,15 @@ function normalSource(random) {
  *   much of a week under way is still to play; 1 when left out). Every team scores every week (for the
  *   median and points for), whether it has a game or not.
  * playoffStrength: { rid: [mean, sd] } for the bracket's games.
+ * reseed: re-seed after every round (Sleeper's playoff_seed_type 1), else a fixed bracket. roundType: Sleeper's
+ *   playoff_round_type: 0 a week a round, 1 a two-week final, 2 two weeks every round (owner, round 5).
  * lastingSd: how far a team's true level can sit from its projections for the rest of the season (points a week). Each
  *   run draws one such miss per team and adds it to every week: without it, four weeks were treated as four fresh
  *   coins and long shots read "<1%" too often (S55 round 2, calibrated on the owner's leagues: playoffStrength.js).
  * Returns { odds: { rid: { playoff, bye, title } } (shares 0-1), byes, runs }. Each run puts exactly playoffTeams
  * teams in, so the playoff shares add up to playoffTeams.
  */
-export function simulatePlayoffs({ teams, weeks = [], median = false, playoffTeams, divisions = false, playoffStrength = {}, lastingSd = 0, runs = 10000, random = Math.random }) {
+export function simulatePlayoffs({ teams, weeks = [], median = false, playoffTeams, divisions = false, playoffStrength = {}, lastingSd = 0, reseed = false, roundType = 0, runs = 10000, random = Math.random }) {
     const n = teams.length;
     const P = Math.min(Number(playoffTeams) || 0, n);
     const idx = new Map(teams.map((t, i) => [t.rid, i]));
@@ -109,10 +111,16 @@ export function simulatePlayoffs({ teams, weeks = [], median = false, playoffTea
     const sorted = new Float64Array(n);
     const table = new Int32Array(n), seeds = new Int32Array(n), isWinner = new Uint8Array(n);
     const round = new Int32Array(size);
-    const play = (a, b) => {
-        const sa = pMean[a] + lasting[a] + pSd[a] * normal(), sb = pMean[b] + lasting[b] + pSd[b] * normal();
+    // One bracket game over `weeks` weeks (a two-week round adds both weeks' scores: twice the mean and lasting miss,
+    // the spread of two independent weeks).
+    const play = (a, b, weeks = 1) => {
+        const r = Math.sqrt(weeks);
+        const sa = weeks * (pMean[a] + lasting[a]) + r * pSd[a] * normal(), sb = weeks * (pMean[b] + lasting[b]) + r * pSd[b] * normal();
         return sa > sb || (sa === sb && random() < 0.5) ? a : b;
     };
+    const rounds = Math.round(Math.log2(size));
+    const weeksOf = (r) => (roundType === 2 || (roundType === 1 && r === rounds - 1) ? 2 : 1);
+    const alive = new Int32Array(P), next = new Int32Array(P);
 
     for (let run = 0; run < runs; run++) {
         wins.set(baseWins); pf.set(basePf);
@@ -162,12 +170,32 @@ export function simulatePlayoffs({ teams, weeks = [], median = false, playoffTea
         }
         if (P < 1) continue;
         for (let s = 0; s < P; s++) { made[order[s]]++; if (s < byes) bye[order[s]]++; }
-        // The bracket: a seed past the playoff teams is a bye, so its opponent goes through.
+        if (reseed) {
+            // Re-seeded after every round (Sleeper's playoff_seed_type 1): the best seed left plays the worst. Round
+            // one: the top seeds sit out and the rest pair off best against worst. alive holds seed numbers, best first.
+            let n = 0;
+            for (let s = byes; s < P; s++) alive[n++] = s;
+            let m = 0;
+            for (let s = 0; s < byes; s++) next[m++] = s;
+            for (let r = 0; n > 1 || m > 0; r++) {
+                for (let k = 0; k < n >> 1; k++) {
+                    const a = alive[k], b = alive[n - 1 - k];
+                    next[m++] = play(order[a], order[b], weeksOf(r)) === order[a] ? a : b;
+                }
+                if (n & 1) next[m++] = alive[n >> 1];
+                next.subarray(0, m).sort();
+                alive.set(next.subarray(0, m)); n = m; m = 0;
+                if (n === 1) break;
+            }
+            title[order[alive[0]]]++;
+            continue;
+        }
+        // The fixed bracket: a seed past the playoff teams is a bye, so its opponent goes through.
         for (let k = 0; k < size; k++) round[k] = bracket[k] <= P ? order[bracket[k] - 1] : -1;
-        for (let len = size; len > 1; len >>= 1) {
+        for (let len = size, r = 0; len > 1; len >>= 1, r++) {
             for (let k = 0; k < len; k += 2) {
                 const a = round[k], b = round[k + 1];
-                round[k >> 1] = a < 0 ? b : b < 0 ? a : play(a, b);
+                round[k >> 1] = a < 0 ? b : b < 0 ? a : play(a, b, weeksOf(r));
             }
         }
         if (round[0] >= 0) title[round[0]]++;

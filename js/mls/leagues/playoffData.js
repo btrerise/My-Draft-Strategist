@@ -1,9 +1,10 @@
 // --- PLAYOFF CHANCES: WHAT SYNC SAVES (improvements S55) ---
 // league.playoffs, read by sim/playoffOdds.js:
-// { start, teams, median, divisions, firstWeek, standings: [{ rid, w, l, t, pf, div }], schedule: { week: [[rid, rid]] },
+// { start, teams, median, divisions, reseed, roundType, firstWeek, standings: [{ rid, w, l, t, pf, div }], schedule: { week: [[rid, rid]] },
 //   players: { rid: [ids] }, owners: { rid: name } }.
 // start: Sleeper's playoff_week_start; teams: playoff_teams; median: the league also plays the median each week;
-// divisions: more than one, with each roster's division. firstWeek: the first week the standings don't include yet
+// divisions: more than one, with each roster's division. reseed: Sleeper's playoff_seed_type 1 (re-seeded after each
+// round); roundType: its playoff_round_type (0 a week a round, 1 a two-week final, 2 two weeks a round). firstWeek: the first week the standings don't include yet
 // (from the games played: Sleeper updates the records once a week is over). schedule: Sleeper's matchups for the weeks
 // from firstWeek to the week before the playoffs (it sets them before the season). A schedule never changes, so the last
 // sync's weeks are kept and only missing weeks are fetched. owners: the names Power Rankings shows ('You' for yours).
@@ -61,5 +62,8 @@ export async function playoffDataFrom(leagueId, leagueData, rosters, { ownerOf, 
         players[r.roster_id] = (r.players || []).filter(id => id && id !== '0');
         owners[r.roster_id] = ownerOf(r);
     });
-    return { start, teams, median, divisions, firstWeek, standings, schedule, players, owners };
+    // The bracket's rules (round 5): re-seeded after each round, and how many weeks each round takes.
+    const reseed = Number(ls.playoff_seed_type) === 1;
+    const roundType = [1, 2].includes(Number(ls.playoff_round_type)) ? Number(ls.playoff_round_type) : 0;
+    return { start, teams, median, divisions, reseed, roundType, firstWeek, standings, schedule, players, owners };
 }

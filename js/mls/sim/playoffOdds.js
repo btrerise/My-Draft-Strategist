@@ -168,7 +168,7 @@ export function buildInput(l, { playerMap = {}, proj = new Map(), history = new 
     }
     return {
         teams: po.standings, weeks, median: po.median, playoffTeams: po.teams, divisions: po.divisions,
-        playoffStrength: usual, lastingSd: LASTING_SD, runs,
+        playoffStrength: usual, lastingSd: LASTING_SD, reseed: !!po.reseed, roundType: po.roundType || 0, runs,
     };
 }
 

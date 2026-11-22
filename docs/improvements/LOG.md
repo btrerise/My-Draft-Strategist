@@ -1064,7 +1064,9 @@ spreads, QB stacks), points for without them. Team-level draws. Divisions count 
 **How.** Sync (`leagues/playoffData.js`) saves `league.playoffs` (standings, settings, rosters, owners, the remaining
 schedule, kept across syncs). `sim/playoffOdds.js` runs after the first paint, in memory, once per sync: projections
 for the next 3 weeks (later weeks and the bracket use their average), `sim/playoffStrength.js`, then 10,000 runs per
-league in a module worker (`playoffWorker.js` → `playoffs.js`). Seeding: record, points for, coin flip; fixed bracket.
+league in a module worker (`playoffWorker.js` → `playoffs.js`). Seeding: record, points for, coin flip. Bracket (round 5): fixed, or re-seeded each round
+(`playoff_seed_type` 1: best seed left v worst), and two-week rounds (`playoff_round_type` 1 final, 2 all) as two weeks'
+scores; saved at sync as `reseed` / `roundType` (2 of the owner's leagues re-seed, 2 have a two-week final).
 No new storage keys; Q4's Simulator model untouched.
 
 **Calibration (round 2, owner's backup, 18 leagues).** Shares add up in every league; each "<1%" / ">99%" is 2+ games
@@ -1072,10 +1074,9 @@ from the cut with 4 left. Weeks 2-10 (1,312 team-weeks): actual scores spread 26
 22.2, 8.6 of it lasting all season, so `WEEKLY_SPREAD_SCALE` 1.15 and one lasting miss per team per run (`LASTING_SD`).
 Extremes on the backup: 67 → 59 of 208 teams.
 
-**Live scores (round 4, owner asked why they waited).** Once the first unplayed week kicks off, the This week card's
-matchups (`State.lineupActualPoints`) and ESPN's clocks give each team's week as the Simulator counts it
-(`liveStrength`: final, so far + the rest, or projection); the lasting miss scales with the share left (`share` in
-`simulatePlayoffs`). A new score re-runs the league (old numbers stay up); a new sync hides them until the run.
+**Live scores (round 4).** Once the first unplayed week kicks off, the This week card's matchups and ESPN's clocks give
+each team's week as the Simulator counts it (`liveStrength`); the lasting miss scales with the share left. New scores
+re-run the league (old numbers stay up); a new sync hides them until its run.
 
 **Performance.** 20 leagues, 4x-slowed CPU: 2.4 s (3.4 s with the median) in the worker; redraws ≤ 1/s.
 
@@ -1084,4 +1085,4 @@ the spots, the Playoff picture and its fold, the folded eliminated card, no proj
 No screenshot changes (fixtures are week 2, too far out).
 
 **Left over.** A week before `firstWeek` that Sleeper hasn't folded into the records (no sync since) isn't read from
-its final scores. Sleeper's re-seeding option isn't read. Full suite not yet run.
+its final scores. Full suite not yet run.
