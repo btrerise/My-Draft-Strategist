@@ -96,6 +96,8 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - F25 | LOG.md | F25 — Slow Sync All and Dashboard on phones (owner's report, 2026-11-16)
 - F26 | LOG.md | F26 — Less data and less waiting in Sync All (owner, 2026-11-16)
 - F27 | LOG.md | F27 — A review as a user of M18, F25 and F26, and three fixes (owner, 2026-11-17)
+- W3 | LOG.md | W3 — Leaner sessions: split LOG.md, quieter tests, a setup script
+- W5 | LOG.md | W5 — The runbook's cards get the lean start-up and the new rules
 
 ## F23 — The flash when tapping things on phones
 
@@ -953,3 +955,26 @@ start-up is the rules (1.4 KB) + one index grep (<7 KB) + the "Start here" secti
   (through F10 = October, S28 on = November); history is shallow so exact dates aren't recoverable.
 - No `sw.js` change: only docs, CLAUDE.md, package.json and the Playwright config changed.
 - Not run: Playwright full suite (docs-only card; checked unit tests, one spec, and `check-precache`).
+
+## W5 — The runbook's cards get the lean start-up and the new rules
+
+Page-only card: the runbook, the Runbook Archive and the "Nov 21 cards" page changed; nothing in the repo but this entry.
+
+**User-visible effect.** None in the apps. For the owner, every "Copy session prompt" now:
+- starts lean: the prompt is the whole card; CLAUDE.md loads by itself; TESTING.md is read from its "Start here";
+  LOG.md is read as its standing rules (first 20 lines) plus a grep of its index, never whole, `log/` never whole;
+- has rule 7 matching CLAUDE.md (full suite once, when the owner asks for the pull request), a new rule 10 (short LOG
+  entries) and a rule 8 that also asks for the entry's index line;
+- sits under a "Recommended model" line on each card: Sonnet, or Opus for design judgment, statistics or a diagnosis
+  with no known cause (F22, S20, S37, T2, M3, M10 added today; the Nov 21 cards had theirs).
+
+**What changed.** Runbook: `RULES`, `promptFor`, the header note (the old one moved to the archive), the "Running a
+session" step 2 text, the model line, W5 itself to the archive (141 KB, under W4's 150 KB). Nov 21 page: same rules and
+start-up, intro note. Old rules 10 (icons) and 11 (motion tokens, window sizes) folded into rule 1, with the Material
+review pointer; old rule 8's "create the file" dropped (it exists). S51's "(rule 10: SVG icons)" no longer named a rule.
+W3's names were used as they are: the index in `LOG.md`, older entries in `docs/improvements/log/`.
+
+The Runbook: Later Cards page (44 cards) got the same start-up, rules and model lines at the owner's request (Opus:
+S40, S42, M9, M12, M13, M14, M19). W3's missing index line added here.
+
+**Left over.** Nothing.
