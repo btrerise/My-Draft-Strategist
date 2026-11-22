@@ -1071,15 +1071,15 @@ scores; saved at sync as `reseed` / `roundType` (2 of the owner's leagues re-see
 No new storage keys; Q4's Simulator model untouched.
 
 **Calibration (round 2, owner's backup).** Extremes were genuine (2+ games from the cut with 4 left), but real scores
-spread 26.9 around projections vs the model's 22.2, 8.6 of it lasting all season: `WEEKLY_SPREAD_SCALE` 1.15 and a
-lasting miss per team per run (`LASTING_SD`).
+spread 26.9 around projections, 8.6 of it lasting all season: one lasting miss per team per run (`LASTING_SD`). Round 8
+(owner's choice after a backtest of 655 real games: past weekly scores predicted no better, Brier 0.1861 vs 0.1862, and
+cost a slow phone 1-2 s): each starter's spread is 40% of his projection, ×1.5 (`WEEKLY_SPREAD_SCALE`); none is fetched.
 
 **Live scores (round 4).** Once the first unplayed week kicks off, the This week card's matchups and ESPN's clocks give
 each team's week as the Simulator counts it (`liveStrength`); the lasting miss scales with the share left. New scores
 re-run the league (old numbers stay up); a new sync hides them until its run.
 
-**Performance.** 20 leagues, 4x CPU: sims 2.4-3.4 s in the worker; the owner's 18 on a slowed phone: numbers 2.4-5 s after
-the cards. Round 7: odds lines patched in place (`patchOddsLines`), results keyed by standings, not `lastSyncedAt` (the
+**Performance.** The owner's 18 leagues on a 4x-slowed phone: all numbers ~1.6-1.9 s after the cards (round 8). Round 7: odds lines patched in place (`patchOddsLines`), results keyed by standings, not `lastSyncedAt` (the
 starter alert's quiet Sync All on opening threw the first run away; its ~1 s stall is its own).
 
 **Tests.** `tests/unit/playoffs.test.mjs`; `tests/mls-playoff-odds.spec.mjs` (clinched / eliminated / between, sums,

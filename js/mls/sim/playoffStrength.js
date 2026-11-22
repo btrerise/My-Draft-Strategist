@@ -3,7 +3,7 @@
 // points so far when there are none.
 // - With projections: the team's best lineup by projection (bestBallLineup, the slots most specific first), its mean
 //   the sum of the starters' projections and its spread from each starter's spread (the Matchup Simulator's
-//   getPlayerVarianceProfile: his past weeks around the projection). A QB and his own NFL team's WRs and TEs move
+//   getPlayerVarianceProfile; with no past weeks given, as since round 8, 40% of his projection). A QB and his own NFL team's WRs and TEs move
 //   together, as in sim/worker.js (QB_STACK_CORRELATION), which widens the spread.
 // - Without (no projections for the week, or nobody projected): points for per week played so far, and a spread of
 //   PF_SPREAD_CV of that.
@@ -15,10 +15,12 @@ export const QB_STACK_CORRELATION = 0.35;
 // A team's week-to-week spread as a share of its average (fantasy teams typically swing 15-20%).
 export const PF_SPREAD_CV = 0.18;
 // Calibrated (S55 round 2) on the owner's 13 head-to-head leagues, weeks 2-10 of 2026 (1,312 team-weeks): actual
-// scores sat 26.9 points (sd) from the sum of the starters' projections, against the model's 22.2. About 8.6 of that
-// lasts all season (a team that beats or misses its projections keeps doing so: LASTING_SD, drawn once per run in
-// sim/playoffs.js); the rest is week to week, 1.15 times the summed per-player spreads (WEEKLY_SPREAD_SCALE).
-export const WEEKLY_SPREAD_SCALE = 1.15;
+// scores sat 26.9 points (sd) from the sum of the starters' projections. About 8.6 of that lasts all season (a team that
+// beats or misses its projections keeps doing so: LASTING_SD, drawn once per run in sim/playoffs.js); the rest, 25.5, is
+// week to week: 1.5 times the summed per-player spreads at 40% of each projection (WEEKLY_SPREAD_SCALE; round 8, owner's
+// choice: no past weekly scores, which in a backtest of the owner's 655 games predicted no better, Brier 0.1861 against
+// 0.1862, and cost a slow phone 1-2 s; it was 1.15 on spreads from past weeks).
+export const WEEKLY_SPREAD_SCALE = 1.5;
 export const LASTING_SD = 8.6;
 
 /**

@@ -48,8 +48,6 @@ async function routeLeague(page, { week = 14, projections = true, schedule = tru
     league.settings = { ...league.settings, playoff_week_start: 15, playoff_teams: 3, ...(divisions ? { divisions: 2 } : {}), ...settings };
     await page.route(/sleeper\.app\/v1\/state\/nfl$/, r => r.fulfill({ json: { ...fixture('state-nfl.json'), week, leg: week, display_week: week } }));
     await page.route(/sleeper\.app\/v1\/projections\/nfl\/regular\/2026\/\d+$/, r => (projections ? r.fulfill({ json: fixture('projections-2026-2.json') }) : r.fulfill({ status: 500, body: '' })));
-    // The starters' past weeks (their spread): weeks the fixtures don't have are week 1 again.
-    await page.route(/sleeper\.app\/v1\/stats\/nfl\/regular\/2026\/([3-9]|1\d)$/, r => r.fulfill({ json: fixture('stats-2026-1.json') }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}$`), r => r.fulfill({ json: league }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/rosters$`), r => r.fulfill({ json: rosters(played, records, divisions) }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/users$`), r => r.fulfill({ json: users() }));
@@ -241,6 +239,16 @@ test.describe('Playoff chances', () => {
         await expect(odds).toBeVisible();
         expect(await page.evaluate(() => window.__gaps)).toBe(0);
         expect(await odds.textContent()).toBe(before);
+        await expectClean(page, state);
+    });
+
+    test('no past weekly scores are read (round 8: spreads from the projections)', async ({ page }) => {
+        const stats = [];
+        // Weeks before this one (week 14's own live stats are the This week card's, loaded anyway).
+        page.on('request', r => { const m = r.url().match(/\/v1\/stats\/nfl\/regular\/\d+\/(\d+)$/); if (m && Number(m[1]) < 14) stats.push(r.url()); });
+        const state = await open(page);
+        await expect(card(page).locator('.mls-lc-odds')).toBeVisible();
+        expect(stats).toEqual([]);
         await expectClean(page, state);
     });
 

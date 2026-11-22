@@ -14,13 +14,12 @@
 // redraw. "Clinched" and "Eliminated" only when the records prove it (playoffCertainty); otherwise a percent, never
 // 0% or 100% (they read "<1%" and ">99%").
 import { getSleeperPlayerMap } from '../../shared/api/sleeper.js';
-import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from '../../shared/api/sleeperStats.js';
+import { getWeeklyProjections } from '../../shared/api/sleeperStats.js';
 import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
 import { fantasyPosition } from '../constants.js';
 import { FOLD_CHEVRON, getLeagueScoringKey } from '../lineup/gameInfo.js';
 import { DIVISION_LEADER_MARK } from '../badges.js';
-import { MIN_RELIABLE_GAMES } from './stats.js';
 import { playoffCertainty } from './playoffs.js';
 import { LASTING_SD, liveStrength, pointsForStrength, projectedStrength } from './playoffStrength.js';
 import { starterIdsOf } from '../week/playerRecap.js';
@@ -130,12 +129,11 @@ const isPending = (l) => {
     return !r || r.key !== keyOf(l) || r.soft !== softKeyOf(l);
 };
 
-// One league's simulation input. data: { playerMap, proj: Map week -> projections, history: Map scoringKey -> {id: []} }.
+// One league's simulation input. data: { playerMap, proj: Map week -> projections }. No past weekly scores (round 8).
 // live: this week's matchups (liveMatchups), or null.
-export function buildInput(l, { playerMap = {}, proj = new Map(), history = new Map(), live = null } = {}, runs = RUNS) {
+export function buildInput(l, { playerMap = {}, proj = new Map(), live = null } = {}, runs = RUNS) {
     const po = l.playoffs;
     const key = getLeagueScoringKey(l);
-    const hist = history.get(key) || {};
     const posOf = (id) => (playerMap[id] ? fantasyPosition(playerMap[id]) : null);
     const teamOf = (id) => (playerMap[id] ? playerMap[id].team || null : null);
     const weeksPlayed = po.firstWeek - 1;
@@ -148,7 +146,7 @@ export function buildInput(l, { playerMap = {}, proj = new Map(), history = new 
         const strength = {};
         po.standings.forEach(s => {
             const got = data ? projectedStrength(l.starterSlots, po.players[s.rid] || [], {
-                projOf: (id) => (data[id] ? data[id][key] : undefined), posOf, teamOf, historyOf: (id) => hist[id] || [],
+                projOf: (id) => (data[id] ? data[id][key] : undefined), posOf, teamOf,
             }) : null;
             if (got) projected.get(s.rid).push(got);
             strength[s.rid] = got || null;
@@ -162,7 +160,7 @@ export function buildInput(l, { playerMap = {}, proj = new Map(), history = new 
         const data = proj.get(po.firstWeek);
         live.forEach(entry => {
             if (!projected.has(entry.roster_id)) return;
-            const [mean, sd, share] = liveStrength(livePlayers(l, entry, { playerMap, data, key }), { historyOf: (id) => hist[id] || [] });
+            const [mean, sd, share] = liveStrength(livePlayers(l, entry, { playerMap, data, key }));
             liveWeek.strength[entry.roster_id] = [mean, sd];
             liveWeek.share[entry.roster_id] = share;
         });
@@ -192,27 +190,15 @@ async function compute() {
     leagues.forEach(l => { for (let w = l.playoffs.firstWeek; w < Math.min(l.playoffs.start, l.playoffs.firstWeek + PROJECTED_WEEKS); w++) weeks.add(w); });
     const proj = new Map();
     await Promise.all([...weeks].map(async w => { const d = await projectionsFor(w); if (d) proj.set(w, d); }));
-    // Each starter's past weeks, for his spread (one request per scoring format, as the This week card's chances).
-    const history = new Map();
-    const season = State.currentNflSeason;
-    if (season && proj.size) {
-        for (const key of new Set(leagues.map(getLeagueScoringKey))) {
-            const ofKey = leagues.filter(l => getLeagueScoringKey(l) === key);
-            const ids = [...new Set(ofKey.flatMap(l => Object.values(l.playoffs.players).flat()))];
-            const through = Math.min(...ofKey.map(l => l.playoffs.firstWeek));
-            try {
-                const { blended } = await getPlayerWeeklyScoreHistory(ids, season, through, key, { minGamesBeforeSupplementing: MIN_RELIABLE_GAMES });
-                history.set(key, blended || {});
-            } catch (e) { /* the Simulator's fallback spread */ }
-        }
-    }
+    // No past weekly scores (round 8, owner's choice): each starter's spread is a share of his projection
+    // (playoffStrength.js), as accurate on the owner's real games and 1-2 s sooner on a slow phone.
     // About 0.1 s a league in the worker on a phone (4x-slowed CPU), so 20 leagues take 2-3 s: the views redraw as
     // leagues come in, at most once a second (a Dashboard redraw with 20 leagues isn't free), and once at the end.
     let lastShown = Date.now(), unshown = false;
     const show = () => { lastShown = Date.now(); unshown = false; document.dispatchEvent(new CustomEvent(ODDS_EVENT)); };
     for (const l of leagues) {
         const k = keyOf(l), live = liveMatchups(l), soft = softKeyOf(l);
-        const input = buildInput(l, { playerMap, proj, history, live });
+        const input = buildInput(l, { playerMap, proj, live });
         const out = await runInWorker(input);
         if (!out) continue;
         const certain = playoffCertainty({ teams: l.playoffs.standings, weeksLeft: weeksLeftOf(l.playoffs), median: l.playoffs.median, playoffTeams: l.playoffs.teams, divisions: l.playoffs.divisions });

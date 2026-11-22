@@ -227,7 +227,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   The card shows Bye and Title only when they're 1% or more. The bracket follows each league's own rules: re-seeding
   after every round, and two-week rounds or a two-week final. In a league with divisions, a ★ marks each division's
   leader, and the note under the table explains the star and the league's bracket rules. "Playoffs 72%" beside your
-  record on the Roster tab takes you to the table.
+  record on the Roster tab takes you to the table. On a slow phone the chances show within about two seconds of the
+  Dashboard.
 - **Auto-Find no longer picks a star on bye as the player to drop.** With Rank By set to Weekly, a rostered player
   missing from the weekly rankings (on bye, or not ranked this week) is now judged by his ROS rank when the league has
   ROS rankings, and the drop-candidate line says why ("On bye: ranked by ROS"). Without ROS rankings it works as before
