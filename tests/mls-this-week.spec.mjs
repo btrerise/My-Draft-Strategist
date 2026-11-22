@@ -333,6 +333,35 @@ test.describe('This week: every league\'s matchup', () => {
         await expectClean(page, state);
     });
 
+    // F28: the owner's LRD Cucks (Best Ball, plays the median) read "Median: L (13th of 12)". Your score was rounded to
+    // one decimal and then ranked against every team's unrounded score, your own included, so a score like 98.04 counted
+    // as a team above you. Ranked against the other teams only, the place can't pass "of N". Same for the guillotine.
+    test('a score with two decimals never places you below last on the median or the guillotine line (F28)', async ({ page }) => {
+        const { state } = await setup(page, { routes: async (page) => {
+            await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE2_ID}$`), route => {
+                const l = JSON.parse(fixture('league2.json'));
+                return route.fulfill({ json: { ...l, name: 'Chop Shop', settings: { ...l.settings, type: 3 } } });
+            });
+            await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}$`), route => {
+                const l = JSON.parse(fixture('league.json'));
+                return route.fulfill({ json: { ...l, settings: { ...l.settings, league_average_match: 1 } } });
+            });
+        } });
+        await page.unroute(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`));
+        await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`), route =>
+            route.fulfill({ json: JSON.parse(fixture('league-matchups-live.json')).map(e => e.roster_id === 1 ? { ...e, points: 98.04 } : e) }));
+        await page.unroute(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE2_ID}/matchups/\\d+$`));
+        await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE2_ID}/matchups/\\d+$`), route => {
+            const m = JSON.parse(fixture('league2-matchups.json')).map((e, i) => ({ ...e, matchup_id: i + 1, ...(e.roster_id === 1 ? { points: 90.04 } : {}) }));
+            m.push({ roster_id: 3, matchup_id: 3, points: 0, starters: [], players: [], players_points: {} });
+            return route.fulfill({ json: m });
+        });
+        await refresh(page);
+        await expect(tiles(page).nth(0).locator('.mls-week-tile-line').last()).toHaveText('Median: L (2nd of 2)');
+        await expect(tiles(page).nth(1).locator('.mls-week-tile-line')).toHaveText(['−5.2 · 1 still to play', 'Guillotine: 2nd of 2 alive']);
+        await expectClean(page, state);
+    });
+
     for (const width of [375, 1280]) {
         test(`at ${width}px: ${width < 600 ? 'one league per row' : 'tiles side by side'}, every league name whole, nothing past the edge`, async ({ page }) => {
             await page.setViewportSize({ width, height: 800 });

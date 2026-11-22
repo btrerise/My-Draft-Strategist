@@ -99,6 +99,8 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - W3 | LOG.md | W3 — Leaner sessions: split LOG.md, quieter tests, a setup script
 - W5 | LOG.md | W5 — The runbook's cards get the lean start-up and the new rules
 - F30 | LOG.md | F30 — Auto-Find no longer picks a star on bye as the drop candidate
+- F28 | LOG.md | F28 — Scoreboard median says "13th of 12"
+- F29 | LOG.md | F29 — First Dashboard load flags starters ruled out after kickoff
 
 ## F23 — The flash when tapping things on phones
 
@@ -1000,3 +1002,45 @@ and the pick is as before. Plain text, no new chip, so no legend line. No screen
 fixture sets `State.currentNflWeek` to 6 (CIN's bye) in the page.
 
 **Left over.** Nothing. The full "who should I drop" tool is S54.
+
+## F28 — Scoreboard median says "13th of 12"
+
+**Cause** (confirmed): not Best Ball's scoring. `leagueResult` (`js/mls/week/thisWeek.js`) ranked `me.points`, which
+`sideSummary` rounds to one decimal, against `scoreOf` for every team, yours included, kept to two. With your score at
+e.g. 63.44 (shown 63.4), your own 63.44 counted as a team above you: last place read "13th of 12". Any score whose
+second decimal is 1 to 4 hit it (Best Ball sums of half-PPR points often have two decimals). The backup has the league's settings
+(12 teams, Best Ball, median, roster 3) but no week scores, so the unit test uses that shape with invented scores.
+
+**Fix.** `medianPlace(myPoints, otherPoints)` and `guillotinePlace(myPoints, otherTeams, myAlive)` (`week/scoreboard.js`)
+take the other teams only: rank = others above + 1, of = others + 1. `leagueResult` passes `scoreOf(mine)` and
+`scoreOf` of every other entry. The guillotine line had the same bug ("3rd of 2 alive", margin −0.0 instead of −5.2).
+The Final Window has no median line of its own: the tile, the Lineup tab's strip and the median record all read
+`res.median`.
+
+**User-visible.** Median and guillotine places stop at "N of N"; a guillotine margin is against the next team up.
+
+**Tests.** `tests/unit/weekScoreboard.test.mjs` (LRD-shaped 12-team case, a sweep that rank ≤ of, the guillotine case);
+`mls-this-week.spec.mjs` "a score with two decimals never places you below last… (F28)" (main: "3rd of 2").
+
+## F29 — First Dashboard load flags starters ruled out after kickoff
+
+**Cause.** No kickoff times were saved: `State.gameTimesByTeam` started empty each visit, so `hasKickedOff` (the shared
+rule `getLineupIssues` uses, and through it the cards, the strip's "N lineups need you" and the toasts; there's no
+separate nav badge) was false for everyone until ESPN answered. Then only the Lineup tab redrew, not the Dashboard.
+Sync All awaits ESPN before it draws, so it agreed.
+
+**Fix** (`js/mls/state.js`). ESPN's kickoff times are saved under a new key `mls_kickoffs` (`{ season, week, times }`)
+and read at load by `savedKickoffs` while the week can still be on (until 4 hours after its last kickoff), so the first
+render already knows whose game has started. Saved times for a week that isn't Sleeper's are dropped once the week is
+known. When ESPN's times arrive with the Dashboard showing, it is drawn again (`renderLeagueCards`). The rule itself is
+unchanged: kickoff time passed = locked; game states aren't needed.
+
+**User-visible.** On opening the app mid-week, a starter ruled Out after his kickoff no longer shows "1 to fix" (or
+counts in "N lineups need you") before Sync All. On a device's first visit of a week, he may show for the second or two
+until ESPN answers, then drops out without a Sync All.
+
+**Tests.** `mls-lineup-needs.spec.mjs`, "the first Dashboard after a load knows which games have started (F29)": a reload
+with ESPN held (main: "1 to fix"), and last week's saved times ignored, then the redraw when this week's arrive (main:
+never redrawn).
+
+**Left over.** None. The full suite hasn't run (it runs when the pull request is asked for).

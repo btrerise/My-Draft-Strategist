@@ -61,16 +61,34 @@ test('Best Ball: a live bench player counts, since the lineup picks itself', () 
     assert.equal(side(90, [p('WR', 0, 'post')], { bench: [p('RB', 0, 'pre')] }).liveBench.length, 0);
 });
 
-test('the league median: your place among every team\'s points', () => {
-    assert.deepEqual(medianPlace(120, [130, 120, 110, 100]), { rank: 2, of: 4, above: true });
-    assert.deepEqual(medianPlace(110, [130, 120, 110, 100]), { rank: 3, of: 4, above: false });
+test('the league median: your place among the other teams\' points', () => {
+    assert.deepEqual(medianPlace(120, [130, 110, 100]), { rank: 2, of: 4, above: true });
+    assert.deepEqual(medianPlace(110, [130, 120, 100]), { rank: 3, of: 4, above: false });
+    assert.deepEqual(medianPlace(110, [130, 110, 100]), { rank: 2, of: 4, above: true }); // a tie doesn't put you below
 });
 
-test('guillotine: your place among the teams still alive and the cushion over the lowest', () => {
-    const teams = [{ points: 100, alive: true }, { points: 90, alive: true }, { points: 80, alive: true }, { points: 0, alive: false }];
-    assert.deepEqual(guillotinePlace(90, teams), { rank: 2, of: 3, against: 80, cushion: 10 });
-    assert.deepEqual(guillotinePlace(80, teams), { rank: 3, of: 3, against: 90, cushion: -10 }); // lowest: behind the next team
-    assert.equal(guillotinePlace(0, teams, false), null); // chopped
+// F28: the owner's LRD Cucks (12 teams, Best Ball, plays the median; you are roster 3) read "Median: L (13th of 12)".
+// Every Best Ball score is a sum of half-PPR points, kept to two decimals; yours was rounded to one before it was ranked
+// against all 12, your own unrounded score among them. Last on 63.44 (shown 63.4), your own 63.44 counted as a team above.
+test('F28: last place with a two-decimal score is 12th of 12, never 13th', () => {
+    const others = [131.06, 118.5, 112.24, 104.9, 101.36, 97.72, 92.18, 88.4, 81.02, 76.66, 70.3];
+    assert.deepEqual(medianPlace(63.44, others), { rank: 12, of: 12, above: false });
+    // Any score, any league: the place is between 1st and the number of teams.
+    for (const me of [0, 63.44, 70.3, 99.99, 131.06, 140]) {
+        const m = medianPlace(me, others);
+        assert.ok(m.rank >= 1 && m.rank <= m.of && m.of === 12, `${me}: ${m.rank} of ${m.of}`);
+        const g = guillotinePlace(me, others.map(points => ({ points, alive: true })));
+        assert.ok(g.rank >= 1 && g.rank <= g.of && g.of === 12, `${me}: ${g.rank} of ${g.of} alive`);
+    }
+});
+
+test('guillotine: your place among the teams still alive and the cushion over the lowest of the others', () => {
+    const others = (...pts) => [...pts.map(points => ({ points, alive: true })), { points: 0, alive: false }];
+    assert.deepEqual(guillotinePlace(90, others(100, 80)), { rank: 2, of: 3, against: 80, cushion: 10 });
+    assert.deepEqual(guillotinePlace(80, others(100, 90)), { rank: 3, of: 3, against: 90, cushion: -10 }); // lowest: behind the next team
+    // F28: a two-decimal score below the rest is last of the alive teams, measured against the next one up.
+    assert.deepEqual(guillotinePlace(90.04, others(130.4, 95.2)), { rank: 3, of: 3, against: 95.2, cushion: -5.2 });
+    assert.equal(guillotinePlace(0, others(100, 90), false), null); // chopped
 });
 
 test('the headline: W-L split paid / free and redraft / dynasty, keeper with redraft', () => {
