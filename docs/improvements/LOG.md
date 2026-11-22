@@ -1070,10 +1070,9 @@ league in a module worker (`playoffWorker.js` → `playoffs.js`). Seeding: recor
 scores; saved at sync as `reseed` / `roundType` (2 of the owner's leagues re-seed, 2 have a two-week final).
 No new storage keys; Q4's Simulator model untouched.
 
-**Calibration (round 2, owner's backup, 18 leagues).** Shares add up in every league; each "<1%" / ">99%" is 2+ games
-from the cut with 4 left. Weeks 2-10 (1,312 team-weeks): actual scores spread 26.9 around projections vs the model's
-22.2, 8.6 of it lasting all season, so `WEEKLY_SPREAD_SCALE` 1.15 and one lasting miss per team per run (`LASTING_SD`).
-Extremes on the backup: 67 → 59 of 208 teams.
+**Calibration (round 2, owner's backup).** Extremes were genuine (2+ games from the cut with 4 left), but real scores
+spread 26.9 around projections vs the model's 22.2, 8.6 of it lasting all season: `WEEKLY_SPREAD_SCALE` 1.15 and a
+lasting miss per team per run (`LASTING_SD`).
 
 **Live scores (round 4).** Once the first unplayed week kicks off, the This week card's matchups and ESPN's clocks give
 each team's week as the Simulator counts it (`liveStrength`); the lasting miss scales with the share left. New scores
