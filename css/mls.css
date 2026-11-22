@@ -2202,6 +2202,8 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 .mls-pp-table .mls-pp-num { text-align: right; white-space: nowrap; }
 .mls-pp-table .mls-week-chance { margin-left: 0; }
 .mls-pp-table .mls-pp-dim { color: var(--text-muted); font-weight: 400; }
+/* A division leader (round 6): before the name, so a long name's ellipsis never hides it. */
+.mls-pp-star { margin-right: 0.3rem; color: var(--primary-green); }
 .mls-pp-table tr[data-you] td { background: rgba(147, 197, 253, 0.08); font-weight: 700; }
 .mls-pp-table tr.mls-pp-first-out td { border-top: 2px dashed var(--text-muted); }
 .mls-pp-note { max-width: 40rem; margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.45; }

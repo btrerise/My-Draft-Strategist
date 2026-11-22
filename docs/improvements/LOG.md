@@ -1052,7 +1052,8 @@ never redrawn).
 72% · Bye 18% · Title 9%" (Bye and Title only at 1% or more; a folded card drops it once you're eliminated); "Playoffs 72%" ending the
 Roster tab's record; under Power Rankings a collapsible "Playoff picture" (`#playoffPicture`): every team in today's
 seeding order, Record / Playoffs / Bye / Title, a dashed line at the cut, "<1%" and dashes muted, 40rem wide at most,
-open on each visit, "this week live" when the week's scores count. Playoff number in the
+open on each visit, "this week live" when the week's scores count; ★ marks division leaders and the note explains it
+and the league's bracket rules (round 6: in a division league the order looked like a bug). Playoff number in the
 shared chance colors (`mls-week-chance`); "Clinched" / "Eliminated" only when the records prove it, else "<1%" / ">99%"
 at the ends. Guide legend line.
 

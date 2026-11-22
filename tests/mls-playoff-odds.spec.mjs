@@ -19,14 +19,14 @@ const SPARE = { 2: ['8138', '9224'], 3: ['9480', '9488'], 5: ['9997', '10229'], 
 // You keep the fixture's first roster; Dee, your opponent, gets its second, so your game could go either way.
 const FROM = { 1: 0, 4: 1 };
 
-function rosters(played = 13, records = RECORDS) {
+function rosters(played = 13, records = RECORDS, divisions = null) {
     const base = fixture('league-rosters.json');
     return Object.keys(NAMES).map(Number).map(rid => {
         const from = rid in FROM ? base[FROM[rid]] : { players: SPARE[rid], starters: [], reserve: [], taxi: [] };
         const [w, , fpts] = records[rid];
         const wins = Math.round(w * played / 13), losses = played - wins;
         return { ...from, roster_id: rid, owner_id: `90000${rid}`, league_id: FIXTURE_LEAGUE_ID, players: from.players || [],
-            settings: { wins, losses, ties: 0, fpts, fpts_against: 1400 } };
+            settings: { wins, losses, ties: 0, fpts, fpts_against: 1400, ...(divisions ? { division: divisions[rid] } : {}) } };
     });
 }
 const users = () => Object.entries(NAMES).map(([rid, name]) => ({ user_id: `90000${rid}`, username: name.toLowerCase(), display_name: name, league_id: FIXTURE_LEAGUE_ID, metadata: {} }));
@@ -43,15 +43,15 @@ const espn = (state) => ({ events: [['CIN', 'ATL'], ['BUF', 'DET'], ['BAL', 'WAS
     competitions: [{ competitors: [{ team: { abbreviation: a }, homeAway: 'away' }, { team: { abbreviation: b }, homeAway: 'home' }] }],
 })) });
 
-async function routeLeague(page, { week = 14, projections = true, schedule = true, played = 13, records = RECORDS, scores = null } = {}) {
+async function routeLeague(page, { week = 14, projections = true, schedule = true, played = 13, records = RECORDS, scores = null, divisions = null, settings = {} } = {}) {
     const league = fixture('league.json');
-    league.settings = { ...league.settings, playoff_week_start: 15, playoff_teams: 3 };
+    league.settings = { ...league.settings, playoff_week_start: 15, playoff_teams: 3, ...(divisions ? { divisions: 2 } : {}), ...settings };
     await page.route(/sleeper\.app\/v1\/state\/nfl$/, r => r.fulfill({ json: { ...fixture('state-nfl.json'), week, leg: week, display_week: week } }));
     await page.route(/sleeper\.app\/v1\/projections\/nfl\/regular\/2026\/\d+$/, r => (projections ? r.fulfill({ json: fixture('projections-2026-2.json') }) : r.fulfill({ status: 500, body: '' })));
     // The starters' past weeks (their spread): weeks the fixtures don't have are week 1 again.
     await page.route(/sleeper\.app\/v1\/stats\/nfl\/regular\/2026\/([3-9]|1\d)$/, r => r.fulfill({ json: fixture('stats-2026-1.json') }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}$`), r => r.fulfill({ json: league }));
-    await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/rosters$`), r => r.fulfill({ json: rosters(played, records) }));
+    await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/rosters$`), r => r.fulfill({ json: rosters(played, records, divisions) }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/users$`), r => r.fulfill({ json: users() }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`), r => (schedule ? r.fulfill({ json: matchups(WEEK14, scores) }) : r.fulfill({ status: 500, body: '' })));
     if (scores) await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, r => r.fulfill({ json: espn('post') }));
@@ -118,6 +118,9 @@ test.describe('Playoff chances', () => {
         expect(Math.abs(total(await column(3)) - 100)).toBeLessThanOrEqual(3);
         expect(Math.abs(total(await column(4)) - 100)).toBeLessThanOrEqual(3);
         await expect(pic.locator('.mls-pp-note')).toContainText('10,000 runs');
+        // A plain league: no stars, no bracket line.
+        await expect(pic.locator('.mls-pp-star')).toHaveCount(0);
+        await expect(pic.locator('.mls-pp-note')).not.toContainText('Bracket:');
         // Long shots' Bye and Title and the eliminated teams' dashes are muted (round 4).
         await expect(cells(5, 3).locator('.mls-pp-dim')).toHaveCount(1);
         expect(await pic.locator('tbody .mls-pp-dim').evaluateAll(els => els.every(el => /^(<1%|\u2013)$/.test(el.textContent)))).toBe(true);
@@ -173,6 +176,24 @@ test.describe('Playoff chances', () => {
         const state = await open(page, { scores: { 1: 80, 4: 150, 3: 120, 5: 90, 2: 130, 6: 70 } });
         await expect(card(page).locator('.mls-lc-odds')).toHaveText('Playoffs <1%');
         await expect(card(page).locator('.mls-lc-odds .mls-week-chance')).toHaveClass(/\bis-dog\b/);
+        await expectClean(page, state);
+    });
+
+    test('divisions and the bracket\'s rules, explained under the Playoff picture (round 6)', async ({ page }) => {
+        // You, Ace and Cam in division 1, Dee, Eve and Fay in 2; re-seeded after each round, a two-week final.
+        const state = await open(page, { divisions: { 1: 1, 2: 1, 3: 1, 4: 2, 5: 2, 6: 2 }, settings: { playoff_seed_type: 1, playoff_round_type: 1 } });
+        await expect(card(page).locator('.mls-lc-odds')).toBeVisible();
+        await showTab(page, 'roster');
+        const pic = page.locator('#playoffPicture');
+        // The division leaders first (Ace, and Dee at 7-6 ahead of your 8-5), each marked.
+        await expect(pic.locator('tbody .mls-pp-team')).toHaveText(['\u2605Division leader: Ace', '\u2605Division leader: Dee', 'You', 'Cam', 'Eve', 'Fay']);
+        await expect(pic.locator('tbody .mls-pp-star')).toHaveCount(2);
+        await expect(pic.locator('tbody tr').nth(0).locator('.mls-pp-star')).toHaveText('\u2605');
+        // One line of facts; the note says what the star and the bracket mean.
+        await expect(pic.locator('summary')).toHaveText('Playoff picture1 week left · top 3 make it');
+        const note = pic.locator('.mls-pp-note');
+        await expect(note).toContainText('\u2605 leads a division: division leaders take the top seeds.');
+        await expect(note).toContainText('Bracket: re-seeded after each round; a two-week final.');
         await expectClean(page, state);
     });
 

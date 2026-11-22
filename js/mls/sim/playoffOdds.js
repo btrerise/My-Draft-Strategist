@@ -19,6 +19,7 @@ import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
 import { fantasyPosition } from '../constants.js';
 import { FOLD_CHEVRON, getLeagueScoringKey } from '../lineup/gameInfo.js';
+import { DIVISION_LEADER_MARK } from '../badges.js';
 import { MIN_RELIABLE_GAMES } from './stats.js';
 import { playoffCertainty } from './playoffs.js';
 import { LASTING_SD, liveStrength, pointsForStrength, projectedStrength } from './playoffStrength.js';
@@ -286,6 +287,18 @@ export function currentSeeds(po) {
 // The Roster tab's Playoff picture (owner's choice, round 2: its own table under Power Rankings, not three more columns
 // in it, which crowded phones; in standings order, with the playoff line; a fold, open on each visit). '' without
 // numbers.
+
+// What the league's bracket does differently (round 6), or ''.
+function bracketRules(po) {
+    const rules = [];
+    if (po.reseed) rules.push('re-seeded after each round');
+    if (po.roundType === 1) rules.push('a two-week final');
+    if (po.roundType === 2) rules.push('two weeks a round');
+    if (!rules.length) return '';
+    const text = rules.join('; ');
+    return ` Bracket: ${text}.`;
+}
+
 export function playoffPictureHTML(l) {
     const r = l && l.playoffs && results.get(l.leagueId);
     if (!r || r.key !== keyOf(l)) return '';
@@ -293,26 +306,28 @@ export function playoffPictureHTML(l) {
     const left = weeksLeftOf(po);
     // A long shot's Bye and Title, and an eliminated team's dashes, muted so the numbers that matter stand out (round 4).
     const dash = '<span class="mls-pp-dim">\u2013</span>';
-    const rows = currentSeeds(po).map((t, k) => {
+    const seeds = currentSeeds(po);
+    // With divisions, currentSeeds puts each division's leader first: one per division.
+    const leaders = new Set(po.divisions ? seeds.slice(0, new Set(po.standings.map(t => t.div)).size).map(t => t.rid) : []);
+    const rows = seeds.map((t, k) => {
         const o = playoffOddsFor(l, t.rid);
         if (!o) return '';
         const more = (share) => (o.eliminated ? dash : isTiny(share) ? '<span class="mls-pp-dim">&lt;1%</span>' : pctText(share));
         const line = k === po.teams && k > 0 ? ' class="mls-pp-first-out"' : '';
         const you = t.rid === l.rosterId;
         const rec = `${t.w}\u2013${t.l}${t.t ? `\u2013${t.t}` : ''}`;
-        return `<tr${line}${you ? ' data-you' : ''}><td class="mls-pp-team">${escapeHtml(po.owners[t.rid] || `Team ${t.rid}`)}</td><td class="mls-pp-num">${rec}</td>`
+        return `<tr${line}${you ? ' data-you' : ''}><td class="mls-pp-team">${leaders.has(t.rid) ? DIVISION_LEADER_MARK : ''}${escapeHtml(po.owners[t.rid] || `Team ${t.rid}`)}</td><td class="mls-pp-num">${rec}</td>`
             + `<td class="mls-pp-num">${playoffChanceHTML(o)}</td>${r.byes ? `<td class="mls-pp-num">${more(o.bye)}</td>` : ''}<td class="mls-pp-num">${more(o.title)}</td></tr>`;
     }).join('');
     const facts = [`${left} week${left === 1 ? '' : 's'} left`, `top ${po.teams} make it`];
     if (r.liveUsed) facts.push('this week live');
-    if (po.divisions) facts.push('division leaders seeded first');
     return `<details class="mls-change-fold mls-pp" open>
         <summary>${FOLD_CHEVRON}<span>Playoff picture</span><span class="mls-pp-facts">${facts.join(' \u00b7 ')}</span></summary>
         <div class="mls-pp-wrap"><table class="mls-pp-table">
             <thead><tr><th class="mls-pp-team">Team</th><th class="mls-pp-num">Record</th><th class="mls-pp-num" title="${escapeHtml(ODDS_TITLE)}">Playoffs</th>${r.byes ? '<th class="mls-pp-num" title="A first-round bye">Bye</th>' : ''}<th class="mls-pp-num" title="Winning the title">Title</th></tr></thead>
             <tbody>${rows}</tbody>
         </table></div>
-        <p class="mls-pp-note">Seeded as things stand; the dashed line is the playoff cut. From ${RUNS.toLocaleString('en-US')} runs of the weeks left and the bracket with Sleeper's projections${r.liveUsed ? " and this week's scores so far" : ''}; standings as of your last sync.</p>
+        <p class="mls-pp-note">Seeded as things stand; the dashed line is the playoff cut. From ${RUNS.toLocaleString('en-US')} runs of the weeks left and the bracket with Sleeper's projections${r.liveUsed ? " and this week's scores so far" : ''}; standings as of your last sync.${po.divisions ? ' \u2605 leads a division: division leaders take the top seeds.' : ''}${bracketRules(po)}</p>
     </details>`;
 }
 

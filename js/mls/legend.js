@@ -16,7 +16,7 @@ import {
     BYE_BADGE_HTML, DISMISS_ICON, PICK_BADGE_HTML, STARTS_ICON, UPGRADE_ICON,
     WARNING_ICON, bestBallBadgeMarkup, edgeBadgeMarkup, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup, leagueStatusChipMarkup,
     ROOT_ICONS, moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, rankGapChipMarkup, rootCountBadgeMarkup, rootOfBadgeMarkup, rootShareMarkup, finalChanceMarkup, scoutPillMarkup,
-    lockDotMarkup, opponentBadgeMarkup, rowMoreMarkup, sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, waiverChipMarkup, faabBidMarkup, weekResultMarkup, weekStatusMarkup
+    DIVISION_LEADER_MARK, lockDotMarkup, opponentBadgeMarkup, rowMoreMarkup, sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, waiverChipMarkup, faabBidMarkup, weekResultMarkup, weekStatusMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
 import { CRUNCH_ICON, crunchRowsHTML } from './lineup/byeCrunch.js';
@@ -84,6 +84,8 @@ const GROUPS = [
             'Power Rankings colors: green is the top third of your league, red the bottom third.'],
         ['Playoffs <span class="mls-week-chance is-fav">72%</span> <span class="mls-week-chance is-dog">15%</span> <span class="mls-week-chance is-fav">Clinched</span> <span class="mls-week-chance is-dog">Eliminated</span>',
             'In the last weeks of the regular season, on the Dashboard\'s league card (a folded card leaves it out once you\'re eliminated), beside your record on the Roster tab and in its Playoff picture under Power Rankings: the chance to make the playoffs, from 10,000 runs of the weeks left with Sleeper\'s projections and, once games start, this week\'s scores so far. Green when favored, red when not; Clinched and Eliminated only when the records make it certain. Bye and Title are the chances of a first-round bye and of winning it all.'],
+        [`${DIVISION_LEADER_MARK}Team`,
+            'In the Playoff picture, in a league with divisions: the team leading its division today. Division leaders take the top seeds, ahead of better records elsewhere.'],
     ]],
     ['Changes and trends', [
         [moveChipMarkup('up', 8, 'Weekly rankings', moveSince, '', SAMPLE)
