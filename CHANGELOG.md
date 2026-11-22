@@ -218,8 +218,9 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 - **Playoff chances.** In the last weeks of the regular season (five or fewer left), each Sleeper league's chance to
   make the playoffs, get a first-round bye and win the title, from 10,000 runs of the weeks left and the bracket with
-  Sleeper's projections: on the Dashboard's league card ("Playoffs 72% · Bye 18% · Title 9%"), beside your record on
-  the Roster tab, and for every team in Power Rankings. Green when you're favored, red when not; "Clinched" and
+  Sleeper's projections: on the Dashboard's league card ("Playoffs 72% · Bye 18% · Title 9%"; a folded card leaves it
+  out once you're eliminated), beside your record on the Roster tab, and for every team in a Playoff picture table
+  under Power Rankings, in seeding order with a dashed playoff line. Green when you're favored, red when not; "Clinched" and
   "Eliminated" once the records make it certain. Divisions and the league median count. Shows after your next sync.
   Calibrated on real results: a team that keeps beating (or missing) its projections is allowed for, so long shots
   aren't written off too soon.

@@ -1048,38 +1048,34 @@ never redrawn).
 
 ## S55 — Playoff chances (Monte Carlo)
 
-**User-visible.** In a Sleeper league with five or fewer regular-season weeks left, after a sync: the Dashboard's league
-card gets "Playoffs 72% · Bye 18% · Title 9%" under its status row (Bye only when the bracket has byes), the Roster
-tab's record line ends "Playoffs 72%", and Power Rankings gets Playoffs / Bye / Title columns for every team. The
-playoff number uses the shared chance colors (`mls-week-chance` is-fav at 50% and up, is-dog below); "Clinched" /
-"Eliminated" only when the records prove it, otherwise never 0% or 100% ("<1%", ">99%"). Guide legend line added.
+**User-visible.** Sleeper leagues with ≤ 5 regular-season weeks left, after a sync: the Dashboard card's line "Playoffs
+72% · Bye 18% · Title 9%" (Bye only with byes; a folded card drops it once you're eliminated); "Playoffs 72%" ending the
+Roster tab's record; under Power Rankings a collapsible "Playoff picture" (`#playoffPicture`): every team in today's
+seeding order, Record / Playoffs / Bye / Title, a dashed line at the cut, open on each visit. Playoff number in the
+shared chance colors (`mls-week-chance`); "Clinched" / "Eliminated" only when the records prove it, else "<1%" / ">99%"
+at the ends. Guide legend line.
 
-**Owner's decisions.** Where: all three (Dashboard card, Power Rankings, and beside the record on the Roster tab).
-Strength: Sleeper's projections (each team's best lineup, the Simulator's per-player spreads, QB stacks), points for
-when there are none. Model: team-level draws (one normal per team per week), not per-player draws. Divisions: some of
-the owner's leagues have them, so they count (division winners take the top seeds, as `seasonRecord`).
+**Owner's decisions.** Places: Dashboard card, Roster record, every team's (round 2: own table, not three Power
+Rankings columns, which crowded phones). Folded cards keep the line (the cross-league scan) unless you're eliminated;
+S51's record and place should join that line. Strength: Sleeper's projections (best lineup, the Simulator's per-player
+spreads, QB stacks), points for without them. Team-level draws. Divisions count (leaders seeded first).
 
-**How.** Sync (`leagues/playoffData.js`) saves `league.playoffs`: standings, playoff settings, rosters, owners and
-Sleeper's matchups for the weeks left (kept across syncs; fetched only when ≤ `MAX_WEEKS_LEFT` = 5 weeks remain).
-`sim/playoffOdds.js` runs after the first paint, in memory, once per sync: projections for the first 3 weeks left
-(later weeks and the bracket use their average), strength in `sim/playoffStrength.js`, 10,000 runs per league in a
-module worker (`sim/playoffWorker.js` → `sim/playoffs.js`). Seeding: record, points for, coin flip; fixed bracket, byes
-to the top seeds. No new storage keys. Q4's Simulator model untouched.
+**How.** Sync (`leagues/playoffData.js`) saves `league.playoffs` (standings, settings, rosters, owners, the remaining
+schedule, kept across syncs). `sim/playoffOdds.js` runs after the first paint, in memory, once per sync: projections
+for the next 3 weeks (later weeks and the bracket use their average), `sim/playoffStrength.js`, then 10,000 runs per
+league in a module worker (`playoffWorker.js` → `playoffs.js`). Seeding: record, points for, coin flip; fixed bracket.
+No new storage keys; Q4's Simulator model untouched.
 
-**Calibration (round 2, owner's backup, 18 leagues).** Checked the "<1%" / ">99%" against real Sleeper data: the shares
-add up in every league, and each extreme is a team 2+ games from the line with 4 games left (one recomputed at 200,000
-runs: 99.66%). Projected vs actual team scores, weeks 2-10, 1,312 team-weeks: single-game chances were close (90%+
-favourites won 93%), but actual scores spread 26.9 points around projections against the model's 22.2, and 8.6 of it
-lasts all season. So weekly spreads ×1.15 (`WEEKLY_SPREAD_SCALE`) and one lasting miss per team per run
-(`LASTING_SD` = 8.6, `lastingSd` in `simulatePlayoffs`). Effect on the backup: "<1%" 32 → 29, ">99%" 35 → 30 of 208.
+**Calibration (round 2, owner's backup, 18 leagues).** Shares add up in every league; each "<1%" / ">99%" is 2+ games
+from the cut with 4 left. Weeks 2-10 (1,312 team-weeks): actual scores spread 26.9 around projections vs the model's
+22.2, 8.6 of it lasting all season, so `WEEKLY_SPREAD_SCALE` 1.15 and one lasting miss per team per run (`LASTING_SD`).
+Extremes on the backup: 67 → 59 of 208 teams.
 
-**Performance.** 20 leagues × 12 teams, 4x-slowed CPU: 2.4 s (3.4 s with the median), all in the worker; views
-redraw at most once a second. 5,000 runs would halve it.
+**Performance.** 20 leagues, 4x-slowed CPU: 2.4 s (3.4 s with the median) in the worker; redraws at most once a second.
 
-**Tests.** `tests/unit/playoffs.test.mjs` (certainty, shares adding up, median, divisions, bracket, strength, sync data);
-`tests/mls-playoff-odds.spec.mjs` (week 14: one clinched, one eliminated, you in between; Playoffs sum to the spots;
-no projections, failed schedule, 7 weeks left). No screenshot changes (fixtures are week 2, too far out).
+**Tests.** `tests/unit/playoffs.test.mjs`; `tests/mls-playoff-odds.spec.mjs` (clinched / eliminated / between, sums to
+the spots, the Playoff picture and its fold, the folded eliminated card, no projections, failed schedule, too early).
+No screenshot changes (fixtures are week 2, too far out).
 
-**Left over.** During a week in progress the current week is simulated from projections, not its live scores (a
-follow-up could feed in the This week card's scores). Sleeper's re-seeding option (`playoff_seed_type`) isn't read. The
-full suite hasn't run (it runs when the pull request is asked for).
+**Left over.** A week in progress is simulated from projections, not live scores. Sleeper's re-seeding option isn't
+read. Full suite not yet run.

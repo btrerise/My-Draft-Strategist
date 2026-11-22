@@ -12,7 +12,6 @@ import { POWER_POSITIONS, computePositionalPower, POWER_STARTER_CARRY_CAP, power
 import { ensurePowerAgeIndex, futureRankText, futureMoreHTML, powerPicksNote, resolvePowerFuture } from './futureValue.js';
 import { getPowerLeagueKind, assignPowerLabels, competingSuggestion, powerLabelAdvice } from './directionLabels.js';
 import { renderRosterPowerStrip, scrollToPowerRankings } from './snapshot.js';
-import { ODDS_TITLE, leagueOddsByOwner, pctText, playoffChanceHTML } from '../sim/playoffOdds.js';
 import { renderPastTradeLine } from './tradeLine.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { roomsUseSeason, seasonSetFor } from '../rankings/season.js';
@@ -323,16 +322,6 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
     // leads with. The position columns still cover whole rooms, bench included.
     const rows = [...teamScores].sort((a, b) => a.starterRank - b.starterRank);
     const hasFuture = rows.every(t => Number.isFinite(t.futureRank));
-    // Playoff chances (improvements S55): every team's, once they're worked out (sim/playoffOdds.js); the table redraws then.
-    const odds = leagueOddsByOwner(ctx.league);
-    const oddsCells = (t) => {
-        if (!odds) return '';
-        const o = odds.of(t.owner);
-        const dash = '<span class="text-helper">\u2013</span>';
-        if (!o) return `<td class="mls-power-odds">${dash}</td>${odds.byes ? `<td class="mls-power-odds">${dash}</td>` : ''}<td class="mls-power-odds">${dash}</td>`;
-        const more = (share) => (o.eliminated ? dash : pctText(share));
-        return `<td class="mls-power-odds mls-power-odds-playoff">${playoffChanceHTML(o)}</td>${odds.byes ? `<td class="mls-power-odds">${more(o.bye)}</td>` : ''}<td class="mls-power-odds">${more(o.title)}</td>`;
-    };
     const labelCls = (t) => `mls-power-label mls-power-label-${String(t.label || '').toLowerCase()}`;
     const labelChip = (t) => t.label
         ? `<span class="${labelCls(t)}">${escapeHtml(t.label)}${t.labelNote ? ` <span class="mls-power-label-note">&middot; ${escapeHtml(t.labelNote)}</span>` : ''}</span>` : '';
@@ -403,7 +392,6 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
                     <th>WR</th>
                     <th>TE</th>
                     ${hasFuture ? `<th title="Future value: roster value adjusted for age - who holds up beyond this season">Future</th>` : ''}
-                    ${odds ? `<th class="mls-power-odds" title="${escapeHtml(ODDS_TITLE)}">Playoffs</th>${odds.byes ? '<th class="mls-power-odds" title="A first-round bye">Bye</th>' : ''}<th class="mls-power-odds" title="Winning the title">Title</th>` : ''}
                 </tr>
             </thead>
             <tbody>`;
@@ -419,7 +407,6 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
                 ${cell(t.wrRank, buildTooltip(t.players.WR, 'WR Room', { rightEdge: true }))}
                 ${cell(t.teRank, buildTooltip(t.players.TE, 'TE Room', { rightEdge: true }))}
                 ${hasFuture ? cell(t.futureRank, futureTooltip(t)) : ''}
-                ${oddsCells(t)}
             </tr>`;
     });
 
@@ -453,7 +440,6 @@ export const renderPowerRankingsTable = function(teamScores, ctx = {}) {
         notes.push(`Labels: <strong>Contender</strong> / <strong>Bubble</strong> / <strong>Longshot</strong> = top / middle / bottom third in starting lineup strength.`);
     }
     notes.push(`Labels reflect roster strength only, not the standings.`);
-    if (odds) notes.push(`<strong>Playoffs</strong>, ${odds.byes ? '<strong>Bye</strong> and ' : ''}<strong>Title</strong>: each team's chances from the standings, the weeks left and Sleeper's projections, ${(10000).toLocaleString('en-US')} runs (unlike the ranks, these do follow the standings).`);
     html += `<ul class="mls-power-notes">${notes.map(n => `<li>${n}</li>`).join('')}</ul>`;
 
     out.innerHTML = summaryHTML + html;

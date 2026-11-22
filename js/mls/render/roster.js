@@ -15,7 +15,7 @@ import { rankMoveChip } from '../rankings/moveChips.js';
 import { posCountChipMarkup, rankBadgeParts, rankGapChipMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { ordinal } from '../week/scoreboard.js';
-import { ODDS_EVENT, ODDS_TITLE, playoffChanceHTML, playoffOddsFor, schedulePlayoffOdds } from '../sim/playoffOdds.js';
+import { ODDS_EVENT, ODDS_TITLE, playoffChanceHTML, playoffOddsFor, renderPlayoffPicture, schedulePlayoffOdds } from '../sim/playoffOdds.js';
 import { hasSeasonSlot, seasonOffer, seasonSetFor } from '../rankings/season.js';
 import { rankGap, rankGapTip, superflexQbPrices } from '../rankings/nowAndLater.js';
 import { KEYS } from '../../shared/storage/keys.js';
@@ -347,6 +347,8 @@ import { KEYS } from '../../shared/storage/keys.js';
 // that would start a wrapped line is clipped (.mls-roster-record-list). Hidden for manual leagues, a league synced
 // before S21, and before anyone has played; a league last synced before the standing was added shows the W-L alone.
 function renderRosterRecord(league) {
+    // Every team's playoff chances, under Power Rankings (improvements S55, round 2), drawn with your record.
+    renderPlayoffPicture(league);
     const el = document.getElementById('rosterRecord');
     if (!el) return;
     const r = league && league.record;
@@ -382,13 +384,12 @@ function renderRosterRecord(league) {
 }
 
 
-// Playoff chances arrive after the first paint (improvements S55): the record line and Power Rankings redraw then.
+// Playoff chances arrive after the first paint (improvements S55): the record line and the Playoff picture redraw then.
 if (typeof document !== 'undefined') {
     document.addEventListener(ODDS_EVENT, () => {
         if (!document.getElementById('rosterTab')?.classList.contains('active')) return;
         const league = getActiveLeague();
         if (!league || !playoffOddsFor(league)) return;
         renderRosterRecord(league);
-        refreshPowerRankings();
     });
 }

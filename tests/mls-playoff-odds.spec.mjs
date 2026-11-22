@@ -1,6 +1,6 @@
 // Playoff chances (improvements S55; js/mls/sim/playoffOdds.js, the simulation unit-tested in tests/unit/playoffs.test.mjs):
-// each team's chance to make the playoffs, get a bye and win the title, on the Dashboard's league card, the Roster tab's
-// record line and Power Rankings.
+// each team's chance to make the playoffs, get a bye and win the title, on the Dashboard's league card (left out of a
+// folded card once you're eliminated), the Roster tab's record line and its Playoff picture table.
 //
 // The fixture league, six teams, three make the playoffs (the top seed gets a bye), Sleeper's week stubbed to 14, the last before the
 // playoffs (week 15): Ace is 12-1 (clinched), you're 8-5 and play Dee (7-6), Cam is 8-5 and plays Eve (6-7), Fay is 1-12
@@ -14,16 +14,16 @@ const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/sleeper/${
 const NAMES = { 1: 'mds_test', 2: 'Ace', 3: 'Cam', 4: 'Dee', 5: 'Eve', 6: 'Fay' };
 const RECORDS = { 1: [8, 5, 1500], 2: [12, 1, 1700], 3: [8, 5, 1450], 4: [7, 6, 1520], 5: [6, 7, 1400], 6: [1, 12, 1100] };
 const WEEK14 = [[1, 4], [2, 6], [3, 5]];
-// Players nobody else has, so the other teams show in Power Rankings (it leaves out an empty roster).
+// Players nobody else has, so each team has a lineup to project.
 const SPARE = { 2: ['8138', '9224'], 3: ['9480', '9488'], 5: ['9997', '10229'], 6: ['11566'] };
 // You keep the fixture's first roster; Dee, your opponent, gets its second, so your game could go either way.
 const FROM = { 1: 0, 4: 1 };
 
-function rosters(played = 13) {
+function rosters(played = 13, records = RECORDS) {
     const base = fixture('league-rosters.json');
     return Object.keys(NAMES).map(Number).map(rid => {
         const from = rid in FROM ? base[FROM[rid]] : { players: SPARE[rid], starters: [], reserve: [], taxi: [] };
-        const [w, , fpts] = RECORDS[rid];
+        const [w, , fpts] = records[rid];
         const wins = Math.round(w * played / 13), losses = played - wins;
         return { ...from, roster_id: rid, owner_id: `90000${rid}`, league_id: FIXTURE_LEAGUE_ID, players: from.players || [],
             settings: { wins, losses, ties: 0, fpts, fpts_against: 1400 } };
@@ -32,7 +32,7 @@ function rosters(played = 13) {
 const users = () => Object.entries(NAMES).map(([rid, name]) => ({ user_id: `90000${rid}`, username: name.toLowerCase(), display_name: name, league_id: FIXTURE_LEAGUE_ID, metadata: {} }));
 const matchups = (pairs) => pairs.flatMap(([a, b], i) => [a, b].map(rid => ({ roster_id: rid, matchup_id: i + 1, starters: [], players: [], points: 0 })));
 
-async function routeLeague(page, { week = 14, projections = true, schedule = true, played = 13 } = {}) {
+async function routeLeague(page, { week = 14, projections = true, schedule = true, played = 13, records = RECORDS } = {}) {
     const league = fixture('league.json');
     league.settings = { ...league.settings, playoff_week_start: 15, playoff_teams: 3 };
     await page.route(/sleeper\.app\/v1\/state\/nfl$/, r => r.fulfill({ json: { ...fixture('state-nfl.json'), week, leg: week, display_week: week } }));
@@ -40,7 +40,7 @@ async function routeLeague(page, { week = 14, projections = true, schedule = tru
     // The starters' past weeks (their spread): weeks the fixtures don't have are week 1 again.
     await page.route(/sleeper\.app\/v1\/stats\/nfl\/regular\/2026\/([3-9]|1\d)$/, r => r.fulfill({ json: fixture('stats-2026-1.json') }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}$`), r => r.fulfill({ json: league }));
-    await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/rosters$`), r => r.fulfill({ json: rosters(played) }));
+    await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/rosters$`), r => r.fulfill({ json: rosters(played, records) }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/users$`), r => r.fulfill({ json: users() }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`), r => (schedule ? r.fulfill({ json: matchups(WEEK14) }) : r.fulfill({ status: 500, body: '' })));
 }
@@ -63,7 +63,7 @@ const pct = (text) => {
 };
 
 test.describe('Playoff chances', () => {
-    test('the league card, the Roster tab\'s record and Power Rankings, adding up to the playoff spots', async ({ page }) => {
+    test('the league card, the Roster tab\'s record and the Playoff picture, adding up to the playoff spots', async ({ page }) => {
         const state = await open(page);
         // You're in between: a percent in the chance colors, then the bye and the title.
         const odds = card(page).locator('.mls-lc-odds');
@@ -72,32 +72,71 @@ test.describe('Playoff chances', () => {
         await expect(odds.locator('.mls-week-chance')).toHaveClass(mine >= 50 ? /\bis-fav\b/ : /\bis-dog\b/);
         await expect(odds).toHaveAttribute('title', /10,000 runs/);
 
-        // The Roster tab: beside the record, the same number.
-        await loadMlsRankings(page);
+        // The Roster tab: beside the record, the same number; and the Playoff picture under Power Rankings, which doesn't
+        // need rankings (owner's choice, round 2: its own table, not three more columns in Power Rankings).
         await showTab(page, 'roster');
         const rec = page.locator('#rosterRecord .mls-roster-record-odds');
         await expect(rec).toHaveText(`Playoffs ${Math.round(mine)}%`);
+        const pic = page.locator('#playoffPicture');
+        await expect(pic).toBeVisible();
+        await expect(pic.locator('summary')).toHaveText('Playoff picture1 week left · top 3 make it');
+        await expect(pic.locator('details.mls-pp')).toHaveAttribute('open', '');
+        await expect(pic.locator('thead th')).toHaveText(['Team', 'Record', 'Playoffs', 'Bye', 'Title']);
+        // Today's seeding, the playoff line after the third, your row marked.
+        const rows = pic.locator('tbody tr');
+        await expect(rows.locator('.mls-pp-team')).toHaveText(['Ace', 'You', 'Cam', 'Dee', 'Eve', 'Fay']);
+        await expect(rows.nth(3)).toHaveClass('mls-pp-first-out');
+        await expect(pic.locator('tbody tr.mls-pp-first-out')).toHaveCount(1);
+        await expect(rows.nth(1)).toHaveAttribute('data-you', '');
+        const cells = (i, k) => rows.nth(i).locator('td').nth(k);
+        await expect(cells(0, 1)).toHaveText('12\u20131');
+        await expect(cells(0, 2)).toHaveText('Clinched');
+        await expect(cells(0, 2).locator('.mls-week-chance')).toHaveClass(/\bis-fav\b/);
+        await expect(cells(5, 2)).toHaveText('Eliminated');
+        await expect(cells(5, 2).locator('.mls-week-chance')).toHaveClass(/\bis-dog\b/);
+        await expect(cells(5, 3)).toHaveText('\u2013');
+        await expect(cells(5, 4)).toHaveText('\u2013');
+        await expect(cells(1, 2)).toHaveText(`${Math.round(mine)}%`);
+        // The numbers add up: three spots, one bye, one title, within each percent's rounding.
+        const column = async (k) => (await rows.evaluateAll((trs, k) => trs.map(tr => tr.children[k].textContent), k)).map(pct);
+        const total = (list) => list.reduce((a, b) => a + b, 0);
+        expect(Math.abs(total(await column(2)) - 300)).toBeLessThanOrEqual(3);
+        expect(Math.abs(total(await column(3)) - 100)).toBeLessThanOrEqual(3);
+        expect(Math.abs(total(await column(4)) - 100)).toBeLessThanOrEqual(3);
+        await expect(pic.locator('.mls-pp-note')).toContainText('10,000 runs');
 
-        // Power Rankings: every team, Ace clinched, Fay eliminated (no title chance), the rest a percent.
-        const table = page.locator('#powerRankingsOutput .mls-power-table');
-        await expect(table.locator('thead th.mls-power-odds')).toHaveText(['Playoffs', 'Bye', 'Title']);
-        const row = (owner) => table.locator('tbody tr').filter({ has: page.locator('.mls-power-owner', { hasText: new RegExp(`^${owner}$`) }) });
-        await expect(row('Ace').locator('.mls-power-odds-playoff')).toHaveText('Clinched');
-        await expect(row('Ace').locator('.mls-power-odds-playoff .mls-week-chance')).toHaveClass(/\bis-fav\b/);
-        await expect(row('Fay').locator('.mls-power-odds-playoff')).toHaveText('Eliminated');
-        await expect(row('Fay').locator('.mls-power-odds-playoff .mls-week-chance')).toHaveClass(/\bis-dog\b/);
-        await expect(row('Fay').locator('td.mls-power-odds').nth(1)).toHaveText('–');
-        await expect(row('You').locator('.mls-power-odds-playoff')).toHaveText(`${Math.round(mine)}%`);
-        const playoff = await table.locator('tbody .mls-power-odds-playoff').allTextContents();
-        expect(playoff).toHaveLength(6);
-        // The numbers add up: three spots, within each percent's rounding.
-        const sum = playoff.map(pct).reduce((a, b) => a + b, 0);
-        expect(Math.abs(sum - 300)).toBeLessThanOrEqual(3);
-        const titles = (await table.locator('tbody tr td.mls-power-odds:last-child').allTextContents()).map(pct);
-        expect(Math.abs(titles.reduce((a, b) => a + b, 0) - 100)).toBeLessThanOrEqual(3);
-        const byes = (await table.locator('tbody tr td.mls-power-odds:nth-last-child(2)').allTextContents()).map(pct);
-        expect(Math.abs(byes.reduce((a, b) => a + b, 0) - 100)).toBeLessThanOrEqual(3);
-        await expect(page.locator('#powerRankingsOutput .mls-power-notes')).toContainText('Playoffs');
+        // A fold: it closes, and Power Rankings, once there are rankings, has no columns of its own.
+        await pic.locator('summary').click();
+        await expect(pic.locator('details.mls-pp')).not.toHaveAttribute('open', '');
+        await expect(pic.locator('table')).toBeHidden();
+        await loadMlsRankings(page);
+        await showTab(page, 'roster');
+        await expect(page.locator('#powerRankingsOutput .mls-power-table thead th')).toHaveCount(7);
+        await expect(page.locator('#powerRankingsOutput .mls-power-table')).not.toContainText('Playoffs');
+        await expectClean(page, state);
+    });
+
+    test('eliminated: the open card says so, a folded card leaves the line out (round 2)', async ({ page }) => {
+        // You and Fay swap records: you're 1-12.
+        const state = await open(page, { records: { ...RECORDS, 1: RECORDS[6], 6: RECORDS[1] } });
+        const odds = card(page).locator('.mls-lc-odds');
+        await expect(odds).toHaveText('Playoffs Eliminated');
+        await expect(odds).toHaveClass(/\bis-out\b/);
+        await card(page).locator('.mls-lc-fold').click();
+        await expect(card(page)).toHaveClass(/\bis-collapsed\b/);
+        await expect(odds).toBeHidden();
+        await card(page).locator('.mls-lc-fold').click();
+        await expect(odds).toBeVisible();
+        await expectClean(page, state);
+    });
+
+    test('a folded card still shows the line while you\'re alive', async ({ page }) => {
+        const state = await open(page);
+        const odds = card(page).locator('.mls-lc-odds');
+        await expect(odds).toBeVisible();
+        await card(page).locator('.mls-lc-fold').click();
+        await expect(card(page)).toHaveClass(/\bis-collapsed\b/);
+        await expect(odds).toBeVisible();
         await expectClean(page, state);
     });
 
@@ -113,6 +152,10 @@ test.describe('Playoff chances', () => {
         const state = await open(page, { schedule: false });
         await expect(card(page)).toBeVisible();
         await expect(card(page).locator('.mls-lc-odds')).toHaveCount(0);
+        await showTab(page, 'roster');
+        await expect(page.locator('#rosterRecord')).toBeVisible();
+        await expect(page.locator('#playoffPicture')).toBeHidden();
+        await expect(page.locator('#rosterRecord .mls-roster-record-odds')).toHaveCount(0);
         await expectClean(page, state);
     });
 

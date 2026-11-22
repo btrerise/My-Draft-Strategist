@@ -1,7 +1,8 @@
 // --- PLAYOFF CHANCES: EVERY LEAGUE'S, AFTER THE FIRST PAINT (improvements S55) ---
 // Each Sleeper league's chance to make the playoffs, get a first-round bye and win the title, from 10,000 runs of the
 // rest of its regular season and its bracket (sim/playoffs.js, in sim/playoffWorker.js). Shown on the Dashboard's
-// league cards, the Roster tab's record line and Power Rankings (owner's choice: all three).
+// league cards (round 2: left out of a folded card once you're eliminated), the Roster tab's record line and the
+// Playoff picture table under Power Rankings (owner's choices).
 //
 // The inputs: what sync saved (league.playoffs, leagues/playoffData.js: standings, the weeks left, every roster), and
 // each team's weekly mean and spread (sim/playoffStrength.js): its best lineup by Sleeper's projections for the first
@@ -17,7 +18,7 @@ import { getPlayerWeeklyScoreHistory, getWeeklyProjections } from '../../shared/
 import { escapeHtml } from '../../shared/html.js';
 import { State } from '../state.js';
 import { fantasyPosition } from '../constants.js';
-import { getLeagueScoringKey } from '../lineup/gameInfo.js';
+import { FOLD_CHEVRON, getLeagueScoringKey } from '../lineup/gameInfo.js';
 import { MIN_RELIABLE_GAMES } from './stats.js';
 import { playoffCertainty } from './playoffs.js';
 import { LASTING_SD, pointsForStrength, projectedStrength } from './playoffStrength.js';
@@ -192,13 +193,62 @@ export function cardOddsHTML(l) {
         if (o.byes > 0) parts.push(`<span class="mls-lc-odds-part">Bye <strong>${pctText(o.bye)}</strong></span>`);
         parts.push(`<span class="mls-lc-odds-part">Title <strong>${pctText(o.title)}</strong></span>`);
     }
-    return `<p class="mls-lc-odds" title="${escapeHtml(ODDS_TITLE)}">${parts.join('<span class="mls-lc-sep" aria-hidden="true"> · </span>')}</p>`;
+    // Once you're out, a folded card leaves the line out (owner's choice, round 2: nothing left to watch); open, it shows.
+    return `<p class="mls-lc-odds${o.eliminated ? ' is-out' : ''}" title="${escapeHtml(ODDS_TITLE)}">${parts.join('<span class="mls-lc-sep" aria-hidden="true"> · </span>')}</p>`;
 }
 
-// For Power Rankings: { byes, of(ownerName) -> odds | null }, or null without numbers.
-export function leagueOddsByOwner(l) {
+// The current seeding: record (a tie counts half), then points for; with divisions, each division's leader first, as
+// Sleeper seeds them (and as scoreboard.js's seasonRecord does).
+export function currentSeeds(po) {
+    const ws = (t) => t.w + t.t / 2;
+    const table = po.standings.slice().sort((a, b) => (ws(b) - ws(a)) || (b.pf - a.pf) || (a.rid - b.rid));
+    if (!po.divisions) return table;
+    const leaders = [];
+    table.forEach(t => { if (!leaders.some(x => x.div === t.div)) leaders.push(t); });
+    return leaders.concat(table.filter(t => !leaders.includes(t)));
+}
+
+// The Roster tab's Playoff picture (owner's choice, round 2: its own table under Power Rankings, not three more columns
+// in it, which crowded phones; in standings order, with the playoff line; a fold, open on each visit). '' without
+// numbers.
+export function playoffPictureHTML(l) {
     const r = l && l.playoffs && results.get(l.leagueId);
-    if (!r || r.key !== keyOf(l)) return null;
-    const ridOf = new Map(Object.entries(l.playoffs.owners || {}).map(([rid, name]) => [name, rid]));
-    return { byes: r.byes, of: (owner) => (ridOf.has(owner) ? playoffOddsFor(l, ridOf.get(owner)) : null) };
+    if (!r || r.key !== keyOf(l)) return '';
+    const po = l.playoffs;
+    const left = weeksLeftOf(po);
+    const dash = '<span class="text-helper">\u2013</span>';
+    const rows = currentSeeds(po).map((t, k) => {
+        const o = playoffOddsFor(l, t.rid);
+        if (!o) return '';
+        const more = (share) => (o.eliminated ? dash : pctText(share));
+        const line = k === po.teams && k > 0 ? ' class="mls-pp-first-out"' : '';
+        const you = t.rid === l.rosterId;
+        const rec = `${t.w}\u2013${t.l}${t.t ? `\u2013${t.t}` : ''}`;
+        return `<tr${line}${you ? ' data-you' : ''}><td class="mls-pp-team">${escapeHtml(po.owners[t.rid] || `Team ${t.rid}`)}</td><td class="mls-pp-num">${rec}</td>`
+            + `<td class="mls-pp-num">${playoffChanceHTML(o)}</td>${r.byes ? `<td class="mls-pp-num">${more(o.bye)}</td>` : ''}<td class="mls-pp-num">${more(o.title)}</td></tr>`;
+    }).join('');
+    const facts = [`${left} week${left === 1 ? '' : 's'} left`, `top ${po.teams} make it`];
+    if (po.divisions) facts.push('division leaders seeded first');
+    return `<details class="mls-change-fold mls-pp" open>
+        <summary>${FOLD_CHEVRON}<span>Playoff picture</span><span class="mls-pp-facts">${facts.join(' \u00b7 ')}</span></summary>
+        <div class="mls-pp-wrap"><table class="mls-pp-table">
+            <thead><tr><th class="mls-pp-team">Team</th><th class="mls-pp-num">Record</th><th class="mls-pp-num" title="${escapeHtml(ODDS_TITLE)}">Playoffs</th>${r.byes ? '<th class="mls-pp-num" title="A first-round bye">Bye</th>' : ''}<th class="mls-pp-num" title="Winning the title">Title</th></tr></thead>
+            <tbody>${rows}</tbody>
+        </table></div>
+        <p class="mls-pp-note">Seeded as things stand; the dashed line is the playoff cut. From ${RUNS.toLocaleString('en-US')} runs of the weeks left and the bracket with Sleeper's projections, as of your last sync.</p>
+    </details>`;
+}
+
+// Draws (or hides) the Playoff picture under Power Rankings for the active league.
+export function renderPlayoffPicture(l) {
+    const el = typeof document !== 'undefined' ? document.getElementById('playoffPicture') : null;
+    if (!el) return;
+    const html = playoffPictureHTML(l);
+    // A redraw keeps the fold as you left it this visit.
+    const fold = el.querySelector('details.mls-pp');
+    const wasClosed = fold && !fold.open && el.dataset.leagueId === (l && l.leagueId);
+    el.innerHTML = html;
+    el.dataset.leagueId = (l && l.leagueId) || '';
+    if (wasClosed) el.querySelector('details.mls-pp')?.removeAttribute('open');
+    el.hidden = !html;
 }
