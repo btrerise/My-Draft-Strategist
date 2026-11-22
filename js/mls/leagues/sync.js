@@ -5,6 +5,7 @@
 // syncActiveLeague), which sat under ADD PLAYER MANUALLY and IMPORT ALL LEAGUES.
 import { getSleeperLeague, getSleeperLeagueRosters, getSleeperLeagueUsers, getSleeperPlayerMap, getSleeperTradedPicks, getSleeperUser } from '../../shared/api/sleeper.js';
 import { pickOwnership } from './picks.js';
+import { playoffDataFrom } from './playoffData.js';
 import { isGuillotine, playsMedian, seasonRecord, teamNamesFrom } from '../week/scoreboard.js';
 import { nextDraftYears } from '../trade/makeFair.js';
 import { clearSimResults } from '../sim/ui.js';
@@ -706,6 +707,17 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
                 }
             }
 
+            // Playoff chances (improvements S55): standings, playoff settings and the weeks left (leagues/playoffData.js).
+            let playoffs = null;
+            try {
+                playoffs = await playoffDataFrom(leagueId, leagueData, rosters, {
+                    ownerOf: (r) => (r.owner_id === userId ? 'You' : (userMap[r.owner_id] || 'Unknown Team')),
+                    existing: existingLeague ? existingLeague.playoffs : null,
+                });
+            } catch (e) {
+                console.warn(`Couldn't read the playoff picture for ${leagueName}.`, e);
+            }
+
             let leagueObj = {
                 leagueId: leagueId, name: leagueName, username: username, formatBadge: formatBadge, leagueType: leagueType,
                 irRules, rosterSize, picks,
@@ -731,6 +743,7 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
                 medianMatch: playsMedian(ls),
                 guillotine: isGuillotine(ls),
                 record: myTeam ? seasonRecord(rosters, myTeam.roster_id, leagueData) : null,
+                playoffs,
                 reqs: autoReqs, roster: rosterDetails, globalRosterMap: globalRosterMap,
                 globalPosMap: globalPosMap, sleeperStarters: sleeperStarters,
                 // Needed by the Matchup Simulator: rosterId identifies "us" within this

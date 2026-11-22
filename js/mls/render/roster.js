@@ -15,6 +15,7 @@ import { rankMoveChip } from '../rankings/moveChips.js';
 import { posCountChipMarkup, rankBadgeParts, rankGapChipMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { ordinal } from '../week/scoreboard.js';
+import { ODDS_EVENT, ODDS_TITLE, playoffChanceHTML, playoffOddsFor, schedulePlayoffOdds } from '../sim/playoffOdds.js';
 import { hasSeasonSlot, seasonOffer, seasonSetFor } from '../rankings/season.js';
 import { rankGap, rankGapTip, superflexQbPrices } from '../rankings/nowAndLater.js';
 import { KEYS } from '../../shared/storage/keys.js';
@@ -353,6 +354,9 @@ function renderRosterRecord(league) {
     const wl = `${r.wins}\u2013${r.losses}${r.ties ? `\u2013${r.ties}` : ''}`;
     const part = (cls, html) => `<span class="mls-roster-record-part${cls ? ` ${cls}` : ''}">${html}</span>`;
     const divisions = !!(r.division && r.divisionRank);
+    // Your playoff chance (improvements S55), when it's been worked out (sim/playoffOdds.js).
+    const odds = playoffOddsFor(league);
+    schedulePlayoffOdds();
     let seed = '';
     if (divisions && r.seed) {
         seed = (!r.playoffTeams || r.seed <= r.playoffTeams)
@@ -368,10 +372,23 @@ function renderRosterRecord(league) {
         + seed
         + part('mls-roster-record-points', points('PF', 'Points for', r.pfRank, r.pf)
             + '<span class="mls-roster-record-dot" aria-hidden="true">\u00b7</span>' + points('PA', 'Points against', r.paRank, r.pa))
+        + (odds ? part('mls-roster-record-odds', `Playoffs ${playoffChanceHTML(odds)}`) : '')
         + '</span>';
     el.title = 'This season, as of your last sync. Places go by record, then points for, then points against.'
         + (seed ? ' Seeds: the division winners first, then the best of the rest.' : '')
-        + ' PF / PA: 1st = the most points in your league.';
+        + ' PF / PA: 1st = the most points in your league.'
+        + (odds ? ` Playoffs: ${ODDS_TITLE}` : '');
     el.hidden = false;
 }
 
+
+// Playoff chances arrive after the first paint (improvements S55): the record line and Power Rankings redraw then.
+if (typeof document !== 'undefined') {
+    document.addEventListener(ODDS_EVENT, () => {
+        if (!document.getElementById('rosterTab')?.classList.contains('active')) return;
+        const league = getActiveLeague();
+        if (!league || !playoffOddsFor(league)) return;
+        renderRosterRecord(league);
+        refreshPowerRankings();
+    });
+}

@@ -34,7 +34,7 @@
 //   * Middle number (v2.8.x -> v2.9.0): when this file's own behavior changes -- the caching
 //     strategy, what works offline, how old caches are cleared -- as v2.8.0 marked the strategy
 //     change above. App features don't move it; they go in CHANGELOG.md and the apps' footer versions.
-const CACHE_NAME = 'draft-strategist-v2.10.17';  // Update this version on EVERY deploy - see note above
+const CACHE_NAME = 'draft-strategist-v2.10.18';  // Update this version on EVERY deploy - see note above
 // While you're here: if this deploy includes a change users will notice, also bump the
 // visible version label for whichever app it touched - "Draft Strategist vX.X" in /index.html
 // and/or "My Lineup Strategist vX.X" in /lineup/index.html (look for the APP VERSION comment
@@ -148,6 +148,7 @@ const PRECACHE_ASSETS = [
     '/js/mls/lineup/earlyRule.js',
     '/js/mls/lineup/gameInfo.js',
     '/js/mls/leagues/sync.js',
+    '/js/mls/leagues/playoffData.js', // playoff chances (S55): standings and the weeks left, at sync
     '/js/mls/leagues/lastSynced.js',
     '/js/mls/leagues/scoutResults.js',
     '/js/mls/leagues/handoff.js',
@@ -229,6 +230,10 @@ const PRECACHE_ASSETS = [
     '/js/mls/sim/stats.js',
     '/js/mls/sim/winChance.js',       // spawns its own sim/worker.js (S21)
     '/js/mls/sim/worker.js',          // new Worker(), not an import -- see above
+    '/js/mls/sim/playoffs.js',        // playoff chances (S55): the season and bracket simulation
+    '/js/mls/sim/playoffStrength.js', // -> each team's weekly mean and spread
+    '/js/mls/sim/playoffOdds.js',     // -> runs them after the first paint
+    '/js/mls/sim/playoffWorker.js',   // new Worker() (a module worker), not an import
     // their static imports outside js/mls/, and theirs:
     '/js/shared/rankings/parse.js',   // -> names.js
     '/js/shared/api/sleeper.js',

@@ -2009,6 +2009,11 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 .mls-lc-synced-label { font-weight: 600; }
 /* An early-game swap to make (improvements S50, round 5): muted, like the Synced line; a suggestion, never amber. */
 .mls-lc-early { margin: 0.35rem 0 0 calc(28px + 0.4rem); font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; }
+/* Playoff chances (improvements S55): the playoff number in the shared chance colors, bye and title plain. */
+.mls-lc-odds { margin: 0.35rem 0 0 calc(28px + 0.4rem); font-size: 0.78rem; color: var(--text-muted); line-height: 1.45; font-variant-numeric: tabular-nums; }
+.mls-lc-odds-part { white-space: nowrap; }
+.mls-lc-odds .mls-week-chance { margin-left: 0; }
+.mls-lc-odds strong { color: var(--text-main); }
 .mls-lc-synced-add { color: #86efac; }
 .mls-lc-synced-drop { color: #9ca3af; }
 .mls-lc-synced-out { color: var(--text-muted); }
@@ -2024,7 +2029,7 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 /* Phones: the status row starts at the card's edge, under the chevron, so the chips get the full width. */
 @media (max-width: 599.98px) {
     .mls-lc-card { padding-top: 0.5rem; padding-bottom: 0.55rem; padding-left: 12px; padding-right: 12px; }
-    .mls-lc-status, .mls-lc-synced, .mls-lc-early { margin-left: 0; }
+    .mls-lc-status, .mls-lc-synced, .mls-lc-early, .mls-lc-odds { margin-left: 0; }
 }
 
 /* --- SCOREBOARD (js/mls/week/thisWeek.js, improvements S21) ---
@@ -2180,6 +2185,10 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 .mls-roster-record-dot { margin: 0 0.45rem; opacity: 0.7; }
 .mls-roster-record-wl { color: var(--text-main); font-size: 0.95rem; }
 .mls-roster-record abbr { text-decoration: none; }
+.mls-roster-record-odds .mls-week-chance { margin-left: 0; }
+/* Power Rankings' playoff chances (improvements S55). */
+.mls-power-table .mls-power-odds { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mls-power-table .mls-power-odds .mls-week-chance { margin-left: 0; }
 /* Phones: the name across the card, then the format, then the record (S21, owner's request). */
 @media (max-width: 599.98px) {
     .mls-roster-head h3 { display: block; }

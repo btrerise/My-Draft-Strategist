@@ -216,6 +216,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Playoff chances.** In the last weeks of the regular season (five or fewer left), each Sleeper league's chance to
+  make the playoffs, get a first-round bye and win the title, from 10,000 runs of the weeks left and the bracket with
+  Sleeper's projections: on the Dashboard's league card ("Playoffs 72% · Bye 18% · Title 9%"), beside your record on
+  the Roster tab, and for every team in Power Rankings. Green when you're favored, red when not; "Clinched" and
+  "Eliminated" once the records make it certain. Divisions and the league median count. Shows after your next sync.
 - **Auto-Find no longer picks a star on bye as the player to drop.** With Rank By set to Weekly, a rostered player
   missing from the weekly rankings (on bye, or not ranked this week) is now judged by his ROS rank when the league has
   ROS rankings, and the drop-candidate line says why ("On bye: ranked by ROS"). Without ROS rankings it works as before
