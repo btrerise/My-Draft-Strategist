@@ -5,7 +5,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { bracketOrder, byeCount, playoffCertainty, simulatePlayoffs } from '../../js/mls/sim/playoffs.js';
-import { LASTING_SD, PF_SPREAD_CV, QB_STACK_CORRELATION, WEEKLY_SPREAD_SCALE, pointsForStrength, projectedStrength } from '../../js/mls/sim/playoffStrength.js';
+import { LASTING_SD, PF_SPREAD_CV, QB_STACK_CORRELATION, WEEKLY_SPREAD_SCALE, liveStrength, pointsForStrength, projectedStrength } from '../../js/mls/sim/playoffStrength.js';
 import { MAX_WEEKS_LEFT, pairsFrom, playoffDataFrom } from '../../js/mls/leagues/playoffData.js';
 
 // A seeded generator, so the numbers are the same on every run.
@@ -140,6 +140,28 @@ describe('team strength', () => {
         assert.equal(projectedStrength(['QB'], ['q'], { projOf: () => undefined, posOf: id => pos[id] }), null);
         assert.deepEqual(pointsForStrength(1200, 10), [120, 120 * PF_SPREAD_CV]);
         assert.equal(pointsForStrength(0, 0), null);
+    });
+});
+
+describe('live scores (round 4)', () => {
+    test('final, in progress, not started, and out', () => {
+        const [mean, sd, share] = liveStrength([
+            { id: 'a', actual: 20, shareLeft: 0, projected: 15 },          // final: 20, no spread
+            { id: 'b', actual: 6, shareLeft: 0.5, projected: 12 },         // half his game left: 6 + 6
+            { id: 'c', actual: null, shareLeft: 0, projected: 10 },        // not started: his projection
+            { id: 'd', actual: null, shareLeft: 0, projected: 9, excluded: true }, // Out: left out
+        ]);
+        assert.equal(mean, 42);
+        assert.ok(sd > 0);
+        // Of 37 projected points, 6 (half of b) + 10 (c) are still to play.
+        assert.ok(Math.abs(share - 16 / 37) < 1e-9);
+        assert.deepEqual(liveStrength([{ id: 'a', actual: 20, shareLeft: 0, projected: 15 }]), [20, 0, 0]);
+    });
+    test('a finished week decides its games, the lasting miss doesn\'t reach it', () => {
+        const teams = [{ rid: 1, w: 5, l: 5, t: 0, pf: 1000 }, { rid: 2, w: 5, l: 5, t: 0, pf: 1200 }];
+        const weeks = [{ games: [[1, 2]], strength: { 1: [130, 0], 2: [100, 0] }, share: { 1: 0, 2: 0 } }];
+        const out = simulatePlayoffs({ teams, weeks, playoffTeams: 1, lastingSd: LASTING_SD, runs: 2000, random: seeded(11) });
+        assert.equal(out.odds[1].playoff, 1);
     });
 });
 

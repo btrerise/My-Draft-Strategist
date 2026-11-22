@@ -69,7 +69,8 @@ function normalSource(random) {
 /**
  * Plays the rest of the regular season `runs` times, seeds each finish and plays the bracket.
  * teams: [{ rid, w, l, t, pf, div }] (pf: points for so far).
- * weeks: [{ games: [[ridA, ridB], ...], strength: { rid: [mean, sd] } }], in order. Every team scores every week (for the
+ * weeks: [{ games: [[ridA, ridB], ...], strength: { rid: [mean, sd] }, share?: { rid: 0-1 } }], in order (share: how
+ *   much of a week under way is still to play; 1 when left out). Every team scores every week (for the
  *   median and points for), whether it has a game or not.
  * playoffStrength: { rid: [mean, sd] } for the bracket's games.
  * lastingSd: how far a team's true level can sit from its projections for the rest of the season (points a week). Each
@@ -91,6 +92,8 @@ export function simulatePlayoffs({ teams, weeks = [], median = false, playoffTea
         games: Int32Array.from((w.games || []).map(([a, b]) => [idx.get(a), idx.get(b)]).filter(([a, b]) => a !== undefined && b !== undefined).flat()),
         mean: Float64Array.from(teams, t => (w.strength[t.rid] ? w.strength[t.rid][0] : 0)),
         sd: Float64Array.from(teams, t => (w.strength[t.rid] ? w.strength[t.rid][1] : 0)),
+        // The share of a team's week still to play (1 unless given: this week's live scores), for the lasting miss.
+        share: Float64Array.from(teams, t => (w.share && typeof w.share[t.rid] === 'number' ? w.share[t.rid] : 1)),
     }));
     const pMean = Float64Array.from(teams, t => (playoffStrength[t.rid] ? playoffStrength[t.rid][0] : 0));
     const pSd = Float64Array.from(teams, t => (playoffStrength[t.rid] ? playoffStrength[t.rid][1] : 0));
@@ -116,7 +119,7 @@ export function simulatePlayoffs({ teams, weeks = [], median = false, playoffTea
         if (lastingSd > 0) for (let i = 0; i < n; i++) lasting[i] = lastingSd * normal();
         for (let wk = 0; wk < plan.length; wk++) {
             const w = plan[wk], g = w.games;
-            for (let i = 0; i < n; i++) { score[i] = w.mean[i] + lasting[i] + w.sd[i] * normal(); pf[i] += score[i]; }
+            for (let i = 0; i < n; i++) { score[i] = w.mean[i] + lasting[i] * w.share[i] + w.sd[i] * normal(); pf[i] += score[i]; }
             for (let k = 0; k < g.length; k += 2) {
                 const a = g[k], b = g[k + 1];
                 if (score[a] > score[b]) wins[a] += 1;

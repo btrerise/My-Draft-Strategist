@@ -63,3 +63,27 @@ export function pointsForStrength(pf, weeksPlayed) {
     const mean = pf / weeksPlayed;
     return [mean, mean * PF_SPREAD_CV];
 }
+
+/**
+ * This week's score once its games are under way (round 4), each starter as the Matchup Simulator counts him: his final
+ * points, his points so far plus the rest of his game while it's on (shareLeft), or his projection before kickoff.
+ * players: [{ id, actual: number | null (set once his game kicked off), shareLeft: 0-1, projected: number | null,
+ * excluded (Out, IR, on bye: left out until he plays) }]. historyOf(id) -> past weekly scores.
+ * Returns [mean, sd, share]: share is the part of the week's projected points still to play (0-1), which scales the
+ * lasting miss (a week that's mostly played can't be off by much more).
+ */
+export function liveStrength(players, { historyOf = () => [] } = {}) {
+    let mean = 0, variance = 0, planned = 0, left = 0;
+    (players || []).forEach(p => {
+        const actual = typeof p.actual === 'number' ? p.actual : null;
+        const projected = typeof p.projected === 'number' && p.projected > 0 ? p.projected : null;
+        if (actual === null && (p.excluded || projected === null)) return;
+        const prof = getPlayerVarianceProfile(historyOf(p.id) || [], { projectedMean: projected, actualScore: actual, shareLeft: p.shareLeft || 0 });
+        mean += prof.mean;
+        variance += prof.stdDev * prof.stdDev;
+        const full = projected ?? 0;
+        planned += full;
+        left += actual === null ? full : full * Math.min(p.shareLeft || 0, 1);
+    });
+    return [mean, Math.sqrt(variance) * WEEKLY_SPREAD_SCALE, planned > 0 ? left / planned : 0];
+}

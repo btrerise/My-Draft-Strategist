@@ -83,7 +83,7 @@ const GROUPS = [
         [`<span class="mls-power-cell-strong">2</span> <span class="mls-power-cell-middle">6</span> <span class="mls-power-cell-weak">11</span>`,
             'Power Rankings colors: green is the top third of your league, red the bottom third.'],
         ['Playoffs <span class="mls-week-chance is-fav">72%</span> <span class="mls-week-chance is-dog">15%</span> <span class="mls-week-chance is-fav">Clinched</span> <span class="mls-week-chance is-dog">Eliminated</span>',
-            'In the last weeks of the regular season, on the Dashboard\'s league card (a folded card leaves it out once you\'re eliminated), beside your record on the Roster tab and in its Playoff picture under Power Rankings: the chance to make the playoffs, from 10,000 runs of the weeks left with Sleeper\'s projections. Green when favored, red when not; Clinched and Eliminated only when the records make it certain. Bye and Title are the chances of a first-round bye and of winning it all.'],
+            'In the last weeks of the regular season, on the Dashboard\'s league card (a folded card leaves it out once you\'re eliminated), beside your record on the Roster tab and in its Playoff picture under Power Rankings: the chance to make the playoffs, from 10,000 runs of the weeks left with Sleeper\'s projections and, once games start, this week\'s scores so far. Green when favored, red when not; Clinched and Eliminated only when the records make it certain. Bye and Title are the chances of a first-round bye and of winning it all.'],
     ]],
     ['Changes and trends', [
         [moveChipMarkup('up', 8, 'Weekly rankings', moveSince, '', SAMPLE)

@@ -30,9 +30,20 @@ function rosters(played = 13, records = RECORDS) {
     });
 }
 const users = () => Object.entries(NAMES).map(([rid, name]) => ({ user_id: `90000${rid}`, username: name.toLowerCase(), display_name: name, league_id: FIXTURE_LEAGUE_ID, metadata: {} }));
-const matchups = (pairs) => pairs.flatMap(([a, b], i) => [a, b].map(rid => ({ roster_id: rid, matchup_id: i + 1, starters: [], players: [], points: 0 })));
+// This week's matchups (round 4: live scores): one starter each, his points the team's (none before the games).
+const STARTER = { 1: '4866', 2: '8138', 3: '9480', 4: '9509', 5: '9997', 6: '11566' }; // CIN, BUF, DET, ATL, BAL, WAS
+const matchups = (pairs, scores = null) => pairs.flatMap(([a, b], i) => [a, b].map(rid => ({
+    roster_id: rid, matchup_id: i + 1, starters: scores ? [STARTER[rid]] : [], players: scores ? [STARTER[rid]] : [],
+    points: scores ? scores[rid] : 0, players_points: scores ? { [STARTER[rid]]: scores[rid] } : {},
+})));
+// ESPN's scoreboard for those starters' games: all final before the tests' clock (helpers.mjs's FIXED_NOW), or not
+// started yet.
+const espn = (state) => ({ events: [['CIN', 'ATL'], ['BUF', 'DET'], ['BAL', 'WAS']].map(([a, b]) => ({
+    date: state === 'post' ? '2026-09-15T13:00:00Z' : '2026-09-15T20:00:00Z', status: { type: { state } },
+    competitions: [{ competitors: [{ team: { abbreviation: a }, homeAway: 'away' }, { team: { abbreviation: b }, homeAway: 'home' }] }],
+})) });
 
-async function routeLeague(page, { week = 14, projections = true, schedule = true, played = 13, records = RECORDS } = {}) {
+async function routeLeague(page, { week = 14, projections = true, schedule = true, played = 13, records = RECORDS, scores = null } = {}) {
     const league = fixture('league.json');
     league.settings = { ...league.settings, playoff_week_start: 15, playoff_teams: 3 };
     await page.route(/sleeper\.app\/v1\/state\/nfl$/, r => r.fulfill({ json: { ...fixture('state-nfl.json'), week, leg: week, display_week: week } }));
@@ -42,7 +53,8 @@ async function routeLeague(page, { week = 14, projections = true, schedule = tru
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}$`), r => r.fulfill({ json: league }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/rosters$`), r => r.fulfill({ json: rosters(played, records) }));
     await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/users$`), r => r.fulfill({ json: users() }));
-    await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`), r => (schedule ? r.fulfill({ json: matchups(WEEK14) }) : r.fulfill({ status: 500, body: '' })));
+    await page.route(new RegExp(`sleeper\\.app/v1/league/${FIXTURE_LEAGUE_ID}/matchups/\\d+$`), r => (schedule ? r.fulfill({ json: matchups(WEEK14, scores) }) : r.fulfill({ status: 500, body: '' })));
+    if (scores) await page.route(/site\.api\.espn\.com\/apis\/site\/v2\/sports\/football\/nfl\/scoreboard/, r => r.fulfill({ json: espn('post') }));
 }
 
 async function open(page, opts) {
@@ -67,10 +79,12 @@ test.describe('Playoff chances', () => {
         const state = await open(page);
         // You're in between: a percent in the chance colors, then the bye and the title.
         const odds = card(page).locator('.mls-lc-odds');
-        await expect(odds).toHaveText(/^Playoffs \d{1,2}% · Bye (<1|\d{1,2})% · Title \d{1,2}%$/);
+        await expect(odds).toHaveText(/^Playoffs \d{1,2}%( · Bye \d{1,2}%)?( · Title \d{1,2}%)?$/);
         const mine = pct(await odds.locator('.mls-week-chance').textContent());
         await expect(odds.locator('.mls-week-chance')).toHaveClass(mine >= 50 ? /\bis-fav\b/ : /\bis-dog\b/);
         await expect(odds).toHaveAttribute('title', /10,000 runs/);
+        // Bye and Title only when they're 1% or more (round 4).
+        await expect(odds).not.toContainText('<1%');
 
         // The Roster tab: beside the record, the same number; and the Playoff picture under Power Rankings, which doesn't
         // need rankings (owner's choice, round 2: its own table, not three more columns in Power Rankings).
@@ -104,6 +118,9 @@ test.describe('Playoff chances', () => {
         expect(Math.abs(total(await column(3)) - 100)).toBeLessThanOrEqual(3);
         expect(Math.abs(total(await column(4)) - 100)).toBeLessThanOrEqual(3);
         await expect(pic.locator('.mls-pp-note')).toContainText('10,000 runs');
+        // Long shots' Bye and Title and the eliminated teams' dashes are muted (round 4).
+        await expect(cells(5, 3).locator('.mls-pp-dim')).toHaveCount(1);
+        expect(await pic.locator('tbody .mls-pp-dim').evaluateAll(els => els.every(el => /^(<1%|\u2013)$/.test(el.textContent)))).toBe(true);
 
         // A fold: it closes, and Power Rankings, once there are rankings, has no columns of its own.
         await pic.locator('summary').click();
@@ -140,9 +157,28 @@ test.describe('Playoff chances', () => {
         await expectClean(page, state);
     });
 
+    test('live scores: this week\'s final results decide it before the records do (round 4)', async ({ page }) => {
+        // You beat Dee 150-80 and Cam loses to Eve: you're 9-5, sure of a spot on these scores, though the records
+        // (last sync) don't prove it yet.
+        const state = await open(page, { scores: { 1: 150, 4: 80, 3: 90, 5: 120, 2: 130, 6: 70 } });
+        const odds = card(page).locator('.mls-lc-odds');
+        await expect(odds).toHaveText(/^Playoffs >99%/);
+        await showTab(page, 'roster');
+        await expect(page.locator('#playoffPicture summary')).toContainText('this week live');
+        await expectClean(page, state);
+    });
+
+    test('live scores: a loss that hands Dee the last spot on points for (round 4)', async ({ page }) => {
+        // You lose to Dee 80-150 and Cam beats Eve: Ace, Cam (9-5), then you and Dee at 8-6, Dee ahead on points for.
+        const state = await open(page, { scores: { 1: 80, 4: 150, 3: 120, 5: 90, 2: 130, 6: 70 } });
+        await expect(card(page).locator('.mls-lc-odds')).toHaveText('Playoffs <1%');
+        await expect(card(page).locator('.mls-lc-odds .mls-week-chance')).toHaveClass(/\bis-dog\b/);
+        await expectClean(page, state);
+    });
+
     test('without projections, points so far stand in', async ({ page }) => {
         const state = await open(page, { projections: false });
-        await expect(card(page).locator('.mls-lc-odds')).toHaveText(/^Playoffs \d{1,2}% · Bye (<1|\d{1,2})% · Title \d{1,2}%$/);
+        await expect(card(page).locator('.mls-lc-odds')).toHaveText(/^Playoffs \d{1,2}%( · Bye \d{1,2}%)?( · Title \d{1,2}%)?$/);
         // getWeeklyProjections logs each failed download (as it does for the Lineup tab's).
         state.errors.splice(0, state.errors.length, ...state.errors.filter(e => !e.includes('Failed to fetch weekly projections')));
         await expectClean(page, state);

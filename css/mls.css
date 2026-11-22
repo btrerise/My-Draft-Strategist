@@ -2194,16 +2194,17 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 .mls-playoff-picture[hidden] { display: none; }
 .mls-change-fold.mls-pp > summary { font-size: 0.95rem; color: var(--text-main); }
 .mls-pp-facts { font-size: 0.78rem; font-weight: 400; color: var(--text-muted); }
-.mls-pp-wrap { margin-top: 0.5rem; overflow-x: auto; }
+.mls-pp-wrap { margin-top: 0.5rem; overflow-x: auto; max-width: 40rem; } /* columns together on wide screens (round 4) */
 .mls-pp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 .mls-pp-table th { padding: 0.35rem 0.5rem; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); border-bottom: 1px solid var(--border); }
 .mls-pp-table td { padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); }
 .mls-pp-table .mls-pp-team { text-align: left; max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mls-pp-table .mls-pp-num { text-align: right; white-space: nowrap; }
 .mls-pp-table .mls-week-chance { margin-left: 0; }
+.mls-pp-table .mls-pp-dim { color: var(--text-muted); font-weight: 400; }
 .mls-pp-table tr[data-you] td { background: rgba(147, 197, 253, 0.08); font-weight: 700; }
 .mls-pp-table tr.mls-pp-first-out td { border-top: 2px dashed var(--text-muted); }
-.mls-pp-note { margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.45; }
+.mls-pp-note { max-width: 40rem; margin: 0.5rem 0 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.45; }
 @media (max-width: 599.98px) {
     .mls-pp-table th, .mls-pp-table td { padding-left: 0.3rem; padding-right: 0.3rem; }
     .mls-pp-table .mls-pp-team { max-width: 7.5rem; }

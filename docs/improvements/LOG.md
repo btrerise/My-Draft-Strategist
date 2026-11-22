@@ -1049,9 +1049,10 @@ never redrawn).
 ## S55 — Playoff chances (Monte Carlo)
 
 **User-visible.** Sleeper leagues with ≤ 5 regular-season weeks left, after a sync: the Dashboard card's line "Playoffs
-72% · Bye 18% · Title 9%" (Bye only with byes; a folded card drops it once you're eliminated); "Playoffs 72%" ending the
+72% · Bye 18% · Title 9%" (Bye and Title only at 1% or more; a folded card drops it once you're eliminated); "Playoffs 72%" ending the
 Roster tab's record; under Power Rankings a collapsible "Playoff picture" (`#playoffPicture`): every team in today's
-seeding order, Record / Playoffs / Bye / Title, a dashed line at the cut, open on each visit. Playoff number in the
+seeding order, Record / Playoffs / Bye / Title, a dashed line at the cut, "<1%" and dashes muted, 40rem wide at most,
+open on each visit, "this week live" when the week's scores count. Playoff number in the
 shared chance colors (`mls-week-chance`); "Clinched" / "Eliminated" only when the records prove it, else "<1%" / ">99%"
 at the ends. Guide legend line.
 
@@ -1071,11 +1072,16 @@ from the cut with 4 left. Weeks 2-10 (1,312 team-weeks): actual scores spread 26
 22.2, 8.6 of it lasting all season, so `WEEKLY_SPREAD_SCALE` 1.15 and one lasting miss per team per run (`LASTING_SD`).
 Extremes on the backup: 67 → 59 of 208 teams.
 
-**Performance.** 20 leagues, 4x-slowed CPU: 2.4 s (3.4 s with the median) in the worker; redraws at most once a second.
+**Live scores (round 4, owner asked why they waited).** Once the first unplayed week kicks off, the This week card's
+matchups (`State.lineupActualPoints`) and ESPN's clocks give each team's week as the Simulator counts it
+(`liveStrength`: final, so far + the rest, or projection); the lasting miss scales with the share left (`share` in
+`simulatePlayoffs`). A new score re-runs the league (old numbers stay up); a new sync hides them until the run.
+
+**Performance.** 20 leagues, 4x-slowed CPU: 2.4 s (3.4 s with the median) in the worker; redraws ≤ 1/s.
 
 **Tests.** `tests/unit/playoffs.test.mjs`; `tests/mls-playoff-odds.spec.mjs` (clinched / eliminated / between, sums to
 the spots, the Playoff picture and its fold, the folded eliminated card, no projections, failed schedule, too early).
 No screenshot changes (fixtures are week 2, too far out).
 
-**Left over.** A week in progress is simulated from projections, not live scores. Sleeper's re-seeding option isn't
-read. Full suite not yet run.
+**Left over.** A week before `firstWeek` that Sleeper hasn't folded into the records (no sync since) isn't read from
+its final scores. Sleeper's re-seeding option isn't read. Full suite not yet run.
