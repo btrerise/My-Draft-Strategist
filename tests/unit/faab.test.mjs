@@ -26,21 +26,21 @@ test('every WR bid, weighted to those ranked near him: median to 75th percentile
     assert.equal(s.rough, false);
     // The sheet's lines: what it's based on, what raised it, the notes. Dynasty: no weeks line.
     assert.deepEqual(s.lines, [
-        { kind: 'base', text: '7 WRs were won on waivers this season, for 0 to 15. Median: 8.', sub: 'Players ranked near WR34, and recent bids, count most.' },
-        { kind: 'note', text: 'Before the changes below, 8 tied or beat half of these winning bids; 10 tied or beat 3 out of 4.' },
-        { kind: 'up', text: 'You have more FAAB left than the average team (50)' },
+        { kind: 'base', text: 'Based on 7 WRs won on waivers this season. They went for $0 to $15. The median was $8.', sub: 'Players ranked near WR34 and recent bids count most.' },
+        { kind: 'note', text: '$8 would have tied or beaten half of those bids. $10 would have tied or beaten 3 out of 4. (Before the changes below.)' },
+        { kind: 'up', text: 'You have more than the average team: $63 vs $50.' },
         // Every other team can outbid 13, so the most left instead of a count (round 4).
-        { kind: 'note', text: 'Most FAAB left on other teams: 88, 71, 50 (you have 63)' },
-        { kind: 'note', text: 'Note: players are matched by today\'s rankings, which may have changed since these bids.' }
+        { kind: 'note', text: 'Teams with the most left (you have $63):', items: ['$88', '$71', '$50'] },
+        { kind: 'note', text: 'Rankings are today\'s, so they may have changed since these bids.' }
     ]);
     // Every other team has more than 13 left: 11.
     assert.equal(s.outbid, 11);
-    assert.equal(bidLabel(s), 'Bid 10–13');
+    assert.equal(bidLabel(s), 'Bid $10–$13');
     // The sheet names the player and the league (round 3).
-    assert.equal(bidTitle(s, 'Rashid Shaheed'), 'Rashid Shaheed · Bid 10–13');
-    assert.equal(bidTitle(s), 'Bid 10–13');
-    assert.equal(bidWhere(s, 'Fixture League'), 'Fixture League · you have 63 of 100');
-    assert.match(bidTip(s), /^Suggested bid 10–13 of your 63 left \(budget 100\)\. 7 WRs were won on waivers this season/);
+    assert.equal(bidTitle(s, 'Rashid Shaheed'), 'Rashid Shaheed · Bid $10–$13');
+    assert.equal(bidTitle(s), 'Bid $10–$13');
+    assert.equal(bidWhere(s, 'Fixture League'), 'Fixture League · you have $63 of $100 left');
+    assert.match(bidTip(s), /^Suggested bid \$10–\$13 of your \$63 left \(budget \$100\)\. Based on 7 WRs won on waivers this season/);
 });
 
 test('no history: no suggestion, and it says so', () => {
@@ -54,9 +54,9 @@ test('one position missing: a TE with no bids is based on every bid (never other
     const s = suggestBid({ ...base, pos: 'TE', posRank: 33 });
     assert.equal(s.scope, 'all');
     assert.equal(s.rough, true);
-    assert.equal(s.lines[0].text, '11 players at every position were won on waivers this season, for 0 to 30. Median: 6.');
+    assert.equal(s.lines[0].text, 'Based on 11 players at every position won on waivers this season. They went for $0 to $30. The median was $6.');
     assert.equal(s.lines[0].sub, 'No TE has been won here yet, so this is a rough guess.');
-    assert.match(bidLabel(s), /^≈ Bid \d+–\d+$/);
+    assert.match(bidLabel(s), /^≈ Bid \$\d+–\$\d+$/);
     const u = suggestBid({ ...base, pos: 'TE', posRank: null });
     assert.equal(u.scope, 'all');
 });
@@ -67,8 +67,8 @@ test('far from the bids: still his position, the nearest counting most, shown as
     assert.equal(s.rough, false);
     assert.equal(bidLabel(s).startsWith('Bid '), true);
     // WR70's 0 now counts most (10 spots away: 0.83), the WR30s a tenth to a third: median 6.
-    assert.equal(s.lines[0].text, '7 WRs were won on waivers this season, for 0 to 15. Median: 6.');
-    assert.equal(s.lines[0].sub, 'Players ranked near WR60, and recent bids, count most.');
+    assert.equal(s.lines[0].text, 'Based on 7 WRs won on waivers this season. They went for $0 to $15. The median was $6.');
+    assert.equal(s.lines[0].sub, 'Players ranked near WR60 and recent bids count most.');
     // Unranked: every bid at his position, by recency only.
     assert.equal(suggestBid({ ...base, posRank: null }).lines[0].sub, 'He isn\'t in your rankings, so this uses every WR. Recent bids count most.');
 });
@@ -85,10 +85,10 @@ test('recency: a week-1 frenzy counts a quarter by week 11 (round 4)', () => {
         .concat([1, 2, 3, 4].map(i => ({ pos: 'RB', posRank: 75 + i, bid: 2, week: 10 })));
     const now = suggestBid({ ...base, pos: 'RB', posRank: 77, bids: frenzy, week: 11 });
     // Recent bids weigh 4, the old ones 1: the 75th percentile is 2, not 50.
-    assert.equal(now.lines[1].text, 'Before the changes below, 2 tied or beat at least 3 out of 4 of these winning bids.');
+    assert.equal(now.lines[1].text, '$2 would have tied or beaten at least 3 out of 4 of those bids. (Before the changes below.)');
     // Without the weeks every bid counts the same, and the old 50s reach the 75th percentile.
     const flat = suggestBid({ ...base, pos: 'RB', posRank: 77, bids: frenzy.map(b => ({ ...b, week: undefined })), week: 11 });
-    assert.match(flat.lines[1].text, /^Before the changes below, 2 tied or beat half of these winning bids; 50 tied or beat 3 out of 4\. The top stops at \d+/);
+    assert.match(flat.lines[1].text, /^\$2 would have tied or beaten half of those bids\. \$50 would have tied or beaten 3 out of 4\. \(Before the changes below\.\) The top stops at \$\d+/);
 });
 
 test('the top end is held to twice the bottom (or bottom + 5% of the budget), and the sheet says what it would have been (round 4)', () => {
@@ -97,7 +97,7 @@ test('the top end is held to twice the bottom (or bottom + 5% of the budget), an
     assert.equal(s.low, 7);
     assert.equal(s.high, 14);
     // Round 5: said on the line about the two ends, not a line of its own.
-    assert.equal(s.lines[1].text, 'Before the changes below, 7 tied or beat half of these winning bids; 69 tied or beat 3 out of 4. The top stops at 14, so a few huge bids don\'t stretch the range.');
+    assert.equal(s.lines[1].text, '$7 would have tied or beaten half of those bids. $69 would have tied or beaten 3 out of 4. (Before the changes below.) The top stops at $14, so a few huge bids don\'t stretch the range.');
     assert.ok(!s.lines.some(l => /would have been/.test(l.text)));
     // A bottom of 0: the top can still reach 5% of the budget.
     const zeroish = [0, 0, 0, 0, 10, 10].map((b, i) => ({ pos: 'RB', posRank: 77 + i, bid: b }));
@@ -109,7 +109,7 @@ test('the top end is held to twice the bottom (or bottom + 5% of the budget), an
 test('how often others bid at his position, from failed claims (round 4)', () => {
     const withRivals = bids100.map((b, i) => ({ ...b, rivals: b.pos === 'WR' && i < 2 ? 1 : 0 }));
     const s = suggestBid({ ...base, bids: withRivals });
-    assert.ok(s.lines.some(l => l.text === '2 of the 7 WR claims had other bidders. Their median winning bid was 4.'));
+    assert.ok(s.lines.some(l => l.text === '2 of the 7 WR claims had other bidders. The median winning bid there was $4.'));
     const none = suggestBid({ ...base, bids: bids100.map(b => ({ ...b, rivals: 0 })) });
     assert.ok(none.lines.some(l => l.text === 'None of the 7 WR claims had a second bidder.'));
     // Old data without rival counts: no line.
@@ -118,22 +118,22 @@ test('how often others bid at his position, from failed claims (round 4)', () =>
 
 test('outbid: a count when only some teams can, the most left when most can (round 4)', () => {
     const s = suggestBid({ ...base, left: { 1: 63, 2: 88, 3: 71, 4: 5, 5: 5, 6: 5 } });
-    assert.ok(s.lines.some(l => /^2 teams have more than \d+ left: 88 and 71$/.test(l.text)));
+    assert.ok(s.lines.some(l => /^2 teams have more than \$\d+ left:$/.test(l.text) && l.items.join() === '$88,$71'));
     // More than three: the top three, then how many more (round 10).
     const five = suggestBid({ ...base, left: { 1: 63, 2: 99, 3: 98, 4: 97, 5: 96, 6: 95, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1 } });
-    assert.ok(five.lines.some(l => /^5 teams have more than \d+ left: 99, 98, 97 and 2 more$/.test(l.text)), five.lines.map(l => l.text).join(' | '));
+    assert.ok(five.lines.some(l => /^5 teams have more than \$\d+ left:$/.test(l.text) && l.items.join() === '$99,$98,$97,and 2 more'), five.lines.map(l => l.text).join(' | '));
 });
 
 test('a budget nearly spent: never more than you have, and the factor bottoms out at 0.6', () => {
     const s = suggestBid({ ...base, left: { ...left100, 1: 3 } });
     assert.ok(s.high <= 3 && s.low <= s.high);
-    assert.ok(s.lines.some(l => l.kind === 'down' && l.text === 'You have less FAAB left than the average team (45)'));
+    assert.ok(s.lines.some(l => l.kind === 'down' && l.text === 'You have less than the average team: $3 vs $45.'));
     const none = suggestBid({ ...base, left: { ...left100, 1: 0 } });
     assert.equal(none.low, 0);
     assert.equal(none.high, 0);
-    assert.equal(bidLabel(none), 'Bid 0 · none left');
+    assert.equal(bidLabel(none), 'Bid $0 · none left');
     assert.equal(none.rough, false, 'never ≈ with nothing left');
-    assert.ok(none.reasons.some(r => /no FAAB left/.test(r)));
+    assert.ok(none.reasons.some(r => /\$0 left/.test(r)));
 });
 
 test('weeks left: flat in dynasty, up to ×1.5 in the last week of a redraft or keeper season', () => {
@@ -145,7 +145,7 @@ test('weeks left: flat in dynasty, up to ×1.5 in the last week of a redraft or 
     assert.ok(Math.abs(early.factor / dyn.factor - 1) < 1e-9, 'week 1 of 17: ×1');
     assert.ok(Math.abs(late.factor / dyn.factor - (1 + 0.5 * (16 / 17))) < 1e-9);
     assert.equal(keeper.factor, late.factor, 'keeper leagues like redraft (owner)');
-    assert.ok(late.lines.some(l => l.kind === 'up' && /^Only 1 week left, and unspent FAAB is wasted, so bid a little more$/.test(l.text)));
+    assert.ok(late.lines.some(l => l.kind === 'up' && /^Only 1 week left, and unspent FAAB is wasted, so bid a little more\.$/.test(l.text)));
     // An adjustment under 5% gets no line (week 1 of a redraft season: ×1).
     assert.ok(!early.lines.some(l => /weeks? left/.test(l.text)));
 });
@@ -154,12 +154,12 @@ test('need: he\'d start ×1.25, fills an empty spot ×1.5, a stash ×0.5', () =>
     const f = suggestBid(base).factor;
     assert.ok(Math.abs(suggestBid({ ...base, need: 'starts' }).factor - f * 1.25) < 1e-9);
     assert.ok(Math.abs(suggestBid({ ...base, need: 'empty' }).factor - f * 1.5) < 1e-9);
-    assert.deepEqual(suggestBid({ ...base, need: 'starts' }).lines[2], { kind: 'up', text: 'He\'d start for you' });
-    assert.deepEqual(suggestBid({ ...base, need: 'starts', over: 'Derrick Henry' }).lines[2], { kind: 'up', text: 'He\'d start for you, in place of Derrick Henry' });
+    assert.deepEqual(suggestBid({ ...base, need: 'starts' }).lines[2], { kind: 'up', text: 'He\'d start for you.' });
+    assert.deepEqual(suggestBid({ ...base, need: 'starts', over: 'Derrick Henry' }).lines[2], { kind: 'up', text: 'He\'d start for you, in place of Derrick Henry.' });
     // A player who wouldn't start for you (Bench on Auto-Find): a stash, halved.
     const stash = suggestBid({ ...base, need: 'bench' });
     assert.ok(Math.abs(stash.factor - f * 0.5) < 1e-9);
-    assert.deepEqual(stash.lines[2], { kind: 'down', text: 'He wouldn\'t start for you now, so the bid is lower' });
+    assert.deepEqual(stash.lines[2], { kind: 'down', text: 'He wouldn\'t start for you now, so the bid is lower.' });
 });
 
 test('a 1,000 budget league scales like a 100 one', () => {
@@ -208,7 +208,7 @@ test('winningBids reads completed waiver claims with a bid; faabLeftFrom and sea
 test('what the two ends mean, when they are the same amount', () => {
     const zeros = Array.from({ length: 8 }, (_, i) => ({ pos: 'WR', posRank: 30 + i, bid: 0 }));
     const s = suggestBid({ ...base, bids: zeros });
-    assert.equal(s.lines[1].text, 'Before the changes below, 0 tied or beat at least 3 out of 4 of these winning bids.');
+    assert.equal(s.lines[1].text, '$0 would have tied or beaten at least 3 out of 4 of those bids. (Before the changes below.)');
 });
 
 test('Aggressive raises the top end to what winners paid when others bid, only for a player you\'d start (round 6)', () => {
@@ -226,7 +226,7 @@ test('Aggressive raises the top end to what winners paid when others bid, only f
     assert.equal(aggr.high, 35);
     assert.ok(cons.high < 35, `conservative top ${cons.high}`);
     assert.equal(aggr.low, cons.low);
-    assert.ok(aggr.lines.some(l => l.kind === 'up' && l.text === 'Aggressive: top raised to 35, the median winning bid when others bid too'));
+    assert.ok(aggr.lines.some(l => l.kind === 'up' && l.text === 'Aggressive: top raised to $35, the median winning bid when others bid too.'));
     // Not for a stash, and not when nothing was contested.
     assert.equal(suggestBid({ ...opts, need: 'bench', style: 'aggressive' }).high, suggestBid({ ...opts, need: 'bench' }).high);
     const quiet = bids.map(b => ({ ...b, rivals: 0 }));
@@ -244,7 +244,7 @@ test('in Aggressive the sheet always says what the style did (round 7)', () => {
     // Contested WRs: 4, 5, 6, 7 → median 5, under the range's top: unchanged, and it says so.
     const already = suggestBid({ ...opts, need: 'starts' });
     assert.equal(already.high, suggestBid({ ...opts, need: 'starts', style: 'conservative' }).high);
-    assert.ok(already.lines.some(l => l.text === 'Aggressive: the median winning bid when others bid too was 5; this range already reaches it.'));
+    assert.ok(already.lines.some(l => l.text === 'Aggressive: the median winning bid when others bid too was $5. This range already reaches it.'));
     const quiet = suggestBid({ ...opts, bids: bids.map(b => ({ ...b, rivals: 0 })), need: 'starts' });
     assert.ok(quiet.lines.some(l => l.text === 'Aggressive: no claim here has had two bidders yet, so nothing changes.'));
     const stash = suggestBid({ ...opts, need: 'bench' });

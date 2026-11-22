@@ -113,7 +113,7 @@ function comparables(bids, pos, posRank, budget, week) {
     // weighted, or why it's a rough guess.
     if (atPos.length >= MIN_COMPARABLES) {
         return { scope: 'pos', items: build(atPos, true), what: plural, sub: posRank
-            ? `Players ranked near ${posName}${posRank}, and recent bids, count most.`
+            ? `Players ranked near ${posName}${posRank} and recent bids count most.`
             : `He isn't in your rankings, so this uses every ${posName}. Recent bids count most.` };
     }
     return { scope: 'all', items: build(bids, false), what: 'players at every position', sub: atPos.length
@@ -132,7 +132,7 @@ function rivalsLine(bids, pos, budget) {
     const contested = list.filter(b => b.rivals > 0);
     if (contested.length === 0) return `None of the ${list.length} ${what} had a second bidder.`;
     const med = quantile(contested.map(b => b.bid).sort((x, y) => x - y), 0.5);
-    return `${contested.length} of the ${list.length} ${what} had other bidders. Their median winning bid was ${Math.round(med)}.`;
+    return `${contested.length} of the ${list.length} ${what} had other bidders. The median winning bid there was $${Math.round(med)}.`;
 }
 
 const NOTICEABLE = 0.05; // an adjustment under 5% isn't worth a line
@@ -186,16 +186,16 @@ export function suggestBid({ pos, posRank = null, budget, left, myRosterId, bids
 
     const money = (p) => Math.round(p * budget);
     const lines = [];
-    const range = money(lo) === money(top) ? `${money(top)}` : `${money(lo)} to ${money(top)}`;
+    const range = money(lo) === money(top) ? `$${money(top)}` : `$${money(lo)} to $${money(top)}`;
     const n = comp.items.length;
-    const whoWon = n === 1 ? (comp.scope === 'all' ? '1 player was' : `1 ${POS_NAME[pos] || pos} was`) : `${n} ${comp.what} were`;
-    lines.push({ kind: 'base', text: `${whoWon} won on waivers this season, for ${range}. Median: ${money(med)}.`, sub: comp.sub });
+    const whoWon = n === 1 ? (comp.scope === 'all' ? '1 player' : `1 ${POS_NAME[pos] || pos}`) : `${n} ${comp.what}`;
+    lines.push({ kind: 'base', text: `Based on ${whoWon} won on waivers this season. ${n === 1 ? 'It' : 'They'} went for ${range}. The median was $${money(med)}.`, sub: comp.sub });
     // What the two ends mean (round 3): the range is the median and the 75th percentile of these winning bids, then
     // adjusted, so it says the unadjusted amounts. "Matched", not "won": a winning bid is what the winner paid, not what
     // it took.
     lines.push({ kind: 'note', text: money(med) === money(p75)
-        ? `Before the changes below, ${money(med)} tied or beat at least 3 out of 4 of these winning bids.`
-        : `Before the changes below, ${money(med)} tied or beat half of these winning bids; ${money(p75)} tied or beat 3 out of 4.` });
+        ? `$${money(med)} would have tied or beaten at least 3 out of 4 of those bids. (Before the changes below.)`
+        : `$${money(med)} would have tied or beaten half of those bids. $${money(p75)} would have tied or beaten 3 out of 4. (Before the changes below.)` });
     // Aggressive (round 6): a player you want gets a top end that beats other bidders, from the claims they bid on.
     // Round 7: in Aggressive the sheet always says what it did (it raises the top for under half of the players you'd
     // start in the owner's leagues; otherwise it was silent and read as broken).
@@ -208,7 +208,7 @@ export function suggestBid({ pos, posRank = null, budget, left, myRosterId, bids
             if (contested.length > 0) {
                 const target = Math.min(cap, Math.round(quantile(contested.map(b => b.bid).sort((x, y) => x - y), 0.5)));
                 if (target > high) { raised = target; high = target; }
-                else aggressiveNote = `Aggressive: the median winning bid when others bid too was ${target}; this range already reaches it.`;
+                else aggressiveNote = `Aggressive: the median winning bid when others bid too was $${target}. This range already reaches it.`;
             } else {
                 aggressiveNote = 'Aggressive: no claim here has had two bidders yet, so nothing changes.';
             }
@@ -218,39 +218,38 @@ export function suggestBid({ pos, posRank = null, budget, left, myRosterId, bids
     }
     // When the cap really cuts (a top end of 6 held to 5 isn't worth saying), it's said on the same line (round 5: a
     // line of its own, "it would have been 27", was one number too many to reconcile). Not when Aggressive raised it.
-    if (raised === null && uncapped >= high * 1.5 && uncapped > high + 1) lines[lines.length - 1].text += ` The top stops at ${high}, so a few huge bids don't stretch the range.`;
+    if (raised === null && uncapped >= high * 1.5 && uncapped > high + 1) lines[lines.length - 1].text += ` The top stops at $${high}, so a few huge bids don't stretch the range.`;
     const rivals = rivalsLine(withBid, pos, budget);
     if (rivals) lines.push({ kind: 'note', text: rivals });
-    if (raised !== null) lines.push({ kind: 'up', text: `Aggressive: top raised to ${raised}, the median winning bid when others bid too` });
+    if (raised !== null) lines.push({ kind: 'up', text: `Aggressive: top raised to $${raised}, the median winning bid when others bid too.` });
     else if (aggressiveNote) lines.push({ kind: 'note', text: aggressiveNote });
-    if (need === 'empty') lines.push({ kind: 'up', text: 'He\'d fill an empty starting spot' });
-    else if (need === 'starts') lines.push({ kind: 'up', text: over ? `He'd start for you, in place of ${over}` : 'He\'d start for you' });
-    else if (need === 'bench') lines.push({ kind: 'down', text: 'He wouldn\'t start for you now, so the bid is lower' });
-    if (fBudget >= 1 + NOTICEABLE) lines.push({ kind: 'up', text: `You have more FAAB left than the average team (${Math.round(avgLeft)})` });
-    else if (fBudget <= 1 - NOTICEABLE) lines.push({ kind: 'down', text: `You have less FAAB left than the average team (${Math.round(avgLeft)})` });
-    if (fWeeks >= 1 + NOTICEABLE) lines.push({ kind: 'up', text: `Only ${weeksLeft} ${weeksLeft === 1 ? 'week' : 'weeks'} left, and unspent FAAB is wasted, so bid a little more` });
-    if (cap === 0) lines.push({ kind: 'down', text: 'You have no FAAB left, so you can only bid 0' });
+    if (need === 'empty') lines.push({ kind: 'up', text: 'He\'d fill an empty starting spot.' });
+    else if (need === 'starts') lines.push({ kind: 'up', text: over ? `He'd start for you, in place of ${over}.` : 'He\'d start for you.' });
+    else if (need === 'bench') lines.push({ kind: 'down', text: 'He wouldn\'t start for you now, so the bid is lower.' });
+    if (fBudget >= 1 + NOTICEABLE) lines.push({ kind: 'up', text: `You have more than the average team: $${mine} vs $${Math.round(avgLeft)}.` });
+    else if (fBudget <= 1 - NOTICEABLE) lines.push({ kind: 'down', text: `You have less than the average team: $${mine} vs $${Math.round(avgLeft)}.` });
+    if (fWeeks >= 1 + NOTICEABLE) lines.push({ kind: 'up', text: `Only ${weeksLeft} ${weeksLeft === 1 ? 'week' : 'weeks'} left, and unspent FAAB is wasted, so bid a little more.` });
+    if (cap === 0) lines.push({ kind: 'down', text: 'You have $0 left, so you can only bid $0.' });
     const others = Object.entries(left).filter(([id]) => String(id) !== String(myRosterId)).map(([, x]) => x).sort((a, b) => b - a);
     const richer = others.filter(x => x > high);
-    const amounts = richer.slice(0, 3);
-    const listed = richer.length > 3 ? `${amounts.join(', ')} and ${richer.length - 3} more`
-        : amounts.length <= 1 ? `${amounts[0]}` : `${amounts.slice(0, -1).join(', ')} and ${amounts[amounts.length - 1]}`;
-    // When most teams can outbid it, a count says little (round 4): the most anyone has left instead.
-    lines.push({ kind: 'note', text: richer.length === 0 ? `No other team has more than ${high} left`
-        : richer.length > others.length / 2 ? `Most FAAB left on other teams: ${others.slice(0, 3).join(', ')} (you have ${mine})`
-        : richer.length === 1 ? `1 team has more than ${high} left: ${listed}`
-        : `${richer.length} teams have more than ${high} left: ${listed}` });
-    lines.push({ kind: 'note', text: 'Note: players are matched by today\'s rankings, which may have changed since these bids.' });
+    const amounts = richer.slice(0, 3).map(x => `$${x}`);
+    // When most teams can outbid it, a count says little (round 4): the most anyone has left instead. Two or more amounts
+    // are a short list under the line (F31), not a run of commas.
+    if (richer.length === 0) lines.push({ kind: 'note', text: `No other team has more than $${high} left.` });
+    else if (richer.length > others.length / 2) lines.push({ kind: 'note', text: `Teams with the most left (you have $${mine}):`, items: others.slice(0, 3).map(x => `$${x}`) });
+    else if (richer.length === 1) lines.push({ kind: 'note', text: `1 team has more than $${high} left: ${amounts[0]}.` });
+    else lines.push({ kind: 'note', text: `${richer.length} teams have more than $${high} left:`, items: richer.length > 3 ? [...amounts, `and ${richer.length - 3} more`] : amounts });
+    lines.push({ kind: 'note', text: 'Rankings are today\'s, so they may have changed since these bids.' });
     return { low, high, left: mine, budget, scope: comp.scope, rough: comp.scope === 'all' && cap > 0, factor, outbid: richer.length, lines,
-        reasons: lines.map(l => `${l.text}${l.sub ? ` ${l.sub}` : ''}`.replace(/\.?$/, '.')) };
+        reasons: lines.map(l => `${l.text}${l.items ? ` ${l.items.join(', ')}` : ''}${l.sub ? ` ${l.sub}` : ''}`.replace(/[.:]?$/, '.')) };
 }
 
 // The short label on a line: "Bid 9–14", "Bid 0" when the range is one number, "≈ Bid 2–5" when it's a rough guess,
 // "Bid 0 · none left" when you have nothing left (round 3).
 export function bidLabel(s) {
     if (!s || s.noHistory) return '';
-    if (s.left === 0) return 'Bid 0 · none left';
-    return `${s.rough ? '≈ ' : ''}${s.low === s.high ? `Bid ${s.low}` : `Bid ${s.low}–${s.high}`}`;
+    if (s.left === 0) return 'Bid $0 · none left';
+    return `${s.rough ? '≈ ' : ''}${s.low === s.high ? `Bid $${s.low}` : `Bid $${s.low}–$${s.high}`}`;
 }
 
 // The sheet's title, naming the player (round 3): "James Cook · Bid 13–21".
@@ -262,12 +261,12 @@ export function bidTitle(s, name = '') {
 // The sheet's first line, naming the league (round 3): "Fixture League · you have 63 of 100".
 export function bidWhere(s, leagueName = '') {
     if (!s || s.noHistory) return '';
-    return `${leagueName ? `${leagueName} · ` : ''}you have ${s.left} of ${s.budget}`;
+    return `${leagueName ? `${leagueName} · ` : ''}you have $${s.left} of $${s.budget} left`;
 }
 
 // The tap text: "Suggested bid 9–14 of your 63 (budget 100). …reasons".
 export function bidTip(s) {
     if (!s) return '';
     if (s.noHistory) return s.reasons.join(' ');
-    return `Suggested bid ${s.low === s.high ? s.low : `${s.low}–${s.high}`} of your ${s.left} left (budget ${s.budget}). ${s.reasons.join(' ')}`;
+    return `Suggested bid ${s.low === s.high ? `$${s.low}` : `$${s.low}–$${s.high}`} of your $${s.left} left (budget $${s.budget}). ${s.reasons.join(' ')}`;
 }
