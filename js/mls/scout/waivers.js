@@ -243,7 +243,12 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     // an Out player, both unranked in Weekly rankings because they aren't playing, became "your
     // weakest", and every free agent beat him. Statuses are the roster's own (`inj`, `isTaxi`), set
     // at the last sync, like ownership. Questionable and Doubtful players still count.
-    export function rosterBenchmark(league, getPos, basisByName, filter) {
+    //
+    // `weekly` (improvements F30, optional): { rosByName, byeWeek } when the basis is Weekly. A rostered player the
+    // Weekly set leaves out (on bye, or just not ranked this week) is judged by his ROS rank when the league has one
+    // (`rankedBy: 'ROS'`, `rosRank`), not as unranked: on his bye a star isn't in the weekly rankings. `onBye` says
+    // why he's missing, for the row's wording; without a ROS rank he stays unranked, as before.
+    export function rosterBenchmark(league, getPos, basisByName, filter, weekly) {
         const skipped = [];
         const mine = (league.roster || [])
             .map(p => ({ ...p, pos: getPos(p.cleanName) }))
@@ -254,12 +259,32 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
                 return !why;
             })
             .map(p => {
-                const r = basisByName[p.cleanName] || {};
-                return { ...p, rank: r.rank ?? 999, posRank: r.posRank ?? 999, flexRank: r.flexRank ?? 999 };
+                let r = basisByName[p.cleanName];
+                if (r || !weekly) {
+                    r = r || {};
+                    return { ...p, rank: r.rank ?? 999, posRank: r.posRank ?? 999, flexRank: r.flexRank ?? 999 };
+                }
+                const onBye = weekly.byeWeek != null && isUnavailableThisWeek({ team: p.team }, weekly.byeWeek);
+                const ros = weekly.rosByName && weekly.rosByName[p.cleanName];
+                if (!ros) return { ...p, rank: 999, posRank: 999, flexRank: 999, onBye };
+                // ROS files carry an Overall, not a FLEX list: the Overall stands in for the FLEX rank.
+                return { ...p, rank: ros.rank ?? 999, posRank: ros.posRank ?? 999, flexRank: ros.flexRank ?? ros.rank ?? 999,
+                    rankedBy: 'ROS', rosRank: ros.rank ?? 999, onBye };
             })
             .sort((a, b) => compareForScan(a, b, filter));
         skipped.sort((a, b) => a.name.localeCompare(b.name));
         return { mine, bench: mine.length ? mine[mine.length - 1] : null, skipped };
+    }
+
+    // rosterBenchmark's `weekly` argument: only when the scan reads Weekly rankings (a ROS scan already is the ROS rank).
+    function weeklyFallback(ctx) {
+        return ctx.scan && ctx.scan.basis === 'weekly' ? { rosByName: ctx.rosByName, byeWeek: ctx.byeWeek } : null;
+    }
+
+    // Why a benchmark player's rank reads as it does, when he isn't in the Weekly set: "On bye: ranked by ROS".
+    function missingFromWeeklyNote(p) {
+        if (p.rankedBy === 'ROS') return p.onBye ? 'On bye: ranked by ROS' : 'Not ranked this week: ranked by ROS';
+        return p.onBye ? 'On bye: not in this week\'s rankings' : '';
     }
 
     const INACTIVE_STATUSES = ['IR', 'OUT', 'PUP', 'NFI', 'SUS', 'DNR'];
@@ -605,7 +630,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     export function pastedRosterVerdict(ctx, player) {
         const filter = (State.waiverScanSettings.pos === 'FLEX' && FLEX_POSITIONS.includes(player.pos)) ? 'FLEX' : player.pos;
         const groupLabel = filter;
-        const { bench, skipped } = rosterBenchmark(ctx.league, ctx.getPos, ctx.scan.byName, filter);
+        const { bench, skipped } = rosterBenchmark(ctx.league, ctx.getPos, ctx.scan.byName, filter, weeklyFallback(ctx));
         if (!bench) {
             const line = skipped.length
                 ? `You have no active ${groupLabel} on your roster to compare against (not counted: ${skipped.map(x => `${escapeHtml(x.name)}, ${escapeHtml(x.why)}`).join('; ')}).`
@@ -613,7 +638,10 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
             return { line, upgrade: false };
         }
         const faRanks = ctx.scan.byName[player.cleanName] || {};
-        const ahead = compareForScan({ pos: player.pos, rank: faRanks.rank, posRank: faRanks.posRank, flexRank: faRanks.flexRank }, bench, filter) < 0;
+        const faRos = ctx.rosByName[player.cleanName];
+        // A drop candidate judged by ROS (F30) is never beaten by someone ranked lower ROS than he is.
+        const rosOk = bench.rankedBy !== 'ROS' || (faRos && faRos.rank < bench.rosRank);
+        const ahead = rosOk && compareForScan({ pos: player.pos, rank: faRanks.rank, posRank: faRanks.posRank, flexRank: faRanks.flexRank }, bench, filter) < 0;
         const basis = filter === 'FLEX' ? 'flex' : 'pos';
         // Upgrade means a better tier when both are tiered (improvements S8, round 4): see isTierUpgrade.
         // It also decides Check a List's sort order (scout/engine.js puts upgrades first).
@@ -880,6 +908,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         try {
             const ctx = await buildWaiverContext(league);
             const basisDisplay = ctx.scanDisplay;
+            const rosDisplay = ctx.rosDisplay;
             // In a manual / handoff league the scan still works -- it just can't exclude other
             // teams' players, because it never saw them (see isFullyMappedLeague). So the wording
             // says "not on your roster" instead of "available", and a note says to double-check.
@@ -964,14 +993,22 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
             // the group (by the same comparator used to order the free agents) is the benchmark;
             // every free agent ranked ahead of him is listed.
             const renderRosterGroup = (g) => {
-                const { mine, bench, skipped } = rosterBenchmark(league, ctx.getPos, basisByName, g.filter);
+                const { mine, bench, skipped } = rosterBenchmark(league, ctx.getPos, basisByName, g.filter, weeklyFallback(ctx));
                 const notCounted = skipped.length ? `<div class="mls-scan-benchmark-next">Not counted: ${skippedPlayersText(skipped)}.</div>` : '';
                 if (!bench) {
                     return { body: `<div class="mls-scan-empty">You have no ${skipped.length ? 'active ' : ''}${groupName(g)} on your roster to compare against.</div>${notCounted}`, count: 0, countText: 'no roster players' };
                 }
                 const basisKind = g.filter === 'FLEX' ? 'flex' : 'pos';
-                const upgrades = g.items.filter(fa => compareForScan(fa, bench, g.filter) < 0).slice(0, limit);
+                // A drop candidate judged by ROS (F30) is never offered for someone ranked lower ROS than he is.
+                const rosOk = (fa) => bench.rankedBy !== 'ROS' || (ctx.rosByName[fa.cleanName] && ctx.rosByName[fa.cleanName].rank < bench.rosRank);
+                const upgrades = g.items.filter(fa => compareForScan(fa, bench, g.filter) < 0 && rosOk(fa)).slice(0, limit);
                 const rankText = (p) => {
+                    if (p.rankedBy === 'ROS') {
+                        const o = rosDisplay[p.cleanName] || {};
+                        return `ROS ${o.posRank ? escapeHtml(p.pos) + o.posRank : '#' + p.rosRank} <span class="mls-rank-sep">&middot;</span> ${missingFromWeeklyNote(p)}`;
+                    }
+                    const note = missingFromWeeklyNote(p);
+                    if (note && !basisDisplay[p.cleanName]) return `unranked by ${basisName} <span class="mls-rank-sep">&middot;</span> ${note}`;
                     const d = basisDisplay[p.cleanName] || {};
                     // Cross-position number: Weekly's FLEX rank, or ROS's Overall (see scanCross).
                     const crossOverall = ctx.scanCross === 'overall';

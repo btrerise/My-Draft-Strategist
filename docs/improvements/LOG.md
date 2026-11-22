@@ -98,6 +98,7 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - F27 | LOG.md | F27 — A review as a user of M18, F25 and F26, and three fixes (owner, 2026-11-17)
 - W3 | LOG.md | W3 — Leaner sessions: split LOG.md, quieter tests, a setup script
 - W5 | LOG.md | W5 — The runbook's cards get the lean start-up and the new rules
+- F30 | LOG.md | F30 — Auto-Find no longer picks a star on bye as the drop candidate
 
 ## F23 — The flash when tapping things on phones
 
@@ -978,3 +979,24 @@ The Runbook: Later Cards page (44 cards) got the same start-up, rules and model 
 S40, S42, M9, M12, M13, M14, M19). W3's missing index line added here.
 
 **Left over.** Nothing.
+
+## F30 — Auto-Find no longer picks a star on bye as the drop candidate
+
+**Bug.** Rank By Weekly, Auto-Find, Whole Roster: a rostered star on bye isn't in the weekly rankings, so he was
+"your weakest" and the drop candidate (Check a List's Whole Roster had the same benchmark).
+
+**What changed.** `rosterBenchmark` (`js/mls/scout/waivers.js`) takes an optional `weekly` argument
+(`{ rosByName, byeWeek }`, passed by `weeklyFallback(ctx)` only when the scan reads Weekly). A rostered player missing
+from the Weekly set gets his ROS ranks (Overall stands in for FLEX), flagged `rankedBy: 'ROS'`; one without ROS stays
+unranked but flagged `onBye`. A drop candidate judged by ROS is only beaten by a free agent with a better ROS rank
+(Auto-Find's list and Check a List's verdict). Best Available needed no change: its Weekly side compares against the
+lineup, its ROS side already uses ROS.
+
+**User-visible.** The drop-candidate line (and "Next weakest") reads "ROS WR1 · On bye: ranked by ROS" (or "Not ranked
+this week: ranked by ROS"); with no ROS rankings it reads "unranked by Weekly · On bye: not in this week's rankings",
+and the pick is as before. Plain text, no new chip, so no legend line. No screenshots change.
+
+**Tests.** `tests/mls-auto-find-bye-drop.spec.mjs` (fails on main, passes here): ROS case and weekly-only case. The
+fixture sets `State.currentNflWeek` to 6 (CIN's bye) in the page.
+
+**Left over.** Nothing. The full "who should I drop" tool is S54.

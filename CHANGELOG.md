@@ -216,6 +216,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Auto-Find no longer picks a star on bye as the player to drop.** With Rank By set to Weekly, a rostered player
+  missing from the weekly rankings (on bye, or not ranked this week) is now judged by his ROS rank when the league has
+  ROS rankings, and the drop-candidate line says why ("On bye: ranked by ROS"). Without ROS rankings it works as before
+  and notes that he's on bye.
 - **Dashboard cards fold and move quicker.** Folding a league card (or Fold all) settles in 0.3 seconds instead of 0.5,
   and a tap right after it no longer goes unanswered.
 - **Sync All uses a fraction of the data, and doesn't wait on each league in turn.** Your leagues are fetched side by
