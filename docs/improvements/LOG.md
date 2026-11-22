@@ -1108,3 +1108,7 @@ outbid; then "Teams with the most left (you have $63):").
 "Bid $9–$14" and "≈ Bid $2–$5".
 
 **Left over.** Nothing. Full suite not run (only on the pull request).
+
+**CI time limit (F31, owner's call).** Both Checks runs on this PR were cancelled at the 30-minute `timeout-minutes`
+(recent PRs ran 25 to 30 minutes). Raised to 45 in `.github/workflows/check.yml`; the shard-the-suite follow-up is under
+"Tests" in `docs/TESTING.md`'s Open follow-ups.

@@ -384,6 +384,11 @@ done or dropped, remove its line here in the same change. Background for each is
   Trade Analyzer, "To make it fair" and the Future column. Not needed in season (improvements S19, round 4).
 
 **Tests**
+- **CI runs near its time limit** (F31): the Checks job took 25 to 30 minutes on recent pull requests (two runs passed with
+  under 30 seconds to spare; F31's two runs were cancelled at 30). The limit is now 45 minutes (F31) as a stopgap. The fix is to
+  split the Playwright run across parallel jobs (`--shard=1/3` and so on; one shard also runs check-precache and
+  `node --test`, and screenshots, `update-screenshots.yml` and the rendering-environment step must keep working), or to
+  trim the slowest specs (`--reporter=json` gives each spec's time). Aim for under 12 minutes with room to grow.
 - **The phone Guide screenshot stops halfway** (S34, round 6): since M17, `phone/mls-league-guide.png` paints only its
   first 16,464px (it cuts mid-sentence in section 10, Trade Finder & Market Disconnects); the remaining ~7,100px are
   blank page, so the badge legend isn't checked on phones any more. Before M17 the full 24,384px painted. Likely

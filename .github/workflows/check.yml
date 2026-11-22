@@ -25,7 +25,7 @@ jobs:
   check:
     # Pinned rather than ubuntu-latest: screenshot baselines depend on the OS's fonts.
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: tests
