@@ -1079,5 +1079,8 @@ quiet Sync All makes on opening is its own (it used to throw the first run away:
 
 **Tests.** `tests/unit/playoffs.test.mjs`; `tests/mls-playoff-odds.spec.mjs`. No screenshot changes (fixtures are week 2).
 
-**Left over.** A finished week not yet in the records (no sync since) isn't read from its final scores. Full suite not
-yet run.
+**Finished weeks (round 9).** From the end of Monday night's game until Sleeper processes the week (or longer without a
+sync) the records lack it: `withFinals` fetches its final scores (one request a league, cached for the visit),
+`applyFinals` adds them (median too), and only the weeks after it are simulated; Clinched can show on Monday night.
+
+**Left over.** Full suite not yet run.

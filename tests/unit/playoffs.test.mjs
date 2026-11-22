@@ -4,7 +4,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { bracketOrder, byeCount, playoffCertainty, simulatePlayoffs } from '../../js/mls/sim/playoffs.js';
+import { applyFinals, bracketOrder, byeCount, playoffCertainty, simulatePlayoffs } from '../../js/mls/sim/playoffs.js';
 import { LASTING_SD, PF_SPREAD_CV, QB_STACK_CORRELATION, WEEKLY_SPREAD_SCALE, liveStrength, pointsForStrength, projectedStrength } from '../../js/mls/sim/playoffStrength.js';
 import { MAX_WEEKS_LEFT, pairsFrom, playoffDataFrom } from '../../js/mls/leagues/playoffData.js';
 
@@ -173,6 +173,19 @@ describe('the bracket\'s rules (round 5)', () => {
         const one = odds(0), double = odds(1);
         assert.ok(Math.abs(one - 0.638) < 0.015, `${one}`);
         assert.ok(Math.abs(double - 0.691) < 0.015, `${double}`);
+    });
+});
+
+describe('finished weeks the records don\'t have yet (round 9)', () => {
+    const base = [{ rid: 1, w: 5, l: 5, t: 0, pf: 1000 }, { rid: 2, w: 5, l: 5, t: 0, pf: 1000 }, { rid: 3, w: 5, l: 5, t: 0, pf: 1000 }, { rid: 4, w: 5, l: 5, t: 0, pf: 1000 }];
+    test('wins, losses, ties and points for', () => {
+        const out = applyFinals(base, [{ games: [[1, 2], [3, 4]], points: { 1: 120.5, 2: 100, 3: 90, 4: 90 } }]);
+        assert.deepEqual(out.map(t => [t.w, t.l, t.t, t.pf]), [[6, 5, 0, 1120.5], [5, 6, 0, 1100], [5, 5, 1, 1090], [5, 5, 1, 1090]]);
+        assert.equal(base[0].w, 5); // the input is left alone
+    });
+    test('the median: the top half win one more, the rest lose one', () => {
+        const out = applyFinals(base, [{ games: [[1, 2], [3, 4]], points: { 1: 150, 2: 140, 3: 100, 4: 90 } }], true);
+        assert.deepEqual(out.map(t => [t.w, t.l]), [[7, 5], [6, 6], [6, 6], [5, 7]]);
     });
 });
 

@@ -252,6 +252,21 @@ test.describe('Playoff chances', () => {
         await expectClean(page, state);
     });
 
+    test('Monday night: a finished week counts before Sleeper\'s records have it (round 9)', async ({ page }) => {
+        // Sleeper's week has moved on to 15 (the app moves on once Monday night's game ends) while the records still stop
+        // at week 13. Week 14's final scores: you beat Dee and Cam loses, so you're 9-5 and in.
+        const state = await open(page, { week: 15, scores: { 1: 150, 4: 80, 3: 90, 5: 120, 2: 130, 6: 70 } });
+        await expect(card(page).locator('.mls-lc-odds')).toHaveText(/^Playoffs Clinched/);
+        await showTab(page, 'roster');
+        const pic = page.locator('#playoffPicture');
+        await expect(pic.locator('summary')).toHaveText('Playoff pictureregular season over · top 3 make it · week 14 final');
+        // The records with week 14 in them, and the seeding that follows (Dee and Eve both 7-7: Dee on points for).
+        await expect(pic.locator('tbody .mls-pp-team')).toHaveText(['Ace', 'You', 'Cam', 'Dee', 'Eve', 'Fay']);
+        await expect(pic.locator('tbody tr').nth(1).locator('td').nth(1)).toHaveText('9\u20135');
+        await expect(pic.locator('.mls-pp-note')).toContainText("with week 14's final scores");
+        await expectClean(page, state);
+    });
+
     test('without projections, points so far stand in', async ({ page }) => {
         const state = await open(page, { projections: false });
         await expect(card(page).locator('.mls-lc-odds')).toHaveText(/^Playoffs \d{1,2}%( · Bye \d{1,2}%)?( · Title \d{1,2}%)?$/);

@@ -38,6 +38,33 @@ export function playoffCertainty({ teams, weeksLeft, median = false, playoffTeam
     return out;
 }
 
+/**
+ * The standings with finished weeks added (round 9): weeks Sleeper's records don't include yet (from the end of Monday
+ * night's game until Sleeper processes the week, usually Tuesday, or longer without a sync). finals: [{ games:
+ * [[ridA, ridB]], points: { rid: final score } }], in order. Each game is a win, loss or tie; with the median, the top
+ * half of the week's scores win one more and the rest lose one; every team's points for grow by its score.
+ * Returns new standings (the input isn't changed).
+ */
+export function applyFinals(standings, finals = [], median = false) {
+    const out = standings.map(t => ({ ...t }));
+    const byRid = new Map(out.map(t => [t.rid, t]));
+    finals.forEach(({ games = [], points = {} }) => {
+        const pts = (rid) => Number(points[rid]) || 0;
+        games.forEach(([a, b]) => {
+            const ta = byRid.get(a), tb = byRid.get(b);
+            if (!ta || !tb) return;
+            if (pts(a) > pts(b)) { ta.w++; tb.l++; } else if (pts(b) > pts(a)) { tb.w++; ta.l++; } else { ta.t++; tb.t++; }
+        });
+        if (median) {
+            const order = out.slice().sort((x, y) => pts(y.rid) - pts(x.rid));
+            const half = Math.floor(order.length / 2);
+            order.forEach((t, k) => { if (k < half) t.w++; else t.l++; });
+        }
+        out.forEach(t => { t.pf = Math.round((t.pf + pts(t.rid)) * 100) / 100; });
+    });
+    return out;
+}
+
 // The bracket's size (the next power of two) and so how many top seeds sit out the first round.
 export const bracketSize = (P) => { let b = 1; while (b < P) b *= 2; return b; };
 export const byeCount = (P) => (P > 1 ? bracketSize(P) - P : 0);
