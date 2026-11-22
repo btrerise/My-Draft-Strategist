@@ -1104,7 +1104,7 @@ outbid; then "Teams with the most left (you have $63):").
 
 **Owner's decisions.** Approved the before/after sketch as proposed; the chip gets $ too.
 
-**Screenshots.** `desktop/` and `phone/mls-league-guide.png` re-taken by CI: the legend's sample chips now read
+**Screenshots.** `desktop/mls-league-guide.png` re-taken by CI (the phone one did not change): the legend's sample chips now read
 "Bid $9–$14" and "≈ Bid $2–$5".
 
 **Left over.** Nothing. Full suite not run (only on the pull request).
