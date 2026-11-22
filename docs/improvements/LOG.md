@@ -974,5 +974,7 @@ start-up, intro note. Old rules 10 (icons) and 11 (motion tokens, window sizes) 
 review pointer; old rule 8's "create the file" dropped (it exists). S51's "(rule 10: SVG icons)" no longer named a rule.
 W3's names were used as they are: the index in `LOG.md`, older entries in `docs/improvements/log/`.
 
-**Left over.** The Runbook: Later Cards page (https://claude.ai/artifact/GQLqjcewaE4HrGQmDKeLJE) has its own prompts
-and rules, still the old ones; it's separate from the runbook, so not changed. Add W3's missing index line (done here).
+The Runbook: Later Cards page (44 cards) got the same start-up, rules and model lines at the owner's request (Opus:
+S40, S42, M9, M12, M13, M14, M19). W3's missing index line added here.
+
+**Left over.** Nothing.
