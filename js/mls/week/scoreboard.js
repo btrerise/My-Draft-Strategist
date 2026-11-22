@@ -84,30 +84,27 @@ export const tooEarlyToCall = (me, them, status) => status === 'swing' && Math.m
 // 'W' | 'L' | 'T' for the matchup as it stands.
 export const resultOf = (m) => m.lead === 'me' ? 'W' : (m.lead === 'opp' ? 'L' : 'T');
 
-// Your place among every team's points this week, for a league that also plays the league median (Sleeper's
-// league_average_match): rank 1 = most points; above = in the top half, which wins the median game.
-export function medianPlace(myPoints, allPoints) {
-    const n = allPoints.length;
-    const rank = allPoints.filter(p => p > myPoints).length + 1;
-    return { rank, of: n, above: rank <= n / 2 };
+// Your place this week, for a league that also plays the league median (Sleeper's league_average_match), among the
+// OTHER teams' points (otherPoints leaves yours out, so your own score can't count as a team above you: F28, the owner's
+// "13th of 12" when yours was rounded and the list's wasn't). rank 1 = most points; above = in the top half, which wins
+// the median game. Give every team's score from the same function as yours.
+export function medianPlace(myPoints, otherPoints) {
+    const of = otherPoints.length + 1;
+    const rank = otherPoints.filter(p => p > myPoints).length + 1;
+    return { rank, of, above: rank <= of / 2 };
 }
 
 // A guillotine league (Sleeper type 3): no opponent, the lowest score among the teams still alive is chopped.
-// teams: [{ points, alive }] for every roster, mine included (alive: it still has players). Returns null when your
-// team is out, else { rank, of, against, cushion }: your place among the alive teams, the score you're measured
-// against (the lowest of the others: the chop line, or when you're the lowest, the next team up) and how far you are
-// above it (negative: below).
-export function guillotinePlace(myPoints, teams, myAlive = true) {
+// others: [{ points, alive }] for every OTHER roster (alive: it still has players; yours is left out, as in medianPlace).
+// Returns null when your team is out, else { rank, of, against, cushion }: your place among the alive teams, the score
+// you're measured against (the lowest of the others: the chop line, or when you're the lowest, the next team up) and how
+// far you are above it (negative: below).
+export function guillotinePlace(myPoints, others, myAlive = true) {
     if (!myAlive) return null;
-    const alive = teams.filter(t => t.alive).map(t => Number(t.points) || 0);
-    const of = alive.length;
+    const alive = others.filter(t => t.alive).map(t => Number(t.points) || 0);
     const rank = alive.filter(p => p > myPoints).length + 1;
-    const others = [...alive].sort((a, b) => a - b);
-    // Remove one copy of your own score, then compare with the lowest (or next-lowest) of the rest.
-    const i = others.indexOf(myPoints);
-    if (i !== -1) others.splice(i, 1);
-    const lowestOther = others.length ? others[0] : myPoints;
-    return { rank, of, against: round1(lowestOther), cushion: round1(myPoints - lowestOther) };
+    const lowestOther = alive.length ? Math.min(...alive) : myPoints;
+    return { rank, of: alive.length + 1, against: round1(lowestOther), cushion: round1(myPoints - lowestOther) };
 }
 
 // The headline: the W-L as it stands across head-to-head matchups, split paid / free, redraft / dynasty and, for dynasty

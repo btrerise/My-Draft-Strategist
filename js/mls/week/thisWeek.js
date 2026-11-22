@@ -225,7 +225,8 @@ function leagueResult(l, matchups, meta, base) {
     if (guillotine) {
         const me = side(mine);
         const alive = (e) => (e.players || []).length > 0;
-        return { kind: 'guillotine', me, place: guillotinePlace(me.points, matchups.map(e => ({ points: scoreOf(e), alive: alive(e) })), alive(mine)) };
+        // Ranked by the same score for every team, yours against the others only (F28): me.points is rounded to one decimal.
+        return { kind: 'guillotine', me, place: guillotinePlace(scoreOf(mine), matchups.filter(e => e !== mine).map(e => ({ points: scoreOf(e), alive: alive(e) })), alive(mine)) };
     }
     const opp = mine.matchup_id == null ? null : matchups.find(e => e.matchup_id === mine.matchup_id && e.roster_id !== mine.roster_id);
     // No opponent this week (a median-only league): your side still counts on the root-for board (S27).
@@ -235,7 +236,7 @@ function leagueResult(l, matchups, meta, base) {
     return {
         kind: 'h2h', me, them, ...m, result: resultOf(m), early: tooEarlyToCall(me, them, m.status), bestBall, scoringKey: ctx.scoringKey,
         oppName: (meta.teamNames && meta.teamNames[opp.roster_id]) || 'Opponent',
-        median: meta.median ? medianPlace(me.points, matchups.map(scoreOf)) : null,
+        median: meta.median ? medianPlace(scoreOf(mine), matchups.filter(e => e !== mine).map(scoreOf)) : null,
     };
 }
 
