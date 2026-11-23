@@ -4,18 +4,14 @@
 // also escapes ') and made window.KEYS the KEYS import. 5E replaced the page's inline onclicks
 // with data-action delegation (end of file) and the window.mdsFetch / showToast / createFocusTrap
 // / getTabFromHash reads with imports, so this module sets no window.* names.
-import { normalizeName } from '../shared/names.js';
 import { escapeHtml } from '../shared/html.js';
 import { KEYS } from '../shared/storage/keys.js';
-import { mdsFetch } from '../shared/net.js';
-import { showToast } from '../shared/ui/toast.js';
 import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { delegate } from '../shared/ui/delegate.js';
 import { shareSite } from '../shared/ui/share.js';
 import { migrateKeyNames, deleteOldKeyNames } from '../shared/storage/keyMigration.js';
-import { getFreshness } from '../shared/freshness.js';
-import { initInSeason, refreshInSeason, switchInSeasonPos, toggleBuySellOnly } from './inSeason.js';
+import { initInSeason, switchInSeasonPos, toggleBuySellOnly } from './inSeason.js';
 
 // Refactor chunk 6B: copy the T-Score cache keys from their pre-6B names (mds_tscore_cache*)
 // before the DOMContentLoaded handler below reads them, then (6C) delete the old copies. Runs at
@@ -23,30 +19,15 @@ import { initInSeason, refreshInSeason, switchInSeasonPos, toggleBuySellOnly } f
 migrateKeyNames('tscore');
 deleteOldKeyNames('tscore');
 
-// --- T-SCORE SHEET AUTO-REFRESH ---
-// Pulls the WR/RB Google Sheets (published to web as CSV, so no auth is needed -- the call
-// goes through mdsFetch purely for its timeout, see below) and refreshes every data
-// table on this page, plus caches a copy in localStorage that Draft Strategist checks before falling
-// back to the bundled js/shared/data/tscore.js -- see buildPlayerCardHTML() in js/mds/tracker.js
-// for the read side of this. This page and MDS share an origin (mydraftstrategist.com), so localStorage
-// is already visible to both without any extra work.
-const TSCORE_SHEET_URLS = {
-    wr: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT9ckcq-TOC3soaHNBwbZEGBzd8goU4j10x8UJ4qjIH79_f_oSsf7rZUghstUQ24DYbBTvXr5hAConB/pub?output=csv',
-    rb: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQD7lelXI38YKAJhzszarIhjKlbjG5pYv5o2KTc79k1ibWUU1HhO4QcDOMbmnQnXt-O6tqlZSr6oC5s/pub?output=csv'
-};
+// --- THE PRESEASON TABLES ---
+// The preseason tables ship in the page's HTML. Until improvements T3, a "Sync with most recent data" button fetched the
+// owner's preseason WR/RB sheets, redrew these tables and saved two copies: tscore_page_cache (these tables, drawn from
+// it on the next visit, below) and tscore_cache (the badges Draft Strategist shows on draft cards, js/mds/tracker.js).
+// The owner had it removed (2026-11-23): the preseason model is final for the season and the In-Season tab fetches its
+// own sheet on every visit. A browser that synced before still draws its saved copy.
 
-const TSCORE_LABEL_TO_CLASS = {
-    'Elite': 'label-elite',
-    'High-End Starter': 'label-high',
-    'Strong Starter': 'label-strong',
-    'Quality Contributor': 'label-quality',
-    'Boom/Bust': 'label-boom',
-    'Depth Player': 'label-depth'
-};
-
-// Stat columns shown alongside score/label differ by position: WR gets 3, RB gets 2. Matched
-// by header NAME, not fixed column position, so this survives a column getting reordered or
-// a new one inserted in the sheet later.
+// Stat columns shown alongside score/label differ by position: WR gets 3, RB gets 2 (header: the sheet's column
+// they were read from; key: the saved copy's field).
 const TSCORE_STAT_COLUMNS = {
     wr: [
         { header: 'Yds/Gm', key: 'stat1' },
@@ -58,63 +39,6 @@ const TSCORE_STAT_COLUMNS = {
         { header: 'HVT/Gm', key: 'stat2' }
     ]
 };
-
-// Fetches and parses one position's sheet into structured player rows.
-async function fetchTScoreSheet(pos) {
-    // mdsFetch (js/shared/net.js) rather than a bare fetch, for the timeout: refreshTScoreData
-    // disables the Refresh button and only restores it in its finally, so a stalled sheet
-    // request left that button dead for the rest of the session with nothing on screen to say
-    // why.
-    const res = await mdsFetch(TSCORE_SHEET_URLS[pos]);
-    if (!res.ok) throw new Error(`Could not fetch ${pos.toUpperCase()} sheet (HTTP ${res.status})`);
-    const csvText = await res.text();
-
-    const parsed = Papa.parse(csvText.trim(), { skipEmptyLines: true });
-    const rows = parsed.data;
-    if (!rows || rows.length < 2) throw new Error(`${pos.toUpperCase()} sheet returned no data`);
-
-    const header = rows[0].map(h => (h || '').trim());
-    const col = (name) => header.indexOf(name);
-
-    const rankCol = col('Rank');
-    const playerCol = col('Player');
-    const scoreCol = col('T-Score (A)') !== -1 ? col('T-Score (A)') : col('T-Score');
-    const labelCol = col('Label');
-    const adpCol = col('ADP');
-    const expCol = col('Exp T-Score');
-    const diffCol = col('T-Score Diff');
-    const classCol = col('Classification');
-    const statCols = TSCORE_STAT_COLUMNS[pos].map(sc => ({ key: sc.key, idx: col(sc.header) }));
-
-    if ([rankCol, playerCol, scoreCol, labelCol, classCol].includes(-1)) {
-        throw new Error(`${pos.toUpperCase()} sheet is missing an expected column (Rank / Player / T-Score / Label / Classification)`);
-    }
-
-    const players = [];
-    for (let i = 1; i < rows.length; i++) {
-        const r = rows[i];
-        const name = (r[playerCol] || '').trim();
-        const score = parseFloat(r[scoreCol]);
-        if (!name || isNaN(score)) continue; // skips blank rows and any non-data rows cleanly
-
-        const label = (r[labelCol] || '').trim();
-        const player = {
-            rank: parseInt(r[rankCol], 10) || 0,
-            name: name,
-            cleanName: normalizeName(name),
-            score: score,
-            label: label,
-            cssClass: TSCORE_LABEL_TO_CLASS[label] || 'label-depth',
-            adp: adpCol !== -1 ? r[adpCol] : '',
-            expScore: expCol !== -1 ? r[expCol] : '',
-            diff: diffCol !== -1 ? r[diffCol] : '',
-            classification: (r[classCol] || '').trim()
-        };
-        statCols.forEach(sc => { player[sc.key] = sc.idx !== -1 ? (r[sc.idx] || '') : ''; });
-        players.push(player);
-    }
-    return players;
-}
 
 function tscoreTop50RowHTML(p, pos) {
     const statCells = TSCORE_STAT_COLUMNS[pos].map(sc => `<td>${escapeHtml(p[sc.key])}</td>`).join('');
@@ -152,67 +76,13 @@ function renderTScoreTables(wrPlayers, rbPlayers) {
     });
 }
 
-// The day math is the shared getFreshness (refactor 8B; it was a copy of Lineup Strategist's). This
-// label has no stale state, so the threshold is Infinity and isStale is never read.
-function updateTscoreFreshnessLabel(timestamp) {
-    const el = document.getElementById('tscoreFreshness');
-    if (!el) return;
-    const fresh = getFreshness(timestamp, Infinity);
-    if (!fresh) { el.textContent = ''; return; }
-    el.textContent = `Sheet data: ${fresh.detail}`;
-}
-
-async function refreshTScoreData(btn) {
-    const origText = btn ? btn.innerHTML : '';
-    if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; btn.innerHTML = 'Refreshing…'; }
-
-    // The In-Season tab (improvements T1) fetches its own sheet alongside; it draws its own status and errors.
-    const inSeason = refreshInSeason();
-    try {
-        const [wrPlayers, rbPlayers] = await Promise.all([fetchTScoreSheet('wr'), fetchTScoreSheet('rb')]);
-
-        renderTScoreTables(wrPlayers, rbPlayers);
-
-        // Build the same {cleanName: {s, l, c}} shape js/shared/data/tscore.js already uses, so
-        // js/mds/tracker.js's lookup logic doesn't need to know or care whether it's reading the
-        // bundled static file or this cached override.
-        const combined = {};
-        [...wrPlayers, ...rbPlayers].forEach(p => {
-            combined[p.cleanName] = { s: p.score, l: p.label, c: p.cssClass };
-        });
-
-        const timestamp = Date.now();
-        localStorage.setItem(KEYS.tscore.cache, JSON.stringify(combined));
-        localStorage.setItem(KEYS.tscore.cacheUpdated, String(timestamp));
-        // Separate from the compact MDS-format cache above: this keeps the FULL per-player
-        // data (ADP, stat columns, etc.) this page's own tables need, so a reload re-renders
-        // the actual tables from cache too, instead of the freshness label saying "today"
-        // while the visible tables still show whatever shipped in the static HTML.
-        localStorage.setItem(KEYS.tscore.pageCache, JSON.stringify({ wr: wrPlayers, rb: rbPlayers }));
-        updateTscoreFreshnessLabel(timestamp);
-
-        showToast(`T-Score data refreshed: ${wrPlayers.length} WRs, ${rbPlayers.length} RBs.`);
-
-    } catch (err) {
-        console.error(err);
-        showToast(`Could not refresh T-Score data:\n${err.message}`, { isError: true });
-    } finally {
-        await inSeason;
-        if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = origText; }
-    }
-}
-
-// On page open: if a previous refresh left cached data, render from that instead of the
-// static (potentially stale) HTML that ships with the page. If there's no cache yet, the
-// static tables stay exactly as written until the first refresh. Waits for DOMContentLoaded, as
+// On page open: if a refresh before improvements T3 left cached data, render from that instead of the
+// static HTML that ships with the page. If there's no cache, the static tables stay exactly as written. Waits for DOMContentLoaded, as
 // the inline script this module came from had to (it ran during parsing, before Papa's
 // <script defer> and js/shared/). This module runs after both, so the wait is no longer needed,
 // but it keeps the render at the same moment.
 document.addEventListener('DOMContentLoaded', () => {
     initInSeason(); // the In-Season tab: its saved copy now, the sheet's latest when it arrives (improvements T1)
-
-    const cachedUpdatedAt = localStorage.getItem(KEYS.tscore.cacheUpdated);
-    if (cachedUpdatedAt) updateTscoreFreshnessLabel(cachedUpdatedAt);
 
     const pageCacheRaw = localStorage.getItem(KEYS.tscore.pageCache);
     if (pageCacheRaw) {
@@ -340,7 +210,6 @@ const clickActions = {
     toggleMenu() { toggleMenu(); },
     switchTab() { switchTab(this.dataset.tab, this); },
     switchPosition() { switchPosition(this.dataset.pos, this.dataset.tab); },
-    refreshTScoreData() { refreshTScoreData(this); },
     // The In-Season tab's WR / RB / TE and "Buy & Sell only" (improvements T1)
     switchInSeasonPos() { switchInSeasonPos(this.dataset.pos); },
     toggleBuySellOnly() { toggleBuySellOnly(this); },
@@ -355,13 +224,11 @@ const clickActions = {
 };
 
 // The page's static regions that hold those buttons, one click listener each. None is ever
-// re-rendered (refreshTScoreData only rebuilds the table bodies and the button's own contents).
-// The Refresh button sits in an unnamed wrapper, so it is its own container.
+// re-rendered.
 for (const container of [
     document.querySelector('body > header.header'),
     document.getElementById('menuOverlay'),
     document.getElementById('hamburgerMenu'),
     document.querySelector('.tscore-nav-wrapper'),
-    document.getElementById('tscoreRefreshBtn'),
     document.getElementById('main'),
 ]) delegate(container, 'click', clickActions);

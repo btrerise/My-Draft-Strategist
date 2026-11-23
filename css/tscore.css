@@ -103,6 +103,15 @@
 .table-header-tooltip.align-right .tooltip-text.mobile-visible { transform: none !important; }
 .table-header-tooltip:hover .tooltip-text.tt-dismissed:not(.mobile-visible) { display: none; }
 
+/* Below the header row, above every header (improvements T3, the owner's screenshot): the tooltip used to hang 6px
+   under the header's words, inside the row, and each header cell is sticky (its own stacking layer), so the next header
+   and the locked Player one drew over it. Anchored to the header cell (sticky is a containing block) it opens under the
+   whole row, and its cell rises above the others while it shows. */
+th > .table-header-tooltip { position: static; }
+th:has(> .table-header-tooltip:hover),
+th:has(> .table-header-tooltip:focus-visible),
+th:has(> .table-header-tooltip > .tooltip-text:is(.mobile-visible, .tt-linger)) { z-index: 20 !important; }
+
 /* Right-side Column Alignment (Prevents horizontal scrolling & right-edge clipping) */
 .table-header-tooltip.align-right .tooltip-text {
     left: auto;
@@ -448,4 +457,38 @@
     .tscore-compare-table th,
     .tscore-compare-table td { padding: 0.6rem 0.5rem; font-size: 0.82rem; white-space: normal; }
     .tscore-compare-table td:first-child { white-space: normal; }
+}
+
+/* The In-Season table on phones (improvements T3): on main the locked Player column took most of a 360px screen. The
+   name column narrows to the short name with the position rank and team under it ("P. Nacua / WR1 · LA"), the ROS
+   and Team columns go (that line carries them), the Label moves after the stats, and the headers may wrap ("ROS /
+   PPG"), so the name and three stat columns show at 360px; the rest scroll sideways inside the table. Wide windows
+   are unchanged: the short name, its line and the second Label cell are hidden there. */
+.tscore-inseason-table .tscore-phone-only,
+.tscore-inseason-table .tscore-name-short,
+.tscore-inseason-table .tscore-name-sub { display: none; }
+@media (max-width: 599.98px) {
+    .tscore-inseason-table .tscore-wide-only { display: none; }
+    .tscore-inseason-table .tscore-phone-only { display: table-cell; }
+    .tscore-inseason-table th,
+    .tscore-inseason-table td { padding: 0.75rem 0.375rem; font-size: 0.875rem; }
+    .tscore-inseason-table th { white-space: normal; font-size: 0.75rem; vertical-align: bottom; }
+    .tscore-inseason-table th:nth-child(2),
+    .tscore-inseason-table td:nth-child(2) { padding-left: 0.75rem; }
+    /* The full name stays for screen readers (the short one is aria-hidden); as .sr-only in css/base.css. */
+    .tscore-inseason-table .tscore-name-full {
+        position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+        overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+    .tscore-inseason-table .tscore-name-short {
+        display: block;
+        max-width: 7rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .tscore-inseason-table .tscore-name-sub {
+        display: block;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
 }

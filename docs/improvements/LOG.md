@@ -105,6 +105,7 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - F31 | LOG.md | F31 — FAAB bid pop-out: clearer words, dollar signs
 - S54 | LOG.md | S54 — Who should I drop?
 - S48 | LOG.md | S48 — Playoff strength of schedule (parked to the off-season)
+- T3 | LOG.md | T3 — T-Score table on phones, its tooltips, and no Sync button
 
 ## F23 — The flash when tapping things on phones
 
@@ -1175,3 +1176,41 @@ typical user")? Is option 5 the only version that scales? Badge shows PO only or
 weeks and F2 in the tap-to-explain)? Where: Roster, Waiver Wire, Trade Analyzer (suggested), Draft Strategist later;
 display only (suggested, as S7). Per the card: separate storage from season SoS (a test each way), the scale switch
 applies, upload preview names it, legend line, CHANGELOG line.
+
+## T3 — T-Score table on phones, its tooltips, and no Sync button
+
+**User-visible effect.** At 360px the In-Season table shows the name and three stat columns (ROS PPG, FP/G, XFP/G); the
+rest scroll sideways in the table. The locked name column shows "P. Nacua" with "WR1 · LA" under it in place of the
+ROS and Team columns, column names wrap, and the Label sits at the end of the row (wide windows unchanged). Column-name
+tooltips on every T-Score table open below the header row, not over it, and nothing draws on top of them. The Buy/Sell
+tooltip names the position's line ("outside the top 48 WRs so far, projected inside them…"). The Sync button and its
+"Sheet data: …" line are gone, so every T-Score tab starts 44px higher.
+
+**The bug (owner's screenshot).** Each header tooltip hung 6px under the header's words, inside the row, and every
+`th` is sticky (its own stacking layer), so the next header, and on phones the locked PLAYER header, drew over it. It
+closed correctly and had the right text. Fix (`css/tscore.css`): the trigger is `position: static`, so the tooltip
+anchors to its sticky `th` and opens under the row; that `th` rises to `z-index: 20` while its tooltip shows. The
+shared `js/shared/ui/tooltips.js` is unchanged.
+
+**Buy/Sell.** The sheet decides it; all 19 calls in the fixtures match: Buy when YTD rank is outside the position's
+line (Model Weights: WR 48, RB 36, TE 18) and ROS rank inside, Sell the reverse. `inSeason.js` writes the tooltip per
+position (`#inSeasonBuySellTip`).
+
+**Owner's decisions (2026-11-23).** The tooltip bug is the one found (opens inside the header row, covered). Sync:
+**drop it entirely**, no fetch of the preseason sheets on load (the preseason model is final; the In-Season tab already
+fetches on every visit). `main.js` no longer fetches or writes; a `tscore_page_cache` saved by an old Sync still draws.
+
+**Where.** `t-score/index.html` (button gone; `tscore-wide-only` / `tscore-phone-only` cells), `js/tscore/inSeason.js`
+(name cell, second Label cell, Buy/Sell tip, offline message says "reload the page"), `shortName` in
+`inSeasonParse.js`, `js/tscore/main.js`. Tests: `tscore-table-phone.spec.mjs` (new; the tooltip test fails on main on
+both projects), `tscore-refresh.spec.mjs` → `tscore-saved-tables.spec.mjs` (saved copy draws, nothing fetched),
+`tscore-inseason.spec.mjs` and `key-migration.spec.mjs` updated, a `shortName` unit test. CACHE_NAME v2.10.21.
+
+**Screenshots.** Main vs branch in this container: only the 14 T-Score PNGs changed (desktop and phone
+`tscore-inSeasonTab`, `-researchTab`, `-top50Tab`, `-valuesTab`, `-avoidsTab`, `-sleepersTab`, `-tab-2024`): all 44px
+shorter (no Sync row); phone `tscore-inSeasonTab` also has the new phone table. Re-taken on CI.
+
+**Left over.** `tscore_cache_updated` is now read by nothing but the permanent old-name migration (left in `KEYS`, as
+the OLD NAMES table maps to it; retire it if the owner wants). `tscore_cache` (Draft Strategist's badges) is no longer
+written: badges use the last saved copy or the bundled `js/shared/data/tscore.js`. The preseason tables keep the wide
+name column on phones (not in this card).

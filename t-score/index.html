@@ -145,14 +145,6 @@
     <button class="tscore-nav-btn" data-action="switchTab" data-tab="tab-2024">2024 WR Analysis</button>
 </div>
 
-<div style="max-width: 1100px; margin: 0.75rem auto 0; padding: 0 1rem; display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; flex-wrap: wrap;">
-    <span id="tscoreFreshness" aria-live="polite" style="font-size: 0.8rem; color: var(--text-muted, #9ca3af);"></span>
-    <button id="tscoreRefreshBtn" class="btn btn-secondary" style="width: auto; padding: 0.5rem 1rem; font-size: 0.85rem;" data-action="refreshTScoreData" title="Pulls the latest in-season rankings and the preseason WR and RB sheets, and updates every table on this page, plus the T-Score badges in My Draft Strategist.">
-        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.73-5.73"/></svg>
-        Sync with most recent data
-    </button>
-</div>
-
 <main id="main" class="container" style="padding-top: 1rem;">
     
     <!-- TAB: IN-SEASON (improvements T1): js/tscore/inSeason.js fills it from the "T-Score In-Season (public)" sheet -->
@@ -183,18 +175,18 @@
         <p id="inSeasonMessage" class="tscore-inseason-message" role="status" hidden></p>
 
         <div class="data-table-wrapper" id="inSeasonTableWrap" hidden>
-            <table class="data-table">
+            <table class="data-table tscore-inseason-table">
                 <thead>
                     <tr>
-                        <th>ROS</th>
+                        <th class="tscore-wide-only">ROS</th>
                         <th>Player</th>
-                        <th>
+                        <th class="tscore-wide-only">
                             <div class="table-header-tooltip">
                                 Label
                                 <span class="tooltip-text">His tier, as on the preseason tabs, by projected points: each label has a ROS PPG cutoff (see How it's projected).</span>
                             </div>
                         </th>
-                        <th>Team</th>
+                        <th class="tscore-wide-only">Team</th>
                         <th>
                             <div class="table-header-tooltip">
                                 ROS PPG
@@ -234,7 +226,14 @@
                         <th>
                             <div class="table-header-tooltip align-right">
                                 Buy/Sell
-                                <span class="tooltip-text">Buy: projected to move inside the startable line. Sell: projected to drop outside it.</span>
+                                <span class="tooltip-text" id="inSeasonBuySellTip">Buy: ranked outside the top 48 WRs so far, projected inside them for the rest of the season. Sell: inside the top 48 now, projected to drop outside.</span>
+                            </div>
+                        </th>
+                        <!-- On phones the Label column moves here, after the stats (improvements T3) -->
+                        <th class="tscore-phone-only">
+                            <div class="table-header-tooltip align-right">
+                                Label
+                                <span class="tooltip-text">His tier, as on the preseason tabs, by projected points: each label has a ROS PPG cutoff (see How it's projected).</span>
                             </div>
                         </th>
                     </tr>

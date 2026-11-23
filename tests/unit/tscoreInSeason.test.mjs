@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import Papa from 'papaparse';
-import { parseInSeasonPlayers, parseInSeasonWeights, InSeasonColumnError, labelCutoffs, inSeasonLabel, inSeasonLabelByPoints, labelFor } from '../../js/tscore/inSeasonParse.js';
+import { parseInSeasonPlayers, parseInSeasonWeights, InSeasonColumnError, labelCutoffs, inSeasonLabel, inSeasonLabelByPoints, labelFor, shortName } from '../../js/tscore/inSeasonParse.js';
 
 const fixture = (tab) => Papa.parse(readFileSync(new URL(`../fixtures/tscore-inseason/${tab}.csv`, import.meta.url), 'utf8').trim(), { skipEmptyLines: true }).data;
 const csv = (text) => Papa.parse(text.trim(), { skipEmptyLines: true }).data;
@@ -112,4 +112,14 @@ test('XFP/G and FPOE/G are optional: read by name, FPOE/G worked out from FP/G â
     assert.equal(xOnly.fpoe, -0.78);
     const [neither] = parseInSeasonPlayers(csv('ROS rank,Player,Team,ROS PPG,FP/G,Target share,Rank move,Buy/Sell\n1,A,X,20,9.1,30%,0,'), 'wr');
     assert.deepEqual([neither.xfp, neither.fpoe], [null, null]);
+});
+
+test('shortName: an initial and the last name, for the phone\'s narrow name column (improvements T3)', () => {
+    assert.equal(shortName('Puka Nacua'), 'P. Nacua');
+    assert.equal(shortName('Jaxon Smith-Njigba'), 'J. Smith-Njigba');
+    assert.equal(shortName('Amon-Ra St. Brown'), 'A. St. Brown');
+    assert.equal(shortName('Deebo Samuel Sr.'), 'D. Samuel Sr.');
+    assert.equal(shortName('A.J. Brown'), 'A.J. Brown'); // already initials
+    assert.equal(shortName('  Puka   Nacua '), 'P. Nacua');
+    assert.equal(shortName('Nacua'), 'Nacua');
 });

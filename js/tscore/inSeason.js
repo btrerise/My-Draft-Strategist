@@ -5,13 +5,13 @@
 // On page open: draw the copy saved by the last load (KEYS.tscore.inSeasonCache) at once, then fetch the four CSVs
 // and redraw. Offline, or when Google doesn't answer, the saved copy stays with a line saying so. A tab that loads
 // but lacks a column the table needs shows a plain message (and keeps that position's last good data, if any).
-// "Sync with most recent data" fetches again. Draft Strategist never reads this data: its T-Score badges stay on
+// Each visit fetches again (improvements T3 took the page's Sync button away). Draft Strategist never reads this data: its T-Score badges stay on
 // the preseason model (main.js's tscore_cache).
 import { escapeHtml } from '../shared/html.js';
 import { KEYS } from '../shared/storage/keys.js';
 import { mdsFetch } from '../shared/net.js';
 import { getFreshness } from '../shared/freshness.js';
-import { IN_SEASON_POSITIONS, parseInSeasonPlayers, parseInSeasonWeights, labelFor, labelCutoffs, LABEL_BANDS, DEFAULT_LINES, DEPTH_LABEL } from './inSeasonParse.js';
+import { IN_SEASON_POSITIONS, parseInSeasonPlayers, parseInSeasonWeights, labelFor, labelCutoffs, LABEL_BANDS, DEFAULT_LINES, DEPTH_LABEL, shortName } from './inSeasonParse.js';
 
 const SHEET = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRr7BzWeODc_BSDvhRfj2h53ETFKgtoeQKKWSvUVrX7jPEei5ctHVKX7Coqx9apmBAhKEkzkNZpCe_M/pub';
 export const IN_SEASON_URLS = {
@@ -56,7 +56,7 @@ async function fetchRows(url) {
 }
 
 /** Fetches all four tabs and redraws. Never throws; what went wrong is drawn on the tab. */
-export async function refreshInSeason() {
+async function refreshInSeason() {
     if (state.loading) return;
     state.loading = true;
     render();
@@ -111,10 +111,26 @@ const signed = (n) => (n === null || n === undefined ? '–' : n > 0 ? `+${n.toF
 // Whether a position's rows carry XFP/G (the sheet's optional columns; a copy saved before them has none).
 const hasExpected = (players) => !!players && players.some(p => p.xfp !== null && p.xfp !== undefined);
 
+// The Player cell. Wide windows show the full name; phones (css/tscore.css, improvements T3) show the short name with
+// the position rank and team under it ("WR1 · LA"), in place of the ROS and Team columns, and keep the full name for
+// screen readers. The Label cell is drawn twice: after Player on wide windows, at the end of the row on phones.
+function nameCellHTML(p, pos) {
+    const team = p.team ? ` · ${escapeHtml(p.team)}` : '';
+    return `<td><strong class="tscore-name-full">${escapeHtml(p.name)}</strong><strong class="tscore-name-short" aria-hidden="true">${escapeHtml(shortName(p.name))}</strong><span class="tscore-name-sub">${POS_LABEL[pos]}${p.rank}${team}</span></td>`;
+}
+
 function rowHTML(p, pos, expected) {
     const { label, cls } = labelFor(p, { cutoffs: cutoffsFor(pos), line: lineFor(pos) });
+    const labelHTML = `<span class="${cls}">${escapeHtml(label)}</span>`;
     const xCells = expected ? `<td>${num(p.xfp)}</td><td>${signed(p.fpoe)}</td>` : '';
-    return `<tr><td>${p.rank}</td><td><strong>${escapeHtml(p.name)}</strong></td><td><span class="${cls}">${escapeHtml(label)}</span></td><td>${escapeHtml(p.team)}</td><td>${num(p.rosPpg)}</td><td>${num(p.fpg)}</td>${xCells}<td>${escapeHtml(p.targetShare)}</td><td>${moveHTML(p.move)}</td><td>${buySellHTML(p.buySell)}</td></tr>`;
+    return `<tr><td class="tscore-wide-only">${p.rank}</td>${nameCellHTML(p, pos)}<td class="tscore-wide-only">${labelHTML}</td><td class="tscore-wide-only">${escapeHtml(p.team)}</td><td>${num(p.rosPpg)}</td><td>${num(p.fpg)}</td>${xCells}<td>${escapeHtml(p.targetShare)}</td><td>${moveHTML(p.move)}</td><td>${buySellHTML(p.buySell)}</td><td class="tscore-phone-only">${labelHTML}</td></tr>`;
+}
+
+// The Buy/Sell header's tooltip, for the position on screen: what the sheet's Buy/Sell column is decided by (its YTD
+// and ROS ranks against the position's line in Model Weights, as How it's projected says).
+function buySellTip(pos) {
+    const line = lineFor(pos);
+    return `Buy: ranked outside the top ${line} ${POS_LABEL[pos]}s so far, projected inside them for the rest of the season. Sell: inside the top ${line} now, projected to drop outside.`;
 }
 
 function weightsHTML() {
@@ -191,7 +207,7 @@ function render() {
 
     let message = '';
     if (err) message = players ? `${err} Showing the last ${POS_LABEL[pos]} rankings that loaded.` : err;
-    else if (!players && !state.loading && state.offline) message = 'The in-season rankings couldn’t load. Check your connection, then tap Sync with most recent data.';
+    else if (!players && !state.loading && state.offline) message = 'The in-season rankings couldn’t load. Check your connection, then reload the page.';
     else if (!players && !state.loading) message = `No ${POS_LABEL[pos]} rankings yet.`;
     const msgEl = $('inSeasonMessage');
     msgEl.textContent = message;
@@ -204,10 +220,13 @@ function render() {
         const shown = state.buySellOnly ? players.filter(p => p.buySell) : players;
         body.innerHTML = shown.length
             ? shown.map(p => rowHTML(p, pos, expected)).join('')
-            : `<tr><td colspan="${expected ? 11 : 9}" class="tscore-inseason-empty">No Buy or Sell calls at ${POS_LABEL[pos]} right now.</td></tr>`;
+            : `<tr><td colspan="${expected ? 12 : 10}" class="tscore-inseason-empty">No Buy or Sell calls at ${POS_LABEL[pos]} right now.</td></tr>`;
     } else {
         body.innerHTML = '';
     }
+
+    const tip = $('inSeasonBuySellTip');
+    if (tip) tip.textContent = buySellTip(pos);
 
     const weightsEl = $('inSeasonWeights');
     if (weightsEl) weightsEl.innerHTML = weightsHTML();

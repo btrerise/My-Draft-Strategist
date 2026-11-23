@@ -101,7 +101,6 @@ test.describe('pre-6B storage', () => {
 
         // --- T-Score ---
         state = await openApp(page, '/t-score/');
-        await expect(page.locator('#tscoreFreshness')).toHaveText('Sheet data: Updated today at 4:00 PM');
         s = await dumpStorage(page);
         expect(s.tscore_cache).toBe(PRE_6B.mds_tscore_cache);
         expect(s.tscore_cache_updated).toBe(PRE_6B.mds_tscore_cache_updated);
@@ -111,10 +110,9 @@ test.describe('pre-6B storage', () => {
         await expectClean(page, state);
     });
 
-    test('T-Score opened first still shows its freshness label, and deletes only its old cache names', async ({ page }) => {
+    test('T-Score opened first copies its cache to the new names, and deletes only its old cache names', async ({ page }) => {
         await seedPre6b(page);
         let state = await openApp(page, '/t-score/');
-        await expect(page.locator('#tscoreFreshness')).toHaveText('Sheet data: Updated today at 4:00 PM');
         const s = await dumpStorage(page);
         expect(s.tscore_cache).toBe(PRE_6B.mds_tscore_cache);
         expect(s.tscore_cache_updated).toBe(PRE_6B.mds_tscore_cache_updated);

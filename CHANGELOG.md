@@ -60,6 +60,15 @@ What changed for users in each version of the two apps, in plain language. Newes
 - **T-Score: expected points beside points so far.** The In-Season tab adds XFP/G (expected fantasy points per game
   from a player's usage) and FPOE/G (how far above or below that he has scored) after FP/G, once the sheet carries
   them. The Research's "Reading the In-Season Tab" says what they mean.
+- **T-Score's In-Season table fits a phone.** The player column is narrower (P. Nacua, with WR1 · LA under it in place
+  of the ROS and Team columns), the Label moves after the stats, and column names wrap, so at 360px you see the name and
+  three stat columns; swipe the table for the rest. Wider screens are unchanged.
+- **T-Score's column explanations open below the column names.** They used to open over the bottom of the header row,
+  partly hidden behind the neighbouring column names (on phones, behind the Player column).
+- **T-Score's Buy/Sell explanation says what decides it**: outside the top 48 WRs (36 RBs, 18 TEs) so far but projected
+  inside them is a Buy; the reverse is a Sell. It names the line for the position on screen.
+- **No more Sync button on the T-Score page.** The in-season rankings already load on every visit; the preseason tables
+  are final for the season and stay as they are.
 - **A link in a sentence opens only from its own words.** Links inside running text (the T-Score page's The Research
   and In-Season notes, "Don't count this device" in the Guide) no longer take taps a little above and below them. In
   The Research's "The Data", a tap on the lower half of "CC BY 4.0" opened "ffopportunity" on the line below; now it
