@@ -12,8 +12,8 @@
 //   15  the league's Power Rankings at his position: your WR depth is spare when you're 2nd of 12 at WR (S29's table).
 //   15  upside: Sleeper trending adds, the same tier as your starters there, and age in dynasty (young keeps him, old
 //       at RB/WR/TE/QB makes him easier to let go).
-// Never ranked: IR (Sleeper's IR slot or NFL IR), taxi, a player locked in your lineup, and a player on bye whom no
-// rankings set ranks (the app can't judge him). They're listed with the reason. A kicker or defense is ranked only
+// Never ranked: IR (Sleeper's IR slot or NFL IR), taxi, a player you locked in the app, and, with no ROS-shaped set
+// loaded, a player on bye missing from Weekly (the app can't judge him). They're listed with the reason. A kicker or defense is ranked only
 // beyond the number your lineup starts. Out players are ranked like anyone (owner's choice), with "Out this week".
 
 const WEIGHTS = { rank: 50, depth: 20, need: 15, upside: 15 };
@@ -45,11 +45,14 @@ export function startersAt(pos, reqs) {
 }
 
 // Why a player is never suggested, or null.
-function protectedWhy(p) {
+// `locked` is a lock you set in the app (round 4: kickoff locks don't count, since a claim runs after them). The bye
+// rule is F30's case: with no ROS-shaped set loaded, a player on bye missing from Weekly can't be judged. With one
+// loaded and him not in it, he's simply unranked, and a fair drop.
+function protectedWhy(p, hasRos) {
     if (p.isReserve || p.inj === 'IR') return 'IR';
     if (p.isTaxi) return 'taxi';
-    if (p.locked) return 'locked in your lineup';
-    if (p.onBye && !(p.ros && ranked(p.ros.posRank)) && !(p.now && ranked(p.now.posRank))) return 'on bye, not in your rankings this week';
+    if (p.locked) return 'you locked him';
+    if (hasRos === false && p.onBye && !(p.now && ranked(p.now.posRank))) return 'on bye, not in your rankings this week';
     return null;
 }
 
@@ -72,7 +75,7 @@ export function rankDroppable(input) {
     const protectedList = [];
     const candidates = [];
     players.forEach(p => {
-        const why = protectedWhy(p);
+        const why = protectedWhy(p, input.hasRos);
         if (why) protectedList.push({ player: p, why });
         else candidates.push(p);
     });
@@ -80,7 +83,7 @@ export function rankDroppable(input) {
     // Depth: your active players at each position (IR and taxi left out), best first by ROS, then this week's set.
     const sortKey = (p) => (p.ros && ranked(p.ros.posRank) ? p.ros.posRank : 1000) + (p.now && ranked(p.now.posRank) ? p.now.posRank / 10000 : 0.9999);
     const byPos = {};
-    players.filter(p => !['IR', 'taxi'].includes(protectedWhy(p)))
+    players.filter(p => !['IR', 'taxi'].includes(protectedWhy(p, input.hasRos)))
         .forEach(p => { (byPos[p.pos] = byPos[p.pos] || []).push(p); });
     Object.values(byPos).forEach(list => list.sort((a, b) => sortKey(a) - sortKey(b)));
 
@@ -96,7 +99,9 @@ export function rankDroppable(input) {
         const rosR = p.ros && ranked(p.ros.posRank) ? p.ros.posRank : null;
         const nowR = !p.onBye && p.now && ranked(p.now.posRank) ? p.now.posRank : null;
         let rank;
-        if (rosR && nowR) rank = 0.75 * rankTerm(rosR) + 0.25 * rankTerm(nowR);
+        const noTeam = !p.team || p.team === 'FA';
+        if (noTeam) rank = 1;   // no NFL team (round 4): nothing to rank him on this season
+        else if (rosR && nowR) rank = 0.75 * rankTerm(rosR) + 0.25 * rankTerm(nowR);
         else if (rosR) rank = rankTerm(rosR);
         else if (nowR) rank = rankTerm(nowR);
         else rank = 1;
@@ -118,9 +123,12 @@ export function rankDroppable(input) {
         const score = Math.round(WEIGHTS.rank * rank + WEIGHTS.depth * depthTerm + WEIGHTS.need * needTerm + WEIGHTS.upside * upTerm);
 
         // The facts, each said once: this week's rank only when it differs from ROS (round 3).
+        // The ROS-shaped set's name (round 4): a dynasty league's is its dynasty set.
+        const rosShort = input.dynasty ? 'Dyn' : 'ROS', rosLong = input.dynasty ? 'dynasty' : 'ROS';
         const reasons = [`${p.pos}${depth} on your team`];
-        if (rosR) reasons.push(`ROS ${p.pos}${rosR}`);
-        else if (input.hasRos !== false) reasons.push('not in your ROS rankings');
+        if (noTeam) reasons.push('no NFL team');
+        if (rosR) reasons.push(`${rosShort} ${p.pos}${rosR}`);
+        else if (input.hasRos !== false) reasons.push(`not in your ${rosLong} rankings`);
         if (p.onBye) reasons.push('on bye');
         else if (nowR && nowR !== rosR) reasons.push(`${nowLabel} ${p.pos}${nowR}`);
         if (p.inj === 'OUT') reasons.push('Out this week');
@@ -137,7 +145,8 @@ export function rankDroppable(input) {
             ? `Your ${ordinal(depth)} ${p.pos}, so he won't start for you`
             : `One of your starting ${p.pos}s`;
         const clauses = [];
-        if (!best) clauses.push('not in your rankings');
+        if (noTeam) clauses.push('no NFL team');
+        else if (!best) clauses.push('not in your rankings');
         else if (best > line) clauses.push(`ranked outside the league's starting ${p.pos}s`);
         if (p.inj === 'OUT') clauses.push('Out this week');
         const buts = [];
@@ -160,7 +169,9 @@ export function rankDroppable(input) {
     return { picks, protected: protectedList, note };
 }
 
-// "Tai Felton (IR), Tez Johnson (taxi)" for the protected list.
+// "Drake Maye, Jeremiyah Love (IR); Tez Johnson (taxi)" for the protected list: names grouped by reason (round 4).
 export function protectedText(list) {
-    return (list || []).map(x => `${x.player.name} (${x.why})`).join(', ');
+    const groups = new Map();
+    (list || []).forEach(x => { if (!groups.has(x.why)) groups.set(x.why, []); groups.get(x.why).push(x.player.name); });
+    return [...groups].map(([why, names]) => `${names.join(', ')} (${why})`).join('; ');
 }

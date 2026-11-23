@@ -27,6 +27,7 @@ import { faabBidsFor, isFaabLeague, suggestBidFor } from './faabHistory.js';
 import { maybeShowFaabHint } from './faabSettings.js';
 import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
 import { dropPicksFor } from './dropPicks.js';
+import { protectedText } from './droppable.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---
     // One scanner, two lenses, picked with the "Compare Against" toggle:
@@ -149,7 +150,7 @@ import { dropPicksFor } from './dropPicks.js';
         if (wrap) wrap.style.visibility = s.compare === 'roster' ? 'hidden' : 'visible';
         const hint = document.getElementById('waiverCompareHint');
         if (hint) hint.innerText = s.compare === 'roster'
-            ? 'Free agents ranked ahead of your weakest rostered player at each position (your drop candidate).'
+            ? 'Free agents ranked ahead of who you\'d drop first at each position (the Roster tab\'s Drop 1 order; your weakest player there without rankings).'
             : 'Free agents who would crack your current starting lineup this week, and who they would replace.';
 
         // --- SCAN PASTED LIST: SEARCH IN (This League | All My Leagues) ---
@@ -1014,9 +1015,9 @@ import { dropPicksFor } from './dropPicks.js';
                     bench = mine[mine.length - 1];
                 }
                 const why = bench && dropWhy && dropWhy.get(String(bench.id));
-                // Active players the drop order leaves out (locked in your lineup, or on bye with no rank to judge him by).
+                // Active players the drop order leaves out (you locked him, or on bye with no rank to judge him by).
                 const held = drops ? drops.protected.filter(x => mine.some(p => String(p.id) === String(x.player.id))) : [];
-                const notSuggested = held.length ? `<div class="mls-scan-benchmark-next">Not suggested: ${held.map(x => `${escapeHtml(x.player.name)} (${escapeHtml(x.why)})`).join(', ')}.</div>` : '';
+                const notSuggested = held.length ? `<div class="mls-scan-benchmark-next">Not suggested: ${escapeHtml(protectedText(held))}.</div>` : '';
                 const notCounted = skipped.length ? `<div class="mls-scan-benchmark-next">Not counted: ${skippedPlayersText(skipped)}.</div>` : '';
                 if (!bench) {
                     return { body: `<div class="mls-scan-empty">You have no ${skipped.length ? 'active ' : ''}${groupName(g)} on your roster to compare against.</div>${notCounted}`, count: 0, countText: 'no roster players' };
@@ -1062,11 +1063,11 @@ import { dropPicksFor } from './dropPicks.js';
                     <div class="mls-scan-benchmark-title">${why ? `Drop first at ${groupName(g)}:` : `Drop candidate (by ${basisName}):`}</div>
                     ${why ? '' : `Your weakest ${groupName(g)} is `}<strong>${escapeHtml(bench.name)}</strong>${getSoSBadgeHTML(bench.team, bench.pos, WAIVER_SOS_OPTS)} (${rankText(bench)}).
                     ${why ? `<div class="mls-scan-benchmark-why">${escapeHtml(why)}</div>` : ''}
-                    ${upgrades.length ? `Available players ranked ahead of him:`
-                        : g.items.length === 0 ? `<div class="mls-scan-benchmark-ok">${noneAvailableText(g)}</div>`
-                        : `<div class="mls-scan-benchmark-ok">No ${availGroup(groupName(g))} ranks ahead of him; you're set here by ${basisName}.</div>`}
                     ${nextUp.length ? `<div class="mls-scan-benchmark-next">${why ? 'Next drops' : 'Next weakest'}: ${nextUp.join(' ')}</div>` : ''}
                     ${notCounted}${why ? notSuggested : ''}
+                    ${upgrades.length ? `<div class="mls-scan-benchmark-lead">Available players ranked ahead of him:</div>`
+                        : g.items.length === 0 ? `<div class="mls-scan-benchmark-ok">${noneAvailableText(g)}</div>`
+                        : `<div class="mls-scan-benchmark-ok">No ${availGroup(groupName(g))} ranks ahead of him; you're set here by ${basisName}.</div>`}
                 </div>`;
                 // Everyone ranked ahead is listed, in rank order; only an upgrade by the Dashboard's rule is
                 // called (and counted as) one (improvements S8, rounds 4 and 5). The rest read "Ranked ahead

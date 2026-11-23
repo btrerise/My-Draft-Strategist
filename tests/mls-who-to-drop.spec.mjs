@@ -82,6 +82,9 @@ test.describe('Lineup Strategist: who should I drop?', () => {
         await expect(page.locator('.sheet')).toBeHidden();
         await expect(page.locator('#scoutTab')).toHaveClass(/\bactive\b/);
         await expect(page.locator('#waiverOutput .mls-scan-benchmark')).toContainText('Drop first at WR: Garrett Wilson');
+        // Scrolled to the answer (round 4).
+        await expect(page.locator('#waiverOutput')).toBeInViewport();
+        await expect.poll(() => page.evaluate(() => window.scrollY), 'scrolled down to the results').toBeGreaterThan(200);
         await expect(page.locator('#waiverModeToggle [data-mode="auto"]')).toHaveAttribute('aria-pressed', 'true');
         await expect(page.locator('[data-compare="roster"]')).toHaveAttribute('aria-pressed', 'true');
         await expectClean(page, state);
@@ -101,7 +104,7 @@ test.describe('Lineup Strategist: who should I drop?', () => {
         await expect(page.locator('#rosterList .mls-drop-badge')).toHaveCount(3);
         await expect(row(page, 'Garrett Wilson').locator('.mls-drop-badge')).toHaveCount(0);
         await page.locator('#rosterList .mls-drop-badge').filter({ hasText: 'Drop 1' }).click();
-        await expect(page.locator('.sheet')).toContainText('Not suggested: Garrett Wilson (locked in your lineup).');
+        await expect(page.locator('.sheet')).toContainText('Not suggested: Garrett Wilson (you locked him).');
         await expectClean(page, state);
     });
 
@@ -139,6 +142,23 @@ test.describe('Lineup Strategist: who should I drop?', () => {
         await expect(bench).toContainText('Drop first at WR: Garrett Wilson');
         await expect(bench).toContainText('Out this week');
         await expect(bench).not.toContainText('Not counted');
+        await expectClean(page, state);
+    });
+
+    test('a manual league is judged as 12 teams, not as the one roster it knows (round 4)', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page, WAIVER_RANKINGS_CSV, N);
+        const verdicts = await page.evaluate(async () => {
+            const { State } = await import('/js/mls/state.js');
+            const { dropPicksFor } = await import('/js/mls/scout/dropPicks.js');
+            const league = State.leagues.find(l => l.leagueId === State.activeLeagueId);
+            const of = (l) => dropPicksFor(l).picks.find(x => x.player.name === 'Garrett Wilson').verdict;
+            return { synced: of(league), manual: of({ ...league, leagueId: 'manual_test', username: 'Manual' }) };
+        });
+        // The fixture league has 2 teams, so WR10 is past its starters; in a 12-team league he isn't.
+        expect(verdicts.synced).toContain("ranked outside the league's starting WRs");
+        expect(verdicts.manual).not.toContain('ranked outside');
         await expectClean(page, state);
     });
 

@@ -45,7 +45,7 @@ test('IR, taxi and locked players are never suggested, and are named', () => {
     const r = rankDroppable({ players: roster, reqs: REQS, teamCount: 12 });
     assert.equal(r.picks[0].player.name, 'Wr Low');
     assert.ok(!r.picks.some(x => ['Wr Hurt', 'Wr Kid', 'Wr Locked'].includes(x.player.name)));
-    assert.equal(protectedText(r.protected), 'Wr Hurt (IR), Wr Kid (taxi), Wr Locked (locked in your lineup)');
+    assert.equal(protectedText(r.protected), 'Wr Hurt (IR); Wr Kid (taxi); Wr Locked (you locked him)');
 });
 
 test('a starter on bye is judged by ROS, not as unranked this week', () => {
@@ -58,9 +58,14 @@ test('a starter on bye is judged by ROS, not as unranked this week', () => {
     assert.equal(r.picks[r.picks.length - 1].player.name, 'Star On Bye');
     assert.ok(r.picks.find(x => x.player.name === 'Star On Bye').reasons.includes('on bye'));
     // With no ROS rank either, he can't be judged: listed, not suggested.
-    const r2 = rankDroppable({ players: [{ ...roster[0], ros: null }, ...roster.slice(1)], reqs: REQS, teamCount: 12 });
+    // With no ROS set loaded at all, he can't be judged: listed, not suggested.
+    const weeklyOnly = roster.map(p => ({ ...p, ros: null }));
+    const r2 = rankDroppable({ players: weeklyOnly, reqs: REQS, teamCount: 12, hasRos: false });
     assert.ok(!r2.picks.some(x => x.player.name === 'Star On Bye'));
     assert.equal(r2.protected[0].why, 'on bye, not in your rankings this week');
+    // With a ROS set loaded and him not in it, he's unranked, and a fair drop (round 4).
+    const r3 = rankDroppable({ players: [{ ...roster[0], ros: null }, ...roster.slice(1)], reqs: REQS, teamCount: 12, hasRos: true });
+    assert.equal(r3.picks[0].player.name, 'Star On Bye');
 });
 
 test('upside keeps a player: trending adds and youth in dynasty; age counts against in dynasty', () => {
@@ -98,4 +103,14 @@ test("this week's rank is said only when it differs from ROS; a thin room is a r
     assert.ok(!by('Rb Three').reasons.some(t => t.startsWith('Wk')));
     assert.ok(by('Rb Two').reasons.includes('Wk RB20'));
     assert.match(by('Rb Three').verdict, /, but your RB room is thin \(12th of 12\)\.$/);
+});
+
+test('round 4: no NFL team leads the verdict; a dynasty league names its dynasty set; reasons group by kind', () => {
+    const roster = [pl('Wr One', 'WR', 2), pl('Wr Two', 'WR', 9), pl('Wr Three', 'WR', 25), pl('Wr Gone', 'WR', null, { team: 'FA' }), pl('Wr Deep', 'WR', null)];
+    const r = rankDroppable({ players: roster, reqs: REQS, teamCount: 12, dynasty: true, hasRos: true });
+    const gone = r.picks.find(x => x.player.name === 'Wr Gone');
+    assert.match(gone.verdict, /won't start for you; no NFL team/);
+    assert.ok(gone.reasons.includes('no NFL team'));
+    assert.ok(r.picks.find(x => x.player.name === 'Wr Deep').reasons.includes('not in your dynasty rankings'));
+    assert.ok(r.picks.find(x => x.player.name === 'Wr One').reasons.includes('Dyn WR2'));
 });

@@ -1130,12 +1130,16 @@ or a "Droppable" sort). Text "Drop 1", not a trash can (Material: that icon mean
 (ROS vs the league's starter line; this week's set a quarter, ROS alone on bye, F30), depth 20, Power Rankings place 15
 (S29), upside 15 (trending, same tier as your starters, age in dynasty). Out players count, with "Out this week".
 Round 2: leftovers (Out players, fixed weights). Round 3, the owner's user's-eye review: verdict first, no repeats, no
-scores, Find his replacement, the "Drop first" wording.
+scores, Find his replacement, the "Drop first" wording. Round 4, a review on the owner's backup (19 leagues): a manual
+league counts as 12 teams (it read as 2, so RB13 was "outside the starters"); the bye rule protects only when no
+ROS-shaped set is loaded (unranked dynasty players on bye were skipped); only locks you set protect (owner agreed:
+kickoff locks are over when a claim runs, and they filled "Not suggested" with 10-20 names on Sundays); the list groups
+by reason; "dynasty rankings"/"Dyn" in dynasty; "no NFL team" leads; Find his replacement scrolls to the results after
+the tab's own scroll; Auto-Find's "ranked ahead of him:" sits right above the cards; the Compare Against hint updated.
 
-**Where.** `js/mls/scout/droppable.js` (pure: score, `reasons`, `verdict`, `short`), `scout/dropPicks.js` (input from
-State, the sheet; its button has a direct listener, as the sheet is outside `delegate()`'s containers),
-`render/roster.js`, `scout/waivers.js`, `badges.js`, `legend.js`, `css/mls.css`, Guide and tooltip text. Never
-suggested: IR, taxi, locked starters, a player on bye that no set ranks. K/DEF only beyond what you start.
+**Where.** `scout/droppable.js` (pure: score, `reasons`, `verdict`, `short`), `scout/dropPicks.js` (input from State,
+the sheet; its button has its own listener, the sheet being outside `delegate()`'s containers), `render/roster.js`,
+`scout/waivers.js`, `badges.js`, `legend.js`, `css/mls.css`. K/DEF only beyond what you start.
 
 **Tests.** `tests/unit/droppable.test.mjs`; `tests/mls-who-to-drop.spec.mjs` (no rankings, the clear drop on both
 screens, locked, starter on bye, Out bench WR vs Out star, Find his replacement, trending failing). Eight Auto-Find specs

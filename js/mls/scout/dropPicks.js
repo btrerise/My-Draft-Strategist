@@ -16,7 +16,7 @@ import { getPowerLeagueKind } from '../power/directionLabels.js';
 import { computePositionalPower } from '../power/shared.js';
 import { resolvePowerRankingsSource } from '../power/rosterCard.js';
 import { ageFromMeta } from '../power/futureValue.js';
-import { autoFindWaiverUpgrades, getSleeperMetaByName, lineupCheckDeps, sleeperMetaByNameIfLoaded, updateWaiverScanSetting } from './waivers.js';
+import { autoFindWaiverUpgrades, getSleeperMetaByName, sleeperMetaByNameIfLoaded, updateWaiverScanSetting } from './waivers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isWeekOver } from './waiverStatus.js';
 import { closeSheet, openSheet } from '../../shared/ui/sheet.js';
@@ -83,9 +83,12 @@ export function dropPicksFor(league = getActiveLeague(), rerender = null) {
     const kickoffs = State.gameTimesFetchedForWeek === State.currentNflWeek ? State.gameTimesByTeam : null;
     const weekOver = isWeekOver(kickoffs, Date.now());
     const byeWeek = lineupWeek(weekOver);
-    const deps = lineupCheckDeps(league.leagueId, {}, { weekOver });
+    // Only locks you set (round 4, the owner's review): a kickoff lock is over by the time a claim runs.
+    const locks = new Set((State.lockedPlayersMap[league.leagueId] || []).map(String));
     const { places, teams } = yourPowerPlaces(league);
-    const teamCount = teams || (league.globalRosterMap ? new Set(Object.values(league.globalRosterMap)).size : 0) || 12;
+    // A manual league knows only your roster (round 4: it read as 2 teams, so RB13 was "outside the starters"): 12.
+    const teamCount = isFullyMappedLeague(league)
+        ? (teams || (league.globalRosterMap ? new Set(Object.values(league.globalRosterMap)).size : 0) || 12) : 12;
 
     const players = league.roster.map(p => {
         const m = meta && meta[p.cleanName];
@@ -94,7 +97,7 @@ export function dropPicksFor(league = getActiveLeague(), rerender = null) {
             ros: rosOf ? rosOf(p.cleanName) : null,
             now: nowOf ? nowOf(p.cleanName) : null,
             onBye: byeWeek != null && isUnavailableThisWeek({ team: p.team }, byeWeek),
-            locked: !!deps.isLocked(p),
+            locked: locks.has(String(p.id)),
             age: m ? ageFromMeta(m) : null,
             trending: (trend && trend.get(String(p.id))) || 0
         };
@@ -145,6 +148,13 @@ async function findDropReplacement(btn) {
     setWaiverMode('auto');          // clears the last results, as switching by hand does
     updateWaiverScanSetting('compare', 'roster');
     updateWaiverScanSetting('pos', pos);
-    showTab('scout');
-    autoFindWaiverUpgrades(document.querySelector('[data-action="autoFindWaiverUpgrades"]'));
+    const shown = showTab('scout');
+    await autoFindWaiverUpgrades(document.querySelector('[data-action="autoFindWaiverUpgrades"]'));
+    // Straight to the answer (round 4): on a phone the results sit a screen and a half below the controls. After the
+    // tab's own scroll to the top, as scoutGoToLeague and goToPowerRankings wait for it.
+    await Promise.resolve(shown);
+    setTimeout(() => {
+        const out = document.getElementById('waiverOutput');
+        if (out) out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
 }
