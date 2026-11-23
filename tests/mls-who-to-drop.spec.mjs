@@ -4,6 +4,7 @@
 // The fixture league's roster (fixtures/sleeper/) is stacked at WR: seven of the rankings' top 21 WRs, starting two
 // (plus FLEX). Garrett Wilson (ROS #21, WR7 on your team, tier 4 while your starters are tier 1) is the clear first
 // drop. The bye case sets the week to 6, CIN's bye, so Ja'Marr Chase (your WR1) is missing from a Weekly file.
+import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 import { openApp, expectClean, showTab, seedMls, callApp, loadMlsRankings, WAIVER_RANKINGS_CSV } from './helpers.mjs';
 
@@ -99,6 +100,27 @@ test.describe('Lineup Strategist: who should I drop?', () => {
         const bench = await autoFindWR(page);
         await expect(bench).not.toContainText("is Ja'Marr Chase");
         await expect(bench).toContainText("Not suggested: Ja'Marr Chase (on bye, not in your rankings this week).");
+        await expectClean(page, state);
+    });
+
+    test('Out players count (round 2): an Out bench WR is the drop on both screens, an Out star is not', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await page.route(/api\.sleeper\.app\/v1\/players\/nfl$/, (route) => {
+            const players = JSON.parse(readFileSync(new URL('./fixtures/sleeper/players-nfl.json', import.meta.url), 'utf8'));
+            players['7523'].injury_status = 'Out';   // Garrett Wilson
+            players['4866'].injury_status = 'Out';   // Ja'Marr Chase
+            return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(players) });
+        });
+        await seedMls(page);
+        await loadMlsRankings(page, WAIVER_RANKINGS_CSV, N);
+        await showTab(page, 'roster');
+        await expect(row(page, 'Garrett Wilson').locator('.mls-drop-badge')).toHaveText('Drop 1');
+        await expect(row(page, "Ja'Marr Chase").locator('.mls-drop-badge')).toHaveCount(0);
+
+        const bench = await autoFindWR(page);
+        await expect(bench).toContainText('Your top drop at WR is Garrett Wilson');
+        await expect(bench).toContainText('Out this week');
+        await expect(bench).not.toContainText('Not counted');
         await expectClean(page, state);
     });
 

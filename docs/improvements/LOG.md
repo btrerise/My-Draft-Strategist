@@ -1121,7 +1121,9 @@ on the name line). Tap: the shared sheet with why in plain words ("WR7 on your t
 of 2 at WR"), the top five with scores, who isn't suggested, and in keeper leagues a note that the app can't see
 keepers. Auto-Find, Whole Roster: the drop candidate is the same order within the group ("Your top drop at WR is …",
 a "Why:" line, "Next drops", "Not suggested: …"); the summary says "compared against your top drop at each position".
-Check a List is unchanged (still your weakest). No rankings: no badges, Auto-Find as before. Guide legend line added.
+Round 2: Auto-Find counts Out players again when the drop order picks (`rosterBenchmark`'s `keepOut`), so it agrees
+with the badges. Check a List is unchanged (still your weakest). No rankings: no badges, Auto-Find as before (Out left
+out). Guide legend line added.
 
 **The owner's decisions (Asks you, 2026-11-23).** Sketch built from the owner's live Sleeper rosters with FantasyCalc
 standing in for their own rankings. Where: a badge on the Roster tab plus the Auto-Find tie-in (chosen over a fourth
@@ -1139,11 +1141,12 @@ background and redraw once), `render/roster.js`, `scout/waivers.js` (`renderRost
 taxi, locked starters, and a player on bye that no set ranks. K/DEF only beyond the number you start.
 
 **Tests.** `tests/mls-who-to-drop.spec.mjs`: no rankings, the clear drop (Garrett Wilson) on Roster and Auto-Find, a
-locked player, a starter on bye with Weekly only, trending failing. Seven Auto-Find specs reworded to the new line;
+locked player, a starter on bye with Weekly only, an Out bench WR (the drop) beside an Out star (not), trending failing. Seven Auto-Find specs reworded to the new line;
 F30's weekly-only case now expects "Not suggested: Ja'Marr Chase (on bye, …)" (intended). Screenshots: only
 `desktop/mls-league-guide.png` and `phone/mls-league-guide.png` (the legend line and Guide text), found by rendering
 main and this branch in one container; CI re-takes them.
 
-**Left over.** Auto-Find's `rosterBenchmark` still leaves out Out players (S5's rule), so a Roster badge on an Out
-player can differ from Auto-Find's pick. The weights are constants in `droppable.js` (no setting). Full suite not run
-(only on the pull request).
+`mls-weakest-player.spec.mjs` now expects the Out WR as Auto-Find's drop (round 2). CI re-took both PNGs (f56fb0f).
+
+**Left over.** Fixed weights, by the owner's choice: presets are an Open follow-up in `docs/TESTING.md`. Full suite
+not run (only on the pull request).

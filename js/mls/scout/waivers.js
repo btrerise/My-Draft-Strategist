@@ -249,13 +249,17 @@ import { dropPicksFor } from './dropPicks.js';
     // Weekly set leaves out (on bye, or just not ranked this week) is judged by his ROS rank when the league has one
     // (`rankedBy: 'ROS'`, `rosRank`), not as unranked: on his bye a star isn't in the weekly rankings. `onBye` says
     // why he's missing, for the row's wording; without a ROS rank he stays unranked, as before.
-    export function rosterBenchmark(league, getPos, basisByName, filter, weekly) {
+    //
+    // `keepOut` (improvements S54, round 2): Out players stay in. Auto-Find passes it when the drop order picks the
+    // candidate, which judges an Out player by ROS, so an Out star is never the drop and an Out bench player can be.
+    export function rosterBenchmark(league, getPos, basisByName, filter, weekly, { keepOut = false } = {}) {
         const skipped = [];
         const mine = (league.roster || [])
             .map(p => ({ ...p, pos: getPos(p.cleanName) }))
             .filter(p => matchesPosFilter(p.pos, filter))
             .filter(p => {
                 const why = notOnActiveRoster(p);
+                if (why === 'OUT' && keepOut) return true;
                 if (why) skipped.push({ name: p.name, why });
                 return !why;
             })
@@ -999,7 +1003,7 @@ import { dropPicksFor } from './dropPicks.js';
             const dropOrder = drops ? new Map(drops.picks.map((x, i) => [String(x.player.id), i])) : null;
             const dropWhy = drops ? new Map(drops.picks.map(x => [String(x.player.id), x.reasons.join(' · ')])) : null;
             const renderRosterGroup = (g) => {
-                const bm = rosterBenchmark(league, ctx.getPos, basisByName, g.filter, weeklyFallback(ctx));
+                const bm = rosterBenchmark(league, ctx.getPos, basisByName, g.filter, weeklyFallback(ctx), { keepOut: !!drops });
                 const { skipped } = bm;
                 let { mine, bench } = bm;
                 const droppable = dropOrder ? mine.filter(p => dropOrder.has(String(p.id))) : [];

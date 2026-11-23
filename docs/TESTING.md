@@ -396,6 +396,9 @@ done or dropped, remove its line here in the same change. Background for each is
   the legend on its own) in `visual.spec.mjs`, or find what M17 made too tall to paint.
 
 **Needs the owner's decision first**
+- Who to drop's weights are fixed (S54): rankings 50, depth 20, Power Rankings place 15, upside 15, constants in
+  `js/mls/scout/droppable.js`. If the order feels off after a few weeks of use, offer three presets (Balanced /
+  Rankings first / Need first) rather than sliders: one `mls_` key in `keys.js`, read by `dropPicks.js`.
 - Manual leagues can't be dynasty (improvements S23, round 12). They have no league type, so they always count as
   redraft: no In-Season rankings, no Future column, no draft picks in trades. A "League type" choice for manual leagues
   (beside League style on the Setup tab) would fix that, but the owner noted the payoff is small: Power Rankings need a
