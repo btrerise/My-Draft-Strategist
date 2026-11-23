@@ -396,6 +396,8 @@ done or dropped, remove its line here in the same change. Background for each is
   the legend on its own) in `visual.spec.mjs`, or find what M17 made too tall to paint.
 
 **Needs the owner's decision first**
+- A "Show drop badges" switch (S54): if the Roster tab's Drop 1-3 badges start to feel like clutter, a Settings switch
+  beside the FAAB-bid one, on by default, hiding only the badges (Auto-Find keeps its pick); one `mls_` key in `keys.js`.
 - Who to drop's weights are fixed (S54): rankings 50, depth 20, Power Rankings place 15, upside 15, constants in
   `js/mls/scout/droppable.js`. If the order feels off after a few weeks of use, offer three presets (Balanced /
   Rankings first / Need first) rather than sliders: one `mls_` key in `keys.js`, read by `dropPicks.js`.
