@@ -1128,7 +1128,10 @@ badges, Auto-Find as before. Guide legend line.
 per waiver card, a sort). Text "Drop 1", not a trash can (Material: delete now). Weights A: rankings 50 (ROS vs the
 league's starter line; this season's set a quarter, ROS alone on bye), depth 20, Power Rankings place 15 (S29), upside
 15. Out players count. Rookies: weight and a note, more in dynasty (taxi moves aren't free in season, so no taxi
-suggestion). Rounds 3-5 came from the owner's user's-eye reviews (two on their backup, 19 leagues).
+suggestion). Rounds 3-6 came from the owner's user's-eye reviews (three on their backup, 19 leagues). Round 6: Auto-Find
+titles a starter or breakout pick "If you need a spot at TE:" (`keep`), groups "Not counted" by reason; the sheet's
+note and the legend line describe the current rules. Owner declined a "Your drops" line above the list (they look at
+the bottom of the roster for drops).
 
 **Rules.** Upside: trending adds, same tier as your starters, age in dynasty, rookie (0.6 dynasty / 0.25 redraft), a
 breakout (Weekly rank inside the starters and at least twice ROS: no "won't start"). Dynasty: the dynasty set is "ROS",
@@ -1142,7 +1145,7 @@ the sheet being outside `delegate()`'s containers), `render/roster.js`, `scout/w
 **Tests.** `tests/unit/droppable.test.mjs`; `tests/mls-who-to-drop.spec.mjs` (empty, the clear drop, locked, starter on
 bye, Out players, Find his replacement, manual league, trending failing). Eight Auto-Find specs reworded; F30's
 weekly-only bye case now expects "Not suggested". Screenshots: `desktop/` and `phone/mls-league-guide.png` only,
-re-taken on CI (f56fb0f); later rounds change none.
+re-taken on CI (f56fb0f), and again in round 6 for the legend line's wording.
 
 **Left over.** Fixed weights (owner's choice); presets are an Open follow-up in `docs/TESTING.md`. Full suite not run
 (only on the pull request).

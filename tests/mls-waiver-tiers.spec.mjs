@@ -156,7 +156,7 @@ test.describe('Lineup Strategist: the compared player\'s tier in the Waiver Wire
         await runAutoFind(page, { basis: 'weekly', pos: 'FLEX', compare: 'roster' });
         await expect(benchmark(page)).toContainText('Drop first at RB/WR/TE: Garrett Wilson (Wk Flex #');
         await runAutoFind(page, { basis: 'ros', pos: 'RB', compare: 'roster' });
-        await expect(benchmark(page)).toContainText('Drop first at RB: Derrick Henry (ROS RB5 · T3).');
+        await expect(benchmark(page)).toContainText('If you need a spot at RB: Derrick Henry (ROS RB5 · T3).');
         await runAutoFind(page, { basis: 'weekly', pos: 'FLEX', compare: 'lineup' });
         await expect(scanCard(page, 'Jaxon Smith-Njigba').locator('.mls-scan-ranks')).toContainText('Wk Pos: WR11 (T4)Wk Flex: #22 (T4)');
         await expect(scanCard(page, 'Jaxon Smith-Njigba').locator('.mls-scan-verdict')).toContainText('Would need to pass CeeDee Lamb (your FLEX) · 3 tiers down');
@@ -173,7 +173,7 @@ test.describe('Lineup Strategist: the compared player\'s tier in the Waiver Wire
 
         // Auto-Find, Whole Roster: the drop candidate and the upgrade's numbers line.
         await runAutoFind(page, { basis: 'ros', pos: 'RB', compare: 'roster' });
-        await expect(benchmark(page)).toContainText('Drop first at RB: Derrick Henry (ROS RB8 · T4).');
+        await expect(benchmark(page)).toContainText('If you need a spot at RB: Derrick Henry (ROS RB8 · T4).');
         const cook = scanCard(page, 'James Cook');
         await expect(cook.locator('.mls-scan-verdict')).toContainText('Upgrade over Derrick Henry · 1 tier up');
         await expect(cook.locator('.mls-tier-gap')).toHaveClass(/\bis-up\b/);

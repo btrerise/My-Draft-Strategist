@@ -225,8 +225,8 @@ What changed for users in each version of the two apps, in plain language. Newes
   reason). A player with no NFL team says so first. A rookie keeps some upside (more in
   dynasty), a player far better in this week's rankings than ROS isn't treated as a drop, dynasty leagues read your
   In-Season rankings, and Best Ball leagues say "his points rarely count". "Find his replacement" scrolls straight to the results.
-  Auto-Find's Whole Roster lens now picks its drop candidate the same way ("Drop first at WR"), with the same
-  sentence under it, and counts Out players
+  Auto-Find's Whole Roster lens now picks its drop candidate the same way ("Drop first at WR", or "If you need a spot
+  at TE" when the pick is a starter or having a big week), with the same sentence under it, and counts Out players
   again (judged by ROS, so an Out star is never the drop).
 - **The suggested FAAB bid reads in dollars.** Every amount in the bid chip and its pop-out now has a $ (Bid $13–$21,
   of your $63 left), so a bid can't be mistaken for a rank or a percent. The pop-out's sentences are shorter, and the

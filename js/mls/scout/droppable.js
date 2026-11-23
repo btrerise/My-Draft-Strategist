@@ -179,7 +179,8 @@ export function rankDroppable(input) {
         const butText = (list) => list.length ? `, but ${list.join(' and ')}` : '';
         const short = [lead, ...clauses].join('; ') + butText(buts) + '.';
         const verdict = [lead, ...clauses, room].filter(Boolean).join('; ') + butText(thin ? [...buts, thin] : buts) + '.';
-        picks.push({ player: p, score, reasons, verdict, short });
+        // `keep` (round 6): a starter or a breakout. First in a small group, he's still not one to drop lightly.
+        picks.push({ player: p, score, reasons, verdict, short, keep: depth <= starts || hot });
     });
     picks.sort((a, b) => b.score - a.score || sortKey(b.player) - sortKey(a.player));
     protectedList.sort((a, b) => a.player.name.localeCompare(b.player.name));

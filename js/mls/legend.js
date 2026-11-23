@@ -132,7 +132,7 @@ const GROUPS = [
             MEANING.irSlot],
         [`<span class="badge badge-rookie">R</span>`, 'A rookie.'],
         [dropBadgeMarkup(1, '', '', SAMPLE),
-            'On the Roster tab: your three most droppable players, Drop 1 first, by your ROS rankings (Weekly counts a quarter), your depth and Power Rankings place at his position, and upside (trending adds, tier, age in dynasty). Never on IR, taxi or a locked starter. Tap it for why. Auto-Find\'s Whole Roster drop candidate is the same pick.'],
+            'On the Roster tab: your three most droppable players, Drop 1 first, by his rank at his position (ROS, or your dynasty rankings), your depth and Power Rankings place there, and upside (trending adds, tier, a rookie, a big week, age in dynasty). Never on IR, taxi or a player you locked. Tap it for why. Auto-Find\'s Whole Roster drop candidate is the same pick.'],
         [sleeperLineupBadgeMarkup(false) + sleeperLineupBadgeMarkup(true),
             MEANING.sleeperLineup],
         [`<div class="lineup-needs-box has-problems"><div class="lineup-needs-title">${WARNING_ICON}<span>This lineup needs you</span></div><ul class="lineup-needs-list"><li class="lineup-needs-item is-injured">Player is Out: start Other Player instead?</li><li class="lineup-needs-item is-ir">Activate Player from IR on Sleeper before kickoff</li></ul></div>`,

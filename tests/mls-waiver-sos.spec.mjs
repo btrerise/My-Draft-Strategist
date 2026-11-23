@@ -119,7 +119,7 @@ test.describe('Lineup Strategist SoS badge in the Waiver Wire Assistant', () => 
         // Auto-Find, Whole Roster: beside the drop candidate.
         await callApp(page, 'setWaiverCompare', 'roster');
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
-        const henry = out(page).locator('.mls-scan-benchmark').filter({ hasText: 'Drop first at RB: Derrick Henry' });
+        const henry = out(page).locator('.mls-scan-benchmark').filter({ hasText: 'If you need a spot at RB: Derrick Henry' });
         await expect(sos(henry)).toHaveText('SoS: 25');
         await expect(sos(out(page).locator('.mls-scan-benchmark').filter({ hasText: 'Drop first at WR: Garrett Wilson' }))).toHaveText('SoS: 27');
 

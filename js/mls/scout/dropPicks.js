@@ -140,7 +140,7 @@ export const openDropReasons = function(btn) {
         <ol class="mls-drop-list">${result.picks.slice(0, 5).map(item).join('')}</ol>
         ${result.protected.length ? `<p class="mls-drop-note">Not suggested: ${escapeHtml(protectedText(result.protected))}.</p>` : ''}
         ${result.note ? `<p class="mls-drop-note">${escapeHtml(result.note)}</p>` : ''}
-        <p class="mls-drop-note">How it's ordered: your ROS rank against the league's starters at his position counts most (this week's rank a quarter of it), then your depth there, your Power Rankings place there, and upside: trending adds, tier and, in dynasty, age. The app doesn't make the move on Sleeper.</p>`;
+        <p class="mls-drop-note">How it's ordered: his rank against the league's starters at his position counts most (ROS, or your dynasty rankings in a dynasty league, with this season's rank a quarter of it), then your depth there, your Power Rankings place there, and upside: trending adds, tier, a rookie, a big week in this week's rankings and, in dynasty, age. Never suggested: IR, taxi, or a player you locked. The app doesn't make the move on Sleeper.</p>`;
     openSheet({ title: 'Who to drop', body, opener: btn, className: 'mls-drop-sheet' });
     // The sheet sits outside the containers delegate() watches (as the Lineup details sheet's lock button).
     const find = document.querySelector('.mls-drop-sheet .mls-drop-find');

@@ -1003,6 +1003,7 @@ import { protectedText } from './droppable.js';
             const drops = dropPicksFor(league);
             const dropOrder = drops ? new Map(drops.picks.map((x, i) => [String(x.player.id), i])) : null;
             const dropWhy = drops ? new Map(drops.picks.map(x => [String(x.player.id), x.verdict])) : null;
+            const dropKeep = drops ? new Set(drops.picks.filter(x => x.keep).map(x => String(x.player.id))) : null;
             const renderRosterGroup = (g) => {
                 const bm = rosterBenchmark(league, ctx.getPos, basisByName, g.filter, weeklyFallback(ctx), { keepOut: !!drops });
                 const { skipped } = bm;
@@ -1018,7 +1019,9 @@ import { protectedText } from './droppable.js';
                 // Active players the drop order leaves out (you locked him, or on bye with no rank to judge him by).
                 const held = drops ? drops.protected.filter(x => mine.some(p => String(p.id) === String(x.player.id))) : [];
                 const notSuggested = held.length ? `<div class="mls-scan-benchmark-next">Not suggested: ${escapeHtml(protectedText(held))}.</div>` : '';
-                const notCounted = skipped.length ? `<div class="mls-scan-benchmark-next">Not counted: ${skippedPlayersText(skipped)}.</div>` : '';
+                // Grouped by reason when the drop order picks (round 6), as the Roster tab's sheet lists them.
+                const notCountedText = drops ? escapeHtml(protectedText(skipped.map(x => ({ player: { name: x.name }, why: x.why })))) : skippedPlayersText(skipped);
+                const notCounted = skipped.length ? `<div class="mls-scan-benchmark-next">Not counted: ${notCountedText}.</div>` : '';
                 if (!bench) {
                     return { body: `<div class="mls-scan-empty">You have no ${skipped.length ? 'active ' : ''}${groupName(g)} on your roster to compare against.</div>${notCounted}`, count: 0, countText: 'no roster players' };
                 }
@@ -1060,7 +1063,7 @@ import { protectedText } from './droppable.js';
                     `<span class="mls-scan-next-item">${escapeHtml(p.name)} (${rankText(p)})${i < nextUpNames.length - 1 ? ',' : ''}</span>`);
                 const header = `
                 <div class="mls-scan-benchmark">
-                    <div class="mls-scan-benchmark-title">${why ? `Drop first at ${groupName(g)}:` : `Drop candidate (by ${basisName}):`}</div>
+                    <div class="mls-scan-benchmark-title">${!why ? `Drop candidate (by ${basisName}):` : dropKeep.has(String(bench.id)) ? `If you need a spot at ${groupName(g)}:` : `Drop first at ${groupName(g)}:`}</div>
                     ${why ? '' : `Your weakest ${groupName(g)} is `}<strong>${escapeHtml(bench.name)}</strong>${getSoSBadgeHTML(bench.team, bench.pos, WAIVER_SOS_OPTS)} (${rankText(bench)}).
                     ${why ? `<div class="mls-scan-benchmark-why">${escapeHtml(why)}</div>` : ''}
                     ${nextUp.length ? `<div class="mls-scan-benchmark-next">${why ? 'Next drops' : 'Next weakest'}: ${nextUp.join(' ')}</div>` : ''}

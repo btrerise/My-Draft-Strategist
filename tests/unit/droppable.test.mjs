@@ -136,3 +136,10 @@ test('round 5: a breakout this week is upside, rookies keep upside (more in dyna
     const bb = rankDroppable({ players: [...base(), vet], reqs: REQS, teamCount: 12, bestBall: true });
     assert.match(bb.picks[0].verdict, /so his points rarely count/);
 });
+
+test('round 6: a starter or a breakout is flagged keep (Auto-Find titles him "If you need a spot at …")', () => {
+    const roster = [pl('Rb One', 'RB', 3), pl('Rb Two', 'RB', 8), pl('Rb Hot', 'RB', 30, { now: { posRank: 1 } }), pl('Rb Deep', 'RB', 40)];
+    const r = rankDroppable({ players: roster, reqs: REQS, teamCount: 12 });
+    const keep = Object.fromEntries(r.picks.map(x => [x.player.name, x.keep]));
+    assert.deepEqual(keep, { 'Rb One': true, 'Rb Two': true, 'Rb Hot': true, 'Rb Deep': false });
+});
