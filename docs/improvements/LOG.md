@@ -1130,8 +1130,8 @@ league's starter line; this season's set a quarter, ROS alone on bye), depth 20,
 15. Out players count. Rookies: weight and a note, more in dynasty (taxi moves aren't free in season, so no taxi
 suggestion). Rounds 3-6 came from the owner's user's-eye reviews (three on their backup, 19 leagues). Round 6: Auto-Find
 titles a starter or breakout pick "If you need a spot at TE:" (`keep`), groups "Not counted" by reason; the sheet's
-note and the legend line describe the current rules. Owner declined a "Your drops" line above the list (they look at
-the bottom of the roster for drops).
+note and the legend line describe the current rules. Owner declined a "Your drops" line above the list and a "Show drop
+badges" switch (an Open follow-up).
 
 **Rules.** Upside: trending adds, same tier as your starters, age in dynasty, rookie (0.6 dynasty / 0.25 redraft), a
 breakout (Weekly rank inside the starters and at least twice ROS: no "won't start"). Dynasty: the dynasty set is "ROS",
@@ -1145,9 +1145,9 @@ the sheet being outside `delegate()`'s containers), `render/roster.js`, `scout/w
 **Tests.** `tests/unit/droppable.test.mjs`; `tests/mls-who-to-drop.spec.mjs` (empty, the clear drop, locked, starter on
 bye, Out players, Find his replacement, manual league, trending failing). Eight Auto-Find specs reworded; F30's
 weekly-only bye case now expects "Not suggested". Screenshots: `desktop/` and `phone/mls-league-guide.png` only,
-re-taken on CI (f56fb0f), and again in round 6 for the legend line's wording. The full run found two of mine: the
-badge's 48px tap area was clipped by the row (now `:has(.mls-drop-badge)` like the dual badge), and the Roster tab's
-extra redraws wiped S29's "updating this league" line mid-sync (`tradeLine.js` now holds it, `entry.syncing`).
+re-taken on CI (f56fb0f), and again in round 6 for the legend line's wording. The full run caught two: the badge's
+tap area clipped by the row (`:has(.mls-drop-badge)`), and the tab's extra redraws wiping S29's syncing line
+(`entry.syncing` in `tradeLine.js`).
 
 **Left over.** Fixed weights (owner's choice); presets are an Open follow-up in `docs/TESTING.md`. Full suite not run
 (only on the pull request).
