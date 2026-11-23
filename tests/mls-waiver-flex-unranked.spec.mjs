@@ -171,7 +171,7 @@ test.describe('Lineup Strategist: Auto-Find with a player outside the FLEX list'
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         await expect(out(page).locator('.mls-scan-summary')).toBeVisible();
         const header = out(page).locator('.mls-scan-benchmark');
-        await expect(header).toContainText('Your top drop at RB/WR/TE is CeeDee Lamb (Wk Flex: not in list · WR30 · T8).');
+        await expect(header).toContainText('Drop first at RB/WR/TE: CeeDee Lamb (Wk Flex: not in list · WR30 · T8).');
         await expect(header).not.toContainText('unranked');
         expect(await nowrapLines(header)).toEqual([1]);
         expect(await listed(page)).toEqual(BEFORE.autoRoster);

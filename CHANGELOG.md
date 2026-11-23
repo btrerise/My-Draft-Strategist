@@ -217,11 +217,13 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **Who should I drop?** On the Roster tab, your three most droppable players carry a "Drop 1", "Drop 2" or "Drop 3"
-  badge. Tap one for the reasons in plain words ("WR8 on your team · ROS WR60 · you're 2nd of 12 at WR") and the top
-  five drops. It weighs your ROS rankings most (this week's rank a quarter of that; a starter on bye is judged by ROS),
+  badge. Tap one for why, in plain words ("Your 7th WR, so he won't start for you; ranked outside the league's starting
+  WRs; your WR room is the league's best"), the facts behind it, your top five drops, and a **Find his replacement**
+  button that opens Auto-Find at his position. It weighs your ROS rankings most (this week's rank a quarter of that; a starter on bye is judged by ROS),
   then your depth and Power Rankings place at the position, and upside: Sleeper trending adds, tier, and age in
   dynasty. Players on IR, on the taxi squad or locked in your lineup are never suggested, and the sheet names them.
-  Auto-Find's Whole Roster lens now picks its drop candidate the same way, with a "Why" line, and counts Out players
+  Auto-Find's Whole Roster lens now picks its drop candidate the same way ("Drop first at WR"), with the same
+  sentence under it, and counts Out players
   again (judged by ROS, so an Out star is never the drop).
 - **The suggested FAAB bid reads in dollars.** Every amount in the bid chip and its pop-out now has a $ (Bid $13–$21,
   of your $63 left), so a bid can't be mistaken for a rank or a percent. The pop-out's sentences are shorter, and the

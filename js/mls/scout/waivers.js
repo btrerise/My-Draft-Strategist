@@ -1001,7 +1001,7 @@ import { dropPicksFor } from './dropPicks.js';
             // the group (ROS rank, depth, Power Rankings place, upside), not just the lowest rank. Without it, the weakest.
             const drops = dropPicksFor(league);
             const dropOrder = drops ? new Map(drops.picks.map((x, i) => [String(x.player.id), i])) : null;
-            const dropWhy = drops ? new Map(drops.picks.map(x => [String(x.player.id), x.reasons.join(' · ')])) : null;
+            const dropWhy = drops ? new Map(drops.picks.map(x => [String(x.player.id), x.verdict])) : null;
             const renderRosterGroup = (g) => {
                 const bm = rosterBenchmark(league, ctx.getPos, basisByName, g.filter, weeklyFallback(ctx), { keepOut: !!drops });
                 const { skipped } = bm;
@@ -1059,9 +1059,9 @@ import { dropPicksFor } from './dropPicks.js';
                     `<span class="mls-scan-next-item">${escapeHtml(p.name)} (${rankText(p)})${i < nextUpNames.length - 1 ? ',' : ''}</span>`);
                 const header = `
                 <div class="mls-scan-benchmark">
-                    <div class="mls-scan-benchmark-title">Drop candidate (by ${basisName}):</div>
-                    Your ${why ? 'top drop at' : 'weakest'} ${groupName(g)} is <strong>${escapeHtml(bench.name)}</strong>${getSoSBadgeHTML(bench.team, bench.pos, WAIVER_SOS_OPTS)} (${rankText(bench)}).
-                    ${why ? `<div class="mls-scan-benchmark-why">Why: ${escapeHtml(why)}.</div>` : ''}
+                    <div class="mls-scan-benchmark-title">${why ? `Drop first at ${groupName(g)}:` : `Drop candidate (by ${basisName}):`}</div>
+                    ${why ? '' : `Your weakest ${groupName(g)} is `}<strong>${escapeHtml(bench.name)}</strong>${getSoSBadgeHTML(bench.team, bench.pos, WAIVER_SOS_OPTS)} (${rankText(bench)}).
+                    ${why ? `<div class="mls-scan-benchmark-why">${escapeHtml(why)}</div>` : ''}
                     ${upgrades.length ? `Available players ranked ahead of him:`
                         : g.items.length === 0 ? `<div class="mls-scan-benchmark-ok">${noneAvailableText(g)}</div>`
                         : `<div class="mls-scan-benchmark-ok">No ${availGroup(groupName(g))} ranks ahead of him; you're set here by ${basisName}.</div>`}
@@ -1115,7 +1115,7 @@ import { dropPicksFor } from './dropPicks.js';
             }
             if (unresolvedCount > 0) notes.push(`${unresolvedCount} ranked name${unresolvedCount === 1 ? '' : 's'} couldn't be matched to a Sleeper player and ${unresolvedCount === 1 ? 'was' : 'were'} left out: ${formatUnmatchedNames(unresolvedNames)} Usually a spelling difference; renaming them in your rankings file to match Sleeper brings them back.`);
 
-            const compareText = mode === 'roster' && drops ? 'compared against your top drop at each position' : waiverCompareText(ctx, mode);
+            const compareText = mode === 'roster' && drops ? "compared against who you'd drop first at each position" : waiverCompareText(ctx, mode);
             let html = `
             <div class="mls-scan-summary">
                 ${knowsWholeLeague ? 'Top available' : 'Top players not on your roster'} in <strong>${escapeHtml(league.name || 'this league')}</strong> by <strong>${basisName} rank</strong>, ${compareText}.

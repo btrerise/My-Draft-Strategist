@@ -54,7 +54,7 @@ test.describe('Lineup Strategist weakest rostered player', () => {
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         // Since S54 round 2 the drop order picks, and it counts Out players (judged by ROS): Wilson, Out and WR10 ROS,
         // is the top drop, as his Drop 1 badge says. Only the taxi player is left out.
-        await expect(out).toContainText('Your top drop at WR is Garrett Wilson');
+        await expect(out).toContainText('Drop first at WR: Garrett Wilson');
         await expect(out).toContainText('Out this week');
         await expect(out).toContainText('Not counted: A.J. Brown (taxi).');
 

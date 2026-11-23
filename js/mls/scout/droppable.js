@@ -117,17 +117,42 @@ export function rankDroppable(input) {
 
         const score = Math.round(WEIGHTS.rank * rank + WEIGHTS.depth * depthTerm + WEIGHTS.need * needTerm + WEIGHTS.upside * upTerm);
 
+        // The facts, each said once: this week's rank only when it differs from ROS (round 3).
         const reasons = [`${p.pos}${depth} on your team`];
         if (rosR) reasons.push(`ROS ${p.pos}${rosR}`);
         else if (input.hasRos !== false) reasons.push('not in your ROS rankings');
         if (p.onBye) reasons.push('on bye');
-        else if (nowR) reasons.push(`${nowLabel} ${p.pos}${nowR}`);
+        else if (nowR && nowR !== rosR) reasons.push(`${nowLabel} ${p.pos}${nowR}`);
         if (p.inj === 'OUT') reasons.push('Out this week');
         if (place) reasons.push(`you're ${ordinal(place)} of ${teams} at ${p.pos}`);
         if (sameTier) reasons.push('same tier as your starters');
         if (trending) reasons.push(`trending: ${Number(p.trending).toLocaleString('en-US')} adds`);
         if (input.dynasty && age) reasons.push(`age ${age}`);
-        picks.push({ player: p, score, reasons });
+
+        // The verdict in plain words (round 3, the owner's review): what the facts add up to. `short` leaves out the
+        // position-room clause, which would repeat on every player at that position in a list.
+        const starts = Math.max(1, Math.round(need));
+        const best = rosR || nowR;
+        const lead = depth > starts
+            ? `Your ${ordinal(depth)} ${p.pos}, so he won't start for you`
+            : `One of your starting ${p.pos}s`;
+        const clauses = [];
+        if (!best) clauses.push('not in your rankings');
+        else if (best > line) clauses.push(`ranked outside the league's starting ${p.pos}s`);
+        if (p.inj === 'OUT') clauses.push('Out this week');
+        const buts = [];
+        if (trending) buts.push(`trending (${Number(p.trending).toLocaleString('en-US')} adds)`);
+        if (young) buts.push(`only ${age}`);
+        if (sameTier) buts.push('in the same tier as your starters');
+        if (old) clauses.push(`${age} years old`);
+        // Your Power Rankings place there: a strong room makes him spare, a thin one is a reason to keep him.
+        let room = '', thin = '';
+        if (place && place <= Math.ceil(teams / 3)) room = place === 1 ? `your ${p.pos} room is the league's best` : `your ${p.pos} room is ${ordinal(place)} of ${teams}`;
+        else if (place && place > Math.floor(teams * 2 / 3)) thin = `your ${p.pos} room is thin (${ordinal(place)} of ${teams})`;
+        const butText = (list) => list.length ? `, but ${list.join(' and ')}` : '';
+        const short = [lead, ...clauses].join('; ') + butText(buts) + '.';
+        const verdict = [lead, ...clauses, room].filter(Boolean).join('; ') + butText(thin ? [...buts, thin] : buts) + '.';
+        picks.push({ player: p, score, reasons, verdict, short });
     });
     picks.sort((a, b) => b.score - a.score || sortKey(b.player) - sortKey(a.player));
     protectedList.sort((a, b) => a.player.name.localeCompare(b.player.name));

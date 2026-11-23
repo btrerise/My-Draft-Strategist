@@ -55,17 +55,35 @@ test.describe('Lineup Strategist: who should I drop?', () => {
         await badge.click();
         const sheet = page.locator('.sheet');
         await expect(sheet).toBeVisible();
-        await expect(sheet).toContainText('Garrett Wilson is your number 1 drop: WR7 on your team · ROS WR');
-        await expect(sheet).toContainText("of 2 at WR");
+        // Round 3: the verdict in plain words first, the facts once under it, no scores.
+        await expect(sheet.locator('.mls-drop-lead')).toHaveText("Garrett Wilson is your number 1 drop. Your 7th WR, so he won't start for you; ranked outside the league's starting WRs; your WR room is the league's best.");
+        await expect(sheet.locator('.mls-drop-facts')).toHaveText("WR7 on your team · ROS WR10 · you're 1st of 2 at WR");
+        await expect(sheet.locator('.mls-drop-list li.is-current')).toContainText('Garrett Wilson');
+        await expect(sheet.locator('.mls-drop-list')).not.toContainText("room is the league's best");
         await page.keyboard.press('Escape');
         await expect(sheet).toBeHidden();
 
         const bench = await autoFindWR(page);
-        await expect(bench).toContainText('Your top drop at WR is Garrett Wilson');
-        await expect(bench).toContainText('Why: WR7 on your team');
+        await expect(bench).toContainText('Drop first at WR: Garrett Wilson (Wk WR10 · T4).');
+        await expect(bench.locator('.mls-scan-benchmark-why')).toHaveText("Your 7th WR, so he won't start for you; ranked outside the league's starting WRs; your WR room is the league's best.");
         await expect(bench).toContainText('Next drops:');
         await page.waitForLoadState('networkidle');
         expect(state.unmocked, 'Sleeper URLs with no fixture').toEqual([]);
+        await expectClean(page, state);
+    });
+
+    test("the sheet's Find his replacement opens Auto-Find, Whole Roster, at his position", async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await loadMlsRankings(page, WAIVER_RANKINGS_CSV, N);
+        await showTab(page, 'roster');
+        await row(page, 'Garrett Wilson').locator('.mls-drop-badge').click();
+        await page.locator('.sheet').getByRole('button', { name: 'Find his replacement' }).click();
+        await expect(page.locator('.sheet')).toBeHidden();
+        await expect(page.locator('#scoutTab')).toHaveClass(/\bactive\b/);
+        await expect(page.locator('#waiverOutput .mls-scan-benchmark')).toContainText('Drop first at WR: Garrett Wilson');
+        await expect(page.locator('#waiverModeToggle [data-mode="auto"]')).toHaveAttribute('aria-pressed', 'true');
+        await expect(page.locator('[data-compare="roster"]')).toHaveAttribute('aria-pressed', 'true');
         await expectClean(page, state);
     });
 
@@ -118,7 +136,7 @@ test.describe('Lineup Strategist: who should I drop?', () => {
         await expect(row(page, "Ja'Marr Chase").locator('.mls-drop-badge')).toHaveCount(0);
 
         const bench = await autoFindWR(page);
-        await expect(bench).toContainText('Your top drop at WR is Garrett Wilson');
+        await expect(bench).toContainText('Drop first at WR: Garrett Wilson');
         await expect(bench).toContainText('Out this week');
         await expect(bench).not.toContainText('Not counted');
         await expectClean(page, state);

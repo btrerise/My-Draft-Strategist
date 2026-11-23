@@ -16,10 +16,12 @@ import { getPowerLeagueKind } from '../power/directionLabels.js';
 import { computePositionalPower } from '../power/shared.js';
 import { resolvePowerRankingsSource } from '../power/rosterCard.js';
 import { ageFromMeta } from '../power/futureValue.js';
-import { getSleeperMetaByName, lineupCheckDeps, sleeperMetaByNameIfLoaded } from './waivers.js';
+import { autoFindWaiverUpgrades, getSleeperMetaByName, lineupCheckDeps, sleeperMetaByNameIfLoaded, updateWaiverScanSetting } from './waivers.js';
 import { isFullyMappedLeague } from './allLeaguesSearch.js';
 import { isWeekOver } from './waiverStatus.js';
-import { openSheet } from '../../shared/ui/sheet.js';
+import { closeSheet, openSheet } from '../../shared/ui/sheet.js';
+import { showTab } from '../main.js';
+import { setWaiverMode } from './topAvailable.js';
 import { protectedText, rankDroppable } from './droppable.js';
 
 const TRENDING = { lookbackHours: 24, limit: 50 };    // Top Available's request (S6), so the cache is shared
@@ -111,13 +113,38 @@ export const openDropReasons = function(btn) {
     const at = result.picks.findIndex(x => String(x.player.id) === String(btn.dataset.id));
     if (at < 0) return;
     const pick = result.picks[at];
-    const item = (x) => `<li><strong>${escapeHtml(x.player.name)}</strong> <span class="mls-drop-score">${x.score}</span>
-        <div class="mls-drop-why">${escapeHtml(x.reasons.join(' · '))}</div></li>`;
+    // Round 3 (the owner's review): the verdict first, the facts once under it, and a way on to the claim. The list
+    // shows each player's short verdict, no scores (a bare number had no scale), with this player marked.
+    const item = (x, i) => `<li${i === at ? ' class="is-current" aria-current="true"' : ''}><strong>${escapeHtml(x.player.name)}</strong>
+        <div class="mls-drop-why">${escapeHtml(x.short)}</div></li>`;
+    const canFind = REPLACEABLE.includes(pick.player.pos);
     const body = `
-        <p class="mls-drop-lead"><strong>${escapeHtml(pick.player.name)}</strong> is your number ${at + 1} drop: ${escapeHtml(pick.reasons.join(' · '))}.</p>
+        <p class="mls-drop-lead"><strong>${escapeHtml(pick.player.name)}</strong> is your number ${at + 1} drop. ${escapeHtml(pick.verdict)}</p>
+        <p class="mls-drop-facts">${escapeHtml(pick.reasons.join(' · '))}</p>
+        ${canFind ? `<button type="button" class="btn btn-primary mls-drop-find" data-pos="${escapeHtml(pick.player.pos)}">Find his replacement</button>` : ''}
+        <h3 class="mls-drop-heading">Your drop order</h3>
         <ol class="mls-drop-list">${result.picks.slice(0, 5).map(item).join('')}</ol>
         ${result.protected.length ? `<p class="mls-drop-note">Not suggested: ${escapeHtml(protectedText(result.protected))}.</p>` : ''}
         ${result.note ? `<p class="mls-drop-note">${escapeHtml(result.note)}</p>` : ''}
-        <p class="mls-drop-note">Higher score = drop first (out of 100). Your ROS rank against the league's starters at his position counts most (Weekly a quarter of it), then your depth there, your Power Rankings place there, and upside: trending adds, tier and, in dynasty, age. The app doesn't make the move on Sleeper.</p>`;
-    openSheet({ title: 'Who to drop', body, opener: btn });
+        <p class="mls-drop-note">How it's ordered: your ROS rank against the league's starters at his position counts most (this week's rank a quarter of it), then your depth there, your Power Rankings place there, and upside: trending adds, tier and, in dynasty, age. The app doesn't make the move on Sleeper.</p>`;
+    openSheet({ title: 'Who to drop', body, opener: btn, className: 'mls-drop-sheet' });
+    // The sheet sits outside the containers delegate() watches (as the Lineup details sheet's lock button).
+    const find = document.querySelector('.mls-drop-sheet .mls-drop-find');
+    if (find) find.addEventListener('click', () => findDropReplacement(find));
 };
+
+// Positions Auto-Find's position filter takes (its FLEX and ALL aside).
+const REPLACEABLE = ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'];
+
+// "Find his replacement" (round 3): Auto-Find, Whole Roster, at his position, run straight away. Its drop candidate is
+// the same player (the drop order within the position), so the list is who ranks ahead of him.
+async function findDropReplacement(btn) {
+    const pos = btn && btn.dataset.pos;
+    if (!REPLACEABLE.includes(pos)) return;
+    await closeSheet({ restoreFocus: false });
+    setWaiverMode('auto');          // clears the last results, as switching by hand does
+    updateWaiverScanSetting('compare', 'roster');
+    updateWaiverScanSetting('pos', pos);
+    showTab('scout');
+    autoFindWaiverUpgrades(document.querySelector('[data-action="autoFindWaiverUpgrades"]'));
+}

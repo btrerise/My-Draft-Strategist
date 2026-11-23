@@ -44,8 +44,8 @@ test.describe('Lineup Strategist: Auto-Find drop candidate on a bye', () => {
     test('with ROS rankings, a star on bye is ranked by ROS and not offered as the drop', async ({ page }) => {
         const state = await setup(page, { withRos: true });
         const bench = page.locator('#waiverOutput .mls-scan-benchmark').first();
-        await expect(bench).toContainText('Your top drop at WR is');
-        await expect(bench).not.toContainText("Your top drop at WR is Ja'Marr Chase");
+        await expect(bench).toContainText('Drop first at WR:');
+        await expect(bench).not.toContainText("Drop first at WR: Ja'Marr Chase");
         await page.waitForLoadState('networkidle');
         expect(state.unmocked, 'Sleeper URLs with no fixture').toEqual([]);
         await expectClean(page, state);
@@ -54,7 +54,7 @@ test.describe('Lineup Strategist: Auto-Find drop candidate on a bye', () => {
     test('without ROS rankings, the star on bye is not suggested, and the line says why (S54)', async ({ page }) => {
         const state = await setup(page, { withRos: false });
         const bench = page.locator('#waiverOutput .mls-scan-benchmark').first();
-        await expect(bench).not.toContainText("Your top drop at WR is Ja'Marr Chase");
+        await expect(bench).not.toContainText("Drop first at WR: Ja'Marr Chase");
         await expect(bench).toContainText("Not suggested: Ja'Marr Chase (on bye, not in your rankings this week).");
         await expectClean(page, state);
     });
