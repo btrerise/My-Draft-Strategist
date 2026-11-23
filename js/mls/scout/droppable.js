@@ -59,8 +59,10 @@ function protectedWhy(p, hasRos) {
 // input: {
 //   players: [{ id, name, cleanName, pos, team, inj, isTaxi, isReserve, locked, onBye,
 //               ros: { posRank, posTier } | null,      // the league's ROS rankings (display ranks)
-//               now: { posRank } | null,               // this week's set, when loaded
-//               age, trending }],                      // trending: Sleeper's 24-hour add count, or 0
+//               now: { posRank } | null,               // this season's set: Weekly, or a dynasty league's In-Season set
+//               week: { posRank } | null,              // Weekly, for the breakout check (round 5); defaults to `now`
+//               age, trending, rookie }],              // trending: Sleeper's 24-hour add count, or 0
+//   bestBall (round 5: "his points rarely count" instead of "won't start for you")
 //   reqs, teamCount, powerRank: { QB, RB, WR, TE } | null (your place at each), dynasty, keeper, nowLabel ('Wk'),
 //   hasRos (false: no ROS set loaded, so "not in your ROS rankings" isn't said)
 // }
@@ -114,10 +116,19 @@ export function rankDroppable(input) {
             .filter(m => m !== p && m.ros && Number.isFinite(m.ros.posTier) && m.ros.posTier > 0).map(m => m.ros.posTier);
         const sameTier = depth > Math.round(need) && p.ros && Number.isFinite(p.ros.posTier) && p.ros.posTier > 0 && starterTiers.includes(p.ros.posTier);
         const age = Number.isFinite(p.age) && p.age > 0 ? p.age : null;
-        const young = !!(input.dynasty && age && age <= YOUNG_AT);
+        // A rookie (round 5, the owner's ask): rookies take time to develop, so he keeps upside, more in dynasty than
+        // redraft. In dynasty it stands in for "young" (no double count).
+        const rookie = !!p.rookie;
+        const young = !!(input.dynasty && !rookie && age && age <= YOUNG_AT);
         const old = !!(input.dynasty && age && OLD_AT[p.pos] && age >= OLD_AT[p.pos]);
         const trending = p.trending > 0;
-        const up = (trending ? 0.5 : 0) + (young ? 0.5 : 0) + (sameTier ? 0.3 : 0) - (old ? 0.4 : 0);
+        // A breakout (round 5): this week's Weekly rank is inside the league's starters and at least twice as good as
+        // ROS (or ROS doesn't rank him). The rankings haven't caught up, so he isn't a drop on ROS alone.
+        const wk = p.week !== undefined ? p.week : p.now;
+        const weekR = !p.onBye && wk && ranked(wk.posRank) ? wk.posRank : null;
+        const hot = !!(weekR && weekR <= line && (!rosR || weekR * 2 <= rosR));
+        const up = (trending ? 0.5 : 0) + (young ? 0.5 : 0) + (rookie ? (input.dynasty ? 0.6 : 0.25) : 0)
+            + (hot ? 0.6 : 0) + (sameTier ? 0.3 : 0) - (old ? 0.4 : 0);
         const upTerm = clamp01(0.5 - 0.5 * up);
 
         const score = Math.round(WEIGHTS.rank * rank + WEIGHTS.depth * depthTerm + WEIGHTS.need * needTerm + WEIGHTS.upside * upTerm);
@@ -131,6 +142,8 @@ export function rankDroppable(input) {
         else if (input.hasRos !== false) reasons.push(`not in your ${rosLong} rankings`);
         if (p.onBye) reasons.push('on bye');
         else if (nowR && nowR !== rosR) reasons.push(`${nowLabel} ${p.pos}${nowR}`);
+        if (hot && wk !== p.now) reasons.push(`Wk ${p.pos}${weekR}`);
+        if (rookie) reasons.push('rookie');
         if (p.inj === 'OUT') reasons.push('Out this week');
         if (place) reasons.push(`you're ${ordinal(place)} of ${teams} at ${p.pos}`);
         if (sameTier) reasons.push('same tier as your starters');
@@ -141,16 +154,21 @@ export function rankDroppable(input) {
         // position-room clause, which would repeat on every player at that position in a list.
         const starts = Math.max(1, Math.round(need));
         const best = rosR || nowR;
-        const lead = depth > starts
-            ? `Your ${ordinal(depth)} ${p.pos}, so he won't start for you`
-            : `One of your starting ${p.pos}s`;
+        // Best Ball (round 5): nobody sets a lineup, so it's whether his points count. A breakout may start this week,
+        // so his depth is said without the "won't start" part.
+        const lead = depth <= starts ? `One of your starting ${p.pos}s`
+            : hot ? `Your ${ordinal(depth)} ${p.pos}`
+            : input.bestBall ? `Your ${ordinal(depth)} ${p.pos}, so his points rarely count`
+            : `Your ${ordinal(depth)} ${p.pos}, so he won't start for you`;
         const clauses = [];
         if (noTeam) clauses.push('no NFL team');
         else if (!best) clauses.push('not in your rankings');
-        else if (best > line) clauses.push(`ranked outside the league's starting ${p.pos}s`);
+        else if (best > line) clauses.push(`ranked outside the league's starting ${p.pos}s${hot ? (input.dynasty ? ' in your dynasty rankings' : ' by ROS') : ''}`);
         if (p.inj === 'OUT') clauses.push('Out this week');
         const buts = [];
+        if (hot) buts.push(`Wk ${p.pos}${weekR} this week`);
         if (trending) buts.push(`trending (${Number(p.trending).toLocaleString('en-US')} adds)`);
+        if (rookie) buts.push(input.dynasty ? 'a rookie, still developing' : 'a rookie');
         if (young) buts.push(`only ${age}`);
         if (sameTier) buts.push('in the same tier as your starters');
         if (old) clauses.push(`${age} years old`);

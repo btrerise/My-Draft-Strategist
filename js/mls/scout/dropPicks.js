@@ -8,7 +8,8 @@
 //   Sleeper's trending adds and ages load in the background; the first one to land redraws (`rerender`), once.
 import { State } from '../state.js';
 import { escapeHtml } from '../../shared/html.js';
-import { getActiveLeague, isUnavailableThisWeek, lineupWeek, rankingIndex } from '../helpers.js';
+import { getActiveLeague, isBestBallLeague, isUnavailableThisWeek, lineupWeek, rankingIndex } from '../helpers.js';
+import { _rookieIndex, getRookieIndex, isRookiePlayer } from '../render/rookies.js';
 import { getSleeperTrendingAdds } from '../../shared/api/sleeper.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
 import { seasonSetFor } from '../rankings/season.js';
@@ -68,14 +69,22 @@ function yourPowerPlaces(league) {
     return { places: { QB: you.qbRank, RB: you.rbRank, WR: you.wrRank, TE: you.teRank }, teams: teams.length };
 }
 
-// The drop order for a league (the active one by default), or null without rankings or a roster.
+// The drop order for the active league, or null without rankings or a roster. Only the active league: State's
+// rankings are the active league's, so any other league would be scored with the wrong sets (round 5; the owner's
+// backup review caught a script doing that). Pass a copy of the active league (same leagueId) to vary it in a test.
 export function dropPicksFor(league = getActiveLeague(), rerender = null) {
-    if (!league || !Array.isArray(league.roster) || league.roster.length === 0) return null;
+    if (!league || league.leagueId !== State.activeLeagueId) return null;
+    if (!Array.isArray(league.roster) || league.roster.length === 0) return null;
     const dynasty = getPowerLeagueKind(league) === 'dynasty';
     const rosOf = ranksFrom(State.rosRankings, league, rerender);
-    const season = dynasty && State.weeklyRankings.length === 0 && State.rosRankings.length > 0 ? seasonSetFor(league, State.rankingSets.ros) : null;
-    const nowOf = State.weeklyRankings.length > 0 ? ranksFrom(State.weeklyRankings, league, rerender) : season ? ranksFrom(season.data, league, rerender) : null;
+    // This season (round 5): a dynasty league's In-Season set when it has one (its rows show it, and a 200-player
+    // dynasty set leaves deep benches unranked), else Weekly. Weekly still feeds the breakout check either way.
+    const season = dynasty && State.rosRankings.length > 0 ? seasonSetFor(league, State.rankingSets.ros) : null;
+    const weekOf = State.weeklyRankings.length > 0 ? ranksFrom(State.weeklyRankings, league, rerender) : null;
+    const nowOf = season ? ranksFrom(season.data, league, rerender) : weekOf;
     if (!rosOf && !nowOf) return null;
+    const rookies = _rookieIndex;
+    if (!rookies) whenLoaded(getRookieIndex(), rerender);
 
     const meta = sleeperMetaByNameIfLoaded();
     if (!meta && dynasty) whenLoaded(getSleeperMetaByName(), rerender);
@@ -96,6 +105,8 @@ export function dropPicksFor(league = getActiveLeague(), rerender = null) {
             ...p,
             ros: rosOf ? rosOf(p.cleanName) : null,
             now: nowOf ? nowOf(p.cleanName) : null,
+            week: weekOf ? weekOf(p.cleanName) : null,
+            rookie: isRookiePlayer(p, rookies),
             onBye: byeWeek != null && isUnavailableThisWeek({ team: p.team }, byeWeek),
             locked: locks.has(String(p.id)),
             age: m ? ageFromMeta(m) : null,
@@ -104,7 +115,7 @@ export function dropPicksFor(league = getActiveLeague(), rerender = null) {
     });
     return rankDroppable({
         players, reqs: league.reqs, teamCount, powerRank: places, dynasty, hasRos: !!rosOf,
-        keeper: league.leagueType === 'keeper', nowLabel: State.weeklyRankings.length > 0 ? 'Wk' : 'In-Season'
+        keeper: league.leagueType === 'keeper', nowLabel: season ? 'In-Season' : 'Wk', bestBall: isBestBallLeague(league)
     });
 }
 

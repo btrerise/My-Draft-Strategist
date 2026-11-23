@@ -154,11 +154,13 @@ test.describe('Lineup Strategist: who should I drop?', () => {
             const { dropPicksFor } = await import('/js/mls/scout/dropPicks.js');
             const league = State.leagues.find(l => l.leagueId === State.activeLeagueId);
             const of = (l) => dropPicksFor(l).picks.find(x => x.player.name === 'Garrett Wilson').verdict;
-            return { synced: of(league), manual: of({ ...league, leagueId: 'manual_test', username: 'Manual' }) };
+            // Only the active league is scored (round 5), so the manual stand-in is a copy of it that isn't Sleeper-synced.
+            return { synced: of(league), manual: of({ ...league, username: 'Manual' }), other: dropPicksFor({ ...league, leagueId: 'other' }) };
         });
         // The fixture league has 2 teams, so WR10 is past its starters; in a 12-team league he isn't.
         expect(verdicts.synced).toContain("ranked outside the league's starting WRs");
         expect(verdicts.manual).not.toContain('ranked outside');
+        expect(verdicts.other, 'another league is never scored with the active league\'s rankings').toBeNull();
         await expectClean(page, state);
     });
 

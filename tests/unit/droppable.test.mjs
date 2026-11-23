@@ -114,3 +114,25 @@ test('round 4: no NFL team leads the verdict; a dynasty league names its dynasty
     assert.ok(r.picks.find(x => x.player.name === 'Wr Deep').reasons.includes('not in your dynasty rankings'));
     assert.ok(r.picks.find(x => x.player.name === 'Wr One').reasons.includes('Dyn WR2'));
 });
+
+test('round 5: a breakout this week is upside, rookies keep upside (more in dynasty), Best Ball says points', () => {
+    const base = () => [pl('Rb One', 'RB', 3), pl('Rb Two', 'RB', 8), pl('Rb Three', 'RB', 12)];
+    const hot = pl('Rb Hot', 'RB', 30, { now: { posRank: 1 } }), cold = pl('Rb Cold', 'RB', 30, { now: { posRank: 31 } });
+    const r = rankDroppable({ players: [...base(), hot, cold], reqs: REQS, teamCount: 12 });
+    const h = r.picks.find(x => x.player === hot), c = r.picks.find(x => x.player === cold);
+    assert.ok(c.score > h.score, 'the breakout is kept ahead of his twin');
+    assert.equal(h.verdict, 'Your 4th RB, but Wk RB1 this week.');
+    assert.doesNotMatch(h.verdict, /won't start/);
+
+    const rook = pl('Rb Rookie', 'RB', 40, { rookie: true }), vet = pl('Rb Vet', 'RB', 40);
+    const red = rankDroppable({ players: [...base(), rook, vet], reqs: REQS, teamCount: 12 });
+    const dyn = rankDroppable({ players: [...base(), rook, vet], reqs: REQS, teamCount: 12, dynasty: true });
+    const gap = (res) => res.picks.find(x => x.player === vet).score - res.picks.find(x => x.player === rook).score;
+    assert.ok(gap(red) > 0 && gap(dyn) > gap(red), 'a rookie keeps more upside in dynasty');
+    assert.match(dyn.picks.find(x => x.player === rook).verdict, /but a rookie, still developing\.$/);
+    assert.match(red.picks.find(x => x.player === rook).verdict, /but a rookie\.$/);
+    assert.ok(red.picks.find(x => x.player === rook).reasons.includes('rookie'));
+
+    const bb = rankDroppable({ players: [...base(), vet], reqs: REQS, teamCount: 12, bestBall: true });
+    assert.match(bb.picks[0].verdict, /so his points rarely count/);
+});

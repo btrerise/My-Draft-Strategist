@@ -1116,36 +1116,33 @@ outbid; then "Teams with the most left (you have $63):").
 
 ## S54 — Who should I drop?
 
-**User-visible.** Roster tab: your three most droppable players carry an amber "Drop 1" / "Drop 2" / "Drop 3" text badge
-on the name line. Tap: a sheet with a plain-words verdict ("Your 7th WR, so he won't start for you; ranked outside the
-league's starting WRs; your WR room is the league's best"), the facts once under it, **Find his replacement** (Auto-Find,
-Whole Roster, his position), your top five drops (short verdicts, no scores), who isn't suggested, and in keeper leagues
-a note that the app can't see keepers. Auto-Find, Whole Roster: "Drop first at WR: Name (rank)." with the verdict,
-"Next drops" and "Not suggested"; it counts Out players again when the drop order picks (`keepOut`). Check a List is
-unchanged. No rankings: no badges, Auto-Find as before. Guide legend line.
+**User-visible.** Roster tab: your three most droppable players carry an amber "Drop 1"-"Drop 3" text badge. Tap: a
+sheet with a plain-words verdict ("Your 7th WR, so he won't start for you; ranked outside the league's starting WRs;
+your WR room is the league's best"), the facts once, **Find his replacement** (Auto-Find, Whole Roster, his position,
+scrolled to the results), your top five (short verdicts, no scores), who isn't suggested (grouped by reason), and a
+keeper-league note. Auto-Find, Whole Roster: "Drop first at WR: Name (rank)." with the verdict, "Next drops", "Not
+suggested"; it counts Out players when the drop order picks (`keepOut`). Check a List unchanged. No rankings: no
+badges, Auto-Find as before. Guide legend line.
 
-**The owner's decisions (2026-11-23).** Sketch from the owner's live Sleeper rosters (FantasyCalc standing in for their
-rankings). Where: Roster tab badge plus the Auto-Find tie-in (over a Waiver-tool mode, an add/drop line per waiver card,
-or a "Droppable" sort). Text "Drop 1", not a trash can (Material: that icon means delete now). Weights A: rankings 50
-(ROS vs the league's starter line; this week's set a quarter, ROS alone on bye, F30), depth 20, Power Rankings place 15
-(S29), upside 15 (trending, same tier as your starters, age in dynasty). Out players count, with "Out this week".
-Round 2: leftovers (Out players, fixed weights). Round 3, the owner's user's-eye review: verdict first, no repeats, no
-scores, Find his replacement, the "Drop first" wording. Round 4, a review on the owner's backup (19 leagues): a manual
-league counts as 12 teams (it read as 2, so RB13 was "outside the starters"); the bye rule protects only when no
-ROS-shaped set is loaded (unranked dynasty players on bye were skipped); only locks you set protect (owner agreed:
-kickoff locks are over when a claim runs, and they filled "Not suggested" with 10-20 names on Sundays); the list groups
-by reason; "dynasty rankings"/"Dyn" in dynasty; "no NFL team" leads; Find his replacement scrolls to the results after
-the tab's own scroll; Auto-Find's "ranked ahead of him:" sits right above the cards; the Compare Against hint updated.
+**The owner's decisions (2026-11-23).** Where: Roster badge plus the Auto-Find tie-in (over a Waiver-tool mode, a line
+per waiver card, a sort). Text "Drop 1", not a trash can (Material: delete now). Weights A: rankings 50 (ROS vs the
+league's starter line; this season's set a quarter, ROS alone on bye), depth 20, Power Rankings place 15 (S29), upside
+15. Out players count. Rookies: weight and a note, more in dynasty (taxi moves aren't free in season, so no taxi
+suggestion). Rounds 3-5 came from the owner's user's-eye reviews (two on their backup, 19 leagues).
 
-**Where.** `scout/droppable.js` (pure: score, `reasons`, `verdict`, `short`), `scout/dropPicks.js` (input from State,
-the sheet; its button has its own listener, the sheet being outside `delegate()`'s containers), `render/roster.js`,
-`scout/waivers.js`, `badges.js`, `legend.js`, `css/mls.css`. K/DEF only beyond what you start.
+**Rules.** Upside: trending adds, same tier as your starters, age in dynasty, rookie (0.6 dynasty / 0.25 redraft), a
+breakout (Weekly rank inside the starters and at least twice ROS: no "won't start"). Dynasty: the dynasty set is "ROS",
+the In-Season set "this season". Never suggested: IR, taxi, locks you set (kickoff locks are over when a claim runs);
+on bye only when no ROS-shaped set is loaded (F30's case). Manual league: 12 teams. Best Ball: "his points rarely
+count". K/DEF only beyond what you start. `dropPicksFor` scores only the active league (State's rankings are its).
 
-**Tests.** `tests/unit/droppable.test.mjs`; `tests/mls-who-to-drop.spec.mjs` (no rankings, the clear drop on both
-screens, locked, starter on bye, Out bench WR vs Out star, Find his replacement, trending failing). Eight Auto-Find specs
-reworded; F30's weekly-only case now expects Chase "Not suggested (on bye, …)", and `mls-weakest-player` the Out WR as
-the drop (intended). Screenshots: `desktop/` and `phone/mls-league-guide.png` only (legend line, Guide text), re-taken
-on CI (f56fb0f); rounds 2-3 change none.
+**Where.** `scout/droppable.js` (pure), `scout/dropPicks.js` (State input, the sheet; its button has its own listener,
+the sheet being outside `delegate()`'s containers), `render/roster.js`, `scout/waivers.js`, `badges.js`, `legend.js`.
+
+**Tests.** `tests/unit/droppable.test.mjs`; `tests/mls-who-to-drop.spec.mjs` (empty, the clear drop, locked, starter on
+bye, Out players, Find his replacement, manual league, trending failing). Eight Auto-Find specs reworded; F30's
+weekly-only bye case now expects "Not suggested". Screenshots: `desktop/` and `phone/mls-league-guide.png` only,
+re-taken on CI (f56fb0f); later rounds change none.
 
 **Left over.** Fixed weights (owner's choice); presets are an Open follow-up in `docs/TESTING.md`. Full suite not run
 (only on the pull request).
