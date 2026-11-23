@@ -2837,7 +2837,8 @@ button.ir-slot-badge { font-family: inherit; line-height: inherit; cursor: point
 /* The two-set badge's tooltip (S24, round 4): the row's info box clips (overflow: hidden), which hid the tooltip, so rows
    with that badge don't clip. Always, not only while it's open: switching overflow on hover reflowed the row under the
    pointer, which ended the hover and flickered. min-width: 0 keeps the row's width as it was. */
-.mls-player-row-info:has(.mls-rank-dual-tip) { overflow: visible; min-width: 0; }
+/* The same for a row with a "Drop 1" badge (S54): the clip cut off the top of its 48px tap area (touch-targets.spec). */
+.mls-player-row-info:has(.mls-rank-dual-tip, .mls-drop-badge) { overflow: visible; min-width: 0; }
 /* The notes under the Now / Long-term tiles, in one quiet box (S24, round 8). */
 .mls-trade-tile-notes { margin-bottom: 0.6rem; padding: 0.5rem 0.7rem; border-radius: 8px; background: var(--surface-inset); }
 .mls-trade-tile-notes .trade-verdict-note { margin: 0; font-size: 0.8rem; text-align: left; }

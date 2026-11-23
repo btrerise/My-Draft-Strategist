@@ -86,6 +86,9 @@ export function renderPastTradeLine(ctx) {
         return;
     }
     if (entry.status !== 'done') { hide(); return; }
+    // The box's own sync is still running (S54: the Roster tab now redraws when Sleeper's trending adds or the rookie
+    // list arrive, and a redraw used to replace the "updating" line with nothing until the sync was done).
+    if (entry.syncing) { showSyncing(entry.syncing); return; }
 
     const playerOf = (pid) => {
         const p = playerMap && playerMap[pid];
@@ -105,11 +108,14 @@ export function renderPastTradeLine(ctx) {
         if (fresh) {
             autoSynced.add(league.leagueId);
             entry.keepAfterSync = true;
+            entry.syncing = fresh;
             showSyncing(fresh);
             syncLeagueForTrade(league, `Synced for your trade on ${dateOf(fresh.time)}`).then(ok => {
-                if (ok) return;
-                entry.keepAfterSync = false;
-                if (lastCtx && rosterTabShowing()) renderPastTradeLine(lastCtx);
+                entry.syncing = null;
+                if (!ok) entry.keepAfterSync = false;
+                // Draw it now: the sync's own redraw may have come while the line above still held the box.
+                const active = getActiveLeague();
+                if (lastCtx && active && active.leagueId === league.leagueId && rosterTabShowing()) renderPastTradeLine(lastCtx);
             });
             return;
         }

@@ -384,6 +384,9 @@ done or dropped, remove its line here in the same change. Background for each is
   Trade Analyzer, "To make it fair" and the Future column. Not needed in season (improvements S19, round 4).
 
 **Tests**
+- **`mls-starter-alert.spec.mjs` "on: asks once from the tap…" is flaky** (found in S54's full run): its
+  `check(page, { refresh: false })` after the reload sometimes returns the alert instead of null, about 1 run in 5 on
+  main too (`--repeat-each=5`, desktop). Likely a timing race between the reload and the "already alerted" record.
 - **CI runs near its time limit** (F31): the Checks job took 25 to 30 minutes on recent pull requests (two runs passed with
   under 30 seconds to spare; F31's two runs were cancelled at 30). The limit is now 45 minutes (F31) as a stopgap. The fix is to
   split the Playwright run across parallel jobs (`--shard=1/3` and so on; one shard also runs check-precache and

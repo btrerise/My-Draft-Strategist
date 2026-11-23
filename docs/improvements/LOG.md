@@ -1145,7 +1145,9 @@ the sheet being outside `delegate()`'s containers), `render/roster.js`, `scout/w
 **Tests.** `tests/unit/droppable.test.mjs`; `tests/mls-who-to-drop.spec.mjs` (empty, the clear drop, locked, starter on
 bye, Out players, Find his replacement, manual league, trending failing). Eight Auto-Find specs reworded; F30's
 weekly-only bye case now expects "Not suggested". Screenshots: `desktop/` and `phone/mls-league-guide.png` only,
-re-taken on CI (f56fb0f), and again in round 6 for the legend line's wording.
+re-taken on CI (f56fb0f), and again in round 6 for the legend line's wording. The full run found two of mine: the
+badge's 48px tap area was clipped by the row (now `:has(.mls-drop-badge)` like the dual badge), and the Roster tab's
+extra redraws wiped S29's "updating this league" line mid-sync (`tradeLine.js` now holds it, `entry.syncing`).
 
 **Left over.** Fixed weights (owner's choice); presets are an Open follow-up in `docs/TESTING.md`. Full suite not run
 (only on the pull request).
