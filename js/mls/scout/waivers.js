@@ -26,6 +26,8 @@ import { recentDropsFor } from './recentDrops.js';
 import { faabBidsFor, isFaabLeague, suggestBidFor } from './faabHistory.js';
 import { maybeShowFaabHint } from './faabSettings.js';
 import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
+import { dropPicksFor } from './dropPicks.js';
+import { protectedText } from './droppable.js';
 
     // --- WAIVER WIRE ASSISTANT: AUTO-FIND ---
     // One scanner, two lenses, picked with the "Compare Against" toggle:
@@ -148,7 +150,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         if (wrap) wrap.style.visibility = s.compare === 'roster' ? 'hidden' : 'visible';
         const hint = document.getElementById('waiverCompareHint');
         if (hint) hint.innerText = s.compare === 'roster'
-            ? 'Free agents ranked ahead of your weakest rostered player at each position (your drop candidate).'
+            ? 'Free agents ranked ahead of who you\'d drop first at each position (the Roster tab\'s Drop 1 order; your weakest player there without rankings).'
             : 'Free agents who would crack your current starting lineup this week, and who they would replace.';
 
         // --- SCAN PASTED LIST: SEARCH IN (This League | All My Leagues) ---
@@ -248,13 +250,17 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     // Weekly set leaves out (on bye, or just not ranked this week) is judged by his ROS rank when the league has one
     // (`rankedBy: 'ROS'`, `rosRank`), not as unranked: on his bye a star isn't in the weekly rankings. `onBye` says
     // why he's missing, for the row's wording; without a ROS rank he stays unranked, as before.
-    export function rosterBenchmark(league, getPos, basisByName, filter, weekly) {
+    //
+    // `keepOut` (improvements S54, round 2): Out players stay in. Auto-Find passes it when the drop order picks the
+    // candidate, which judges an Out player by ROS, so an Out star is never the drop and an Out bench player can be.
+    export function rosterBenchmark(league, getPos, basisByName, filter, weekly, { keepOut = false } = {}) {
         const skipped = [];
         const mine = (league.roster || [])
             .map(p => ({ ...p, pos: getPos(p.cleanName) }))
             .filter(p => matchesPosFilter(p.pos, filter))
             .filter(p => {
                 const why = notOnActiveRoster(p);
+                if (why === 'OUT' && keepOut) return true;
                 if (why) skipped.push({ name: p.name, why });
                 return !why;
             })
@@ -992,9 +998,30 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
             // Whole Roster lens: the drop-candidate comparison. Your weakest rostered player in
             // the group (by the same comparator used to order the free agents) is the benchmark;
             // every free agent ranked ahead of him is listed.
+            // Who to drop (improvements S54, owner's choice): the drop candidate is the Roster tab's "Drop 1" order within
+            // the group (ROS rank, depth, Power Rankings place, upside), not just the lowest rank. Without it, the weakest.
+            const drops = dropPicksFor(league);
+            const dropOrder = drops ? new Map(drops.picks.map((x, i) => [String(x.player.id), i])) : null;
+            const dropWhy = drops ? new Map(drops.picks.map(x => [String(x.player.id), x.verdict])) : null;
+            const dropKeep = drops ? new Set(drops.picks.filter(x => x.keep).map(x => String(x.player.id))) : null;
             const renderRosterGroup = (g) => {
-                const { mine, bench, skipped } = rosterBenchmark(league, ctx.getPos, basisByName, g.filter, weeklyFallback(ctx));
-                const notCounted = skipped.length ? `<div class="mls-scan-benchmark-next">Not counted: ${skippedPlayersText(skipped)}.</div>` : '';
+                const bm = rosterBenchmark(league, ctx.getPos, basisByName, g.filter, weeklyFallback(ctx), { keepOut: !!drops });
+                const { skipped } = bm;
+                let { mine, bench } = bm;
+                const droppable = dropOrder ? mine.filter(p => dropOrder.has(String(p.id))) : [];
+                if (droppable.length) {
+                    // Most droppable last, as `mine` is ordered (the rest keep their rank order ahead of them).
+                    droppable.sort((a, b) => dropOrder.get(String(b.id)) - dropOrder.get(String(a.id)));
+                    mine = [...mine.filter(p => !dropOrder.has(String(p.id))), ...droppable];
+                    bench = mine[mine.length - 1];
+                }
+                const why = bench && dropWhy && dropWhy.get(String(bench.id));
+                // Active players the drop order leaves out (you locked him, or on bye with no rank to judge him by).
+                const held = drops ? drops.protected.filter(x => mine.some(p => String(p.id) === String(x.player.id))) : [];
+                const notSuggested = held.length ? `<div class="mls-scan-benchmark-next">Not suggested: ${escapeHtml(protectedText(held))}.</div>` : '';
+                // Grouped by reason when the drop order picks (round 6), as the Roster tab's sheet lists them.
+                const notCountedText = drops ? escapeHtml(protectedText(skipped.map(x => ({ player: { name: x.name }, why: x.why })))) : skippedPlayersText(skipped);
+                const notCounted = skipped.length ? `<div class="mls-scan-benchmark-next">Not counted: ${notCountedText}.</div>` : '';
                 if (!bench) {
                     return { body: `<div class="mls-scan-empty">You have no ${skipped.length ? 'active ' : ''}${groupName(g)} on your roster to compare against.</div>${notCounted}`, count: 0, countText: 'no roster players' };
                 }
@@ -1036,13 +1063,14 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
                     `<span class="mls-scan-next-item">${escapeHtml(p.name)} (${rankText(p)})${i < nextUpNames.length - 1 ? ',' : ''}</span>`);
                 const header = `
                 <div class="mls-scan-benchmark">
-                    <div class="mls-scan-benchmark-title">Drop candidate (by ${basisName}):</div>
-                    Your weakest ${groupName(g)} is <strong>${escapeHtml(bench.name)}</strong>${getSoSBadgeHTML(bench.team, bench.pos, WAIVER_SOS_OPTS)} (${rankText(bench)}).
-                    ${upgrades.length ? `Available players ranked ahead of him:`
+                    <div class="mls-scan-benchmark-title">${!why ? `Drop candidate (by ${basisName}):` : dropKeep.has(String(bench.id)) ? `If you need a spot at ${groupName(g)}:` : `Drop first at ${groupName(g)}:`}</div>
+                    ${why ? '' : `Your weakest ${groupName(g)} is `}<strong>${escapeHtml(bench.name)}</strong>${getSoSBadgeHTML(bench.team, bench.pos, WAIVER_SOS_OPTS)} (${rankText(bench)}).
+                    ${why ? `<div class="mls-scan-benchmark-why">${escapeHtml(why)}</div>` : ''}
+                    ${nextUp.length ? `<div class="mls-scan-benchmark-next">${why ? 'Next drops' : 'Next weakest'}: ${nextUp.join(' ')}</div>` : ''}
+                    ${notCounted}${why ? notSuggested : ''}
+                    ${upgrades.length ? `<div class="mls-scan-benchmark-lead">Available players ranked ahead of him:</div>`
                         : g.items.length === 0 ? `<div class="mls-scan-benchmark-ok">${noneAvailableText(g)}</div>`
                         : `<div class="mls-scan-benchmark-ok">No ${availGroup(groupName(g))} ranks ahead of him; you're set here by ${basisName}.</div>`}
-                    ${nextUp.length ? `<div class="mls-scan-benchmark-next">Next weakest: ${nextUp.join(' ')}</div>` : ''}
-                    ${notCounted}
                 </div>`;
                 // Everyone ranked ahead is listed, in rank order; only an upgrade by the Dashboard's rule is
                 // called (and counted as) one (improvements S8, rounds 4 and 5). The rest read "Ranked ahead
@@ -1091,7 +1119,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
             }
             if (unresolvedCount > 0) notes.push(`${unresolvedCount} ranked name${unresolvedCount === 1 ? '' : 's'} couldn't be matched to a Sleeper player and ${unresolvedCount === 1 ? 'was' : 'were'} left out: ${formatUnmatchedNames(unresolvedNames)} Usually a spelling difference; renaming them in your rankings file to match Sleeper brings them back.`);
 
-            const compareText = waiverCompareText(ctx, mode);
+            const compareText = mode === 'roster' && drops ? "compared against who you'd drop first at each position" : waiverCompareText(ctx, mode);
             let html = `
             <div class="mls-scan-summary">
                 ${knowsWholeLeague ? 'Top available' : 'Top players not on your roster'} in <strong>${escapeHtml(league.name || 'this league')}</strong> by <strong>${basisName} rank</strong>, ${compareText}.

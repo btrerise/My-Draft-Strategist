@@ -16,7 +16,7 @@ import {
     BYE_BADGE_HTML, DISMISS_ICON, PICK_BADGE_HTML, STARTS_ICON, UPGRADE_ICON,
     WARNING_ICON, bestBallBadgeMarkup, edgeBadgeMarkup, injuryBadgeMarkup, irSlotBadgeMarkup, kickoffBadgeMarkup, leagueStatusChipMarkup,
     ROOT_ICONS, moveChipMarkup, paidBadgeMarkup, posCountChipMarkup, rankBadgeParts, rankGapChipMarkup, rootCountBadgeMarkup, rootOfBadgeMarkup, rootShareMarkup, finalChanceMarkup, scoutPillMarkup,
-    DIVISION_LEADER_MARK, lockDotMarkup, opponentBadgeMarkup, rowMoreMarkup, sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, waiverChipMarkup, faabBidMarkup, weekResultMarkup, weekStatusMarkup
+    DIVISION_LEADER_MARK, lockDotMarkup, opponentBadgeMarkup, rowMoreMarkup, sleeperLineupBadgeMarkup, sosBadgeMarkup, tierGapMarkup, trendBadgeMarkup, waiverChipMarkup, faabBidMarkup, dropBadgeMarkup, weekResultMarkup, weekStatusMarkup
 } from './badges.js';
 import { FANTASY_POSITIONS, slotDisplayName, tierTag } from './constants.js';
 import { CRUNCH_ICON, crunchRowsHTML } from './lineup/byeCrunch.js';
@@ -131,6 +131,8 @@ const GROUPS = [
         [irSlotBadgeMarkup('', SAMPLE),
             MEANING.irSlot],
         [`<span class="badge badge-rookie">R</span>`, 'A rookie.'],
+        [dropBadgeMarkup(1, '', '', SAMPLE),
+            'On the Roster tab: your three most droppable players, Drop 1 first, by his rank at his position (ROS, or your dynasty rankings), your depth and Power Rankings place there, and upside (trending adds, tier, a rookie, a big week, age in dynasty). Never on IR, taxi or a player you locked. Tap it for why. Auto-Find\'s Whole Roster drop candidate is the same pick.'],
         [sleeperLineupBadgeMarkup(false) + sleeperLineupBadgeMarkup(true),
             MEANING.sleeperLineup],
         [`<div class="lineup-needs-box has-problems"><div class="lineup-needs-title">${WARNING_ICON}<span>This lineup needs you</span></div><ul class="lineup-needs-list"><li class="lineup-needs-item is-injured">Player is Out: start Other Player instead?</li><li class="lineup-needs-item is-ir">Activate Player from IR on Sleeper before kickoff</li></ul></div>`,

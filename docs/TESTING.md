@@ -384,6 +384,9 @@ done or dropped, remove its line here in the same change. Background for each is
   Trade Analyzer, "To make it fair" and the Future column. Not needed in season (improvements S19, round 4).
 
 **Tests**
+- **`mls-starter-alert.spec.mjs` "on: asks once from the tap…" is flaky** (found in S54's full run): its
+  `check(page, { refresh: false })` after the reload sometimes returns the alert instead of null, about 1 run in 5 on
+  main too (`--repeat-each=5`, desktop). Likely a timing race between the reload and the "already alerted" record.
 - **CI runs near its time limit** (F31): the Checks job took 25 to 30 minutes on recent pull requests (two runs passed with
   under 30 seconds to spare; F31's two runs were cancelled at 30). The limit is now 45 minutes (F31) as a stopgap. The fix is to
   split the Playwright run across parallel jobs (`--shard=1/3` and so on; one shard also runs check-precache and
@@ -396,6 +399,11 @@ done or dropped, remove its line here in the same change. Background for each is
   the legend on its own) in `visual.spec.mjs`, or find what M17 made too tall to paint.
 
 **Needs the owner's decision first**
+- A "Show drop badges" switch (S54): if the Roster tab's Drop 1-3 badges start to feel like clutter, a Settings switch
+  beside the FAAB-bid one, on by default, hiding only the badges (Auto-Find keeps its pick); one `mls_` key in `keys.js`.
+- Who to drop's weights are fixed (S54): rankings 50, depth 20, Power Rankings place 15, upside 15, constants in
+  `js/mls/scout/droppable.js`. If the order feels off after a few weeks of use, offer three presets (Balanced /
+  Rankings first / Need first) rather than sliders: one `mls_` key in `keys.js`, read by `dropPicks.js`.
 - Manual leagues can't be dynasty (improvements S23, round 12). They have no league type, so they always count as
   redraft: no In-Season rankings, no Future column, no draft picks in trades. A "League type" choice for manual leagues
   (beside League style on the Setup tab) would fix that, but the owner noted the payoff is small: Power Rankings need a

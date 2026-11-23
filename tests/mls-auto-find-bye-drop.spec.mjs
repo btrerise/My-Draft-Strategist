@@ -1,7 +1,8 @@
 // Auto-Find's drop candidate when a rostered star is on bye (improvements F30). Weekly rankings leave out a player on
 // his bye, so he looked like your worst player and Auto-Find (Whole Roster) named him as the one to drop. Now a rostered
 // player missing from the Weekly set is judged by his ROS rank when the league has ROS rankings, and the row says why;
-// a league with only Weekly rankings behaves as before, with a note that he's on bye.
+// a league with only Weekly rankings behaved as before, with a note that he's on bye. Since S54 (who to drop) the drop
+// candidate follows the drop order, which never suggests a player on bye that no set ranks: he's named as not suggested.
 //
 // The fixture week is set to 6, CIN's bye, so Ja'Marr Chase (your WR1, ROS #1) is on bye. The Weekly file is the
 // waiver fixture without Chase; the ROS file is the whole fixture.
@@ -43,18 +44,18 @@ test.describe('Lineup Strategist: Auto-Find drop candidate on a bye', () => {
     test('with ROS rankings, a star on bye is ranked by ROS and not offered as the drop', async ({ page }) => {
         const state = await setup(page, { withRos: true });
         const bench = page.locator('#waiverOutput .mls-scan-benchmark').first();
-        await expect(bench).toContainText('Your weakest WR is');
-        await expect(bench).not.toContainText("Your weakest WR is Ja'Marr Chase");
+        await expect(bench).toContainText('Drop first at WR:');
+        await expect(bench).not.toContainText("Drop first at WR: Ja'Marr Chase");
         await page.waitForLoadState('networkidle');
         expect(state.unmocked, 'Sleeper URLs with no fixture').toEqual([]);
         await expectClean(page, state);
     });
 
-    test('without ROS rankings, the weekly-only behaviour stays, with a note that he is on bye', async ({ page }) => {
+    test('without ROS rankings, the star on bye is not suggested, and the line says why (S54)', async ({ page }) => {
         const state = await setup(page, { withRos: false });
         const bench = page.locator('#waiverOutput .mls-scan-benchmark').first();
-        await expect(bench).toContainText("Your weakest WR is Ja'Marr Chase");
-        await expect(bench).toContainText('On bye');
+        await expect(bench).not.toContainText("Drop first at WR: Ja'Marr Chase");
+        await expect(bench).toContainText("Not suggested: Ja'Marr Chase (on bye, not in your rankings this week).");
         await expectClean(page, state);
     });
 });

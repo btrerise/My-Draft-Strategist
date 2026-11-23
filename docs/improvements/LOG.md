@@ -103,6 +103,7 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - F29 | LOG.md | F29 — First Dashboard load flags starters ruled out after kickoff
 - S55 | LOG.md | S55 — Playoff chances (Monte Carlo)
 - F31 | LOG.md | F31 — FAAB bid pop-out: clearer words, dollar signs
+- S54 | LOG.md | S54 — Who should I drop?
 
 ## F23 — The flash when tapping things on phones
 
@@ -1112,3 +1113,41 @@ outbid; then "Teams with the most left (you have $63):").
 **CI time limit (F31, owner's call).** Both Checks runs on this PR were cancelled at the 30-minute `timeout-minutes`
 (recent PRs ran 25 to 30 minutes). Raised to 45 in `.github/workflows/check.yml`; the shard-the-suite follow-up is under
 "Tests" in `docs/TESTING.md`'s Open follow-ups.
+
+## S54 — Who should I drop?
+
+**User-visible.** Roster tab: your three most droppable players carry an amber "Drop 1"-"Drop 3" text badge. Tap: a
+sheet with a plain-words verdict ("Your 7th WR, so he won't start for you; ranked outside the league's starting WRs;
+your WR room is the league's best"), the facts once, **Find his replacement** (Auto-Find, Whole Roster, his position,
+scrolled to the results), your top five (short verdicts, no scores), who isn't suggested (grouped by reason), and a
+keeper-league note. Auto-Find, Whole Roster: "Drop first at WR: Name (rank)." with the verdict, "Next drops", "Not
+suggested"; it counts Out players when the drop order picks (`keepOut`). Check a List unchanged. No rankings: no
+badges, Auto-Find as before. Guide legend line.
+
+**The owner's decisions (2026-11-23).** Where: Roster badge plus the Auto-Find tie-in (over a Waiver-tool mode, a line
+per waiver card, a sort). Text "Drop 1", not a trash can (Material: delete now). Weights A: rankings 50 (ROS vs the
+league's starter line; this season's set a quarter, ROS alone on bye), depth 20, Power Rankings place 15 (S29), upside
+15. Out players count. Rookies: weight and a note, more in dynasty (taxi moves aren't free in season, so no taxi
+suggestion). Rounds 3-6 came from the owner's user's-eye reviews (three on their backup, 19 leagues). Round 6: Auto-Find
+titles a starter or breakout pick "If you need a spot at TE:" (`keep`), groups "Not counted" by reason; the sheet's
+note and the legend line describe the current rules. Owner declined a "Your drops" line above the list and a "Show drop
+badges" switch (an Open follow-up).
+
+**Rules.** Upside: trending adds, same tier as your starters, age in dynasty, rookie (0.6 dynasty / 0.25 redraft), a
+breakout (Weekly rank inside the starters and at least twice ROS: no "won't start"). Dynasty: the dynasty set is "ROS",
+the In-Season set "this season". Never suggested: IR, taxi, locks you set (kickoff locks are over when a claim runs);
+on bye only when no ROS-shaped set is loaded (F30's case). Manual league: 12 teams. Best Ball: "his points rarely
+count". K/DEF only beyond what you start. `dropPicksFor` scores only the active league (State's rankings are its).
+
+**Where.** `scout/droppable.js` (pure), `scout/dropPicks.js` (State input, the sheet; its button has its own listener,
+the sheet being outside `delegate()`'s containers), `render/roster.js`, `scout/waivers.js`, `badges.js`, `legend.js`.
+
+**Tests.** `tests/unit/droppable.test.mjs`; `tests/mls-who-to-drop.spec.mjs` (empty, the clear drop, locked, starter on
+bye, Out players, Find his replacement, manual league, trending failing). Eight Auto-Find specs reworded; F30's
+weekly-only bye case now expects "Not suggested". Screenshots: `desktop/` and `phone/mls-league-guide.png` only,
+re-taken on CI (f56fb0f), and again in round 6 for the legend line's wording. The full run caught two: the badge's
+tap area clipped by the row (`:has(.mls-drop-badge)`), and the tab's extra redraws wiping S29's syncing line
+(`entry.syncing` in `tradeLine.js`).
+
+**Left over.** Fixed weights (owner's choice); presets are an Open follow-up in `docs/TESTING.md`. Full suite not run
+(only on the pull request).

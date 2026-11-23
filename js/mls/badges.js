@@ -251,6 +251,14 @@ export function waiverChipMarkup(status, tip, { sample = false } = {}) {
     return `<button type="button" class="${cls}" data-action="explainWaiver" data-tip="${tip}" title="${tip}" aria-label="${tip}">${inner}</button>`;
 }
 
+// --- WHO TO DROP (improvements S54; render/roster.js, scout/dropPicks.js) ---
+// "Drop 1" to "Drop 3" on your three most droppable players' name lines on the Roster tab (owner's choice: text, not a
+// trash can, which reads as "delete now"). Tap for the reasons and the drop order, in the shared sheet.
+export function dropBadgeMarkup(n, id, name, { sample = false } = {}) {
+    if (sample) return `<span class="badge mls-drop-badge">Drop ${n}</span>`;
+    return `<button type="button" class="badge mls-drop-badge" data-action="openDropReasons" data-id="${escapeHtml(String(id))}" aria-label="Drop ${n}: why ${escapeHtml(name)} is your number ${n} drop">Drop ${n}</button>`;
+}
+
 // --- A SUGGESTED FAAB BID (improvements S35; scout/waivers.js faabBidHTML) ---
 // "Bid 9–14" after a W chip in a FAAB league (Best available's upgrades, Auto-Find, Check a List); "≈ Bid 2–5", muted,
 // when there were too few bids near his rank (round 2). Tap for what it's based on, in the shared sheet. label: plain

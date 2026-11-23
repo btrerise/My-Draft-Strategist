@@ -238,6 +238,19 @@ body.mls-hide-headshots .mls-headshot { display: none; }
    2px taller than an injured one. Same padding + a border on all (transparent on injury). */
 .mls-name-badges .badge { margin-left: 0; padding: 1px 4px; font-size: 0.65rem; line-height: 1.3; border-style: solid; border-width: 1px; }
 .mls-name-badges .inj-badge { border-color: transparent; }
+/* "Drop 1" to "Drop 3" (improvements S54): your most droppable players. Outlined in amber, the same "worth a look"
+   family as the FAAB bid, so it doesn't read as an injury (red) or a roster status (violet). A button: tap for why. */
+.mls-drop-badge { background: rgba(251, 191, 36, 0.12); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.7); padding: 1px 4px; font-size: 0.65rem; margin-left: 4px; }
+button.mls-drop-badge { font-family: inherit; line-height: inherit; cursor: pointer; }
+/* Its sheet: the reasons, the top five drops with scores, and who isn't suggested. */
+.mls-drop-lead { margin: 0 0 0.35rem; }
+.mls-drop-facts { margin: 0 0 1rem; color: var(--text-muted); font-size: 0.85em; }
+.mls-drop-find { width: 100%; margin: 0 0 1.25rem; }
+.mls-drop-heading { margin: 0 0 0.5rem; font-size: 0.95rem; }
+.mls-drop-list { margin: 0 0 0.75rem; padding-left: 1.4rem; display: grid; gap: 0.5rem; }
+.mls-drop-list li.is-current strong { color: #fbbf24; }
+.mls-drop-why, .mls-scan-benchmark-why { color: var(--text-muted); font-size: 0.85em; }
+.mls-drop-note { color: var(--text-muted); font-size: 0.85em; margin: 0 0 0.5rem; }
 .mls-rank-badge { background: #1c2541; border: 1px solid var(--border); }
 /* Lineup tab: a two-number rank badge ("Pos: #5 (T3) | Flex: #13 (T3)", rankBadgeParts in js/mls/render/lineup.js)
    splits onto two lines at the bar when the row is too narrow, instead of being cut off (improvements F6, owner's
@@ -1747,6 +1760,7 @@ button.opp-rank-badge { background: none; border: 0; font-family: inherit; font-
 .mls-scan-benchmark-title { color: #fca5a5; font-weight: bold; margin-bottom: 4px; }
 .mls-scan-benchmark-ok { margin-top: 0.35rem; color: var(--primary-green); font-weight: 600; }
 .mls-scan-benchmark-next { margin-top: 0.3rem; color: var(--text-muted); font-size: 0.8rem; }
+.mls-scan-benchmark-lead { margin-top: 0.5rem; }
 /* One "name (rank)" in Next weakest: wraps as a whole, and only breaks inside when it's wider than a line. */
 .mls-scan-next-item { display: inline-block; }
 /* "· 1 tier up" after a comparison verdict (improvements S8, round 2): green when he'd jump a tier. */
@@ -2823,7 +2837,8 @@ button.ir-slot-badge { font-family: inherit; line-height: inherit; cursor: point
 /* The two-set badge's tooltip (S24, round 4): the row's info box clips (overflow: hidden), which hid the tooltip, so rows
    with that badge don't clip. Always, not only while it's open: switching overflow on hover reflowed the row under the
    pointer, which ended the hover and flickered. min-width: 0 keeps the row's width as it was. */
-.mls-player-row-info:has(.mls-rank-dual-tip) { overflow: visible; min-width: 0; }
+/* The same for a row with a "Drop 1" badge (S54): the clip cut off the top of its 48px tap area (touch-targets.spec). */
+.mls-player-row-info:has(.mls-rank-dual-tip, .mls-drop-badge) { overflow: visible; min-width: 0; }
 /* The notes under the Now / Long-term tiles, in one quiet box (S24, round 8). */
 .mls-trade-tile-notes { margin-bottom: 0.6rem; padding: 0.5rem 0.7rem; border-radius: 8px; background: var(--surface-inset); }
 .mls-trade-tile-notes .trade-verdict-note { margin: 0; font-size: 0.8rem; text-align: left; }

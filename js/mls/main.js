@@ -36,6 +36,7 @@ import { setFaabBidsOn, setFaabStyle as chooseFaabStyle } from './scout/faabSett
 import { bestAvailableUpload, dismissBestAvailable, renderBestAvailable, restoreBestAvailable, setBestAvailableBasis, viewLeagueTopAvailable } from './scout/bestAvailable.js';
 import './power/allLeagues.js';
 import { scoutGoToLeague } from './scout/allLeaguesSearch.js';
+import { openDropReasons } from './scout/dropPicks.js';
 import { togglePosInput, toggleRankingsCard, toggleUploadMode } from './rankings/engine.js';
 import { deleteRankingSet, onRankingSetSelectChange, onSeasonSetChange, openRankingSetLeagues, openSeasonSetLeagues, renameRankingSet, setRosUploadSlot, useSeasonOffer } from './rankings/sets.js';
 import { openRankingSetView } from './rankings/setView.js';
@@ -225,6 +226,8 @@ const clickActions = {
     setRosterPos() { setRosterPosFilter(this.dataset.pos); },
     // The Roster tab's Sort by: Dynasty | In-Season (improvements S24)
     setRosterSort() { setRosterSort(this.dataset.sort); },
+    // A Roster row's "Drop 1" badge (improvements S54): why, and the rest of the drop order, in the shared sheet.
+    openDropReasons() { openDropReasons(this); },
     // A Roster or Lineup row's IR badge (Sleeper IR slot, lineup/gameInfo.js): what it means, for phones.
     explainIrSlot() { explainIrSlot(this); },
     saveManualSoS() { saveManualSoS(this); },

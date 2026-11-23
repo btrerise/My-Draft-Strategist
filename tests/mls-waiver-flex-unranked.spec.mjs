@@ -110,7 +110,8 @@ async function flexRankTheRest(page) {
         const leagues = JSON.parse(localStorage.getItem('mls_leagues'));
         const league = leagues.find(l => l.leagueId === leagueId);
         ['Puka Nacua', 'Amon-Ra St. Brown', 'A.J. Brown', 'Garrett Wilson', 'Trey McBride', 'George Kittle'].forEach((name, i) => {
-            league.weeklyRankings.push({ name, cleanName: normalizeName(name), posRank: 999, posTier: null, flexRank: 6 + i, flexTier: null, rank: 6 + i, tier: null });
+            // A position rank too (S54): the drop order reads position ranks, and Lamb (WR30) stays the clear drop.
+            league.weeklyRankings.push({ name, cleanName: normalizeName(name), posRank: 3 + i, posTier: null, flexRank: 6 + i, flexTier: null, rank: 6 + i, tier: null });
         });
         localStorage.setItem('mls_leagues', JSON.stringify(leagues));
     }, FIXTURE_LEAGUE_ID);
@@ -162,7 +163,7 @@ test.describe('Lineup Strategist: Auto-Find with a player outside the FLEX list'
             .toHaveText('Wk Flex: LaPorta not in Flex list (TE5 T2), Lamb not in Flex list (WR30 T8)');
         await expect(out(page).locator('.mls-tier-gap')).toHaveCount(0);
 
-        // Whole Roster, FLEX: Lamb is your weakest once everyone else has a FLEX rank. The header names the list.
+        // Whole Roster, FLEX: Lamb is your top drop (S54) once everyone else has a FLEX rank. The header names the list.
         await flexRankTheRest(page);
         await runAutoFind(page, 'FLEX');
         await callApp(page, 'setWaiverCompare', 'roster');
@@ -170,7 +171,7 @@ test.describe('Lineup Strategist: Auto-Find with a player outside the FLEX list'
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         await expect(out(page).locator('.mls-scan-summary')).toBeVisible();
         const header = out(page).locator('.mls-scan-benchmark');
-        await expect(header).toContainText('Your weakest RB/WR/TE is CeeDee Lamb (Wk Flex: not in list · WR30 · T8).');
+        await expect(header).toContainText('Drop first at RB/WR/TE: CeeDee Lamb (Wk Flex: not in list · WR30 · T8).');
         await expect(header).not.toContainText('unranked');
         expect(await nowrapLines(header)).toEqual([1]);
         expect(await listed(page)).toEqual(BEFORE.autoRoster);

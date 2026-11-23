@@ -234,7 +234,7 @@ test.describe('Lineup Strategist: the Waiver Wire with per-position uploads', ()
             'Unplaced Back', 'Christian McCaffrey', 'Derrick Henry', "De'Von Achane", 'Kyren Williams', 'Chase Brown']);
 
         await runAutoFindRoster(page, 'RB');
-        await expect(waiverOut(page).locator('.mls-scan-benchmark')).toContainText('Your weakest RB is Derrick Henry (ROS RB7).');
+        await expect(waiverOut(page).locator('.mls-scan-benchmark')).toContainText('If you need a spot at RB: Derrick Henry (ROS RB7).');
         await expect(waiverCard(page, 'James Cook').locator('.mls-scan-verdict')).toContainText('Upgrade over Derrick Henry');
         await expect(waiverCard(page, 'James Cook').locator('.mls-verdict-nums')).toHaveText('ROS Pos: Cook RB4, Henry RB7');
         await callApp(page, 'setWaiverMode', 'top');

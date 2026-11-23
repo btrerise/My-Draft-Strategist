@@ -52,8 +52,11 @@ test.describe('Lineup Strategist weakest rostered player', () => {
         await callApp(page, 'setWaiverMode', 'auto');
         await callApp(page, 'setWaiverCompare', 'roster');
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
-        await expect(out).toContainText('Your weakest WR is Amon-Ra St. Brown');
-        await expect(out).toContainText('Not counted: A.J. Brown (taxi), Garrett Wilson (OUT).');
+        // Since S54 round 2 the drop order picks, and it counts Out players (judged by ROS): Wilson, Out and WR10 ROS,
+        // is the top drop, as his Drop 1 badge says. Only the taxi player is left out.
+        await expect(out).toContainText('Drop first at WR: Garrett Wilson');
+        await expect(out).toContainText('Out this week');
+        await expect(out).toContainText('Not counted: A.J. Brown (taxi).');
 
         await page.waitForLoadState('networkidle');
         expect(state.unmocked, 'Sleeper URLs with no fixture').toEqual([]);

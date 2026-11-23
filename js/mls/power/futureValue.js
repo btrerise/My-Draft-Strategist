@@ -33,7 +33,7 @@ export function powerAgeFactor(pos, age) {
 let _powerAgeIndex = null;
 let _powerAgeState = 'idle'; // 'idle' | 'loading' | 'ready' | 'failed'
 let _powerAgePromise = null;
-function ageFromMeta(m) {
+export function ageFromMeta(m) {
     if (m.birthDate) {
         const b = new Date(m.birthDate + 'T00:00:00');
         if (!isNaN(b)) {

@@ -119,9 +119,9 @@ test.describe('Lineup Strategist SoS badge in the Waiver Wire Assistant', () => 
         // Auto-Find, Whole Roster: beside the drop candidate.
         await callApp(page, 'setWaiverCompare', 'roster');
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
-        const henry = out(page).locator('.mls-scan-benchmark').filter({ hasText: 'Your weakest RB is Derrick Henry' });
+        const henry = out(page).locator('.mls-scan-benchmark').filter({ hasText: 'If you need a spot at RB: Derrick Henry' });
         await expect(sos(henry)).toHaveText('SoS: 25');
-        await expect(sos(out(page).locator('.mls-scan-benchmark').filter({ hasText: 'Your weakest WR is Garrett Wilson' }))).toHaveText('SoS: 27');
+        await expect(sos(out(page).locator('.mls-scan-benchmark').filter({ hasText: 'Drop first at WR: Garrett Wilson' }))).toHaveText('SoS: 27');
 
         // Check a List: on the name line of every listed player Sleeper knows a team for, whoever has
         // him, and beside the player he's compared with. A kicker gets none (the grid has no K).
