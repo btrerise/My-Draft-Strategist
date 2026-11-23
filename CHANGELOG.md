@@ -216,6 +216,9 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **The suggested FAAB bid reads in dollars.** Every amount in the bid chip and its pop-out now has a $ (Bid $13–$21,
+  of your $63 left), so a bid can't be mistaken for a rank or a percent. The pop-out's sentences are shorter, and the
+  teams with more FAAB left are a short list.
 - **Playoff chances.** In the last weeks of the regular season (five or fewer left), each Sleeper league's chance to
   make the playoffs, get a first-round bye and win the title, from 10,000 runs of the weeks left and the bracket with
   Sleeper's projections: on the Dashboard's league card ("Playoffs 72% · Bye 18% · Title 9%"; a folded card leaves it

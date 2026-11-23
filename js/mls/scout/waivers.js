@@ -358,7 +358,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
     export function faabBidHTML(s, { long = false, name = '', league = '' } = {}) {
         if (!s || s.noHistory) return '';
         const data = escapeHtml(JSON.stringify({ title: bidTitle(s, name), where: bidWhere(s, league), lines: s.lines }));
-        return faabBidMarkup(`${bidLabel(s)}${long ? ` (of your ${s.left} left)` : ''}`, data, { rough: s.rough });
+        return faabBidMarkup(`${bidLabel(s)}${long ? ` (of your $${s.left} left)` : ''}`, data, { rough: s.rough });
     }
 
     // The bid's sheet (round 2, the owner's pick over a toast): its title, then one line each for what it's based on,
@@ -370,7 +370,7 @@ import { hasSeasonSlot, seasonSetFor } from '../rankings/season.js';
         const icon = { up: BID_UP_ICON, down: BID_DOWN_ICON };
         const where = data.where ? `<li class="is-where"><span>${escapeHtml(data.where)}</span></li>` : '';
         const body = `<ul class="mls-faab-sheet">${where}${(data.lines || []).map(l =>
-            `<li class="is-${escapeHtml(l.kind)}">${icon[l.kind] || ''}<span>${escapeHtml(l.text)}${l.sub ? ` <span class="mls-faab-sub">${escapeHtml(l.sub)}</span>` : ''}</span></li>`).join('')}</ul>`;
+            `<li class="is-${escapeHtml(l.kind)}">${icon[l.kind] || ''}<span>${escapeHtml(l.text)}${l.sub ? ` <span class="mls-faab-sub">${escapeHtml(l.sub)}</span>` : ''}${l.items ? `<ul class="mls-faab-list">${l.items.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>` : ''}</span></li>`).join('')}</ul>`;
         openSheet({ title: data.title, body, opener: btn, className: 'mls-faab-sheet-host' });
     }
 

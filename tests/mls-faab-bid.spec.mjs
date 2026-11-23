@@ -1,5 +1,5 @@
 // A suggested FAAB bid (improvements S35; js/mls/scout/faab.js, faabHistory.js). In a FAAB league, a player on waivers
-// (S34's W) on Best Available's line, Auto-Find's cards and Check a List gets "Bid 13–21", from the league's winning
+// (S34's W) on Best Available's line, Auto-Find's cards and Check a List gets "Bid $13–$21", from the league's winning
 // bids this season for players at his position ranked near him today, scaled by your budget left, the weeks left and
 // whether he'd start for you. The model is unit-tested in tests/unit/faab.test.mjs.
 //
@@ -88,7 +88,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         const cook = player(page, 'James Cook');
         await expect(cook.locator('.mls-wv-chip')).toHaveText('W');
         // The history loads after the line; the line is drawn again with the bid.
-        await expect(cook.locator('.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        await expect(cook.locator('.mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');
         // Only players on waivers get a bid: the free agents on the line don't.
         await expect(line(page).locator('.mls-faab-bid')).toHaveCount(1);
         // The sync kept each team's FAAB left and the season's last week on the league.
@@ -104,18 +104,18 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await cook.locator('.mls-faab-bid').click();
         const sheet = page.locator('.sheet');
         // Round 3: it names the player and the league, says what the two ends mean, and whom he'd replace.
-        await expect(sheet.locator('.sheet-title')).toHaveText('James Cook · Bid 13–21');
-        await expect(sheet.locator('.mls-faab-sheet li')).toHaveText([
-            'Fixture League · you have 63 of 100',
-            '4 RBs were won on waivers this season, for 8 to 30. Median: 12. Players ranked near RB5, and recent bids, count most.',
-            'Before the changes below, 12 tied or beat half of these winning bids; 20 tied or beat 3 out of 4.',
+        await expect(sheet.locator('.sheet-title')).toHaveText('James Cook · Bid $13–$21');
+        await expect(sheet.locator('.mls-faab-sheet > li')).toHaveText([
+            'Fixture League · you have $63 of $100 left',
+            'Based on 4 RBs won on waivers this season. They went for $8 to $30. The median was $12. Players ranked near RB5 and recent bids count most.',
+            '$12 would have tied or beaten half of those bids. $20 would have tied or beaten 3 out of 4. (Before the changes below.)',
             // Round 4: from the fixture's failed claim on Achane, in the same run as his winning one.
-            '1 of the 4 RB claims had other bidders. Their median winning bid was 12.',
-            'He\'d start for you, in place of Derrick Henry',
-            'You have less FAAB left than the average team (76)',
+            '1 of the 4 RB claims had other bidders. The median winning bid there was $12.',
+            'He\'d start for you, in place of Derrick Henry.',
+            'You have less than the average team: $63 vs $76.',
             // Round 4: the one other team can outbid 21, so the most left instead of a count.
-            'Most FAAB left on other teams: 88 (you have 63)',
-            'Note: players are matched by today\'s rankings, which may have changed since these bids.'
+            'Teams with the most left (you have $63):$88',
+            'Rankings are today\'s, so they may have changed since these bids.'
         ]);
         await expect(sheet.locator('.mls-faab-sheet li.is-up svg')).toHaveCount(1);
         await expect(sheet.locator('.mls-faab-sheet li.is-down svg')).toHaveCount(1);
@@ -129,11 +129,11 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         const cookCard = out(page).locator('.mls-scan-card').filter({ hasText: 'James Cook' });
         await expect(cookCard).toContainText('Would Start');
-        await expect(cookCard.locator('.mls-scan-bid .mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        await expect(cookCard.locator('.mls-scan-bid .mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');
         // Its sheet names him and whom he'd replace, from the lineup check (round 3).
         await cookCard.locator('.mls-faab-bid').click();
-        await expect(page.locator('.sheet .sheet-title')).toHaveText('James Cook · Bid 13–21');
-        await expect(page.locator('.sheet .mls-faab-sheet li.is-up')).toHaveText('He\'d start for you, in place of Derrick Henry');
+        await expect(page.locator('.sheet .sheet-title')).toHaveText('James Cook · Bid $13–$21');
+        await expect(page.locator('.sheet .mls-faab-sheet li.is-up')).toHaveText('He\'d start for you, in place of Derrick Henry.');
         await page.keyboard.press('Escape');
         await expect(page.locator('.sheet')).toHaveCount(0);
         await expect(out(page).locator('.mls-faab-bid')).toHaveCount(1);
@@ -143,13 +143,13 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await page.fill('#waiverInput', ['James Cook', 'Jaxon Smith-Njigba'].join('\n'));
         await page.click('#waiverScanBtn');
         const cookRow = out(page).locator('.scout-result-card').filter({ hasText: 'James Cook' }).first();
-        await expect(cookRow.locator('.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        await expect(cookRow.locator('.mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');
         await expectClean(page, state);
     });
 
     test('several players on waivers: only the upgrade gets a bid on Best available; a thin position is a rough guess', async ({ page }) => {
         const state = await setup(page, { many: true });
-        await expect(player(page, 'James Cook').locator('.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        await expect(player(page, 'James Cook').locator('.mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');
         await expect(player(page, 'Jaxon Smith-Njigba').locator('.mls-wv-chip')).toHaveText('W');
         await expect(line(page).locator('.mls-faab-bid')).toHaveCount(1);
         // Check a List: Jaxon (WR11) has a bid there, but the league's only WR bid is one claim, so it's every bid
@@ -159,18 +159,18 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await page.fill('#waiverInput', ['Jaxon Smith-Njigba'].join('\n'));
         await page.click('#waiverScanBtn');
         const bid = out(page).locator('.scout-result-card').filter({ hasText: 'Jaxon Smith-Njigba' }).first().locator('.mls-faab-bid');
-        await expect(bid).toHaveText(/^≈ Bid \d+–\d+ \(of your 63 left\)$/);
+        await expect(bid).toHaveText(/^≈ Bid \$\d+–\$\d+ \(of your \$63 left\)$/);
         await expect(bid).toHaveClass(/\bis-rough\b/);
         await bid.click();
-        await expect(page.locator('.sheet .sheet-title')).toHaveText(/^Jaxon Smith-Njigba · ≈ Bid \d+–\d+$/);
-        await expect(page.locator('.sheet .mls-faab-sheet li').nth(1)).toHaveText('5 players at every position were won on waivers this season, for 3 to 30. Median: 12. Only 1 WR has been won here, so this is a rough guess.');
+        await expect(page.locator('.sheet .sheet-title')).toHaveText(/^Jaxon Smith-Njigba · ≈ Bid \$\d+–\$\d+$/);
+        await expect(page.locator('.sheet .mls-faab-sheet li').nth(1)).toHaveText('Based on 5 players at every position won on waivers this season. They went for $3 to $30. The median was $12. Only 1 WR has been won here, so this is a rough guess.');
         await expectClean(page, state);
     });
 
     test('round 5: the bid\'s row is there while the history loads, and FAAB left is re-read with it', async ({ page }) => {
         const spent = { 1: 37, 2: 12 };
         const state = await setup(page, { spent });
-        await expect(player(page, 'James Cook').locator('.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        await expect(player(page, 'James Cook').locator('.mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');
         // A waiver run since the sync: you've spent 13 more. A new visit, with the history slow to answer.
         spent[1] = 50;
         // The rosters, which the history now reads with it, wait until the test lets them through (in the fixture the
@@ -200,7 +200,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         const before = await cook.boundingBox();
         release();
         // Then the bid, from the rosters read with the history: 50 left now, not the sync's 63.
-        await expect(cook.locator('button.mls-faab-bid')).toHaveText(/^Bid \d+–\d+ \(of your 50 left\)$/);
+        await expect(cook.locator('button.mls-faab-bid')).toHaveText(/^Bid \$\d+–\$\d+ \(of your \$50 left\)$/);
         await expect(pending).toHaveCount(0);
         const after = await cook.boundingBox();
         // The row didn't change height, so nothing below it moved.
@@ -227,7 +227,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await page.locator('#faabBidsToggle').check();
         await expect(page.locator('#faabSettingsState')).toHaveText('On · Conservative');
         await expect(page.locator('#faabStyleOptions [data-style="conservative"]')).toHaveAttribute('aria-pressed', 'true');
-        await expect(cook.locator('button.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        await expect(cook.locator('button.mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');
         expect(JSON.parse(await page.evaluate(() => localStorage.getItem('mls_faab_settings')))).toMatchObject({ on: true, style: 'conservative' });
         // Round 7: the line under the switch says how many bids the Dashboard shows, and the style choice has a label.
         await expect(page.locator('#faabBidsStatus')).toHaveText('1 bid on the Dashboard now (upgrades on waivers only). Auto-Find and Check a List show one for every player on waivers.');
@@ -241,16 +241,16 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         const state = await setup(page, { history: 'contested', spent: { 1: 60, 2: 0 } });
         const cook = player(page, 'James Cook');
         const bid = cook.locator('button.mls-faab-bid');
-        await expect(bid).toHaveText(/^Bid \d+–\d+ \(of your 40 left\)$/);
-        const conservative = Number((await bid.textContent()).match(/–(\d+)/)[1]);
+        await expect(bid).toHaveText(/^Bid \$\d+–\$\d+ \(of your \$40 left\)$/);
+        const conservative = Number((await bid.textContent()).match(/–\$(\d+)/)[1]);
         await page.locator('#faabSettingsGroup summary').click();
         await page.locator('#faabStyleOptions [data-style="aggressive"]').click();
         await expect(page.locator('#faabSettingsState')).toHaveText('On · Aggressive');
         // The contested RB claims' median, 40, is above Conservative's top.
         expect(conservative).toBeLessThan(40);
-        await expect(bid).toHaveText(/^Bid \d+–40 \(of your 40 left\)$/);
+        await expect(bid).toHaveText(/^Bid \$\d+–\$40 \(of your \$40 left\)$/);
         await bid.click();
-        await expect(page.locator('.sheet .mls-faab-sheet li.is-up').first()).toHaveText('Aggressive: top raised to 40, the median winning bid when others bid too');
+        await expect(page.locator('.sheet .mls-faab-sheet li.is-up').first()).toHaveText('Aggressive: top raised to $40, the median winning bid when others bid too.');
         await expectClean(page, state);
     });
 
@@ -268,7 +268,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await toast.locator('.toast-action-btn').click();
         await expect(toast).not.toHaveClass(/\bshow\b/);
         // Auto-Find runs again, with the bids.
-        await expect(cookCard.locator('.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        await expect(cookCard.locator('.mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');
         expect(JSON.parse(await page.evaluate(() => localStorage.getItem('mls_faab_settings')))).toMatchObject({ on: true, hintShown: true });
         await expectClean(page, state);
     });
@@ -324,7 +324,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await callApp(page, 'setWaiverCompare', 'lineup');
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         const cookCard = () => out(page).locator('.mls-scan-card').filter({ hasText: 'James Cook' });
-        await expect(cookCard().locator('.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        await expect(cookCard().locator('.mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');
         // Off, from the Dashboard: Auto-Find's results lose their bids without another tap of Auto-Find.
         await showTab(page, 'setup');
         await page.locator('#faabSettingsGroup summary').click();
@@ -336,7 +336,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await showTab(page, 'setup');
         await page.locator('#faabBidsToggle').check();
         await showTab(page, 'scout');
-        await expect(cookCard().locator('.mls-faab-bid')).toHaveText('Bid 13–21 (of your 63 left)');
+        await expect(cookCard().locator('.mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');
         await expectClean(page, state);
     });
 

@@ -102,6 +102,7 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - F28 | LOG.md | F28 — Scoreboard median says "13th of 12"
 - F29 | LOG.md | F29 — First Dashboard load flags starters ruled out after kickoff
 - S55 | LOG.md | S55 — Playoff chances (Monte Carlo)
+- F31 | LOG.md | F31 — FAAB bid pop-out: clearer words, dollar signs
 
 ## F23 — The flash when tapping things on phones
 
@@ -1085,3 +1086,29 @@ sync) the records lack it: `withFinals` fetches its final scores (one request a 
 `applyFinals` adds them (median too), and only the weeks after it are simulated; Clinched can show on Monday night.
 
 **Left over.** None. Full suite run: all passed except `visual.spec.mjs` (cloud fonts, as expected).
+
+## F31 — FAAB bid pop-out: clearer words, dollar signs
+
+**What changed.** `js/mls/scout/faab.js` (the wording only; the bid math is untouched), `waivers.js` (the chip's
+"of your $63 left" and a nested list under a line), `css/mls.css` (`.mls-faab-list`), the legend chips, `sw.js` v2.10.19.
+Specs: `tests/unit/faab.test.mjs`, `tests/mls-faab-bid.spec.mjs`.
+
+**User-visible.** Every dollar amount has a $ and nothing else does: the chip ("Bid $13–$21 (of your $63 left)"), the
+pop-out's title, budget line ("you have $63 of $100 left"), the range and median, the tied-or-beaten amounts, the
+averages, rivals' bids and the other teams' FAAB. Sentences are shorter, one idea each, ending in a period. Example
+for James Cook: "Based on 4 RBs won on waivers this season. They went for $8 to $30. The median was $12." / "$12 would
+have tied or beaten half of those bids. $20 would have tied or beaten 3 out of 4. (Before the changes below.)" /
+"You have less than the average team: $63 vs $76." / "Rankings are today's, so they may have changed since these bids."
+Teams with more FAAB left are a bulleted list under the line when there are two or more amounts (or when most teams can
+outbid; then "Teams with the most left (you have $63):").
+
+**Owner's decisions.** Approved the before/after sketch as proposed; the chip gets $ too.
+
+**Screenshots.** `desktop/mls-league-guide.png` re-taken by CI (the phone one did not change): the legend's sample chips now read
+"Bid $9–$14" and "≈ Bid $2–$5".
+
+**Left over.** Nothing. Full suite not run (only on the pull request).
+
+**CI time limit (F31, owner's call).** Both Checks runs on this PR were cancelled at the 30-minute `timeout-minutes`
+(recent PRs ran 25 to 30 minutes). Raised to 45 in `.github/workflows/check.yml`; the shard-the-suite follow-up is under
+"Tests" in `docs/TESTING.md`'s Open follow-ups.
