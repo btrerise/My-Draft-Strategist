@@ -104,6 +104,7 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - S55 | LOG.md | S55 — Playoff chances (Monte Carlo)
 - F31 | LOG.md | F31 — FAAB bid pop-out: clearer words, dollar signs
 - S54 | LOG.md | S54 — Who should I drop?
+- S48 | LOG.md | S48 — Playoff strength of schedule (parked to the off-season)
 
 ## F23 — The flash when tapping things on phones
 
@@ -1151,3 +1152,26 @@ tap area clipped by the row (`:has(.mls-drop-badge)`), and the tab's extra redra
 
 **Left over.** Fixed weights (owner's choice); presets are an Open follow-up in `docs/TESTING.md`. Full suite not run
 (only on the pull request).
+
+## S48 — Playoff strength of schedule (parked to the off-season)
+
+**Status.** Not built, no code changed. Owner (2026-11-23): this is more niche than expected and needs research and
+testing past week 12, so it waits for the off-season, ahead of next August's drafts.
+
+**What the owner's analyst gives.** An image (Discord), not a file: "Fantasy Playoff Schedule", 32 teams x QB, RB,
+WR, TE (no DEF or K). Per position: weeks 15, 16, 17, PO (median over 15-17) and F2 (median over 16-17). Ranks by
+adjusted FP/G allowed, **1 = easiest** (the reverse of S7's default, so check the "1 = hardest" switch's direction),
+through week 10. A snapshot, so it needs re-uploading as the season goes on.
+
+**Options laid out** (the app can't read an image; OCR means a few MB of library and model files with no build step,
+and breaks if the layout changes): (1) OCR in the browser, not recommended; (2) the analyst's CSV or sheet, parsed like
+the season SoS upload (`Team, Pos, PO, F2, W15, W16, W17`); (3) owner converts the image to CSV outside the app (a
+Claude chat reads it fine; spot-check digits); (4) ship the numbers in the repo, which needs the analyst's OK and a hand
+refresh; (5) compute our own from the NFL schedule weeks 15-17 and points allowed by position, a separate bigger card.
+Recommended then: 2 with 3 as fallback.
+
+**Open questions for the off-season.** Can a typical user get this data at all (the owner: "I have to consider the
+typical user")? Is option 5 the only version that scales? Badge shows PO only or a PO/F2 switch (suggested PO, with
+weeks and F2 in the tap-to-explain)? Where: Roster, Waiver Wire, Trade Analyzer (suggested), Draft Strategist later;
+display only (suggested, as S7). Per the card: separate storage from season SoS (a test each way), the scale switch
+applies, upload preview names it, legend line, CHANGELOG line.
