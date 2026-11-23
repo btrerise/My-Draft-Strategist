@@ -103,6 +103,7 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - F29 | LOG.md | F29 — First Dashboard load flags starters ruled out after kickoff
 - S55 | LOG.md | S55 — Playoff chances (Monte Carlo)
 - F31 | LOG.md | F31 — FAAB bid pop-out: clearer words, dollar signs
+- S54 | LOG.md | S54 — Who should I drop?
 
 ## F23 — The flash when tapping things on phones
 
@@ -1112,3 +1113,37 @@ outbid; then "Teams with the most left (you have $63):").
 **CI time limit (F31, owner's call).** Both Checks runs on this PR were cancelled at the 30-minute `timeout-minutes`
 (recent PRs ran 25 to 30 minutes). Raised to 45 in `.github/workflows/check.yml`; the shard-the-suite follow-up is under
 "Tests" in `docs/TESTING.md`'s Open follow-ups.
+
+## S54 — Who should I drop?
+
+**User-visible.** Roster tab: your three most droppable players carry "Drop 1" / "Drop 2" / "Drop 3" (amber text badge
+on the name line). Tap: the shared sheet with why in plain words ("WR7 on your team · ROS WR10 · Wk WR10 · you're 1st
+of 2 at WR"), the top five with scores, who isn't suggested, and in keeper leagues a note that the app can't see
+keepers. Auto-Find, Whole Roster: the drop candidate is the same order within the group ("Your top drop at WR is …",
+a "Why:" line, "Next drops", "Not suggested: …"); the summary says "compared against your top drop at each position".
+Check a List is unchanged (still your weakest). No rankings: no badges, Auto-Find as before. Guide legend line added.
+
+**The owner's decisions (Asks you, 2026-11-23).** Sketch built from the owner's live Sleeper rosters with FantasyCalc
+standing in for their own rankings. Where: a badge on the Roster tab plus the Auto-Find tie-in (chosen over a fourth
+Waiver-tool mode, an add/drop line on every waiver card, and a "Droppable" sort). Badge: text "Drop 1", not a trash
+can (Material: that icon means delete now; the app can't drop on Sleeper). Weights A: rankings 50 (ROS vs the league's
+starter line at the position; this week's set a quarter of it, ROS alone on bye, F30's rule), depth on your team 20,
+your Power Rankings place there 15 (S29's table), upside 15 (trending adds, same tier as your starters, age in dynasty).
+Out players count as normal drops, with "Out this week".
+
+**Where.** `js/mls/scout/droppable.js` (pure score and reasons; `tests/unit/droppable.test.mjs`),
+`js/mls/scout/dropPicks.js` (input from State: ROS/Weekly display ranks, In-Season in dynasty without Weekly, locks via
+`lineupCheckDeps`, power places via `resolvePowerRankingsSource`, now exported; trending and ages load in the
+background and redraw once), `render/roster.js`, `scout/waivers.js` (`renderRosterGroup`), `badges.js`
+`dropBadgeMarkup`, `legend.js`, `css/mls.css`, Guide and tooltip text in `lineup/index.html`. Never suggested: IR,
+taxi, locked starters, and a player on bye that no set ranks. K/DEF only beyond the number you start.
+
+**Tests.** `tests/mls-who-to-drop.spec.mjs`: no rankings, the clear drop (Garrett Wilson) on Roster and Auto-Find, a
+locked player, a starter on bye with Weekly only, trending failing. Seven Auto-Find specs reworded to the new line;
+F30's weekly-only case now expects "Not suggested: Ja'Marr Chase (on bye, …)" (intended). Screenshots: only
+`desktop/mls-league-guide.png` and `phone/mls-league-guide.png` (the legend line and Guide text), found by rendering
+main and this branch in one container; CI re-takes them.
+
+**Left over.** Auto-Find's `rosterBenchmark` still leaves out Out players (S5's rule), so a Roster badge on an Out
+player can differ from Auto-Find's pick. The weights are constants in `droppable.js` (no setting). Full suite not run
+(only on the pull request).

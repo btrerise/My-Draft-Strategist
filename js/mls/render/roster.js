@@ -19,6 +19,8 @@ import { ODDS_EVENT, ODDS_TITLE, playoffChanceHTML, playoffOddsFor, pctLabel, re
 import { hasSeasonSlot, seasonOffer, seasonSetFor } from '../rankings/season.js';
 import { rankGap, rankGapTip, superflexQbPrices } from '../rankings/nowAndLater.js';
 import { KEYS } from '../../shared/storage/keys.js';
+import { dropPicksFor } from '../scout/dropPicks.js';
+import { dropBadgeMarkup } from '../badges.js';
 
     // --- POSITION COUNTS (improvements S9) ---
     // The strip of chips above the roster list: one per position with how many you roster, a
@@ -250,6 +252,10 @@ import { KEYS } from '../../shared/storage/keys.js';
         if (posCountsEl) renderRosterPosCounts(posCountsEl, posCounts, league.roster.length, picked);
         if (picked) displayRoster = displayRoster.filter(p => p.pos === picked);
 
+        // Your three most droppable players (improvements S54): "Drop 1" to "Drop 3" on their name lines.
+        const drops = dropPicksFor(league, loadRosterTab);
+        const dropAt = new Map((drops ? drops.picks.slice(0, 3) : []).map((x, i) => [String(x.player.id), i + 1]));
+
         let html = "";
         // A dynasty or keeper league with an In-Season set (improvements S23, round 13): these rows show the dynasty set's
         // ranks while the Lineup tab and Power Rankings' Start read In-Season, so say which. Both ranks per row are S24.
@@ -316,7 +322,9 @@ import { KEYS } from '../../shared/storage/keys.js';
             // manual leagues never show it. Sits right after rookie: both are season-long
             // roster-status markers, so they stay fixed ahead of injury/bye.
             let taxiBadge = p.isTaxi ? `<span class="badge taxi-badge" title="Taxi squad">TAXI</span>` : "";
-            let statusBadges = [rookieBadge, taxiBadge, irSlotBadge, injBadge, byeBadge].filter(Boolean).join('');
+            const dropN = dropAt.get(String(p.id));
+            let dropBadge = dropN ? dropBadgeMarkup(dropN, p.id, p.name) : '';
+            let statusBadges = [dropBadge, rookieBadge, taxiBadge, irSlotBadge, injBadge, byeBadge].filter(Boolean).join('');
             
             html += `
             <div class="roster-item">

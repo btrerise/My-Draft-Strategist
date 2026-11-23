@@ -36,7 +36,7 @@ export const updatePowerSetting = function(key, value) {
 // With your own rankings, a dynasty league's In-Season set (improvements S23) gives Start, and Ovr and the
 // rooms when "I'm competing" is on; `rankings` is then the rooms' list, `start` and `future` the other two
 // (all three the same list without an In-Season set). Market Consensus scores every column alike.
-function resolvePowerRankingsSource() {
+export function resolvePowerRankingsSource() {
     const wantMarket = State.powerSettings.source === 'market';
     const own = activePowerRankings();
     const mine = own.rooms, market = State.marketRankings;

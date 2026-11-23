@@ -238,6 +238,16 @@ body.mls-hide-headshots .mls-headshot { display: none; }
    2px taller than an injured one. Same padding + a border on all (transparent on injury). */
 .mls-name-badges .badge { margin-left: 0; padding: 1px 4px; font-size: 0.65rem; line-height: 1.3; border-style: solid; border-width: 1px; }
 .mls-name-badges .inj-badge { border-color: transparent; }
+/* "Drop 1" to "Drop 3" (improvements S54): your most droppable players. Outlined in amber, the same "worth a look"
+   family as the FAAB bid, so it doesn't read as an injury (red) or a roster status (violet). A button: tap for why. */
+.mls-drop-badge { background: rgba(251, 191, 36, 0.12); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.7); padding: 1px 4px; font-size: 0.65rem; margin-left: 4px; }
+button.mls-drop-badge { font-family: inherit; line-height: inherit; cursor: pointer; }
+/* Its sheet: the reasons, the top five drops with scores, and who isn't suggested. */
+.mls-drop-lead { margin: 0 0 0.75rem; }
+.mls-drop-list { margin: 0 0 0.75rem; padding-left: 1.4rem; display: grid; gap: 0.5rem; }
+.mls-drop-score { color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: 0.85em; }
+.mls-drop-why, .mls-scan-benchmark-why { color: var(--text-muted); font-size: 0.85em; }
+.mls-drop-note { color: var(--text-muted); font-size: 0.85em; margin: 0 0 0.5rem; }
 .mls-rank-badge { background: #1c2541; border: 1px solid var(--border); }
 /* Lineup tab: a two-number rank badge ("Pos: #5 (T3) | Flex: #13 (T3)", rankBadgeParts in js/mls/render/lineup.js)
    splits onto two lines at the bar when the row is too narrow, instead of being cut off (improvements F6, owner's

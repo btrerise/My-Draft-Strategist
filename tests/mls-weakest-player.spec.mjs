@@ -52,7 +52,7 @@ test.describe('Lineup Strategist weakest rostered player', () => {
         await callApp(page, 'setWaiverMode', 'auto');
         await callApp(page, 'setWaiverCompare', 'roster');
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
-        await expect(out).toContainText('Your weakest WR is Amon-Ra St. Brown');
+        await expect(out).toContainText('Your top drop at WR is Amon-Ra St. Brown');
         await expect(out).toContainText('Not counted: A.J. Brown (taxi), Garrett Wilson (OUT).');
 
         await page.waitForLoadState('networkidle');

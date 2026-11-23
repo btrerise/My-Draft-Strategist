@@ -26,7 +26,7 @@ test.describe('Lineup Strategist Scout tab', () => {
         await callApp(page, 'setWaiverMode', 'auto');
         await callApp(page, 'setWaiverCompare', 'roster');
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
-        await expect(waivers).toContainText('Top available in Fixture League by Weekly rank, compared against your weakest rostered player');
+        await expect(waivers).toContainText('Top available in Fixture League by Weekly rank, compared against your top drop at each position');
         await callApp(page, 'setWaiverCompare', 'lineup');
         await page.locator('[data-action="autoFindWaiverUpgrades"]').click();
         await expect(waivers).toContainText('checked against your current Week 2 starting lineup');
