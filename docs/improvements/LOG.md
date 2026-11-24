@@ -1210,7 +1210,11 @@ both projects), `tscore-refresh.spec.mjs` → `tscore-saved-tables.spec.mjs` (sa
 `tscore-inSeasonTab`, `-researchTab`, `-top50Tab`, `-valuesTab`, `-avoidsTab`, `-sleepersTab`, `-tab-2024`): all 44px
 shorter (no Sync row); phone `tscore-inSeasonTab` also has the new phone table. Re-taken on CI.
 
-**Left over.** `tscore_cache_updated` is now read by nothing but the permanent old-name migration (left in `KEYS`, as
-the OLD NAMES table maps to it; retire it if the owner wants). `tscore_cache` (Draft Strategist's badges) is no longer
+**Round 2 (owner, 2026-11-24): retire `tscore_cache_updated`.** Out of `KEYS`, into `RETIRED_KEYS.tscore`; the OLD
+NAMES table still maps `mds_tscore_cache_updated` to it, so the rename copies and deletes the old name as before, then
+`removeRetiredKeys('tscore')` (`keyMigration.js`) removes it on Draft Strategist's and T-Score's load. Tests: unit
+(retired-key rules, `removeRetiredKeys`), `key-migration.spec.mjs` (both pages remove it; the rename tests expect it gone).
+
+**Left over.** `tscore_cache` (Draft Strategist's badges) is no longer
 written: badges use the last saved copy or the bundled `js/shared/data/tscore.js`. The preseason tables keep the wide
 name column on phones (not in this card).

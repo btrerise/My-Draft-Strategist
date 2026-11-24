@@ -1,7 +1,9 @@
 // Refactor chunk 6B: copies this browser's storage keys from their pre-6B names to today's
 // (js/shared/storage/keyMigration.js) before any other module reads storage, and since 6C
 // deletes the old copies. main.js imports this file first; keep it first.
-import { migrateKeyNames, deleteOldKeyNames } from '../shared/storage/keyMigration.js';
+import { migrateKeyNames, deleteOldKeyNames, removeRetiredKeys } from '../shared/storage/keyMigration.js';
 
 migrateKeyNames('mds');
 deleteOldKeyNames('mds');
+// The retired T-Score key this page may have just copied (improvements T3).
+removeRetiredKeys('tscore');

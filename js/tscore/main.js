@@ -10,7 +10,7 @@ import { createFocusTrap } from '../shared/ui/focusTrap.js';
 import { getTabFromHash } from '../shared/ui/tabHash.js';
 import { delegate } from '../shared/ui/delegate.js';
 import { shareSite } from '../shared/ui/share.js';
-import { migrateKeyNames, deleteOldKeyNames } from '../shared/storage/keyMigration.js';
+import { migrateKeyNames, deleteOldKeyNames, removeRetiredKeys } from '../shared/storage/keyMigration.js';
 import { initInSeason, switchInSeasonPos, toggleBuySellOnly } from './inSeason.js';
 
 // Refactor chunk 6B: copy the T-Score cache keys from their pre-6B names (mds_tscore_cache*)
@@ -18,6 +18,7 @@ import { initInSeason, switchInSeasonPos, toggleBuySellOnly } from './inSeason.j
 // load, as on the other two pages.
 migrateKeyNames('tscore');
 deleteOldKeyNames('tscore');
+removeRetiredKeys('tscore'); // tscore_cache_updated, retired with the Sync button (improvements T3)
 
 // --- THE PRESEASON TABLES ---
 // The preseason tables ship in the page's HTML. Until improvements T3, a "Sync with most recent data" button fetched the
