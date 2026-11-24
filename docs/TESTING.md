@@ -382,6 +382,9 @@ done or dropped, remove its line here in the same change. Background for each is
   in its API then, probably like "2027 Pick 1.05"), which `pickKey` in `js/mls/leagues/picks.js` doesn't recognize yet. Then give each synced pick its
   slot (Sleeper's draft order, or the final standings until it's set) and look up that pick's market value, in the
   Trade Analyzer, "To make it fair" and the Future column. Not needed in season (improvements S19, round 4).
+- **When U5 or U6 lands:** add Umami `Section` attributes (`data-umami-event="Section"` plus `data-umami-event-section`) to the
+  Matchup Simulator and Trade Finder fold toggles (`simulator`, `trade-finder`) and to U6's chips (A2; same markup as the
+  Scoreboard folds in `js/mls/week/thisWeek.js`). Remove this line then.
 
 **Tests**
 - **`mls-starter-alert.spec.mjs` "on: asks once from the tap…" is flaky** (found in S54's full run): its

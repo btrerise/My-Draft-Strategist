@@ -798,7 +798,7 @@ function renderScoreboard(m) {
     else if (!ctx.past && final) parts.push(`<p class="text-helper mls-week-foot">Every game is final. Sleeper can still correct stats in the next few days.</p>`);
     // Export Recap (S22, rounds 2-3): a summary image for a group chat, once there are scores to sum up. The same
     // purple camera button at the bottom of its card as Export Trade.
-    const exportHTML = !(started && listed.length) ? '' : (`<div class="mls-week-export"><button type="button" id="exportScoreboardBtn" class="btn btn-purple" data-action="exportScoreboard" title="Save a summary of your week (record, MVPs and LVPs) as an image">${CAMERA_ICON}<span class="mls-week-export-label">Export Recap</span></button></div>`);
+    const exportHTML = !(started && listed.length) ? '' : (`<div class="mls-week-export"><button type="button" id="exportScoreboardBtn" class="btn btn-purple" data-action="exportScoreboard" data-umami-event="Tool" data-umami-event-tool="export-recap" title="Save a summary of your week (record, MVPs and LVPs) as an image">${CAMERA_ICON}<span class="mls-week-export-label">Export Recap</span></button></div>`);
 
     // A redraw keeps focus on the week's arrow it was on (S28): the card's HTML is replaced, buttons and all.
     const active = document.activeElement;
@@ -1205,11 +1205,16 @@ function setFoldOpen(which, open) {
     } catch (e) { /* this visit only */ }
 }
 const CHEVRON = `<svg class="chevron mls-week-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+// Umami counts a tap on these four folds (improvements A2): the attributes only, no code. A tap also counts when it closes.
+const FOLD_UMAMI = { player: 'player-scoreboard', root: 'root-for', recap: 'mvps', swings: 'still-in-play' };
+function sectionAttrs(which) {
+    return FOLD_UMAMI[which] ? ` data-umami-event="Section" data-umami-event-section="${FOLD_UMAMI[which]}"` : '';
+}
 function foldSection(which, headHTML, bodyHTML, label, extraClass = '') {
     const open = foldOpen(which);
     const id = `mlsWeekFold-${which}`;
     return `<section class="mls-week-fold${extraClass ? ' ' + extraClass : ''}${open ? ' is-open' : ''}" data-fold="${which}" aria-label="${label}">
-        <button type="button" class="btn-bare mls-week-fold-toggle" data-action="toggleWeekFold" data-fold="${which}" aria-expanded="${open}" aria-controls="${id}">${CHEVRON}${headHTML}</button>
+        <button type="button" class="btn-bare mls-week-fold-toggle" data-action="toggleWeekFold" data-fold="${which}" aria-expanded="${open}" aria-controls="${id}"${sectionAttrs(which)}>${CHEVRON}${headHTML}</button>
         <div id="${id}" class="mls-week-fold-body"${open ? '' : ' hidden'}>${bodyHTML}</div>
     </section>`;
 }

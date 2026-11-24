@@ -15,6 +15,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Tabs and buttons are counted.** The visitor counter now also notes which tabs and main buttons are tapped (just the
+  name, never your drafts), so the tools people use can be told apart from the ones they don't. The Guide's Visitor Counts line says so.
 - **Sleeper's player list is lighter.** The app keeps only the parts it uses (a tenth of the 15 MB), unpacks it in the
   background, and downloads it again only when Sleeper has changed it.
 - **Motion follows Material 3 Expressive.** Everything that moves now uses Material's own motion: things that move
@@ -227,6 +229,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **Tabs and buttons are counted.** The visitor counter now also notes which tabs and main buttons are tapped (just the
+  name, never your leagues), so the tools people use can be told apart from the ones they don't. The Guide's Visitor Counts line says so.
 - **Who should I drop?** On the Roster tab, your three most droppable players carry a "Drop 1", "Drop 2" or "Drop 3"
   badge. Tap one for why, in plain words ("Your 7th WR, so he won't start for you; ranked outside the league's starting
   WRs; your WR room is the league's best"), the facts behind it, your top five drops, and a **Find his replacement**

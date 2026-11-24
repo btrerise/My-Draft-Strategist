@@ -174,7 +174,7 @@ import { STACK_BADGE_HTML, tierChipMarkup, tScoreBadgeMarkup, valueBadgeMarkup }
                         <!-- Bottom Right: Draft Actions & Chevron -->
                         <div class="actions" style="display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0;">
                             <button class="mds-btn-sm btn-draft" data-action="draftPlayer" data-id="${p.id}" data-mine="false" aria-label="${escapeHtml(p.name)} taken by another team">Taken</button>
-                            <button class="mds-btn-sm btn-mine" data-action="draftPlayer" data-id="${p.id}" data-mine="true" aria-label="Pick ${escapeHtml(p.name)} for my team">Pick</button>
+                            <button class="mds-btn-sm btn-mine" data-action="draftPlayer" data-id="${p.id}" data-mine="true" data-umami-event="Tool" data-umami-event-tool="pick" aria-label="Pick ${escapeHtml(p.name)} for my team">Pick</button>
                             <button class="btn-expand hide-on-desktop" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; display: flex; align-items: center;" data-action="toggleCardDetails" data-id="${p.id}" aria-label="Expand details" aria-expanded="${p.isExpanded ? 'true' : 'false'}">
                                 <svg aria-hidden="true" class="chevron chevron-flip" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                             </button>
@@ -257,7 +257,7 @@ import { STACK_BADGE_HTML, tierChipMarkup, tScoreBadgeMarkup, valueBadgeMarkup }
                         <!-- Right Side: Draft Actions -->
                         <div style="display: flex; gap: 0.4rem; flex-shrink: 0; align-items: center;">
                             <button class="mds-btn-sm btn-draft" data-action="draftPlayer" data-id="${p.id}" data-mine="false" aria-label="${escapeHtml(p.name)} taken by another team">Taken</button>
-                            <button class="mds-btn-sm btn-mine" data-action="draftPlayer" data-id="${p.id}" data-mine="true" aria-label="Pick ${escapeHtml(p.name)} for my team">Pick</button>
+                            <button class="mds-btn-sm btn-mine" data-action="draftPlayer" data-id="${p.id}" data-mine="true" data-umami-event="Tool" data-umami-event-tool="pick" aria-label="Pick ${escapeHtml(p.name)} for my team">Pick</button>
                         </div>
                     </div>
                 </div>

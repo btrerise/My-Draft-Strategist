@@ -115,7 +115,7 @@
         <span id="draftProfileLabel" class="header-picker-label" aria-hidden="true">No Drafts</span>
     </span>
 
-    <button id="headerSyncBtn" class="btn-header" data-action="handleSmartSync" title="Manual Sync (or click to stop Live Sync)" aria-label="Sync draft now">
+    <button id="headerSyncBtn" class="btn-header" data-action="handleSmartSync" data-umami-event="Tool" data-umami-event-tool="live-sync" title="Manual Sync (or click to stop Live Sync)" aria-label="Sync draft now">
         <span id="syncIconWrap">
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
             <span class="hide-on-mobile">Sync</span>
@@ -154,24 +154,24 @@
     </div>
 
     <div class="menu-nav-links">
-        <button class="nav-btn active" data-target="setup" data-action="showTab" data-tab="setup" aria-current="page">
+        <button class="nav-btn active" data-target="setup" data-action="showTab" data-tab="setup" aria-current="page" data-umami-event="Tab" data-umami-event-tab="setup" data-umami-event-where="drawer">
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             Dashboard
         </button>
-        <button class="nav-btn" data-target="tracker" data-action="showTab" data-tab="tracker">
+        <button class="nav-btn" data-target="tracker" data-action="showTab" data-tab="tracker" data-umami-event="Tab" data-umami-event-tab="tracker" data-umami-event-where="drawer">
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 10h6"></path><path d="M9 18h6"></path></svg>
             Tracker
         </button>
-        <button class="nav-btn" data-target="team" data-action="showTab" data-tab="team">
+        <button class="nav-btn" data-target="team" data-action="showTab" data-tab="team" data-umami-event="Tab" data-umami-event-tab="team" data-umami-event-where="drawer">
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
             Team
         </button>
-        <button class="nav-btn" data-target="board" data-action="showTab" data-tab="board">
+        <button class="nav-btn" data-target="board" data-action="showTab" data-tab="board" data-umami-event="Tab" data-umami-event-tab="board" data-umami-event-where="drawer">
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
             Board
         </button>
         <div class="menu-section-label" aria-hidden="true">More</div>
-        <button class="nav-btn" data-target="guide" data-action="showTab" data-tab="guide">
+        <button class="nav-btn" data-target="guide" data-action="showTab" data-tab="guide" data-umami-event="Tab" data-umami-event-tab="guide" data-umami-event-where="drawer">
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
             Guide
         </button>
@@ -211,19 +211,19 @@
     <button class="hamburger-btn nav-rail-menu" data-action="toggleMenu" aria-label="Toggle Menu" aria-expanded="false">
         <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
     </button>
-    <button class="nav-btn active" data-target="setup" data-action="showTab" data-tab="setup" aria-current="page">
+    <button class="nav-btn active" data-target="setup" data-action="showTab" data-tab="setup" aria-current="page" data-umami-event="Tab" data-umami-event-tab="setup">
         <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
         <span>Dash&shy;board</span>
     </button>
-    <button class="nav-btn" data-target="tracker" data-action="showTab" data-tab="tracker">
+    <button class="nav-btn" data-target="tracker" data-action="showTab" data-tab="tracker" data-umami-event="Tab" data-umami-event-tab="tracker">
         <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14h6"></path><path d="M9 10h6"></path><path d="M9 18h6"></path></svg>
         <span>Tracker</span>
     </button>
-    <button class="nav-btn" data-target="team" data-action="showTab" data-tab="team">
+    <button class="nav-btn" data-target="team" data-action="showTab" data-tab="team" data-umami-event="Tab" data-umami-event-tab="team">
         <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
         <span>Team</span>
     </button>
-    <button class="nav-btn" data-target="board" data-action="showTab" data-tab="board">
+    <button class="nav-btn" data-target="board" data-action="showTab" data-tab="board" data-umami-event="Tab" data-umami-event-tab="board">
         <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
         <span>Board</span>
     </button>
@@ -709,7 +709,7 @@
     </div>
     <input type="checkbox" id="includeRecapInExport" class="toggle-switch" checked>
 </div>
-        <button id="exportTeamBtn" class="btn btn-purple" data-action="exportTeam" style="margin-bottom: 0;">
+        <button id="exportTeamBtn" class="btn btn-purple" data-action="exportTeam" data-umami-event="Tool" data-umami-event-tool="export-team" style="margin-bottom: 0;">
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         Export
     </button>
@@ -947,7 +947,7 @@
                     <li><strong class="text-main">Export / Import Backup:</strong> Download everything as a file, then import it to restore on this or another device or browser.</li>
                     <li><strong class="text-main">Reset Draft Picks Only:</strong> Clears the picks from the active draft while keeping your rankings and settings.</li>
                     <li><strong class="text-main">Reset Everything:</strong> Deletes all My Draft Strategist drafts, rankings, and settings. My Lineup Strategist data is not affected.</li>
-                    <li><strong class="text-main">Visitor Counts:</strong> To see how many people use it, the site counts visits with <strong class="text-main">Umami</strong>, without cookies: the page opened, the site that linked to it, and the browser, device type, screen size, language and rough location (country and city). Nothing that identifies you is kept, and your drafts, rankings and Sleeper username are never sent. Taps on the Support on Ko-fi and Share buttons are counted too: only that one was tapped, and where (the header, the menu, the Guide or the Dashboard). <a href="?nocount=1" data-nocount-link>Don't count this device</a></li>
+                    <li><strong class="text-main">Visitor Counts:</strong> To see how many people use it, the site counts visits with <strong class="text-main">Umami</strong>, without cookies: the page opened, the site that linked to it, and the browser, device type, screen size, language and rough location (country and city). Nothing that identifies you is kept, and your drafts, rankings and Sleeper username are never sent. Taps on the Support on Ko-fi and Share buttons, the tabs and the main buttons (such as Sync, Optimize or Export) are counted too: only which one was tapped, and where, never anything from your leagues or drafts. <a href="?nocount=1" data-nocount-link>Don't count this device</a></li>
                 </ul>
             </div>
 

@@ -149,7 +149,7 @@ test.describe('Ko-fi and Share', () => {
             await note.getByRole('button', { name: 'Share with your league' }).click();
             await expect.poll(() => page.evaluate(() => window.__shared.map(d => d.url))).toEqual([p.url]);
             // The Visitor Counts line says the taps are counted.
-            await expect(page.locator('#guideTab')).toContainText('Taps on the Support on Ko-fi and Share buttons are counted too');
+            await expect(page.locator('#guideTab')).toContainText('Taps on the Support on Ko-fi and Share buttons, the tabs and the main buttons');
         });
 
         test(`${p.name}: the Dashboard foot has our button and Share in place of Ko-fi's badge`, async ({ page }) => {
