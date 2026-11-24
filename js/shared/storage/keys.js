@@ -139,7 +139,6 @@ export const KEYS = {
     // T-Score column.
     tscore: {
         cache: 'tscore_cache',
-        cacheUpdated: 'tscore_cache_updated',
         pageCache: 'tscore_page_cache',
         // The In-Season tab's last loaded sheet (improvements T1): { wr, rb, te, weights, fetchedAt }, drawn at once on
         // the next visit and kept when the sheet can't be reached. Only the T-Score page reads it.
@@ -168,11 +167,17 @@ export const IDB_DATABASES = {
 
 // --- RETIRED KEYS ---
 // Keys nothing reads or writes any more, kept here only so the app that owned them can remove a
-// leftover copy on load (js/mls/init.js, STARTUP CLEANUP). Not in KEYS or STORAGE_KEYS.
+// leftover copy on load (js/mls/init.js, STARTUP CLEANUP; removeRetiredKeys in keyMigration.js for the T-Score ones).
+// Not in KEYS or STORAGE_KEYS.
+// When the preseason T-Score sheets were last synced: only the T-Score page's "Sheet data: …" line read it, and that
+// went with the Sync button (improvements T3). Its old name stays in the OLD NAMES table below for good.
+const TSCORE_CACHE_UPDATED = 'tscore_cache_updated';
 export const RETIRED_KEYS = {
     mls: [
         'mls_best_available_collapsed', // the Dashboard's Best Available card fold (improvements S5); unread since S12
     ],
+    // Removed on load by both pages that copy the old T-Score cache names (Draft Strategist and T-Score).
+    tscore: [TSCORE_CACHE_UPDATED],
 };
 
 // --- OLD NAMES (before refactor chunk 6B) ---
@@ -191,7 +196,7 @@ export const LEGACY_KEY_RENAMES = {
     exact: {
         mds_handoff_roster: KEYS.shared.handoffRoster,
         mds_tscore_cache: KEYS.tscore.cache,
-        mds_tscore_cache_updated: KEYS.tscore.cacheUpdated,
+        mds_tscore_cache_updated: TSCORE_CACHE_UPDATED, // retired (RETIRED_KEYS.tscore): copied, then removed
     },
     // Then prefixes: the rest of the name stays (ds_players_<draftId> -> mds_players_<draftId>).
     prefixes: [

@@ -11,10 +11,12 @@ import {
     KEYS, STORAGE_KEYS, RETIRED_KEYS, mdsDraftPoolKey, renamedKey, isLegacyKey,
     isMdsOwnedKey, isMlsOwnedKey, isMdsOwnedOrLegacyKey, isMlsOwnedOrLegacyKey,
 } from '../../js/shared/storage/keys.js';
-import { migrateKeyNames, deleteOldKeyNames, keepKeyNamesMarker, renameLegacyKeys } from '../../js/shared/storage/keyMigration.js';
+import { migrateKeyNames, deleteOldKeyNames, keepKeyNamesMarker, renameLegacyKeys, removeRetiredKeys } from '../../js/shared/storage/keyMigration.js';
 import { PRE_6B_KEYS, PRE_6B_DRAFT_POOL_PREFIX } from './helpers/pre6bKeys.mjs';
 
-const keyAt = (path) => path.split('.').reduce((o, p) => o[p], KEYS);
+// A KEYS path, or for a key retired since 6B (pre6bKeys.mjs records the past), its retired name.
+const RETIRED_PATHS = { 'tscore.cacheUpdated': RETIRED_KEYS.tscore[0] };
+const keyAt = (path) => RETIRED_PATHS[path] ?? path.split('.').reduce((o, p) => o[p], KEYS);
 const POOL_IDS = ['draft_default', 'manual_1726400000000', '1180000000000000000'];
 const OLD_POOL_KEYS = POOL_IDS.map(id => PRE_6B_DRAFT_POOL_PREFIX + id);
 const OLD_NAMES = [...Object.keys(PRE_6B_KEYS), ...OLD_POOL_KEYS];
@@ -57,9 +59,9 @@ function preRenameStorage(quota) {
 
 // Old keys each page is expected to copy.
 const COPIED_BY = {
-    mds: (k) => groupOf(k) === 'mds' || newNameOf(k) === KEYS.tscore.cache || newNameOf(k) === KEYS.tscore.cacheUpdated,
+    mds: (k) => groupOf(k) === 'mds' || newNameOf(k) === KEYS.tscore.cache || newNameOf(k) === RETIRED_KEYS.tscore[0],
     mls: (k) => groupOf(k) === 'mls' || newNameOf(k) === KEYS.shared.handoffRoster,
-    tscore: (k) => newNameOf(k) === KEYS.tscore.cache || newNameOf(k) === KEYS.tscore.cacheUpdated,
+    tscore: (k) => newNameOf(k) === KEYS.tscore.cache || newNameOf(k) === RETIRED_KEYS.tscore[0],
 };
 
 describe('old -> new key table (keys.js)', () => {
@@ -95,6 +97,21 @@ describe('retired keys', () => {
             assert.ok(isMlsOwnedKey(k), k);
             assert.equal(isLegacyKey(k), false, k);
         }
+        // T-Score's (improvements T3): its own prefix, and kept as the new name of its pre-6B one.
+        for (const k of RETIRED_KEYS.tscore) {
+            assert.ok(!all.includes(k), k);
+            assert.ok(k.startsWith('tscore_'), k);
+            assert.equal(isLegacyKey(k), false, k);
+            assert.ok(Object.values(PRE_6B_KEYS).map(keyAt).includes(k), k);
+        }
+    });
+
+    test('removeRetiredKeys removes a group\'s retired keys and nothing else', () => {
+        const storage = new MemoryStorage({ tscore_cache_updated: '1', tscore_cache: '{}', theme: 'dark' });
+        removeRetiredKeys('tscore', storage);
+        assert.deepEqual(storage.dump(), { tscore_cache: '{}', theme: 'dark' });
+        removeRetiredKeys('tscore', storage); // again: nothing to do
+        assert.deepEqual(storage.dump(), { tscore_cache: '{}', theme: 'dark' });
     });
 });
 

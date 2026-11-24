@@ -399,6 +399,13 @@ done or dropped, remove its line here in the same change. Background for each is
   the legend on its own) in `visual.spec.mjs`, or find what M17 made too tall to paint.
 
 **Needs the owner's decision first**
+- Draft Strategist's T-Score badges are frozen (T3): the T-Score page's Sync button, the only thing that wrote
+  `tscore_cache` from the preseason sheets, is gone, so draft cards show the last copy a browser saved or the bundled
+  `js/shared/data/tscore.js`. Before next draft season, either update the bundled data when the preseason model is
+  reworked, or fetch the preseason sheets quietly on the T-Score page's (or Draft Strategist's) load.
+- The preseason T-Score tables keep full names on phones (T3): the In-Season table has the narrow name column (short
+  name, a "WR1" line, Label at the end), the Top-50, Values, Sleepers, Avoids and 2024 tables don't. The same treatment
+  there needs their static HTML and `main.js`'s row builders to draw the short name and second line.
 - A "Show drop badges" switch (S54): if the Roster tab's Drop 1-3 badges start to feel like clutter, a Settings switch
   beside the FAAB-bid one, on by default, hiding only the badges (Auto-Find keeps its pick); one `mls_` key in `keys.js`.
 - Who to drop's weights are fixed (S54): rankings 50, depth 20, Power Rankings place 15, upside 15, constants in

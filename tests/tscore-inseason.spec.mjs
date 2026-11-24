@@ -8,7 +8,9 @@ import { openApp, stubInSeasonSheets, inSeasonFixture, IN_SEASON_SHEET_RE, expec
 test.use({ timezoneId: 'UTC', locale: 'en-US' });
 
 const rows = (page) => page.locator('#inSeasonBody tr');
-const cells = (row) => row.locator('td').allTextContents();
+// A row's cells as the wide layout has them: phones (improvements T3) also draw a short name, a "WR1 · LA" line and a
+// second Label cell at the end, which tscore-table-phone.spec.mjs checks.
+const cells = (row) => row.locator('td:not(.tscore-phone-only)').evaluateAll(tds => tds.map(td => (td.querySelector('.tscore-name-full') || td).textContent));
 
 test('opens on In-Season and draws the sheet: WR, RB, TE, Move, Buy/Sell, the filter and the weights', async ({ page }) => {
     let requested;
@@ -44,7 +46,7 @@ test('opens on In-Season and draws the sheet: WR, RB, TE, Move, Buy/Sell, the fi
     await expect(labelOf('Christian Watson')).toHaveText('High-End Starter'); // 15.79, just under 15.9
     await expect(labelOf('Christian Watson')).toHaveClass('label-high');
     await expect(labelOf('Matthew Golden')).toHaveText('High-End Starter'); // 14.47
-    await expect(waddle.locator('.label-boom')).toHaveText('Flex Play'); // 9.71, under 9.9
+    await expect(waddle.locator('td:nth-child(3) .label-boom')).toHaveText('Flex Play'); // 9.71, under 9.9
     await expect(labelOf('DeMario Douglas')).toHaveText('Flex Play'); // 8.70
     await expect(labelOf('Dontayvion Wicks')).toHaveText('Depth Player'); // 8.01, under 8.2
     await expect(labelOf('Dontayvion Wicks')).toHaveClass('label-depth');
@@ -103,7 +105,7 @@ test('offline after a visit: the saved rankings, with a line saying they are the
 
 test('a first visit with no connection says so instead of an empty table', async ({ page }) => {
     const state = await openApp(page, '/t-score/'); // every outside request aborted
-    await expect(page.locator('#inSeasonMessage')).toHaveText('The in-season rankings couldn’t load. Check your connection, then tap Sync with most recent data.');
+    await expect(page.locator('#inSeasonMessage')).toHaveText('The in-season rankings couldn’t load. Check your connection, then reload the page.');
     await expect(page.locator('#inSeasonTableWrap')).toBeHidden();
     await expect(page.locator('#inSeasonStatus')).toHaveText('');
     await expectClean(page, state); // no console.error for a sheet that can't be reached
@@ -147,14 +149,14 @@ test('a tab missing a column shows a plain message, and keeps the last good rank
     await expect(rows(page)).toHaveCount(22);
 });
 
-test('Sync with most recent data fetches the In-Season sheet again', async ({ page }) => {
+test('every visit fetches the In-Season sheet again (no Sync button since improvements T3)', async ({ page }) => {
     let requested;
     await openApp(page, '/t-score/', { beforeGoto: async (p) => { requested = await stubInSeasonSheets(p); } });
     await expect(rows(page)).toHaveCount(22);
     requested.length = 0;
-    await page.locator('#tscoreRefreshBtn').click(); // the preseason sheets are aborted: its error toast is main.js's
+    await page.reload();
     await expect.poll(() => requested.length).toBe(4);
-    await expect(page.locator('#tscoreRefreshBtn')).toBeEnabled();
+    await expect(rows(page)).toHaveCount(22);
 });
 
 test('a #tab link still opens that tab, and Back returns to In-Season', async ({ page }) => {

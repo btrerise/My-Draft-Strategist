@@ -49,8 +49,10 @@ test.describe('pre-6B storage', () => {
         let s = await dumpStorage(page);
         const mdsOld = OLD.filter(k => k.startsWith('ds_') || k.startsWith('mds_tscore_cache'));
         expect(mdsOld.length).toBeGreaterThan(5);
+        // tscore_cache_updated is retired (improvements T3): copied like the rest, then removed.
+        const RETIRED = ['tscore_cache_updated'];
         for (const k of mdsOld) {
-            expect(s[renamed(k)], `${k} -> ${renamed(k)}`).toBe(PRE_6B[k]);
+            expect(s[renamed(k)], `${k} -> ${renamed(k)}`).toBe(RETIRED.includes(renamed(k)) ? undefined : PRE_6B[k]);
             expect(s[k], `${k} deleted`).toBeUndefined();
         }
         expect(Object.keys(s).filter(k => k.startsWith('ds_')), 'no ds_* left').toEqual([]);
@@ -101,23 +103,21 @@ test.describe('pre-6B storage', () => {
 
         // --- T-Score ---
         state = await openApp(page, '/t-score/');
-        await expect(page.locator('#tscoreFreshness')).toHaveText('Sheet data: Updated today at 4:00 PM');
         s = await dumpStorage(page);
         expect(s.tscore_cache).toBe(PRE_6B.mds_tscore_cache);
-        expect(s.tscore_cache_updated).toBe(PRE_6B.mds_tscore_cache_updated);
+        expect(s.tscore_cache_updated, 'retired (improvements T3): copied, then removed').toBeUndefined();
         expect(s.tscore_key_names_version).toBe('2');
         // All three pages opened: no old name left anywhere.
         expect(Object.keys(s).filter(k => renamed(k) !== k), 'no old names left').toEqual([]);
         await expectClean(page, state);
     });
 
-    test('T-Score opened first still shows its freshness label, and deletes only its old cache names', async ({ page }) => {
+    test('T-Score opened first copies its cache to the new names, and deletes only its old cache names', async ({ page }) => {
         await seedPre6b(page);
         let state = await openApp(page, '/t-score/');
-        await expect(page.locator('#tscoreFreshness')).toHaveText('Sheet data: Updated today at 4:00 PM');
         const s = await dumpStorage(page);
         expect(s.tscore_cache).toBe(PRE_6B.mds_tscore_cache);
-        expect(s.tscore_cache_updated).toBe(PRE_6B.mds_tscore_cache_updated);
+        expect(s.tscore_cache_updated, 'retired (improvements T3): copied, then removed').toBeUndefined();
         expect(s.tscore_key_names_version).toBe('2');
         const tscoreOld = (k) => k.startsWith('mds_tscore_cache');
         expect(Object.keys(s).filter(tscoreOld), 'old T-Score cache names deleted').toEqual([]);
@@ -182,4 +182,20 @@ test.describe('pre-6B storage', () => {
         expect(await page.evaluate(() => localStorage.getItem('mls_best_available_collapsed'))).toBeNull();
         await expectClean(page, state);
     });
+
+    // Improvements T3: tscore_cache_updated went with T-Score's Sync button. Both pages that copy the old T-Score cache
+    // names remove it, kept under today's name or not.
+    for (const path of ['/t-score/', '/']) {
+        test(`${path} removes the retired tscore_cache_updated, and keeps tscore_cache`, async ({ page }) => {
+            await page.addInitScript(() => {
+                if (sessionStorage.getItem('retired-seeded')) return;
+                localStorage.setItem('tscore_cache_updated', '1726416000000');
+                localStorage.setItem('tscore_cache', '{}');
+                sessionStorage.setItem('retired-seeded', '1');
+            });
+            const state = await openApp(page, path);
+            expect(await page.evaluate(() => [localStorage.getItem('tscore_cache_updated'), localStorage.getItem('tscore_cache')])).toEqual([null, '{}']);
+            await expectClean(page, state);
+        });
+    }
 });

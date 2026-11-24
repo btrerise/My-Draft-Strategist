@@ -11,7 +11,7 @@
 //   * renameLegacyKeys(data) renames the keys in a backup file, so files saved before 6B
 //     still restore.
 // Imports only keys.js, so it's safe to run at module top level (6A's convention).
-import { KEYS, renamedKey, isLegacyKey, LEGACY_MDS_PREFIX, LEGACY_MLS_PREFIX } from './keys.js';
+import { KEYS, RETIRED_KEYS, renamedKey, isLegacyKey, LEGACY_MDS_PREFIX, LEGACY_MLS_PREFIX } from './keys.js';
 
 // Each page's *_key_names_version marker (KEYS.<page>.keyNamesVersion). Like MDS's draft-storage
 // marker (js/mds/storage.js): each step runs until it has set its value. 6C bumped it to '2' rather
@@ -20,7 +20,9 @@ const KEY_NAMES_COPIED = '1';      // migrateKeyNames has copied the old names (
 const OLD_KEY_NAMES_DELETED = '2'; // deleteOldKeyNames has deleted them too (6C)
 const RENAME_DONE = [KEY_NAMES_COPIED, OLD_KEY_NAMES_DELETED];
 
-const TSCORE_CACHE_KEYS = [KEYS.tscore.cache, KEYS.tscore.cacheUpdated];
+// The T-Score cache names the rename covers. tscore_cache_updated is retired (improvements T3) but still renamed like
+// the rest, so its old copy is deleted with them; removeRetiredKeys then removes the new one.
+const TSCORE_CACHE_KEYS = [KEYS.tscore.cache, ...RETIRED_KEYS.tscore];
 
 // Which old keys each page copies: its own, plus the cross-app keys it reads. A page never
 // copies the other app's keys, so opening one app leaves the other's data exactly as it was.
@@ -155,4 +157,14 @@ export function renameLegacyKeys(data) {
         if (newKey !== k && !Object.prototype.hasOwnProperty.call(out, newKey)) out[newKey] = data[k];
     });
     return out;
+}
+
+// --- RETIRED KEYS ---
+// Removes the keys nothing uses any more (RETIRED_KEYS in keys.js) for a group. Idempotent, so it runs on every load,
+// after the two steps above (which may have just copied one from its old name). Lineup Strategist removes its own in
+// js/mls/init.js.
+export function removeRetiredKeys(group, storage = localStorage) {
+    for (const k of RETIRED_KEYS[group] || []) {
+        try { storage.removeItem(k); } catch (e) { /* storage blocked: nothing to remove */ }
+    }
 }

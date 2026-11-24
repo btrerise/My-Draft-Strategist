@@ -208,3 +208,11 @@ export function parseInSeasonWeights(rows) {
     const cutoffs = complete.length ? Object.fromEntries(complete) : null;
     return { byPos, fitWeek, cutoffs, cutoffsFrom: cutoffs ? cutoffsFrom : '' };
 }
+
+// "P. Nacua" for the phone's narrow name column (improvements T3). A first name that is already initials ("A.J.
+// Brown", "D.J. Moore") stays as it is.
+export function shortName(name) {
+    const parts = String(name).trim().split(/\s+/);
+    if (parts.length < 2 || parts[0].endsWith('.')) return parts.join(' ');
+    return `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
+}
