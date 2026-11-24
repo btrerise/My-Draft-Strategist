@@ -1230,8 +1230,9 @@ since round 1; no other app's PNGs.
 **User-visible.** Nothing in the app changes. The Guides' and T-Score's privacy lines and the README now say tab and button
 taps are counted (name only, no league data). CHANGELOG line in both apps. `CACHE_NAME` 2.10.22.
 
-**Screenshots.** The longer Visitor Counts line moves the Guide pages: `desktop/` and `phone/` `mds-empty-guide.png` and
-`mls-league-guide.png`, re-taken by CI (predicted, not compared here).
+**Screenshots.** The longer Visitor Counts line moves the Guide pages: `desktop/` and `phone/` `mds-empty-guide.png`,
+`mls-league-guide.png` and `tscore-researchTab.png` (T-Score's line), re-taken by CI. The first try predicted only the
+Guides and missed T-Score; a later push cancelled the marker run, so one commit carries the marker alone.
 
 **Left over.**
 - U5 (simulator and trade-finder folds) and U6 (chips) were not merged, so their `Section` attributes are not added: add
