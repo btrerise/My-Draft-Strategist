@@ -170,7 +170,7 @@ test.describe('Ko-fi and Share', () => {
         const line = page.locator('#researchTab .tscore-support');
         await expect(line).toContainText('I build the T-Score model and both apps on my own, for fun, with no ads.');
         await expect(line.getByRole('link', { name: 'Support on Ko-fi' })).toHaveAttribute('data-umami-event-where', 'guide');
-        await expect(line.locator('+ .tscore-privacy')).toContainText('Taps on the Support on Ko-fi and Share buttons, the tabs and the main buttons');
+        await expect(line.locator('+ .tscore-privacy')).toContainText('Taps on the Support on Ko-fi and Share buttons are counted too');
         await line.getByRole('button', { name: 'Share with your league' }).click();
         await expect.poll(() => page.evaluate(() => window.__shared.map(d => d.url))).toEqual(['https://mydraftstrategist.com/t-score/?ref=share']);
     });
