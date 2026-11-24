@@ -62,7 +62,9 @@ What changed for users in each version of the two apps, in plain language. Newes
   them. The Research's "Reading the In-Season Tab" says what they mean.
 - **T-Score's In-Season table fits a phone.** The player column is narrower (P. Nacua, with WR1 · LA under it in place
   of the ROS and Team columns), the Label moves after the stats, and column names wrap, so at 360px you see the name and
-  three stat columns; swipe the table for the rest. Wider screens are unchanged.
+  four stat columns; swipe the table for the rest. Wider screens are unchanged.
+- **The T-Score page uses a phone's whole width,** like the two apps: sections run to the screen's edges with 16px
+  margins, and the tables run edge to edge instead of sitting in a box inside a box.
 - **T-Score's column explanations open below the column names.** They used to open over the bottom of the header row,
   partly hidden behind the neighbouring column names (on phones, behind the Player column).
 - **T-Score's Buy/Sell explanation says what decides it**: outside the top 48 WRs (36 RBs, 18 TEs) so far but projected

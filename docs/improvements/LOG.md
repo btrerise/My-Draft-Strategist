@@ -1179,42 +1179,37 @@ applies, upload preview names it, legend line, CHANGELOG line.
 
 ## T3 — T-Score table on phones, its tooltips, and no Sync button
 
-**User-visible effect.** At 360px the In-Season table shows the name and three stat columns (ROS PPG, FP/G, XFP/G); the
-rest scroll sideways in the table. The locked name column shows "P. Nacua" with "WR1 · LA" under it in place of the
-ROS and Team columns, column names wrap, and the Label sits at the end of the row (wide windows unchanged). Column-name
-tooltips on every T-Score table open below the header row, not over it, and nothing draws on top of them. The Buy/Sell
-tooltip names the position's line ("outside the top 48 WRs so far, projected inside them…"). The Sync button and its
-"Sheet data: …" line are gone, so every T-Score tab starts 44px higher.
+**User-visible effect.** Phones (under 600px): the page follows Material 3's compact window like the apps (M17):
+no page padding, cards unframed with 16px sides, articles at 16px, tables directly in a card or article edge to edge
+(first and last columns 16px in; tables in folds stay framed). The In-Season table's name column shows "P. Nacua /
+WR1 · LA" in place of the ROS and Team columns, headers wrap, the Label moves to the end: at 360px the name and four
+stat columns show. Everywhere: header tooltips open below the header row with nothing drawn over them; the Buy/Sell
+tooltip names the position's line; the Sync button and "Sheet data: …" line are gone (tabs start 44px higher).
 
-**The bug (owner's screenshot).** Each header tooltip hung 6px under the header's words, inside the row, and every
-`th` is sticky (its own stacking layer), so the next header, and on phones the locked PLAYER header, drew over it. It
-closed correctly and had the right text. Fix (`css/tscore.css`): the trigger is `position: static`, so the tooltip
-anchors to its sticky `th` and opens under the row; that `th` rises to `z-index: 20` while its tooltip shows. The
-shared `js/shared/ui/tooltips.js` is unchanged.
+**The bug (owner's screenshot).** Tooltips hung 6px under the header's words, inside the row, and each sticky `th`
+is its own stacking layer, so the next header (on phones the locked PLAYER one) drew over them. Fix in
+`css/tscore.css`: the trigger is `position: static` (the tooltip anchors to its `th`, under the row) and that `th`
+rises to `z-index: 20` while it shows. `js/shared/ui/tooltips.js` unchanged.
 
-**Buy/Sell.** The sheet decides it; all 19 calls in the fixtures match: Buy when YTD rank is outside the position's
-line (Model Weights: WR 48, RB 36, TE 18) and ROS rank inside, Sell the reverse. `inSeason.js` writes the tooltip per
-position (`#inSeasonBuySellTip`).
+**Buy/Sell.** Decided by the sheet; all 19 fixture calls match: Buy when YTD rank is outside the line (Model Weights:
+WR 48, RB 36, TE 18) and ROS rank inside, Sell the reverse. `inSeason.js` writes `#inSeasonBuySellTip` per position.
 
-**Owner's decisions (2026-11-23).** The tooltip bug is the one found (opens inside the header row, covered). Sync:
-**drop it entirely**, no fetch of the preseason sheets on load (the preseason model is final; the In-Season tab already
-fetches on every visit). `main.js` no longer fetches or writes; a `tscore_page_cache` saved by an old Sync still draws.
+**Owner's decisions.** 2026-11-23: the bug is the one found; Sync dropped entirely (no preseason fetch on load; a
+`tscore_page_cache` from an old Sync still draws). 2026-11-24: retire `tscore_cache_updated`; build mock-up B
+(edge-to-edge tables, over A, cards unframed only) after asking how much of the page follows Material 3 (motion,
+window sizes, focus ring, tooltips and reading width did; M17's layout keyed on `.has-nav-bar`, which T-Score lacks).
 
-**Where.** `t-score/index.html` (button gone; `tscore-wide-only` / `tscore-phone-only` cells), `js/tscore/inSeason.js`
-(name cell, second Label cell, Buy/Sell tip, offline message says "reload the page"), `shortName` in
-`inSeasonParse.js`, `js/tscore/main.js`. Tests: `tscore-table-phone.spec.mjs` (new; the tooltip test fails on main on
-both projects), `tscore-refresh.spec.mjs` → `tscore-saved-tables.spec.mjs` (saved copy draws, nothing fetched),
-`tscore-inseason.spec.mjs` and `key-migration.spec.mjs` updated, a `shortName` unit test. CACHE_NAME v2.10.21.
+**Retired key.** `tscore_cache_updated` is in `RETIRED_KEYS.tscore`; OLD NAMES still maps `mds_tscore_cache_updated`
+to it, so the rename copies and deletes the old name as before, then `removeRetiredKeys('tscore')` (`keyMigration.js`)
+removes it on Draft Strategist's and T-Score's load.
 
-**Screenshots.** Main vs branch in this container: only the 14 T-Score PNGs changed (desktop and phone
-`tscore-inSeasonTab`, `-researchTab`, `-top50Tab`, `-valuesTab`, `-avoidsTab`, `-sleepersTab`, `-tab-2024`): all 44px
-shorter (no Sync row); phone `tscore-inSeasonTab` also has the new phone table. Re-taken on CI.
+**Tests.** `tscore-table-phone.spec.mjs` (new: the tooltip test fails on main on both projects; 360px layout on every
+tab; Buy/Sell text; no Sync), `tscore-refresh` → `tscore-saved-tables.spec.mjs`, `tscore-inseason` and `key-migration`
+updated, unit tests for `shortName`, retired keys and `removeRetiredKeys`. CACHE_NAME v2.10.21.
 
-**Round 2 (owner, 2026-11-24): retire `tscore_cache_updated`.** Out of `KEYS`, into `RETIRED_KEYS.tscore`; the OLD
-NAMES table still maps `mds_tscore_cache_updated` to it, so the rename copies and deletes the old name as before, then
-`removeRetiredKeys('tscore')` (`keyMigration.js`) removes it on Draft Strategist's and T-Score's load. Tests: unit
-(retired-key rules, `removeRetiredKeys`), `key-migration.spec.mjs` (both pages remove it; the rename tests expect it gone).
+**Screenshots** (each round compared before/after in this container, re-taken on CI): round 1 all 14 T-Score PNGs
+(no Sync row; phone In-Season's new table); round 3 the 7 phone T-Score PNGs (the phone layout). Desktop unchanged
+since round 1; no other app's PNGs.
 
-**Left over.** `tscore_cache` (Draft Strategist's badges) is no longer
-written: badges use the last saved copy or the bundled `js/shared/data/tscore.js`. The preseason tables keep the wide
-name column on phones (not in this card).
+**Left over.** `tscore_cache` (Draft Strategist's badges) is no longer written: badges use the last saved copy or
+`js/shared/data/tscore.js`. The preseason tables keep their full names on phones.
