@@ -437,13 +437,6 @@ named reviews it with the owner.
   Justin Jefferson · Against Harrison Butker", tap for the boxes) when few players are left. S37 adds a per-player view
   of the same night to the Final Window, so decide there whether both are needed (S27, S33's `rootHTML` in
   js/mls/week/thisWeek.js).
-- **Review in M17 (room on phones: full-width sections, nothing boxed inside cards): the league tiles on phones.**
-  "Every league, closest first" is one tile per row at 375px, so 20 leagues are about 1,600px. Two across would halve
-  it, but S21's round 6 keeps league names whole, which two across would cut on long names (S21, `tileHTML` and
-  `.mls-week-tiles` in css/mls.css). M17 keeps the week tiles as tiles, so decide there whether they also go two
-  across. M17 should also cover the Final Window's own boxes inside the Scoreboard card (its two tiles, the bars and
-  the matchup cards, `.mls-fw-*` in css/mls.css), which its R1 rule ("inside cards nothing is boxed again") would
-  flatten. (Moved from U1, which merged before this note was written.)
 
 **Handed on by M2 to later Material 3 cards** (the owner's decision, after M2; details in docs/improvements/LOG.md, M2).
 The card named does the item in its own session; remove the line when it's done.
@@ -547,10 +540,6 @@ The card named does the item in its own session; remove the line when it's done.
   Lineup tab show a past week's lineup and points (read-only) would let those tiles open it again.
 
 **Small polish, one session each**
-- `visual.spec.mjs`'s "MLS synced league tabs" shoots the Dashboard right after the sync, while Sync's button shows
-  "Synced Successfully" for 2.5s (`flashButton`); a slow run catches it back on "Sync Sleeper", changing
-  `desktop/mls-league-setup.png` (improvements M17, round 2: CI's screenshot run did once). Waiting for the flash to end
-  before that shot (or hiding the flash text in `hide-transient.css`) would end it, and re-take both widths' Dashboard PNGs.
 - The Guide's second paragraphs have no gap (improvements N2, round 6): `class="step-desc mt-2"` in both apps' Guides
   meant a 0.5rem gap, but `.step-desc` (css/base.css) comes after `.mt-2` and sets all four margins, so it never
   applies. A fix (e.g. `.step-desc.mt-2 { margin-top: var(--space-2); }`) re-takes both apps' Guide screenshots.
