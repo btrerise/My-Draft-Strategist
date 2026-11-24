@@ -106,6 +106,7 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - S54 | LOG.md | S54 — Who should I drop?
 - S48 | LOG.md | S48 — Playoff strength of schedule (parked to the off-season)
 - T3 | LOG.md | T3 — T-Score table on phones, its tooltips, and no Sync button
+- A2 | LOG.md | A2 — Umami: which tabs and tools are used (Tab, Tool and Section events)
 
 ## F23 — The flash when tapping things on phones
 
@@ -1213,3 +1214,25 @@ since round 1; no other app's PNGs.
 
 **Left over.** `tscore_cache` (Draft Strategist's badges) is no longer written: badges use the last saved copy or
 `js/shared/data/tscore.js`. The preseason tables keep their full names on phones.
+
+## A2 — Umami: which tabs and tools are used (Tab, Tool and Section events)
+
+**What changed.** Click events by attribute (`data-umami-event`), no tracking code, in both apps:
+- `Tab` + `data-umami-event-tab` on the bar, rail and drawer tab buttons (`where="drawer"` on the drawer's). MLS: setup,
+  roster, lineup, scoreboard, scout, guide. MDS: setup, tracker, team, board, guide.
+- `Tool` + `data-umami-event-tool`: sync-all, optimize-all, optimize, waiver-top/auto/list (the three mode buttons),
+  analyze-trade, find-trade-targets, run-sim, export-lineup (`lineup/index.html`), export-recap (`thisWeek.js`); MDS:
+  live-sync (header Sync), export-team, pick (the "Pick" button in `js/mds/tracker.js`, both renders).
+- `Section` + `data-umami-event-section` on the Scoreboard fold toggles (`foldSection` in `js/mls/week/thisWeek.js`):
+  player-scoreboard, root-for, mvps, still-in-play. Counts closing too (not yet worth `umami.track`).
+- Privacy lines updated: both Guides' Visitor Counts, T-Score's line, README. Spec: `tests/analytics-events.spec.mjs`.
+
+**User-visible.** Nothing in the app changes. The Guides' and T-Score's privacy lines and the README now say tab and button
+taps are counted (name only, no league data). CHANGELOG line in both apps. `CACHE_NAME` 2.10.22.
+
+**Left over.**
+- U5 (simulator and trade-finder folds) and U6 (chips) were not merged, so their `Section` attributes are not added: add
+  `simulator`, `trade-finder` (and the chips) when those cards land.
+- A week after it ships, check the month's total in Umami against the free plan's 100K. If `Tab` is too many, drop it
+  and say so here.
+- The Tool "Pick" fires per pick during a draft, so it may be the largest event in draft season.
