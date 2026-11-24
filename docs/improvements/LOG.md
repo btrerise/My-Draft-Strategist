@@ -107,6 +107,7 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - S48 | LOG.md | S48 — Playoff strength of schedule (parked to the off-season)
 - T3 | LOG.md | T3 — T-Score table on phones, its tooltips, and no Sync button
 - A2 | LOG.md | A2 — Umami: which tabs and tools are used (Tab, Tool and Section events)
+- W2 | LOG.md | W2 — CI: the Dashboard screenshot that sometimes catches Sync's "Synced Successfully"
 
 ## F23 — The flash when tapping things on phones
 
@@ -1240,3 +1241,20 @@ Guides and missed T-Score; a later push cancelled the marker run, so one commit 
 - A week after it ships, check the month's total in Umami against the free plan's 100K. If `Tab` is too many, drop it
   and say so here.
 - The Tool "Pick" fires per pick during a draft, so it may be the largest event in draft season.
+
+## W2 — CI: the Dashboard screenshot that sometimes catches Sync's "Synced Successfully" (2026-11-24)
+
+**What changed.** `tests/visual.spec.mjs`, "MLS synced league tabs": a MutationObserver on `#mainSyncBtn` cancels
+`flashButton`'s reset timer the moment "Synced Successfully" is set, then the test waits for that text before the first
+shot. The Dashboard shot always shows the flash, never "Sync Sleeper", however slow the run. I held the flash rather
+than hiding its text in `hide-transient.css` (or waiting it out) because the committed baselines already show the
+green "Synced Successfully" button, so they stay as they are. `flashButton` is untouched; no app code changed, so no
+`sw.js` bump and no CHANGELOG line.
+
+**Docs.** Removed two items from `docs/TESTING.md`'s Open follow-ups: this one, and "Review in M17: the league tiles
+on phones", closed by the owner on 2026-11-14 (one league per row on phones is intentional).
+
+**Checked.** Cloud fonts differ from CI's, so the run used `RENDER_ENV=any`: main and this branch render the MLS league
+PNGs byte-identical, and `--repeat-each 30` on both projects gave the same picture every run (see the final report).
+
+**User-visible effect.** None. **Left over.** Nothing.

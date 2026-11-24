@@ -63,7 +63,15 @@ test('MLS empty setup', async ({ page }) => {
 
 test('MLS synced league tabs', async ({ page }) => {
     await openApp(page, '/lineup/');
+    // Sync's button reads "Synced Successfully" for 2.5s (flashButton), then goes back to "Sync Sleeper". The Dashboard
+    // baseline has the flash, so hold it: cancel the reset timer the moment the flash text is set (improvements W2).
+    await page.evaluate(() => {
+        const btn = document.getElementById('mainSyncBtn');
+        new MutationObserver(() => { if (btn.textContent.includes('Synced Successfully')) clearTimeout(btn.flashTimeout); })
+            .observe(btn, { childList: true, characterData: true, subtree: true });
+    });
     await seedMls(page);
+    await expect(page.locator('#mainSyncBtn')).toHaveText('Synced Successfully');
     for (const tab of MLS_TABS) {
         await showTab(page, tab);
         await shot(page, `mls-league-${tab}`);
