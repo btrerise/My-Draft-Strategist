@@ -110,12 +110,46 @@ test.describe('phones', () => {
         for (let i = 0; i < await heads.count(); i++) {
             if (await heads.nth(i).isVisible() && await fullyShown(heads.nth(i))) shown.push((await heads.nth(i).innerText()).replace(/\s+/g, ' ').trim());
         }
-        expect(shown.slice(0, 4)).toEqual(['PLAYER', 'ROS PPG', 'FP/G', 'XFP/G']);
+        // Since round 3 (the table runs edge to edge, ROOM ON PHONES) a fourth stat column fits too.
+        expect(wrap.x).toBe(0);
+        expect(wrap.width).toBe(360);
+        expect(shown.slice(0, 5)).toEqual(['PLAYER', 'ROS PPG', 'FP/G', 'XFP/G', 'FPOE/G']);
         // The rest are there, a swipe away inside the table; the page itself doesn't scroll sideways.
         expect(await page.locator('#inSeasonTableWrap').evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         // The label moves to the end of the row on phones.
         await expect(first.locator('td:last-child .label-elite')).toHaveText('Elite');
+        await expectClean(page, state);
+    });
+
+    // Material 3's compact window, as the apps have it (M17): sections to the screen's edges with 16px margins, tables
+    // edge to edge, nothing framed inside a card, and no sideways scroll, on every tab.
+    test('every tab: cards and articles at 16px margins, tables edge to edge, no sideways scroll', async ({ page }) => {
+        const state = await open(page);
+        for (const tab of ['inSeasonTab', 'researchTab', 'top50Tab', 'valuesTab', 'avoidsTab', 'sleepersTab', 'tab-2024']) {
+            await page.locator(`.tscore-nav-btn[data-tab="${tab}"]`).click();
+            const found = await page.locator(`#${tab}`).evaluate((el) => {
+                const out = [];
+                for (const box of el.querySelectorAll(':scope > .settings-card, :scope > .article-content')) {
+                    const r = box.getBoundingClientRect(), cs = getComputedStyle(box);
+                    if (r.left !== 0 || r.width !== innerWidth) out.push(`${box.className} at ${r.left}, ${r.width} wide`);
+                    if (cs.paddingLeft !== '16px' || cs.paddingRight !== '16px') out.push(`${box.className} padding ${cs.paddingLeft} ${cs.paddingRight}`);
+                    if (cs.borderLeftWidth !== '0px') out.push(`${box.className} framed`);
+                }
+                for (const w of el.querySelectorAll('.data-table-wrapper')) {
+                    if (!w.offsetWidth || w.closest('details')) continue;
+                    const r = w.getBoundingClientRect();
+                    if (r.left !== 0 || r.width !== innerWidth) out.push(`table at ${r.left}, ${r.width} wide`);
+                    if (getComputedStyle(w).borderTopWidth !== '0px') out.push('table framed');
+                    const first = w.querySelector('tr > :first-child:not([hidden])');
+                    const pad = getComputedStyle([...w.querySelectorAll('thead th')].find(th => th.offsetWidth) || first).paddingLeft;
+                    if (pad !== '16px') out.push(`first column padding ${pad}`);
+                }
+                if (document.documentElement.scrollWidth > innerWidth) out.push('the page scrolls sideways');
+                return out;
+            });
+            expect(found, tab).toEqual([]);
+        }
         await expectClean(page, state);
     });
 });
