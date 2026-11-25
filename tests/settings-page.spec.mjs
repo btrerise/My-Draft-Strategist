@@ -12,10 +12,11 @@ test.describe('Lineup Strategist: Settings', () => {
         const state = await openApp(page, '/lineup/');
         await seedMls(page);
 
-        // The entry sits just above the Guide in the drawer, with an icon.
+        // The entry sits below the Guide and T-Score in the drawer, with an icon.
         const names = await navNames(page);
         expect(names.indexOf('Settings')).toBeGreaterThan(-1);
-        expect(names.indexOf('Settings') + 1).toBe(names.indexOf('Guide'));
+        expect(names.indexOf('Settings')).toBe(names.indexOf('T-Score') + 1);
+        expect(names.indexOf('T-Score')).toBe(names.indexOf('Guide') + 1);
         await expect(page.locator('.hamburger-menu [data-drawer-target="settings"] svg[aria-hidden="true"]')).toHaveCount(1);
 
         await page.evaluate(() => document.querySelector('.hamburger-menu [data-drawer-target="settings"]').click());
@@ -94,7 +95,8 @@ test.describe('Draft Strategist: Settings', () => {
         await seedMds(page);
 
         const names = await navNames(page);
-        expect(names.indexOf('Settings') + 1).toBe(names.indexOf('Guide'));
+        expect(names.indexOf('Settings')).toBe(names.indexOf('T-Score') + 1);
+        expect(names.indexOf('T-Score')).toBe(names.indexOf('Guide') + 1);
 
         await page.evaluate(() => document.querySelector('.hamburger-menu [data-tab="settings"]').click());
         await expect(page.locator('#settingsTab')).toHaveClass(/\bactive\b/);

@@ -1277,7 +1277,7 @@ PNGs byte-identical, and `--repeat-each 30` on both projects gave the same pictu
 ## S45 — A Settings page in both apps (set-once settings off the Dashboards)
 
 **Owner's decisions** (sketch at 375 and 1280px, "go" on all recommendations, 2026-11-25):
-1. A **Settings** tab (id `settings`, hash `#settings`), gear icon, in the drawer's "More" group just above the Guide (the
+1. A **Settings** tab (id `settings`, hash `#settings`), gear icon, in the drawer's "More" group below the Guide and T-Score (owner moved it there in the user-hat round: where people look for Settings) (the
    rail's expanded drawer too; the bottom bar and the phone's tabs are unchanged, like the Guide). Not in the swipe order.
 2. Lineup Strategist's Settings page keeps today's order, without Add Player Manually: Show Player Headshots, Lineup,
    Notifications, FAAB Bids (FAAB leagues only), MVP / LVP Lines, Backup & Restore, Danger Zone.

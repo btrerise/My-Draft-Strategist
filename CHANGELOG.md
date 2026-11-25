@@ -16,7 +16,7 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **A Settings page.** The set-once switches and the backup and reset buttons moved off the Dashboard to a new
-  **Settings** page in the menu, just above the Guide: Highlight Stacks, Bye Week Warnings, T-Score Analytics, Collapse
+  **Settings** page in the menu, below the Guide and T-Score: Highlight Stacks, Bye Week Warnings, T-Score Analytics, Collapse
   Player Cards, Show Player Headshots, Backup & Restore and Reset Controls. The Dashboard is shorter; the roster limits,
   teams, rounds and Third Round Reversal stay on it. The Highlight Stacks and Bye Week Warnings switches now save as you
   flip them.
@@ -235,8 +235,8 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
-- **A Settings page.** Advanced Settings moved off the Dashboard to a new **Settings** page in the menu, just above
-  the Guide. Show Player Headshots, Lineup, Notifications, FAAB Bids and Backup & Restore sit open under headings; the
+- **A Settings page.** Advanced Settings moved off the Dashboard to a new **Settings** page in the menu, below the
+  Guide and T-Score. Show Player Headshots, Lineup, Notifications, FAAB Bids and Backup & Restore sit open under headings; the
   long MVP / LVP Lines form and the Danger Zone stay folded. The Dashboard is shorter. **Add Player Manually** stays
   on the Dashboard, at the foot of Active League Requirements, and shows only while a manual league is open (a Sleeper
   league's players come from Sleeper, and a sync replaces them). A starter alert's card also has an **Alert settings**

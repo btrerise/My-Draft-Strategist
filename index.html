@@ -171,10 +171,6 @@
             Board
         </button>
         <div class="menu-section-label" aria-hidden="true">More</div>
-        <button class="nav-btn" data-target="settings" data-action="showTab" data-tab="settings" data-umami-event="Tab" data-umami-event-tab="settings" data-umami-event-where="drawer">
-            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-            Settings
-        </button>
         <button class="nav-btn" data-target="guide" data-action="showTab" data-tab="guide" data-umami-event="Tab" data-umami-event-tab="guide" data-umami-event-where="drawer">
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
             Guide
@@ -187,6 +183,10 @@
             </svg>
             T-Score
         </a>
+        <button class="nav-btn" data-target="settings" data-action="showTab" data-tab="settings" data-umami-event="Tab" data-umami-event-tab="settings" data-umami-event-where="drawer">
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Settings
+        </button>
         
         <a href="./lineup/" class="nav-btn premium-link-btn">
             My Lineup Strategist 
@@ -773,7 +773,7 @@
 <div id="settingsTab" class="tab-content">
     <h2 class="sr-only">Settings</h2>
     <section class="settings-card">
-        <header class="card-header card-header-flush">
+        <header class="card-header">
             <h3><span>Settings</span></h3>
         </header>
         <div class="toggle-row">
@@ -971,7 +971,7 @@
             <!-- Step 9 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">9</span> Backup, Restore & Reset</h4>
-                <p class="step-desc">Your drafts, rankings, and settings are stored in this browser only. On the <strong class="text-main">Settings</strong> page (in the menu, above the Guide):</p>
+                <p class="step-desc">Your drafts, rankings, and settings are stored in this browser only. On the <strong class="text-main">Settings</strong> page (in the menu, below the Guide and T-Score):</p>
                 <ul class="guide-list">
                     <li><strong class="text-main">Export / Import Backup:</strong> Download everything as a file, then import it to restore on this or another device or browser.</li>
                     <li><strong class="text-main">Reset Draft Picks Only:</strong> Clears the picks from the active draft while keeping your rankings and settings.</li>

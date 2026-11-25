@@ -3079,6 +3079,7 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 .settings-group-title { margin: 0 0 0.75rem; font-size: 0.95rem; font-weight: 700; color: var(--text-main); }
 .settings-group .toggle-row { padding: 0; background: none; border: 0; border-radius: 0; margin-bottom: 0; }
 .settings-group .toggle-row + .toggle-row { margin-top: 1rem; }
+.settings-group > .accordion-body { padding-top: 0; }
 /* A fold's one-line summary under its title (MVP / LVP Lines, Danger Zone). */
 .sos-summary-text { display: inline-flex; flex-direction: column; gap: 0.15rem; }
 .sos-summary-tag { font-size: 0.78rem; font-weight: 400; color: var(--text-muted); }
