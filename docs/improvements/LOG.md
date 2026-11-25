@@ -1286,7 +1286,8 @@ they now save as flipped (`autoSaveSettings`, as T-Score's did; that also saves 
 `MDS_TABS` gain `settings`; `nav-rail` knows the entry and the gear. Two phone `mls-starter-alert` timing tests fail on
 main too (one desktop one flakes 1 in 6 there). Full suite: only `visual.spec.mjs` fails, as in any cloud session.
 
-**Screenshots** (re-taken on CI, 24 PNGs, predicted by rendering main and this branch in one container). Both widths:
+**Screenshots** (re-taken on CI, commit 340edee, 24 PNGs; opened the new Settings pair and the phone Draft Strategist
+Dashboard: different only where the change is; predicted by rendering main and this branch in one container). Both widths:
 `mls-empty-setup`, `mls-league-setup`, `mds-empty-setup` (shorter; Import Backup card), `mls-league-guide`,
 `mds-empty-guide` (new text). Desktop only, the rail's gear: `mds-empty-{tracker,team,board}`, `mds-draft-{tracker,team,board}`,
 `mls-league-{roster,lineup,scoreboard,scout}`. New, both widths: `mls-league-settings`, `mds-empty-settings`.
