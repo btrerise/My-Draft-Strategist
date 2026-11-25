@@ -36,6 +36,7 @@ test.describe('Chevrons turn with their folds (improvements F11)', () => {
     test('Lineup Strategist: a <details>, a league card and a rankings card', async ({ page }) => {
         await openApp(page, '/lineup/');
         await seedMls(page);
+        await showTab(page, 'settings');
 
         // Backup & Restore: the shared chevron instead of the browser's triangle, right when closed, down when open.
         const backup = page.locator('#settingsTab details.sos-details-accordion').filter({ hasText: 'Backup & Restore' });

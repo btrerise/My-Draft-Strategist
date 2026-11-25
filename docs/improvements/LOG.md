@@ -1296,5 +1296,7 @@ Removed S45's follow-up from `docs/TESTING.md`.
 (shorter), `mls-league-guide`, `mds-empty-setup`, `mds-empty-guide` (new text), and the new `mls-league-settings` and
 `mds-empty-settings`.
 
+**Checked.** Touched specs: all pass except two phone-only `mls-starter-alert` tests ("a window behind another app…", "waits while the tab is hidden…"), which fail the same way on main in this container (N2's 12-second card timing); not caused by S45.
+
 **Left over.** N4's "on the clock" switch goes into Draft Strategist's Settings page as its own Notifications section.
 The Guide's keyboard-shortcut list (numbers) is unchanged: Settings has no shortcut key.
