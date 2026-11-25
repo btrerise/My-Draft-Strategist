@@ -1,5 +1,5 @@
 // Starter alerts (improvements N2: js/mls/lineup/starterAlert.js, starterAlertRules.js, js/shared/ui/notify.js): the
-// Advanced Settings toggle (off by default; turning it on asks for notification permission), the check before a kickoff
+// Settings toggle (off by default; turning it on asks for notification permission), the check before a kickoff
 // window on the lineup set in Sleeper, its refresh (a quiet Sync All), once a week, and the fallbacks when notifications
 // are blocked or missing (the card on the page; the browser tab's name flashing while hidden). Every alert also stays on
 // the page as a card until dismissed, with a button to the Dashboard. "Send a test alert" sends a sample. sw.js's notificationclick (a tap
@@ -74,8 +74,8 @@ async function setup(page, { mode = 'default', answer = 'granted', when = KICK_1
     await seedMls(page);
     // The week's kickoffs (ESPN's scoreboard, stubbed above), as the page loads them after its first paint.
     await expect.poll(() => page.evaluate(async () => Object.keys((await import('/js/mls/state.js')).State.gameTimesByTeam).length)).toBe(6);
-    await showTab(page, 'setup');
-    // Advanced Settings' Notifications fold (N2 round 5), where the switch lives.
+    await showTab(page, 'settings');
+    // Settings' Notifications fold (N2 round 5), where the switch lives.
     await page.locator('details.notify-settings > summary').click();
     return { state, live };
 }

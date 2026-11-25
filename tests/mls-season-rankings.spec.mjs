@@ -548,7 +548,7 @@ test.describe('In-Season rankings in a dynasty league', () => {
     test('Backup / Restore keeps the In-Season set and the switch', async ({ page }) => {
         const { state, ids } = await setUp(page);
         await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: ids.season, powerCompeting: true } });
-        await showTab(page, 'setup');
+        await showTab(page, 'settings');
         await page.locator('summary', { hasText: 'Backup & Restore' }).click(); // collapsed accordion
         const [download] = await Promise.all([
             page.waitForEvent('download'),

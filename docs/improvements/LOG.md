@@ -108,6 +108,7 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - T3 | LOG.md | T3 — T-Score table on phones, its tooltips, and no Sync button
 - A2 | LOG.md | A2 — Umami: which tabs and tools are used (Tab, Tool and Section events)
 - W2 | LOG.md | W2 — CI: the Dashboard screenshot that sometimes catches Sync's "Synced Successfully"
+- S45 | LOG.md | S45 — A Settings page in both apps (set-once settings off the Dashboards)
 
 ## F23 — The flash when tapping things on phones
 
@@ -1258,3 +1259,42 @@ on phones", closed by the owner on 2026-11-14 (one league per row on phones is i
 PNGs byte-identical, and `--repeat-each 30` on both projects gave the same picture every run (see the final report).
 
 **User-visible effect.** None. **Left over.** Nothing.
+
+## S45 — A Settings page in both apps (set-once settings off the Dashboards)
+
+**Owner's decisions** (sketch at 375 and 1280px, "go" on all recommendations, 2026-11-25):
+1. A **Settings** tab (id `settings`, hash `#settings`), gear icon, in the drawer's "More" group just above the Guide (the
+   rail's expanded drawer too; the bottom bar and the phone's tabs are unchanged, like the Guide). Not in the swipe order.
+2. Lineup Strategist's Settings page keeps today's order, without Add Player Manually: Show Player Headshots, Lineup,
+   Notifications, FAAB Bids (FAAB leagues only), MVP / LVP Lines, Backup & Restore, Danger Zone.
+3. Draft Strategist moves only the set-once part: Highlight Stacks, Bye Week Warnings, T-Score Analytics, Collapse Player
+   Cards, Show Player Headshots, Backup & Restore, Reset Controls. Roster limits, teams, rounds, Third Round Reversal (saved
+   in each draft profile) and Call Outs stay on the Dashboard.
+4. **Add Player Manually** stays on the Dashboard in its own card (`#manualAddCard`, after Active League Requirements),
+   shown only while the open league is `manual_` or `handoff_` (`isManualLeague`). Checked first: a Sleeper sync
+   replaces a league's roster with Sleeper's (`leagues/sync.js`), so hand-added players on one don't last.
+
+**What changed.** `lineup/index.html`, `index.html`: the `settingsTab` and the drawer entry; the Guide text that said
+"Advanced Settings on the Dashboard" (steps 1, 4, 7, 9, 12, MVP / LVP, FAAB, Early Games) now says Settings.
+`js/mls/leagues/sync.js` (`renderManualAddCard`, from `loadActiveLeagueData`), `js/mls/nav.js` and `js/mds/ui.js`
+(`TAB_ORDER`), `js/mls/scout/faabSettings.js` (the toast: "…in Settings."). No storage keys change.
+One behaviour change forced by the move: Highlight Stacks and Bye Week Warnings only saved with the Dashboard's Save
+Settings button, which Settings doesn't have, so they now save as flipped (`data-action="autoSaveSettings"`, as the
+T-Score switch already did; that save also writes any unsaved Dashboard limits, as it did for T-Score).
+
+**User-visible effect.** Both Dashboards are shorter (Lineup Strategist loses the whole Advanced Settings card), and
+Settings sits beside the Guide in the menu. Nothing else about the settings changed.
+
+**Tests.** New `settings-page.spec.mjs` (menu entry and order, `#settings` on load, what is and isn't on each page, Add
+Player Manually for none / Sleeper / manual leagues, the two Draft Strategist switches saving). Updated: backup,
+chevrons, key-migration, mls-bye-crunch, mls-faab-bid, mls-mvp-lvp, mls-roster-counts (the Sleeper league now adds
+through `addManualPlayer`, its card being hidden), mls-season-rankings, mls-starter-alert, touch-targets, tap-feedback;
+`MLS_TABS` / `MDS_TABS` gain `settings` (so focus-ring, touch-targets, tooltips and smoke cover the new page).
+Removed S45's follow-up from `docs/TESTING.md`.
+
+**Screenshots** (re-taken on CI, listed with the pull request): desktop and phone `mls-empty-setup`, `mls-league-setup`
+(shorter), `mls-league-guide`, `mds-empty-setup`, `mds-empty-guide` (new text), and the new `mls-league-settings` and
+`mds-empty-settings`.
+
+**Left over.** N4's "on the clock" switch goes into Draft Strategist's Settings page as its own Notifications section.
+The Guide's keyboard-shortcut list (numbers) is unchanged: Settings has no shortcut key.

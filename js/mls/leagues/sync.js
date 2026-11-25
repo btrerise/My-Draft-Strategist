@@ -16,6 +16,7 @@ import { getActiveLeague, getShortInjuryStatus, HARD_OUT_STATUSES } from '../hel
 import { updatePulsePrompts } from '../init.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
+import { isManualLeague } from './manualInjuries.js';
 import { runScout } from '../scout/engine.js';
 import { applyWaiverScanSettingsToUI, getPowerLeagueKind, loadRosterTab, optimizeLineup, refreshTopAvailable, renderLeagueCards, runMarketDisconnectAnalysis, updateMarketMetaDisplay, leagueMarketFormat, useLeagueMarketSet } from '../main.js';
 import { updateRankingsMetaDisplay } from '../rankings/engine.js';
@@ -408,6 +409,7 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
     export function loadActiveLeagueData() {
         clearLeagueScopedResults();
         let league = getActiveLeague();
+        renderManualAddCard(league);
         if (!league) return;
         applyLeagueDefaultsToMarketSettings(league);
         
@@ -429,6 +431,13 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
         renderLeagueStyle(league);
         setVal('sleeperUsername', league.username !== "Manual" ? league.username : "");
         renderManualAddLog(); // show only this league's session adds
+    }
+
+    // Add Player Manually (improvements S45): its Dashboard card shows only while the open league is a manual or
+    // Draft Strategist hand-off one. A Sleeper league's roster comes from Sleeper and the next sync replaces it.
+    function renderManualAddCard(league) {
+        const card = document.getElementById('manualAddCard');
+        if (card) card.hidden = !isManualLeague(league);
     }
 
     // League style, keeper leagues only (improvements S23, round 10): plays like dynasty (the default) or redraft.

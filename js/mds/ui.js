@@ -67,7 +67,7 @@ closeMenuOnBack(() => {
 });
 
     // The tab bar's order, Guide last: a transition slides forward or back by it (improvements S16).
-    const TAB_ORDER = ['setup', 'tracker', 'team', 'board', 'guide'];
+    const TAB_ORDER = ['setup', 'tracker', 'team', 'board', 'settings', 'guide'];
 
     // Every way of changing tab comes here. The switch animates where the browser can
     // (js/shared/ui/viewTransition.js), so the DOM changes a frame later: the returned promise

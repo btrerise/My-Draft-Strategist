@@ -15,6 +15,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A Settings page.** The set-once switches and the backup and reset buttons moved off the Dashboard to a new
+  **Settings** page in the menu, just above the Guide: Highlight Stacks, Bye Week Warnings, T-Score Analytics, Collapse
+  Player Cards, Show Player Headshots, Backup & Restore and Reset Controls. The Dashboard is shorter; the roster limits,
+  teams, rounds and Third Round Reversal stay on it. The Highlight Stacks and Bye Week Warnings switches now save as you
+  flip them.
+
 - **Tabs and buttons are counted.** The visitor counter now also notes which tabs and main buttons are tapped (just the
   name, never your drafts), so the tools people use can be told apart from the ones they don't. The Guide's Visitor Counts line says so.
 - **Sleeper's player list is lighter.** The app keeps only the parts it uses (a tenth of the 15 MB), unpacks it in the
@@ -228,6 +234,11 @@ What changed for users in each version of the two apps, in plain language. Newes
 ## Lineup Strategist
 
 ### Unreleased
+
+- **A Settings page.** Advanced Settings moved off the Dashboard to a new **Settings** page in the menu, just above
+  the Guide: Show Player Headshots, Lineup, Notifications, FAAB Bids, MVP / LVP Lines, Backup & Restore and the Danger
+  Zone. The Dashboard is shorter. **Add Player Manually** stays on the Dashboard, beside Active League Requirements, and
+  shows only while a manual league is open (a Sleeper league's players come from Sleeper, and a sync replaces them).
 
 - **Tabs and buttons are counted.** The visitor counter now also notes which tabs and main buttons are tapped (just the
   name, never your leagues), so the tools people use can be told apart from the ones they don't. The Guide's Visitor Counts line says so.

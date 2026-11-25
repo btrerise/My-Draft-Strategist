@@ -130,8 +130,8 @@ export async function openApp(page, path, { beforeGoto } = {}) {
 }
 
 // Tab ids per page, in nav order. Kept here so a renamed tab fails loudly in every spec.
-export const MDS_TABS = ['setup', 'tracker', 'team', 'board', 'guide'];
-export const MLS_TABS = ['setup', 'roster', 'lineup', 'scoreboard', 'scout', 'guide'];
+export const MDS_TABS = ['setup', 'tracker', 'team', 'board', 'settings', 'guide'];
+export const MLS_TABS = ['setup', 'roster', 'lineup', 'scoreboard', 'scout', 'settings', 'guide'];
 export const TSCORE_TABS = ['inSeasonTab', 'researchTab', 'top50Tab', 'valuesTab', 'avoidsTab', 'sleepersTab', 'tab-2024'];
 
 /**

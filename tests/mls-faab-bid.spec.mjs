@@ -219,6 +219,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         // The sync reads the rosters once; the history (which would read them again) isn't loaded.
         expect(rosterReads).toBe(1);
         const group = page.locator('#faabSettingsGroup');
+        await showTab(page, 'settings');
         await expect(group).toBeVisible();
         await expect(page.locator('#faabSettingsState')).toHaveText('Off');
         // Turn it on: Conservative, and the bid appears.
@@ -227,8 +228,10 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await page.locator('#faabBidsToggle').check();
         await expect(page.locator('#faabSettingsState')).toHaveText('On · Conservative');
         await expect(page.locator('#faabStyleOptions [data-style="conservative"]')).toHaveAttribute('aria-pressed', 'true');
+        await showTab(page, 'setup');
         await expect(cook.locator('button.mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');
         expect(JSON.parse(await page.evaluate(() => localStorage.getItem('mls_faab_settings')))).toMatchObject({ on: true, style: 'conservative' });
+        await showTab(page, 'settings');
         // Round 7: the line under the switch says how many bids the Dashboard shows, and the style choice has a label.
         await expect(page.locator('#faabBidsStatus')).toHaveText('1 bid on the Dashboard now (upgrades on waivers only). Auto-Find and Check a List show one for every player on waivers.');
         await expect(page.locator('#faabStyleLabel')).toHaveText('Bidding style');
@@ -243,11 +246,13 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         const bid = cook.locator('button.mls-faab-bid');
         await expect(bid).toHaveText(/^Bid \$\d+–\$\d+ \(of your \$40 left\)$/);
         const conservative = Number((await bid.textContent()).match(/–\$(\d+)/)[1]);
+        await showTab(page, 'settings');
         await page.locator('#faabSettingsGroup summary').click();
         await page.locator('#faabStyleOptions [data-style="aggressive"]').click();
         await expect(page.locator('#faabSettingsState')).toHaveText('On · Aggressive');
         // The contested RB claims' median, 40, is above Conservative's top.
         expect(conservative).toBeLessThan(40);
+        await showTab(page, 'setup');
         await expect(bid).toHaveText(/^Bid \$\d+–\$40 \(of your \$40 left\)$/);
         await bid.click();
         await expect(page.locator('.sheet .mls-faab-sheet li.is-up').first()).toHaveText('Aggressive: top raised to $40, the median winning bid when others bid too.');
@@ -264,7 +269,7 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expect(cookCard.locator('.mls-wv-chip')).toHaveText('W');
         await expect(cookCard.locator('.mls-faab-bid')).toHaveCount(0);
         const toast = page.locator('#mds-toast');
-        await expect(toast.locator('.toast-message')).toHaveText('Need help with FAAB bids? Turn on bid suggestions in Advanced Settings on the Dashboard.');
+        await expect(toast.locator('.toast-message')).toHaveText('Need help with FAAB bids? Turn on bid suggestions in Settings.');
         await toast.locator('.toast-action-btn').click();
         await expect(toast).not.toHaveClass(/\bshow\b/);
         // Auto-Find runs again, with the bids.
@@ -326,14 +331,14 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         const cookCard = () => out(page).locator('.mls-scan-card').filter({ hasText: 'James Cook' });
         await expect(cookCard().locator('.mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');
         // Off, from the Dashboard: Auto-Find's results lose their bids without another tap of Auto-Find.
-        await showTab(page, 'setup');
+        await showTab(page, 'settings');
         await page.locator('#faabSettingsGroup summary').click();
         await page.locator('#faabBidsToggle').uncheck();
         await showTab(page, 'scout');
         await expect(cookCard()).toBeVisible();
         await expect(cookCard().locator('.mls-faab-bid')).toHaveCount(0);
         // On again: back.
-        await showTab(page, 'setup');
+        await showTab(page, 'settings');
         await page.locator('#faabBidsToggle').check();
         await showTab(page, 'scout');
         await expect(cookCard().locator('.mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');

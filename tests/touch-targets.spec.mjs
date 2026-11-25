@@ -167,9 +167,9 @@ test('Lineup Strategist: every control has a 48px target', async ({ page }) => {
     await expect(page.locator('#mds-toast .toast-dismiss-btn')).toBeVisible(); // "Weekly Rankings loaded successfully!"
     await check(page, 'the toast', '#mds-toast');
     for (const tab of MLS_TABS) { await showTab(page, tab); await check(page, `MLS ${tab}`); }
-    // Folds the tabs leave closed (improvements S35, round 7): Advanced Settings' FAAB Bids, opened and turned on, so its
+    // Folds the tabs leave closed (improvements S35, round 7): Settings page's FAAB Bids, opened and turned on, so its
     // Conservative / Aggressive buttons are measured; and a toast with an action button ("Turn on").
-    await showTab(page, 'setup');
+    await showTab(page, 'settings');
     await page.locator('#faabSettingsGroup summary').click();
     await page.locator('#faabBidsToggle').check();
     await expect(page.locator('#faabStyleOptions')).toBeVisible();

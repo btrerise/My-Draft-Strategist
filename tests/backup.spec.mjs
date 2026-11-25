@@ -135,7 +135,7 @@ async function restoreOldBackup(page, state, { app, inputId }) {
 test('MDS backup -> restore round trip', async ({ page }) => {
     const state = await openApp(page, '/');
     await seedMds(page);
-    await showTab(page, 'setup');
+    await showTab(page, 'settings');
     await roundTrip(page, state, { app: 'mds', inputId: 'mdsImportFileInput', junkKey: 'mds_junk_probe', dropKey: 'mds_active_draft_id' });
     await showTab(page, 'team');
     await expect(page.locator('#teamTab')).toContainText("Ja'Marr Chase");
@@ -145,7 +145,7 @@ test('MDS backup -> restore round trip', async ({ page }) => {
 test('MLS backup -> restore round trip', async ({ page }) => {
     const state = await openApp(page, '/lineup/');
     await seedMls(page);
-    await showTab(page, 'setup');
+    await showTab(page, 'settings');
     await page.locator('summary', { hasText: 'Backup & Restore' }).click(); // collapsed accordion
     await roundTrip(page, state, { app: 'mls', inputId: 'mlsImportFileInput', junkKey: 'mls_junk_probe', dropKey: 'mls_leagues' });
     await showTab(page, 'roster');
@@ -155,7 +155,7 @@ test('MLS backup -> restore round trip', async ({ page }) => {
 
 test('MDS restores a backup file saved before the 6B key rename', async ({ page }) => {
     const state = await openApp(page, '/');
-    await showTab(page, 'setup');
+    await showTab(page, 'settings');
     await restoreOldBackup(page, state, { app: 'mds', inputId: 'mdsImportFileInput' });
     await showTab(page, 'team');
     await expect(page.locator('#teamTab')).toContainText("Ja'Marr Chase");
@@ -165,7 +165,7 @@ test('MDS restores a backup file saved before the 6B key rename', async ({ page 
 
 test('MLS restores a backup file saved before the 6B key rename', async ({ page }) => {
     const state = await openApp(page, '/lineup/');
-    await showTab(page, 'setup');
+    await showTab(page, 'settings');
     await page.locator('summary', { hasText: 'Backup & Restore' }).click(); // collapsed accordion
     await restoreOldBackup(page, state, { app: 'mls', inputId: 'mlsImportFileInput' });
     await showTab(page, 'roster');

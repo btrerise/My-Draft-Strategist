@@ -105,7 +105,7 @@ test.describe("the app's own press tint", () => {
         // A button had it before F23 (M2), and keeps it.
         expect(await pressAlpha(page, '.mls-lc-name-btn')).toBeCloseTo(0.1, 2);
         for (const sel of [
-            '.notify-settings > summary',                 // a fold in Advanced Settings
+            '.notify-settings > summary',                 // a fold in Settings
             '#syncLogAccordion > summary',                // Recent Sync Logs
             '#draftBanner > a',                           // "Try My Draft Strategist"
             '.hamburger-menu a.nav-btn:not(.premium-link-btn)', // the menu's T-Score link

@@ -485,13 +485,6 @@ The card named does the item in its own session; remove the line when it's done.
 - Every spec runs in Chromium only, so nothing checks what iPhone and iPad users get. Proposed card **W2** (in
   docs/improvements/LOG.md, after S32) adds a CI job running a chosen set of phone specs in Playwright's WebKit.
 
-**From the suggested FAAB bid (improvements S35)**
-- **S45 (the Settings page): move the FAAB Bids group** (`#faabSettingsGroup` in `lineup/index.html`, from the Dashboard's
-  Advanced Settings, with its switch and Conservative / Aggressive) to the new page, and drop "on the Dashboard" from
-  the one-time toast's text, so it reads "…in Settings." (`HINT_TEXT` in `js/mls/scout/faabSettings.js`, "…in Advanced
-  Settings on the Dashboard." until then; `tests/mls-faab-bid.spec.mjs` checks it).
-  Keep the group hidden without a FAAB league (`applyFaabSettingsToUI`, called from Best Available's render).
-
 **From the starter alert (improvements N2)**
 - **M10 (nav badges): one count for the badge and the title.** N2's alerts flash the tab title while it's hidden
   ("(1) Starter alert", `flashTitle` in js/shared/ui/notify.js); M10's badges sit on the nav bar and rail, seen while

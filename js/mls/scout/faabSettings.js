@@ -5,14 +5,14 @@
 // bid). While off, no bid, no "Bid …" placeholder and no history requests. The group shows only when there's a FAAB
 // league. One toast, once, offers to turn them on after Auto-Find or Check a List finds a player on waivers in a FAAB
 // league. Stored in KEYS.mls.faabSettings (so Backup / Restore and Factory Reset have it).
-// S45 (the Settings page) moves the group there, and drops "on the Dashboard" from the toast's text (HINT_TEXT).
+// The Settings page (S45) holds the group; the toast says "…in Settings." (HINT_TEXT).
 import { KEYS } from '../../shared/storage/keys.js';
 import { showToast } from '../../shared/ui/toast.js';
 
 const DEFAULTS = { on: false, style: 'conservative', hintShown: false };
 export const FAAB_STYLES = ['conservative', 'aggressive'];
-// Round 7: "Advanced Settings", the section's name on the Dashboard (S45: "…in Settings.").
-export const HINT_TEXT = 'Need help with FAAB bids? Turn on bid suggestions in Advanced Settings on the Dashboard.';
+// S45: the Settings page (it was Advanced Settings on the Dashboard).
+export const HINT_TEXT = 'Need help with FAAB bids? Turn on bid suggestions in Settings.';
 
 export function faabSettings() {
     let saved = null;
@@ -41,7 +41,7 @@ export function setFaabStyle(style) {
     applyFaabSettingsToUI();
 }
 
-// The Advanced Settings group: shown only with a FAAB league (hasFaab), its title row's state ("Off", "On ·
+// The Settings page's FAAB Bids group: shown only with a FAAB league (hasFaab), its title row's state ("Off", "On ·
 // Conservative"), the switch, and the style choice (only while on).
 export function applyFaabSettingsToUI(hasFaab) {
     const s = faabSettings();

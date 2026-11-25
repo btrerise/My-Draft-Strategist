@@ -121,6 +121,10 @@
             Scout
         </button>
         <div class="menu-section-label" aria-hidden="true">More</div>
+        <button class="nav-btn" data-drawer-target="settings" data-action="navigateFromDrawer" data-tab="settings" data-umami-event="Tab" data-umami-event-tab="settings" data-umami-event-where="drawer">
+            <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Settings
+        </button>
         <button class="nav-btn" data-drawer-target="guide" data-action="navigateFromDrawer" data-tab="guide" data-umami-event="Tab" data-umami-event-tab="guide" data-umami-event-where="drawer">
             <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
             Guide
@@ -388,7 +392,7 @@
     </section>
 
     <!-- ACTIVE LEAGUE REQUIREMENTS -->
-    <!-- Elevated out of the Advanced Settings accordion list: this is a primary, frequently-
+    <!-- Elevated out of the Settings page's accordion list: this is a primary, frequently-
          needed configuration (it drives lineup slot assignment for whichever league is
          selected), not a secondary setting someone should have to expand a menu to find. -->
     <section class="settings-card">
@@ -429,121 +433,9 @@
         </div>
     </section>
 
-    <!-- ADVANCED SETTINGS ACCORDIONS -->
-    <section class="settings-card">
-        <header class="card-header card-header-flush">
-            <h3><span>Advanced Settings</span></h3>
-        </header>
-
-        <div class="toggle-row">
-            <div class="toggle-info">
-                <label class="toggle-title" for="mlsHeadshotsToggle">
-                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                    Show Player Headshots
-                </label>
-                <span class="toggle-desc">Display NFL player photos on the Roster and Lineup tabs. Photos come from Sleeper and are left out of PNG exports.</span>
-            </div>
-            <input type="checkbox" id="mlsHeadshotsToggle" class="toggle-switch" checked data-action="toggleMlsHeadshots">
-        </div>
-
-        <!-- Lineup (improvements S52 round 8, owner's choice): the Lineup tab's switches, here too so they're found from
-             either place. Each copy follows the other (lineup/gameInfo.js, lineup/earlyGames.js). -->
-        <details class="sos-details-accordion lineup-switches">
-            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Lineup</summary>
-            <div class="accordion-body">
-                <div class="toggle-row">
-                    <div class="toggle-info">
-                        <label class="toggle-title" for="byeCrunchToggleSettings">Bye Crunch</label>
-                        <span class="toggle-desc">Warn when byes in the next 2 weeks leave a starting spot you can't fill. Also in the Lineup tab's Lineup settings.</span>
-                    </div>
-                    <input type="checkbox" id="byeCrunchToggleSettings" class="toggle-switch" checked data-action="setByeCrunch">
-                </div>
-                <div class="toggle-row">
-                    <div class="toggle-info">
-                        <label class="toggle-title" for="earlyFromScheduleToggleSettings">Early Games: fill in from the schedule</label>
-                        <span class="toggle-desc">Every team playing before Sunday 1:00 PM Eastern gets an EARLY badge, each week. Also on the Lineup tab's Early Games card.</span>
-                    </div>
-                    <input type="checkbox" id="earlyFromScheduleToggleSettings" class="toggle-switch" checked data-action="setEarlyFromSchedule">
-                </div>
-            </div>
-        </details>
-
-        <!-- Notifications (improvements N2, js/mls/lineup/starterAlert.js): a fold like the others below; its title row says
-             whether Starter Alerts are on. The switch is off until turned on; its options open under it while on. -->
-        <details class="sos-details-accordion notify-settings">
-            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Notifications<span id="notifySettingsState" class="notify-settings-state">Off</span></summary>
-            <div class="accordion-body">
-        <div class="starter-alerts">
-            <div class="toggle-row">
-                <div class="toggle-info">
-                    <label class="toggle-title" for="starterAlertsToggle">
-                        <svg class="starter-alerts-bell" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                        Starter Alerts
-                    </label>
-                    <span class="toggle-desc">Get an alert before kickoff when a starter in your Sleeper lineup can't play or a slot is empty. Works while this page is open on a computer.</span>
-                </div>
-                <input type="checkbox" id="starterAlertsToggle" class="toggle-switch" data-action="toggleStarterAlerts">
-            </div>
-            <div id="starterAlertsOptions" class="starter-alerts-options" hidden>
-                <p id="starterAlertsNext" class="starter-alerts-next" role="status" aria-live="polite" hidden></p>
-                <div class="starter-alerts-lead">
-                    <label for="starterAlertLead">Alert me</label>
-                    <select id="starterAlertLead" class="form-input" data-action="setStarterAlertLead" aria-describedby="starterAlertLeadHint">
-                        <option value="15">15 minutes before kickoff</option>
-                        <option value="30">30 minutes before kickoff</option>
-                        <option value="45">45 minutes before kickoff</option>
-                        <option value="60" selected>60 minutes before kickoff</option>
-                        <option value="75">75 minutes before kickoff</option>
-                        <option value="90">90 minutes before kickoff</option>
-                        <option value="105">105 minutes before kickoff</option>
-                        <option value="120">120 minutes before kickoff</option>
-                    </select>
-                </div>
-                <small id="starterAlertLeadHint" class="text-helper">Inactives come out 90 minutes before kickoff, so 75 or less catches them. Questionable doesn't count. Your leagues sync first. Phones pause pages in the background.</small>
-                <div class="toggle-row toggle-row-flush">
-                    <div class="toggle-info">
-                        <label class="toggle-title" for="starterAlertsStale">Also name old Weekly rankings</label>
-                        <span class="toggle-desc">Leagues whose Weekly rankings are over 6 days old, once a week.</span>
-                    </div>
-                    <input type="checkbox" id="starterAlertsStale" class="toggle-switch" checked data-action="toggleStaleRankingsAlert">
-                </div>
-                <p id="starterAlertsStatus" class="text-helper starter-alerts-status" role="status" aria-live="polite" hidden></p>
-                <div class="starter-alerts-test">
-                    <button type="button" class="btn btn-secondary btn-sm" data-action="sendTestStarterAlert">Send a test alert</button>
-                    <span id="starterAlertTestStatus" class="text-helper" role="status" aria-live="polite"></span>
-                </div>
-            </div>
-        </div>
-            </div>
-        </details>
-
-        <!-- Suggested FAAB bids (improvements S35, round 6, js/mls/scout/faabSettings.js): off by default; shown only when
-             there's a FAAB league. A fold like Notifications; its title row says On or Off and the style. -->
-        <details class="sos-details-accordion faab-settings" id="faabSettingsGroup" hidden>
-            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>FAAB Bids<span id="faabSettingsState" class="notify-settings-state">Off</span></summary>
-            <div class="accordion-body">
-            <div class="toggle-row">
-                <div class="toggle-info">
-                    <label class="toggle-title" for="faabBidsToggle">
-                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                        Suggest FAAB Bids
-                    </label>
-                    <span class="toggle-desc">A bid range for players on waivers in FAAB leagues, from your league's bids this season. Tap a bid to see why.</span>
-                </div>
-                <input type="checkbox" id="faabBidsToggle" class="toggle-switch" data-action="toggleFaabBids">
-            </div>
-            <div id="faabStyleOptions" class="faab-style-options" hidden>
-                <p id="faabBidsStatus" class="text-helper faab-bids-status" role="status" aria-live="polite"></p>
-                <span id="faabStyleLabel" class="faab-style-label">Bidding style</span>
-                <div class="mls-segmented" role="group" aria-labelledby="faabStyleLabel" aria-describedby="faabStyleHint">
-                    <button type="button" class="mls-segmented-btn active" data-style="conservative" aria-pressed="true" data-action="setFaabStyle">Conservative</button>
-                    <button type="button" class="mls-segmented-btn" data-style="aggressive" aria-pressed="false" data-action="setFaabStyle">Aggressive</button>
-                </div>
-                <small id="faabStyleHint" class="text-helper">Conservative: lower bids, usually enough when no one else bids. Aggressive: higher bids for players who'd start for you. They win more often against other bidders, but can cost more than needed.</small>
-            </div>
-            </div>
-        </details>
-
+    <!-- ADD PLAYER MANUALLY (improvements S45): for manual and hand-off leagues only (a Sleeper sync replaces the roster
+         with Sleeper's). Shown beside Active League Requirements while the open league is one; js/mls/leagues/addPlayer.js. -->
+    <section class="settings-card" id="manualAddCard" hidden>
         <details class="sos-details-accordion">
             <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Add Player Manually</summary>
             <div class="accordion-body">
@@ -563,59 +455,6 @@
                 <button class="btn btn-primary mt-2" data-action="addManualPlayer">Add Player to Active Roster</button>
                 <div id="manualAddMsg" class="manual-add-feedback" role="status" aria-live="polite"></div>
                 <div id="manualAddLog" class="mls-manual-log" aria-live="polite"></div>
-            </div>
-        </details>
-        
-        <!-- The Scoreboard's MVPs and LVPs (week/recapLines.js, improvements S22). -->
-        <details class="sos-details-accordion">
-            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>MVP / LVP Lines</summary>
-            <div class="accordion-body">
-                <p class="card-desc">The points that make a player an MVP (Boom) or an LVP (under Bust) on the Scoreboard. Each player is judged once, on his points for the week in one scoring format from Sleeper's stats, the same in every league, so full PPR or TE premium doesn't make a line easier. K and DEF aren't covered. These are only for the Scoreboard's MVPs and LVPs; the Matchup Simulator's boom/bust chances are separate.</p>
-                <div class="recap-lines-scale">
-                    <label for="recapLineScale">Judge on</label>
-                    <select id="recapLineScale" class="form-input">
-                        <option value="half">Half PPR</option>
-                        <option value="ppr">Full PPR</option>
-                        <option value="std">Standard</option>
-                    </select>
-                </div>
-                <div class="recap-lines-grid" role="group" aria-label="Boom and Bust lines by position">
-                    <span></span><span class="recap-lines-head" id="recapLinesBoomHead">Boom at</span><span class="recap-lines-head" id="recapLinesBustHead">Bust under</span>
-                    <span class="recap-lines-pos" id="recapLinePosQB">QB</span>
-                    <input type="number" id="recapLineQBBoom" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosQB recapLinesBoomHead">
-                    <input type="number" id="recapLineQBBust" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosQB recapLinesBustHead">
-                    <span class="recap-lines-pos" id="recapLinePosRB">RB</span>
-                    <input type="number" id="recapLineRBBoom" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosRB recapLinesBoomHead">
-                    <input type="number" id="recapLineRBBust" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosRB recapLinesBustHead">
-                    <span class="recap-lines-pos" id="recapLinePosWR">WR</span>
-                    <input type="number" id="recapLineWRBoom" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosWR recapLinesBoomHead">
-                    <input type="number" id="recapLineWRBust" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosWR recapLinesBustHead">
-                    <span class="recap-lines-pos" id="recapLinePosTE">TE</span>
-                    <input type="number" id="recapLineTEBoom" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosTE recapLinesBoomHead">
-                    <input type="number" id="recapLineTEBust" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosTE recapLinesBustHead">
-                </div>
-                <div class="recap-lines-actions">
-                    <button class="btn btn-primary" data-action="saveRecapLines">Save Lines</button>
-                    <button class="btn btn-secondary" data-action="resetRecapLines">Reset to Defaults</button>
-                </div>
-                <div id="recapLinesMsg" class="recap-lines-msg" role="status" aria-live="polite"></div>
-            </div>
-        </details>
-
-        <details class="sos-details-accordion">
-            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Backup & Restore</summary>
-            <div class="accordion-body flex-column gap-2">
-                <button class="btn btn-primary" data-action="exportMlsSettings">Export Backup</button>
-                <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" aria-label="Import backup file" data-action="importMlsSettings">
-                <button class="btn btn-secondary" data-action="chooseBackupFile">Import Backup</button>
-            </div>
-        </details>
-
-        <details class="sos-details-accordion danger-card">
-            <summary class="sos-summary chevron-summary text-danger"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Danger Zone</summary>
-            <div class="accordion-body">
-                <p class="card-desc">Having issues or starting a new season? This will completely erase all cached leagues, custom rankings, and settings from your device.</p>
-                <button class="btn btn-danger" data-action="factoryReset">Factory Reset App Data</button>
             </div>
         </details>
     </section>
@@ -1117,7 +956,7 @@
                     </div>
                     <input type="checkbox" id="flexKickoffOptimizationToggle" class="toggle-switch" checked data-action="updateLineupSetting" data-setting="flexKickoffOptimization">
                 </div>
-                <!-- Bye Crunch (improvements S52 round 8): on unless turned off; the same switch is in Advanced Settings. -->
+                <!-- Bye Crunch (improvements S52 round 8): on unless turned off; the same switch is on the Settings page. -->
                 <div class="toggle-row">
                     <div class="toggle-info">
                         <label class="toggle-title" for="byeCrunchToggle">Bye Crunch</label>
@@ -1653,6 +1492,180 @@
     <div id="marketDisconnectOutput" class="scout-output-container" aria-live="polite"></div>
 </section>
 </div>
+        <!-- SETTINGS TAB (improvements S45): the set-once settings, moved off the Dashboard -->
+<div id="settingsTab" class="tab-content">
+    <h2 class="sr-only">Settings</h2>
+    <!-- ADVANCED SETTINGS ACCORDIONS -->
+    <section class="settings-card">
+        <header class="card-header card-header-flush">
+            <h3><span>Settings</span></h3>
+        </header>
+
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <label class="toggle-title" for="mlsHeadshotsToggle">
+                    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    Show Player Headshots
+                </label>
+                <span class="toggle-desc">Display NFL player photos on the Roster and Lineup tabs. Photos come from Sleeper and are left out of PNG exports.</span>
+            </div>
+            <input type="checkbox" id="mlsHeadshotsToggle" class="toggle-switch" checked data-action="toggleMlsHeadshots">
+        </div>
+
+        <!-- Lineup (improvements S52 round 8, owner's choice): the Lineup tab's switches, here too so they're found from
+             either place. Each copy follows the other (lineup/gameInfo.js, lineup/earlyGames.js). -->
+        <details class="sos-details-accordion lineup-switches">
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Lineup</summary>
+            <div class="accordion-body">
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <label class="toggle-title" for="byeCrunchToggleSettings">Bye Crunch</label>
+                        <span class="toggle-desc">Warn when byes in the next 2 weeks leave a starting spot you can't fill. Also in the Lineup tab's Lineup settings.</span>
+                    </div>
+                    <input type="checkbox" id="byeCrunchToggleSettings" class="toggle-switch" checked data-action="setByeCrunch">
+                </div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <label class="toggle-title" for="earlyFromScheduleToggleSettings">Early Games: fill in from the schedule</label>
+                        <span class="toggle-desc">Every team playing before Sunday 1:00 PM Eastern gets an EARLY badge, each week. Also on the Lineup tab's Early Games card.</span>
+                    </div>
+                    <input type="checkbox" id="earlyFromScheduleToggleSettings" class="toggle-switch" checked data-action="setEarlyFromSchedule">
+                </div>
+            </div>
+        </details>
+
+        <!-- Notifications (improvements N2, js/mls/lineup/starterAlert.js): a fold like the others below; its title row says
+             whether Starter Alerts are on. The switch is off until turned on; its options open under it while on. -->
+        <details class="sos-details-accordion notify-settings">
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Notifications<span id="notifySettingsState" class="notify-settings-state">Off</span></summary>
+            <div class="accordion-body">
+        <div class="starter-alerts">
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <label class="toggle-title" for="starterAlertsToggle">
+                        <svg class="starter-alerts-bell" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        Starter Alerts
+                    </label>
+                    <span class="toggle-desc">Get an alert before kickoff when a starter in your Sleeper lineup can't play or a slot is empty. Works while this page is open on a computer.</span>
+                </div>
+                <input type="checkbox" id="starterAlertsToggle" class="toggle-switch" data-action="toggleStarterAlerts">
+            </div>
+            <div id="starterAlertsOptions" class="starter-alerts-options" hidden>
+                <p id="starterAlertsNext" class="starter-alerts-next" role="status" aria-live="polite" hidden></p>
+                <div class="starter-alerts-lead">
+                    <label for="starterAlertLead">Alert me</label>
+                    <select id="starterAlertLead" class="form-input" data-action="setStarterAlertLead" aria-describedby="starterAlertLeadHint">
+                        <option value="15">15 minutes before kickoff</option>
+                        <option value="30">30 minutes before kickoff</option>
+                        <option value="45">45 minutes before kickoff</option>
+                        <option value="60" selected>60 minutes before kickoff</option>
+                        <option value="75">75 minutes before kickoff</option>
+                        <option value="90">90 minutes before kickoff</option>
+                        <option value="105">105 minutes before kickoff</option>
+                        <option value="120">120 minutes before kickoff</option>
+                    </select>
+                </div>
+                <small id="starterAlertLeadHint" class="text-helper">Inactives come out 90 minutes before kickoff, so 75 or less catches them. Questionable doesn't count. Your leagues sync first. Phones pause pages in the background.</small>
+                <div class="toggle-row toggle-row-flush">
+                    <div class="toggle-info">
+                        <label class="toggle-title" for="starterAlertsStale">Also name old Weekly rankings</label>
+                        <span class="toggle-desc">Leagues whose Weekly rankings are over 6 days old, once a week.</span>
+                    </div>
+                    <input type="checkbox" id="starterAlertsStale" class="toggle-switch" checked data-action="toggleStaleRankingsAlert">
+                </div>
+                <p id="starterAlertsStatus" class="text-helper starter-alerts-status" role="status" aria-live="polite" hidden></p>
+                <div class="starter-alerts-test">
+                    <button type="button" class="btn btn-secondary btn-sm" data-action="sendTestStarterAlert">Send a test alert</button>
+                    <span id="starterAlertTestStatus" class="text-helper" role="status" aria-live="polite"></span>
+                </div>
+            </div>
+        </div>
+            </div>
+        </details>
+
+        <!-- Suggested FAAB bids (improvements S35, round 6, js/mls/scout/faabSettings.js): off by default; shown only when
+             there's a FAAB league. A fold like Notifications; its title row says On or Off and the style. -->
+        <details class="sos-details-accordion faab-settings" id="faabSettingsGroup" hidden>
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>FAAB Bids<span id="faabSettingsState" class="notify-settings-state">Off</span></summary>
+            <div class="accordion-body">
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <label class="toggle-title" for="faabBidsToggle">
+                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        Suggest FAAB Bids
+                    </label>
+                    <span class="toggle-desc">A bid range for players on waivers in FAAB leagues, from your league's bids this season. Tap a bid to see why.</span>
+                </div>
+                <input type="checkbox" id="faabBidsToggle" class="toggle-switch" data-action="toggleFaabBids">
+            </div>
+            <div id="faabStyleOptions" class="faab-style-options" hidden>
+                <p id="faabBidsStatus" class="text-helper faab-bids-status" role="status" aria-live="polite"></p>
+                <span id="faabStyleLabel" class="faab-style-label">Bidding style</span>
+                <div class="mls-segmented" role="group" aria-labelledby="faabStyleLabel" aria-describedby="faabStyleHint">
+                    <button type="button" class="mls-segmented-btn active" data-style="conservative" aria-pressed="true" data-action="setFaabStyle">Conservative</button>
+                    <button type="button" class="mls-segmented-btn" data-style="aggressive" aria-pressed="false" data-action="setFaabStyle">Aggressive</button>
+                </div>
+                <small id="faabStyleHint" class="text-helper">Conservative: lower bids, usually enough when no one else bids. Aggressive: higher bids for players who'd start for you. They win more often against other bidders, but can cost more than needed.</small>
+            </div>
+            </div>
+        </details>
+
+        
+        <!-- The Scoreboard's MVPs and LVPs (week/recapLines.js, improvements S22). -->
+        <details class="sos-details-accordion">
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>MVP / LVP Lines</summary>
+            <div class="accordion-body">
+                <p class="card-desc">The points that make a player an MVP (Boom) or an LVP (under Bust) on the Scoreboard. Each player is judged once, on his points for the week in one scoring format from Sleeper's stats, the same in every league, so full PPR or TE premium doesn't make a line easier. K and DEF aren't covered. These are only for the Scoreboard's MVPs and LVPs; the Matchup Simulator's boom/bust chances are separate.</p>
+                <div class="recap-lines-scale">
+                    <label for="recapLineScale">Judge on</label>
+                    <select id="recapLineScale" class="form-input">
+                        <option value="half">Half PPR</option>
+                        <option value="ppr">Full PPR</option>
+                        <option value="std">Standard</option>
+                    </select>
+                </div>
+                <div class="recap-lines-grid" role="group" aria-label="Boom and Bust lines by position">
+                    <span></span><span class="recap-lines-head" id="recapLinesBoomHead">Boom at</span><span class="recap-lines-head" id="recapLinesBustHead">Bust under</span>
+                    <span class="recap-lines-pos" id="recapLinePosQB">QB</span>
+                    <input type="number" id="recapLineQBBoom" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosQB recapLinesBoomHead">
+                    <input type="number" id="recapLineQBBust" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosQB recapLinesBustHead">
+                    <span class="recap-lines-pos" id="recapLinePosRB">RB</span>
+                    <input type="number" id="recapLineRBBoom" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosRB recapLinesBoomHead">
+                    <input type="number" id="recapLineRBBust" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosRB recapLinesBustHead">
+                    <span class="recap-lines-pos" id="recapLinePosWR">WR</span>
+                    <input type="number" id="recapLineWRBoom" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosWR recapLinesBoomHead">
+                    <input type="number" id="recapLineWRBust" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosWR recapLinesBustHead">
+                    <span class="recap-lines-pos" id="recapLinePosTE">TE</span>
+                    <input type="number" id="recapLineTEBoom" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosTE recapLinesBoomHead">
+                    <input type="number" id="recapLineTEBust" class="form-input" inputmode="decimal" min="0" step="0.5" aria-labelledby="recapLinePosTE recapLinesBustHead">
+                </div>
+                <div class="recap-lines-actions">
+                    <button class="btn btn-primary" data-action="saveRecapLines">Save Lines</button>
+                    <button class="btn btn-secondary" data-action="resetRecapLines">Reset to Defaults</button>
+                </div>
+                <div id="recapLinesMsg" class="recap-lines-msg" role="status" aria-live="polite"></div>
+            </div>
+        </details>
+
+        <details class="sos-details-accordion">
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Backup & Restore</summary>
+            <div class="accordion-body flex-column gap-2">
+                <button class="btn btn-primary" data-action="exportMlsSettings">Export Backup</button>
+                <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" aria-label="Import backup file" data-action="importMlsSettings">
+                <button class="btn btn-secondary" data-action="chooseBackupFile">Import Backup</button>
+            </div>
+        </details>
+
+        <details class="sos-details-accordion danger-card">
+            <summary class="sos-summary chevron-summary text-danger"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Danger Zone</summary>
+            <div class="accordion-body">
+                <p class="card-desc">Having issues or starting a new season? This will completely erase all cached leagues, custom rankings, and settings from your device.</p>
+                <button class="btn btn-danger" data-action="factoryReset">Factory Reset App Data</button>
+            </div>
+        </details>
+    </section>
+</div>
+
         <!-- USER GUIDE TAB -->
 <div id="guideTab" class="tab-content">
     <h2 class="sr-only">Guide</h2>
@@ -1693,7 +1706,7 @@
                 <h4 class="step-title"><span class="step-num blue-step">1</span> Syncing & Adding Leagues</h4>
                 <p class="step-desc">On the <strong class="text-main">Dashboard</strong> tab, enter your Sleeper Username and League ID and tap <strong class="text-main">Sync Sleeper</strong> to sync that league's roster automatically. To bring in every league at once, enter just your Username and tap <strong class="text-main">Import All My Leagues</strong> (no League ID needed). Switch between leagues using the header dropdown or its arrow buttons.</p>
                 <ul class="guide-list">
-                    <li><strong class="text-main">Manual Leagues:</strong> If you don't use Sleeper, leave the Sleeper fields blank, tap "Create Manual", then add your players one by one under <strong class="text-main">Advanced Settings &gt; Add Player Manually</strong> (type a name, press Enter to pick it, then Enter again to add it).</li>
+                    <li><strong class="text-main">Manual Leagues:</strong> If you don't use Sleeper, leave the Sleeper fields blank, tap "Create Manual", then add your players one by one under <strong class="text-main">Add Player Manually</strong> on the Dashboard (it shows while a manual league is open): type a name, press Enter to pick it, then Enter again to add it.</li>
                     <li><strong class="text-main">From My Draft Strategist:</strong> If you just finished a draft in My Draft Strategist, a banner on the Dashboard offers to <strong class="text-main">Import as New League</strong> using your drafted roster.</li>
                     <li><strong class="text-main">Setup Progress:</strong> Until you've added a league and loaded ROS and Weekly rankings, a short checklist shows what's left to do.</li>
                 </ul>
@@ -1716,7 +1729,7 @@
                             <li>A tile for every league, closest first, with both scores. Tap one to open that league's lineup, where the same matchup sits above the lineup. A guillotine league shows your score against the chop line instead of an opponent. In Best Ball, where Sleeper sets the lineup after the games, both scores are the lineup Best Ball would pick from the points so far.</li>
                             <li><em>Provisional</em> until the week's last game is final, then <em>Final</em>.</li>
                             <li><em>Who to root for</em>: every starter in your matchups this week. On top, players in 2 or more of them: <em>Root for</em> (yours, never against you), <em>Against you</em> (your opponents', never yours) and <em>Both sides</em> ("3 of 4 yours": in 4 of your matchups, yours in 3; tap him for your stake, how much of his weight is in your leagues, which orders each group). 75% or more of a player's leagues yours puts him in Root for, 25% or less in Against you. While games are left, each group lists players still to play by kickoff, the earliest game first (Thursday night's on top until it ends), under a small label for each kickoff time; players whose games are over fold into an "N finished" line at the bottom of the group. One whose every matchup is already decided is dimmed, last in his kickoff, marked "decided". The <em>Find a player</em> field above the groups searches this week's starters: pick one to see his row and his leagues right under it (Escape or ✕ clears). The weight of each league: a paid league counts 1.5 times, a close matchup more than a lopsided one (from the Matchup Simulator's chance; a decided one counts for nothing), and a player more the bigger his share of what his side is projected to score from here. Under them, every starter by kickoff window, yours beside theirs (tap a window to fold it); finished games fold into one line. Tap a player for the leagues on each side. A guillotine league, or one with no opponent this week, counts for you only. The root-for board was inspired by Sleepy, <a href="https://sleepy-football.vercel.app" target="_blank" rel="noopener">sleepy-football.vercel.app</a>.</li>
-                            <li><em>MVPs &amp; LVPs</em> (tap to open; the (i) beside MVPs explains the columns): which of your players won and lost the week across your Sleeper leagues. <em>Own</em> is how many of them have him on your roster, bench included; points show as a range, since scoring differs by league. <em>Started</em> is how many of those you started him in. Each player is judged once, on his points for the week in half PPR (or the format you choose), the same in every league, so full PPR or TE premium doesn't make a line easier; <em>Pts</em> shows what he scored in each league's own scoring. MVPs reached their position's Boom line and you started them, most starts first (a boom on your bench gets its own line); LVPs finished under the Bust line in games you started them, most starts first. In Best Ball, where Sleeper sets the lineup after the games, Started is the lineup it would pick from the points so far. Then started zeros, dead weight (injured players left out), players still to play and your benched booms (with what each cost, where a starter you could have swapped scored far less). With one league there's no Own or Started column. Change the lines under <strong class="text-main">Advanced Settings</strong>, MVP / LVP Lines.</li>
+                            <li><em>MVPs &amp; LVPs</em> (tap to open; the (i) beside MVPs explains the columns): which of your players won and lost the week across your Sleeper leagues. <em>Own</em> is how many of them have him on your roster, bench included; points show as a range, since scoring differs by league. <em>Started</em> is how many of those you started him in. Each player is judged once, on his points for the week in half PPR (or the format you choose), the same in every league, so full PPR or TE premium doesn't make a line easier; <em>Pts</em> shows what he scored in each league's own scoring. MVPs reached their position's Boom line and you started them, most starts first (a boom on your bench gets its own line); LVPs finished under the Bust line in games you started them, most starts first. In Best Ball, where Sleeper sets the lineup after the games, Started is the lineup it would pick from the points so far. Then started zeros, dead weight (injured players left out), players still to play and your benched booms (with what each cost, where a starter you could have swapped scored far less). With one league there's no Own or Started column. Change the lines under <strong class="text-main">Settings</strong>, MVP / LVP Lines.</li>
                             <li><strong class="text-main">Export Recap</strong>, at the bottom, saves a summary image to share: your record and splits and the top MVPs and LVPs, without your leagues' names.</li>
                         </ul>
                     </li>
@@ -1757,7 +1770,7 @@
             <!-- Step 5 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">5</span> Lineup Optimizer & Early Games</h4>
-                <p class="step-desc">The Lineup Optimizer generates your highest-projected starting lineup based on your Weekly Rankings. Lock foundational starters with <svg role="img" aria-label="lock" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap <strong class="text-main">⇄ Swap</strong> to manually override positions. On a phone, tap a player's photo or slot badge to lock him, and his name for every badge on his row and what it means. <strong class="text-main">Early Games</strong> fills itself each week with the teams playing before Sunday 1:00 PM Eastern (Thursday, Friday, Saturday and the international morning games), and their players get an <span class="badge early-badge">EARLY</span> badge across your lineup so you set them first. Add or remove a team for the week there, or turn off <strong class="text-main">Fill in from the schedule</strong> (there or in Advanced Settings, Lineup) to pick them yourself; the list clears when a new NFL week starts. When an early player sits in a FLEX-type slot and a later player could take it, <strong class="text-main">This lineup needs you</strong> names the swap (on Sleeper, as of your last sync, in a synced league). Each starter and bench player also shows their opponent and Sleeper's projection for the week (labeled <strong class="text-main">proj</strong>); once that player's game is final, their actual score takes its place with the projection shown beneath it. The optimizer runs on your rankings; the one place it uses Sleeper's projection is a FLEX decision between players who have no FLEX rank in your file, since position ranks don't compare across positions (TE24 isn't really ahead of WR45). Projections and scores update when you open or interact with the tab, not live during games.</p>
+                <p class="step-desc">The Lineup Optimizer generates your highest-projected starting lineup based on your Weekly Rankings. Lock foundational starters with <svg role="img" aria-label="lock" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary-green);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> or tap <strong class="text-main">⇄ Swap</strong> to manually override positions. On a phone, tap a player's photo or slot badge to lock him, and his name for every badge on his row and what it means. <strong class="text-main">Early Games</strong> fills itself each week with the teams playing before Sunday 1:00 PM Eastern (Thursday, Friday, Saturday and the international morning games), and their players get an <span class="badge early-badge">EARLY</span> badge across your lineup so you set them first. Add or remove a team for the week there, or turn off <strong class="text-main">Fill in from the schedule</strong> (there or in Settings, Lineup) to pick them yourself; the list clears when a new NFL week starts. When an early player sits in a FLEX-type slot and a later player could take it, <strong class="text-main">This lineup needs you</strong> names the swap (on Sleeper, as of your last sync, in a synced league). Each starter and bench player also shows their opponent and Sleeper's projection for the week (labeled <strong class="text-main">proj</strong>); once that player's game is final, their actual score takes its place with the projection shown beneath it. The optimizer runs on your rankings; the one place it uses Sleeper's projection is a FLEX decision between players who have no FLEX rank in your file, since position ranks don't compare across positions (TE24 isn't really ahead of WR45). Projections and scores update when you open or interact with the tab, not live during games.</p>
                 <ul class="guide-list">
                     <li><strong class="text-main">Automatic Game-Time Locks:</strong> Once a player's game kicks off, the optimizer locks him in place so he's never moved or benched after the fact. If a lock is wrong, you can override it for that player. "Unlock All" clears your manual locks for the league, but leaves game-time locks alone. Manual locks (and swaps, which lock) last for the week: they clear on their own when a new NFL week starts.</li>
                     <li><strong class="text-main">FLEX Kickoff Optimization:</strong> On by default. Who starts is always decided by rank first. Then your starters are arranged so SFLEX holds the latest kickoff it can (a QB or an RB/WR/TE), then FLEX, then W/T and W/R, giving you the most time to make a late swap. Turn it off if you'd rather these slots simply follow rank order.</li>
@@ -1791,8 +1804,8 @@
             <!-- Step 7 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">7</span> Lineups that need you</h4>
-                <p class="step-desc">On the <strong class="text-main">Dashboard</strong>, each league's card lists what its lineup needs from you before kickoff: a starter who's injured, on bye or still in your Sleeper IR slot, an empty starting slot, an injured bench player you could move to IR, or an IR-slot player who has to come out. It says what to do and when the first game kicks off, with a button to swap in a healthy bench player or find a free agent, and a drop-down shows how the lineup on Sleeper differs from yours. A <strong class="text-main">Bye Crunch</strong> note looks two weeks ahead: when byes leave a starting spot nobody on your roster can fill ("Bye Crunch · Week 13: 2 starters short"), it opens to a line per position, each with a Find button, and a bullet per player, in time to add someone. Players Out or on IR now are assumed still out, and kickers and defenses aren't checked, since most people stream them. It's a heads-up, not counted as a lineup that needs you, and folded to that one line until you tap it. Find there opens Top Available for that week, leaving out players on bye then; <strong class="text-main">Got it</strong> hides a week's note for that league. Rather not see it at all? Turn off <strong class="text-main">Bye Crunch</strong> in the Lineup tab's Lineup settings or in Advanced Settings, Lineup. A line under Sync All and Optimize All counts the lineups that need you. <strong class="text-main">Sync All</strong> ("Sync All again" on that line) gets the latest injury news for every league, manual ones included. The Lineup tab shows the same items for the league you have open.</p>
-                <p class="step-desc mt-2"><strong class="text-main">Starter Alerts</strong> (Dashboard, Advanced Settings, Notifications): turn them on and, while this page is open on a computer (a background tab is fine), you get an alert before each kickoff window when a starter in the lineup you set on Sleeper is Out, Doubtful, on IR or on bye, has no game, or a slot is empty. Choose how long before kickoff (1 hour to start), and tap <strong class="text-main">Send a test alert</strong> to check alerts reach you. Each alert also shows on this page, with a button to the Dashboard. Phones pause pages in the background, so on a phone it only works while the page is in front.</p>
+                <p class="step-desc">On the <strong class="text-main">Dashboard</strong>, each league's card lists what its lineup needs from you before kickoff: a starter who's injured, on bye or still in your Sleeper IR slot, an empty starting slot, an injured bench player you could move to IR, or an IR-slot player who has to come out. It says what to do and when the first game kicks off, with a button to swap in a healthy bench player or find a free agent, and a drop-down shows how the lineup on Sleeper differs from yours. A <strong class="text-main">Bye Crunch</strong> note looks two weeks ahead: when byes leave a starting spot nobody on your roster can fill ("Bye Crunch · Week 13: 2 starters short"), it opens to a line per position, each with a Find button, and a bullet per player, in time to add someone. Players Out or on IR now are assumed still out, and kickers and defenses aren't checked, since most people stream them. It's a heads-up, not counted as a lineup that needs you, and folded to that one line until you tap it. Find there opens Top Available for that week, leaving out players on bye then; <strong class="text-main">Got it</strong> hides a week's note for that league. Rather not see it at all? Turn off <strong class="text-main">Bye Crunch</strong> in the Lineup tab's Lineup settings or in Settings, Lineup. A line under Sync All and Optimize All counts the lineups that need you. <strong class="text-main">Sync All</strong> ("Sync All again" on that line) gets the latest injury news for every league, manual ones included. The Lineup tab shows the same items for the league you have open.</p>
+                <p class="step-desc mt-2"><strong class="text-main">Starter Alerts</strong> (Settings, Notifications): turn them on and, while this page is open on a computer (a background tab is fine), you get an alert before each kickoff window when a starter in the lineup you set on Sleeper is Out, Doubtful, on IR or on bye, has no game, or a slot is empty. Choose how long before kickoff (1 hour to start), and tap <strong class="text-main">Send a test alert</strong> to check alerts reach you. Each alert also shows on this page, with a button to the Dashboard. Phones pause pages in the background, so on a phone it only works while the page is in front.</p>
             </div>
 
             <!-- Step 8 -->
@@ -1803,7 +1816,7 @@
                     <li><strong class="text-main">Auto-Find:</strong> Lists the top available players by your Weekly or ROS rankings (<strong class="text-main">Rank By</strong>; in dynasty and keeper leagues ROS reads <strong class="text-main">Dynasty Rank</strong>, plus <strong class="text-main">In-Season Rank</strong> when the league has In-Season rankings), filtered by <strong class="text-main">Position</strong> and <strong class="text-main">Show Top</strong>, with each one's weekly positional and FLEX rank. Turn on <strong class="text-main">Only Would-Starts</strong> to hide anyone who wouldn't crack your lineup.</li>
                     <li><strong class="text-main">Compare Against:</strong> <strong class="text-main">Starting Lineup</strong> checks whether he'd start for you this week and names who he'd bench. <strong class="text-main">Whole Roster</strong> checks whether he's better than your drop candidate at the position: in Auto-Find, your top drop there (the Roster tab's Drop badges, with why); in Check a List, your weakest player there.</li>
                     <li><strong class="text-main">Pasted Lists:</strong> Paste waiver recommendations or trade targets and tap "Scan Pasted List" to get the same checks. Set <strong class="text-main">Search In</strong> to <strong class="text-main">All My Leagues</strong> to run that list against <em>every</em> league you have synced at once - one card per player showing where he is a free agent, where he is already on your roster, and who owns him in the rest, with a Switch button to jump straight to any of them.</li>
-                    <li><strong class="text-main">FAAB bids</strong> (off until you turn them on in <strong class="text-main">Advanced Settings, FAAB Bids</strong>): a bid range for players on waivers in FAAB leagues, from your league's winning bids this season. <strong class="text-main">Conservative</strong> bids lower; <strong class="text-main">Aggressive</strong> bids higher for players who'd start for you, winning more often but sometimes paying more. Tap a bid to see why.</li>
+                    <li><strong class="text-main">FAAB bids</strong> (off until you turn them on in <strong class="text-main">Settings, FAAB Bids</strong>): a bid range for players on waivers in FAAB leagues, from your league's winning bids this season. <strong class="text-main">Conservative</strong> bids lower; <strong class="text-main">Aggressive</strong> bids higher for players who'd start for you, winning more often but sometimes paying more. Tap a bid to see why.</li>
                 </ul>
             </div>
 
@@ -1829,7 +1842,7 @@
             <!-- Step 12 -->
             <div class="guide-step">
                 <h4 class="step-title"><span class="step-num blue-step">12</span> Backup, Restore & Reset</h4>
-                <p class="step-desc">Your leagues, rankings, and settings are stored in this browser only. Under <strong class="text-main">Advanced Settings</strong> on the Dashboard, use <strong class="text-main">Export Backup</strong> to download everything as a file and <strong class="text-main">Import Backup</strong> to restore it on this or another device or browser. The <strong class="text-main">Danger Zone</strong> has a Factory Reset that erases all of your saved leagues, rankings, and settings, which is handy when starting a new season. My Draft Strategist data is not affected.</p>
+                <p class="step-desc">Your leagues, rankings, and settings are stored in this browser only. Under <strong class="text-main">Settings</strong> in the menu, use <strong class="text-main">Export Backup</strong> to download everything as a file and <strong class="text-main">Import Backup</strong> to restore it on this or another device or browser. The <strong class="text-main">Danger Zone</strong> has a Factory Reset that erases all of your saved leagues, rankings, and settings, which is handy when starting a new season. My Draft Strategist data is not affected.</p>
                 <ul class="guide-list">
                     <li><strong class="text-main">Visitor Counts:</strong> To see how many people use it, the site counts visits with <strong class="text-main">Umami</strong>, without cookies: the page opened, the site that linked to it, and the browser, device type, screen size, language and rough location (country and city). Nothing that identifies you is kept, and your leagues, rankings and Sleeper username are never sent. Taps on the Support on Ko-fi and Share buttons, the tabs and the main buttons (such as Sync, Optimize or Export) are counted too: only which one was tapped, and where, never anything from your leagues or drafts. <a href="?nocount=1" data-nocount-link>Don't count this device</a></li>
                 </ul>

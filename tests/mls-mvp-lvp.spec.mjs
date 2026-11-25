@@ -1,5 +1,5 @@
 // The Scoreboard's MVPs & LVPs (improvements S22, js/mls/week/playerRecap.js and week/thisWeek.js): a folded section
-// under the tiles, built from S21's matchups (no second fetch), with the Boom / Bust lines editable in Advanced Settings.
+// under the tiles, built from S21's matchups (no second fetch), with the Boom / Bust lines editable in Settings.
 //
 // S21's fixtures (tests/fixtures/sleeper/make-fixtures.mjs): Sunday of week 2, both leagues with the same two teams, so
 // each of your players is owned in 2 of 2 leagues. Every team in the scoreboard below is final but MIN (Justin Jefferson,
@@ -217,11 +217,11 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await expectClean(page, state);
     });
 
-    test('the lines in Advanced Settings: validation, Save, Show all, Reset', async ({ page }) => {
+    test('the lines in Settings: validation, Save, Show all, Reset', async ({ page }) => {
         // Jefferson has 3 so far (half PPR too), so six of your starters have points.
         const state = await setup(page, { league2Points: { 6794: 3 }, statsHalf: { 6794: 3 } });
         await openRecap(page);
-        await showTab(page, 'setup');
+        await showTab(page, 'settings');
         await page.locator('summary', { hasText: 'MVP / LVP Lines' }).click();
         await expect(page.locator('#recapLineWRBoom')).toHaveValue('20');
         await expect(page.locator('#recapLineWRBust')).toHaveValue('7.5');
@@ -257,7 +257,7 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await expect(rowsOf(page, 'mvp')).toHaveCount(6);
         await expect(section(page).locator('[data-action="showAllRecap"]')).toHaveText(['Show less']);
 
-        await showTab(page, 'setup');
+        await showTab(page, 'settings');
         await page.click('[data-action="resetRecapLines"]');
         await expect(page.locator('#recapLineWRBoom')).toHaveValue('20');
         expect(await page.evaluate(() => localStorage.getItem('mls_recap_lines'))).toBeNull();
@@ -265,7 +265,7 @@ test.describe('Scoreboard: MVPs & LVPs', () => {
         await expect(rowsOf(page, 'mvp')).toHaveCount(2);
 
         // The scale (round 8): Full PPR instead of half; the column and the numbers follow (Allen 26.0).
-        await showTab(page, 'setup');
+        await showTab(page, 'settings');
         await page.selectOption('#recapLineScale', 'ppr');
         await page.click('[data-action="saveRecapLines"]');
         expect(JSON.parse(await page.evaluate(() => localStorage.getItem('mls_recap_lines'))).scale).toBe('ppr');
