@@ -121,6 +121,10 @@ pressed state).
 **Also (user-hat round, owner).** The starter-alert card has a quiet "Alert settings" link (`notify()`'s new `link`) that
 opens Settings with Notifications open.
 
+**Unfolded (owner, after the user-hat review).** On the Lineup page Lineup, Notifications, FAAB Bids and Backup & Restore are
+open sections under headings (no folds, no On/Off title labels); MVP / LVP Lines (a long form) and Danger Zone stay folded.
+Draft Strategist's page never had folds.
+
 **User-visible effect.** No browser flash on any tap, on all three pages. Buttons answer a press as before (M2's tint and
 corners, unchanged). Things that open something without being a button now answer a press with the same tint, where
 before they had the browser's flash only: every fold (`<summary>`: Recent Sync Logs, Advanced Settings' Notifications,

@@ -1514,8 +1514,8 @@
 
         <!-- Lineup (improvements S52 round 8, owner's choice): the Lineup tab's switches, here too so they're found from
              either place. Each copy follows the other (lineup/gameInfo.js, lineup/earlyGames.js). -->
-        <details class="sos-details-accordion lineup-switches">
-            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Lineup</summary>
+        <div class="sos-details-accordion settings-group lineup-switches">
+            <h3 class="settings-group-title">Lineup</h3>
             <div class="accordion-body">
                 <div class="toggle-row">
                     <div class="toggle-info">
@@ -1532,12 +1532,12 @@
                     <input type="checkbox" id="earlyFromScheduleToggleSettings" class="toggle-switch" checked data-action="setEarlyFromSchedule">
                 </div>
             </div>
-        </details>
+        </div>
 
         <!-- Notifications (improvements N2, js/mls/lineup/starterAlert.js): a fold like the others below; its title row says
              whether Starter Alerts are on. The switch is off until turned on; its options open under it while on. -->
-        <details class="sos-details-accordion notify-settings">
-            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Notifications<span id="notifySettingsState" class="notify-settings-state">Off</span></summary>
+        <div class="sos-details-accordion settings-group notify-settings">
+            <h3 class="settings-group-title">Notifications</h3>
             <div class="accordion-body">
         <div class="starter-alerts">
             <div class="toggle-row">
@@ -1581,12 +1581,12 @@
             </div>
         </div>
             </div>
-        </details>
+        </div>
 
         <!-- Suggested FAAB bids (improvements S35, round 6, js/mls/scout/faabSettings.js): off by default; shown only when
              there's a FAAB league. A fold like Notifications; its title row says On or Off and the style. -->
-        <details class="sos-details-accordion faab-settings" id="faabSettingsGroup" hidden>
-            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>FAAB Bids<span id="faabSettingsState" class="notify-settings-state">Off</span></summary>
+        <div class="sos-details-accordion settings-group faab-settings" id="faabSettingsGroup" hidden>
+            <h3 class="settings-group-title">FAAB Bids</h3>
             <div class="accordion-body">
             <div class="toggle-row">
                 <div class="toggle-info">
@@ -1608,7 +1608,7 @@
                 <small id="faabStyleHint" class="text-helper">Conservative: lower bids, usually enough when no one else bids. Aggressive: higher bids for players who'd start for you. They win more often against other bidders, but can cost more than needed.</small>
             </div>
             </div>
-        </details>
+        </div>
 
         
         <!-- The Scoreboard's MVPs and LVPs (week/recapLines.js, improvements S22). -->
@@ -1647,14 +1647,14 @@
             </div>
         </details>
 
-        <details class="sos-details-accordion">
-            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Backup & Restore</summary>
+        <div class="sos-details-accordion settings-group backup-settings">
+            <h3 class="settings-group-title">Backup & Restore</h3>
             <div class="accordion-body flex-column gap-2">
                 <button class="btn btn-primary" data-action="exportMlsSettings">Export Backup</button>
                 <input type="file" id="mlsImportFileInput" accept="application/json,.json" style="display:none;" aria-label="Import backup file" data-action="importMlsSettings">
                 <button class="btn btn-secondary" data-action="chooseBackupFile">Import Backup</button>
             </div>
-        </details>
+        </div>
 
         <details class="sos-details-accordion danger-card">
             <summary class="sos-summary chevron-summary text-danger"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Danger Zone</summary>

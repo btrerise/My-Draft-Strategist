@@ -26,8 +26,14 @@ test.describe('Lineup Strategist: Settings', () => {
         // In order: Headshots, then the folds.
         const settings = page.locator('#settingsTab');
         await expect(settings.locator('#mlsHeadshotsToggle')).toBeAttached();
-        const folds = await settings.locator('details > summary').evaluateAll(els => els.filter(e => e.offsetParent).map(e => e.textContent.trim().replace(/\s+/g, ' ')));
-        expect(folds.map(f => f.replace(/(On|Off).*$/, ''))).toEqual(['Lineup', 'Notifications', 'FAAB Bids', 'MVP / LVP Lines', 'Backup & Restore', 'Danger Zone']);
+        // Open sections under headings; only the long MVP / LVP form and the erase button stay folded (owner, S45).
+        const headings = await settings.locator('.settings-group-title').allInnerTexts();
+        expect(headings).toEqual(['Lineup', 'Notifications', 'FAAB Bids', 'Backup & Restore']);
+        for (const h of ['Lineup', 'Notifications', 'FAAB Bids', 'Backup & Restore']) await expect(settings.locator('.settings-group-title', { hasText: h })).toBeVisible();
+        const folds = await settings.locator('details > summary').allInnerTexts();
+        expect(folds.map(f => f.trim())).toEqual(['MVP / LVP Lines', 'Danger Zone']);
+        await expect(settings.locator('#starterAlertsToggle')).toBeVisible();
+        await expect(settings.locator('[data-action="exportMlsSettings"]')).toBeVisible();
 
         // None of them is on the Dashboard any more.
         const dash = page.locator('#setupTab');

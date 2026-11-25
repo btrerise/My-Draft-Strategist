@@ -41,17 +41,12 @@ export function setFaabStyle(style) {
     applyFaabSettingsToUI();
 }
 
-// The Settings page's FAAB Bids group: shown only with a FAAB league (hasFaab), its title row's state ("Off", "On ·
-// Conservative"), the switch, and the style choice (only while on).
+// The Settings page's FAAB Bids group: shown only with a FAAB league (hasFaab), the switch, and the style choice
+// (only while on).
 export function applyFaabSettingsToUI(hasFaab) {
     const s = faabSettings();
     const group = document.getElementById('faabSettingsGroup');
     if (group && typeof hasFaab === 'boolean') group.hidden = !hasFaab;
-    const state = document.getElementById('faabSettingsState');
-    if (state) {
-        state.textContent = s.on ? `On · ${s.style === 'aggressive' ? 'Aggressive' : 'Conservative'}` : 'Off';
-        state.classList.toggle('is-on', s.on);
-    }
     const toggle = document.getElementById('faabBidsToggle');
     if (toggle) toggle.checked = s.on;
     const options = document.getElementById('faabStyleOptions');

@@ -170,7 +170,6 @@ test('Lineup Strategist: every control has a 48px target', async ({ page }) => {
     // Folds the tabs leave closed (improvements S35, round 7): Settings page's FAAB Bids, opened and turned on, so its
     // Conservative / Aggressive buttons are measured; and a toast with an action button ("Turn on").
     await showTab(page, 'settings');
-    await page.locator('#faabSettingsGroup summary').click();
     await page.locator('#faabBidsToggle').check();
     await expect(page.locator('#faabStyleOptions')).toBeVisible();
     await page.locator('#faabSettingsGroup').scrollIntoViewIfNeeded();

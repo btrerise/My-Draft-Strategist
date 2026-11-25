@@ -38,8 +38,8 @@ test.describe('Chevrons turn with their folds (improvements F11)', () => {
         await seedMls(page);
         await showTab(page, 'settings');
 
-        // Backup & Restore: the shared chevron instead of the browser's triangle, right when closed, down when open.
-        const backup = page.locator('#settingsTab details.sos-details-accordion').filter({ hasText: 'Backup & Restore' });
+        // MVP / LVP Lines: the shared chevron instead of the browser's triangle, right when closed, down when open.
+        const backup = page.locator('#settingsTab details.sos-details-accordion').filter({ hasText: 'MVP / LVP Lines' });
         const summary = backup.locator('> summary');
         const chev = summary.locator('> svg.chevron');
         await expect(chev).toHaveAttribute('aria-hidden', 'true');

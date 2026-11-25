@@ -64,10 +64,10 @@ let checking = false;
 // The card's button: the Dashboard's "lineups need you" box (the League Command Center), which lists the same problems
 // with their fixes.
 const DASHBOARD_ACTION = { label: 'Show on the Dashboard', run: () => goToLineupNeeds() };
-// The card's quiet link (S45): the Notifications fold on the Settings page, opened.
+// The card's quiet link (S45): the Settings page, scrolled to Notifications.
 const SETTINGS_LINK = { label: 'Alert settings', run: () => showTab('settings').then(() => {
-    const fold = document.querySelector('details.notify-settings');
-    if (fold) { fold.open = true; fold.scrollIntoView({ block: 'start' }); }
+    const group = document.querySelector('.notify-settings');
+    if (group) group.scrollIntoView({ block: 'start' });
 }) };
 // The system notification's icon: Lineup Strategist's app icon (lineup/manifest.json's, 512px).
 const APP_ICON = '/images/mls-app-icon.png';
@@ -207,9 +207,6 @@ export function renderStarterAlertSettings() {
     const toggle = document.getElementById('starterAlertsToggle');
     if (!toggle) return;
     toggle.checked = s.on;
-    // The Notifications fold's title row: whether the alerts are on, seen while it's folded.
-    const state = document.getElementById('notifySettingsState');
-    if (state) { state.textContent = s.on ? 'On' : 'Off'; state.classList.toggle('is-on', s.on); }
     const opts = document.getElementById('starterAlertsOptions');
     if (opts) opts.hidden = !s.on;
     const lead = document.getElementById('starterAlertLead');

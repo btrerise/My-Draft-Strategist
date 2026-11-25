@@ -221,12 +221,11 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         const group = page.locator('#faabSettingsGroup');
         await showTab(page, 'settings');
         await expect(group).toBeVisible();
-        await expect(page.locator('#faabSettingsState')).toHaveText('Off');
+        await expect(page.locator('#faabBidsToggle')).not.toBeChecked();
         // Turn it on: Conservative, and the bid appears.
-        await group.locator('summary').click();
         await expect(page.locator('#faabStyleOptions')).toBeHidden();
         await page.locator('#faabBidsToggle').check();
-        await expect(page.locator('#faabSettingsState')).toHaveText('On · Conservative');
+        await expect(page.locator('#faabBidsToggle')).toBeChecked();
         await expect(page.locator('#faabStyleOptions [data-style="conservative"]')).toHaveAttribute('aria-pressed', 'true');
         await showTab(page, 'setup');
         await expect(cook.locator('button.mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');
@@ -247,9 +246,8 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expect(bid).toHaveText(/^Bid \$\d+–\$\d+ \(of your \$40 left\)$/);
         const conservative = Number((await bid.textContent()).match(/–\$(\d+)/)[1]);
         await showTab(page, 'settings');
-        await page.locator('#faabSettingsGroup summary').click();
         await page.locator('#faabStyleOptions [data-style="aggressive"]').click();
-        await expect(page.locator('#faabSettingsState')).toHaveText('On · Aggressive');
+        await expect(page.locator('#faabStyleOptions [data-style="aggressive"]')).toHaveAttribute('aria-pressed', 'true');
         // The contested RB claims' median, 40, is above Conservative's top.
         expect(conservative).toBeLessThan(40);
         await showTab(page, 'setup');
@@ -332,7 +330,6 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expect(cookCard().locator('.mls-faab-bid')).toHaveText('Bid $13–$21 (of your $63 left)');
         // Off, from the Dashboard: Auto-Find's results lose their bids without another tap of Auto-Find.
         await showTab(page, 'settings');
-        await page.locator('#faabSettingsGroup summary').click();
         await page.locator('#faabBidsToggle').uncheck();
         await showTab(page, 'scout');
         await expect(cookCard()).toBeVisible();

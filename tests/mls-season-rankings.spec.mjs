@@ -549,7 +549,6 @@ test.describe('In-Season rankings in a dynasty league', () => {
         const { state, ids } = await setUp(page);
         await patchLeagues(page, { 'Fixture League': { seasonRankingSetId: ids.season, powerCompeting: true } });
         await showTab(page, 'settings');
-        await page.locator('summary', { hasText: 'Backup & Restore' }).click(); // collapsed accordion
         const [download] = await Promise.all([
             page.waitForEvent('download'),
             page.getByRole('button', { name: 'Export Backup' }).click(),

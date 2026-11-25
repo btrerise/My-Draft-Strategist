@@ -257,8 +257,6 @@ test.describe('Bye Crunch: the switch, in both places (round 8)', () => {
     test('off in Settings: no note on the card or the Lineup tab, Lineup settings follows; on again from there, after a reload', async ({ page }) => {
         const state = await open(page, 12);
         await showTab(page, 'settings');
-        const settings = page.locator('details.lineup-switches');
-        await settings.locator('summary').click();
         const adv = page.locator('#byeCrunchToggleSettings');
         await expect(adv).toBeChecked();
         await adv.uncheck();
@@ -284,7 +282,6 @@ test.describe('Bye Crunch: the switch, in both places (round 8)', () => {
     test('Early Games\' "Fill in from the schedule" in Settings follows the card\'s, and the other way', async ({ page }) => {
         const state = await open(page, 2);
         await showTab(page, 'settings');
-        await page.locator('details.lineup-switches > summary').click();
         const adv = page.locator('#earlyFromScheduleToggleSettings');
         await expect(adv).toBeChecked();
         await adv.uncheck();

@@ -75,8 +75,6 @@ async function setup(page, { mode = 'default', answer = 'granted', when = KICK_1
     // The week's kickoffs (ESPN's scoreboard, stubbed above), as the page loads them after its first paint.
     await expect.poll(() => page.evaluate(async () => Object.keys((await import('/js/mls/state.js')).State.gameTimesByTeam).length)).toBe(6);
     await showTab(page, 'settings');
-    // Settings' Notifications fold (N2 round 5), where the switch lives.
-    await page.locator('details.notify-settings > summary').click();
     return { state, live };
 }
 
@@ -88,7 +86,6 @@ test.describe('Starter alerts', () => {
     test('off by default: no alert inside the window, no permission asked', async ({ page }) => {
         const { state } = await setup(page, { chase: 'Out' });
         await expect(toggle(page)).not.toBeChecked();
-        await expect(page.locator('#notifySettingsState')).toHaveText('Off');
         await expect(page.locator('#starterAlertsOptions')).toBeHidden();
         expect(await check(page)).toBeNull();
         expect(await notes(page)).toEqual([]);
@@ -101,7 +98,7 @@ test.describe('Starter alerts', () => {
         const { state, live } = await setup(page, { when: KICK_1PM - 2 * 60 * MIN });
         await toggle(page).check();
         await expect(page.locator('#starterAlertsOptions')).toBeVisible();
-        await expect(page.locator('#notifySettingsState')).toHaveText('On');
+        await expect(toggle(page)).toBeChecked();
         await expect(page.locator('#starterAlertLead')).toHaveValue('60');
         await expect(page.locator('#starterAlertsStale')).toBeChecked();
         expect(await page.evaluate(() => window.__asked)).toBe(1);
@@ -153,9 +150,6 @@ test.describe('Starter alerts', () => {
         await page.reload();
         await page.waitForLoadState('networkidle');
         await expect(toggle(page)).toBeChecked();
-        // Folded, the fold's title row still says the alerts are on.
-        await expect(page.locator('details.notify-settings')).not.toHaveAttribute('open', '');
-        await expect(page.locator('#notifySettingsState')).toHaveText('On');
         expect(await check(page, { refresh: false })).toBeNull();
         expect(await notes(page)).toEqual([]); // window.__notes starts over with the page
         await expectClean(page, state);
@@ -277,18 +271,17 @@ test.describe('Starter alerts: Send a test alert', () => {
 });
 
 test.describe('Starter alerts: the card on the page', () => {
-    test('the card\'s "Alert settings" link opens Settings with Notifications open (S45)', async ({ page }) => {
+    test('the card\'s "Alert settings" link opens Settings at Notifications (S45)', async ({ page }) => {
         const { state } = await setup(page, { mode: 'denied', when: KICK_1PM - 3 * 60 * MIN });
         await toggle(page).check();
         await page.getByRole('button', { name: 'Send a test alert' }).click();
         const card = page.locator('#notifyPageAlert');
         await expect(card).toBeVisible({ timeout: 10_000 });
         await showTab(page, 'setup');
-        await page.evaluate(() => { document.querySelector('details.notify-settings').open = false; });
         await card.getByRole('button', { name: 'Alert settings' }).click();
         await expect(card).toHaveCount(0);
         await expect(page.locator('#settingsTab')).toHaveClass(/\bactive\b/);
-        await expect(page.locator('details.notify-settings')).toHaveJSProperty('open', true);
+        await expect(page.locator('.notify-settings')).toBeInViewport();
         await expectClean(page, state);
     });
 

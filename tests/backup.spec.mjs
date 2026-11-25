@@ -146,7 +146,6 @@ test('MLS backup -> restore round trip', async ({ page }) => {
     const state = await openApp(page, '/lineup/');
     await seedMls(page);
     await showTab(page, 'settings');
-    await page.locator('summary', { hasText: 'Backup & Restore' }).click(); // collapsed accordion
     await roundTrip(page, state, { app: 'mls', inputId: 'mlsImportFileInput', junkKey: 'mls_junk_probe', dropKey: 'mls_leagues' });
     await showTab(page, 'roster');
     await expect(page.locator('#rosterTab')).toContainText('Josh Allen');
@@ -166,7 +165,6 @@ test('MDS restores a backup file saved before the 6B key rename', async ({ page 
 test('MLS restores a backup file saved before the 6B key rename', async ({ page }) => {
     const state = await openApp(page, '/lineup/');
     await showTab(page, 'settings');
-    await page.locator('summary', { hasText: 'Backup & Restore' }).click(); // collapsed accordion
     await restoreOldBackup(page, state, { app: 'mls', inputId: 'mlsImportFileInput' });
     await showTab(page, 'roster');
     await expect(page.locator('#rosterTab')).toContainText('Josh Allen');
