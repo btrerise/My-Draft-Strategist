@@ -13,10 +13,10 @@ const RAIL_W = 96;
 
 const APPS = [
     { name: 'Draft Strategist', path: '/', tabs: ['setup', 'tracker', 'team', 'board'], seed: seedMds,
-        menuNames: ['Dashboard', 'Tracker', 'Team', 'Board', 'Guide', 'T-Score', 'My Lineup Strategist', 'Share this site'] },
+        menuNames: ['Dashboard', 'Tracker', 'Team', 'Board', 'Settings', 'Guide', 'T-Score', 'My Lineup Strategist', 'Share this site'] },
     { name: 'Lineup Strategist', path: '/lineup/', tabs: ['setup', 'roster', 'lineup', 'scoreboard', 'scout'],
         seed: async (page) => { await seedMls(page); await loadMlsRankings(page); },
-        menuNames: ['Dashboard', 'Roster', 'Lineup', 'Scoreboard', 'Scout', 'Guide', 'T-Score', 'My Draft Strategist', 'Share this site'] },
+        menuNames: ['Dashboard', 'Roster', 'Lineup', 'Scoreboard', 'Scout', 'Settings', 'Guide', 'T-Score', 'My Draft Strategist', 'Share this site'] },
 ];
 
 // Each width runs in the desktop project only (it sets its own viewport); the phone project's touch adds nothing here.
@@ -226,8 +226,9 @@ for (const app of APPS) {
 
         test('arrow keys move between items in the rail, the bar and the menu; Home and End jump to the ends', async ({ page }) => {
             const btn = (t) => page.locator(`.nav-bar .nav-btn[data-target="${t}"]`);
-            const last = app.tabs[app.tabs.length - 1];
             for (const [width, next, prev] of [[1280, 'ArrowDown', 'ArrowUp'], [375, 'ArrowRight', 'ArrowLeft']]) {
+                // The rail ends with Settings (S45); the phone's bar doesn't have it.
+                const last = width >= 840 ? 'settings' : app.tabs[app.tabs.length - 1];
                 await page.setViewportSize({ width, height: 800 });
                 await openApp(page, app.path);
                 await btn(app.tabs[0]).focus();
@@ -314,7 +315,7 @@ for (const app of APPS) {
                 await openApp(page, app.path);
                 const m = await page.evaluate(() => {
                     const bar = document.querySelector('.nav-bar');
-                    const btns = [...bar.querySelectorAll('.nav-btn')];
+                    const btns = [...bar.querySelectorAll('.nav-btn')].filter(b => b.offsetParent); // not the rail's Settings on phones (S45)
                     const r = (e) => e.getBoundingClientRect();
                     const b0 = btns[0], icon = r(b0.querySelector('svg')), label = r(b0.querySelector('span'));
                     return { bar: r(bar).height, icons: [...new Set(btns.map(b => r(b.querySelector('svg')).width))],
@@ -350,7 +351,7 @@ for (const app of APPS) {
             const icons = (sel) => page.evaluate((s) => [...document.querySelectorAll(s)].map(b => {
                 const r = b.querySelector('svg').getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top)];
             }), sel);
-            const rail = await icons('.nav-bar .nav-btn');
+            const rail = (await icons('.nav-bar .nav-btn')).slice(0, app.tabs.length); // the tabs; Settings at the foot has no row at the top
             const menuIcons = app.tabs.map(t => `.hamburger-menu .nav-btn[data-tab="${t}"]`).join(', ');
             const drawer = page.locator('.hamburger-menu');
             // Closed, its right edge is the rail's (and it's hidden), so it opens outwards from there.
