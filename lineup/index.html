@@ -220,6 +220,11 @@
         <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         <span>Scout</span>
     </button>
+<!-- Settings on the rail (computers only, at its foot; improvements S45). On phones and tablets it's in the menu. -->
+    <button class="nav-btn nav-rail-settings" data-target="settings" data-action="showTab" data-tab="settings" data-umami-event="Tab" data-umami-event-tab="settings" data-umami-event-where="rail">
+        <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>Settings</span>
+    </button>
 </nav>
 
 <main id="mainApp">
@@ -338,6 +343,15 @@
                 <!-- Populated by JS -->
             </div>
         </details>
+    </section>
+
+    <!-- RESTORE (improvements S45): shown only while nothing is set up yet, for someone who already has a backup file. -->
+    <section id="restoreCard" class="settings-card restore-card" hidden>
+        <header class="card-header">
+            <h3><span>Already use Lineup Strategist?</span></h3>
+        </header>
+        <p class="card-desc">Restore your leagues, rankings and settings from a backup file saved on another device or browser.</p>
+        <button class="btn btn-secondary" data-action="chooseBackupFile">Import Backup</button>
     </section>
 
     <!-- ADD/SYNC LEAGUE -->
@@ -1585,8 +1599,9 @@
 
         <!-- Suggested FAAB bids (improvements S35, round 6, js/mls/scout/faabSettings.js): off by default; shown only when
              there's a FAAB league. A fold like Notifications; its title row says On or Off and the style. -->
-        <div class="sos-details-accordion settings-group faab-settings" id="faabSettingsGroup" hidden>
+        <div class="sos-details-accordion settings-group faab-settings is-unavailable" id="faabSettingsGroup">
             <h3 class="settings-group-title">FAAB Bids</h3>
+            <p id="faabUnavailableNote" class="faab-unavailable-note">Needs a league that uses FAAB, a waiver budget. None of yours does yet.</p>
             <div class="accordion-body">
             <div class="toggle-row">
                 <div class="toggle-info">
@@ -1596,7 +1611,7 @@
                     </label>
                     <span class="toggle-desc">A bid range for players on waivers in FAAB leagues, from your league's bids this season. Tap a bid to see why.</span>
                 </div>
-                <input type="checkbox" id="faabBidsToggle" class="toggle-switch" data-action="toggleFaabBids">
+                <input type="checkbox" id="faabBidsToggle" class="toggle-switch" data-action="toggleFaabBids" disabled>
             </div>
             <div id="faabStyleOptions" class="faab-style-options" hidden>
                 <p id="faabBidsStatus" class="text-helper faab-bids-status" role="status" aria-live="polite"></p>
@@ -1613,7 +1628,7 @@
         
         <!-- The Scoreboard's MVPs and LVPs (week/recapLines.js, improvements S22). -->
         <details class="sos-details-accordion">
-            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>MVP / LVP Lines</summary>
+            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg><span class="sos-summary-text">MVP / LVP Lines<small class="sos-summary-tag">The points that make a player an MVP or LVP on the Scoreboard.</small></span></summary>
             <div class="accordion-body">
                 <p class="card-desc">The points that make a player an MVP (Boom) or an LVP (under Bust) on the Scoreboard. Each player is judged once, on his points for the week in one scoring format from Sleeper's stats, the same in every league, so full PPR or TE premium doesn't make a line easier. K and DEF aren't covered. These are only for the Scoreboard's MVPs and LVPs; the Matchup Simulator's boom/bust chances are separate.</p>
                 <div class="recap-lines-scale">
@@ -1657,7 +1672,7 @@
         </div>
 
         <details class="sos-details-accordion danger-card">
-            <summary class="sos-summary chevron-summary text-danger"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Danger Zone</summary>
+            <summary class="sos-summary chevron-summary text-danger"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg><span class="sos-summary-text">Danger Zone<small class="sos-summary-tag">Erase this browser's leagues, rankings and settings.</small></span></summary>
             <div class="accordion-body">
                 <p class="card-desc">Having issues or starting a new season? This will completely erase all cached leagues, custom rankings, and settings from your device.</p>
                 <button class="btn btn-danger" data-action="factoryReset">Factory Reset App Data</button>

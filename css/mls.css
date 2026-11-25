@@ -3074,8 +3074,18 @@ body.mls-hide-headshots .mls-root-player { grid-template-columns: auto minmax(0,
 
 /* --- NOTIFICATIONS (improvements N2): an Advanced Settings fold holding Starter Alerts. The fold is the box (N2 round 5;
    round 4 had its own .toggle-group box); the switch row sits flush, its options under a divider while on. --- */
-/* Settings page groups (S45): open sections under a plain heading, in place of folds. */
+/* Settings page groups (S45): open sections under a plain heading, in place of folds. Their switch rows sit flush in the
+   group (no second box), so every switch on the page ends at the same right edge as Show Player Headshots'. */
 .settings-group-title { margin: 0 0 0.75rem; font-size: 0.95rem; font-weight: 700; color: var(--text-main); }
+.settings-group .toggle-row { padding: 0; background: none; border: 0; border-radius: 0; margin-bottom: 0; }
+.settings-group .toggle-row + .toggle-row { margin-top: 1rem; }
+/* A fold's one-line summary under its title (MVP / LVP Lines, Danger Zone). */
+.sos-summary-text { display: inline-flex; flex-direction: column; gap: 0.15rem; }
+.sos-summary-tag { font-size: 0.78rem; font-weight: 400; color: var(--text-muted); }
+/* FAAB Bids without a FAAB league: there to be seen, not used. */
+.faab-unavailable-note { margin: 0 0 0.75rem; font-size: 0.85rem; color: var(--text-muted); }
+.faab-unavailable-note[hidden] { display: none; }
+.faab-settings.is-unavailable .accordion-body { opacity: 0.55; pointer-events: none; }
 /* Suggested FAAB bids' style choice (improvements S35, round 6), under its switch. */
 .faab-style-options { display: grid; gap: 0.4rem; margin-top: 0.5rem; }
 .faab-style-options[hidden] { display: none; }

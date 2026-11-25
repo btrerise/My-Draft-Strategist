@@ -87,6 +87,7 @@ import { closeMenuOnBack, menuClosed, menuOpened, setBackdrop } from '../shared/
         // misfire rather than a tab change. Scout is the last swipeable tab.
         const tabs = ['setup', 'roster', 'lineup', 'scoreboard', 'scout'];
         const currentIdx = tabs.indexOf(activeTabBtn.getAttribute('data-target'));
+        if (currentIdx === -1) return; // Settings has a button on the rail (computers only), but isn't a swipe stop
         
         if (State.touchEndX < State.touchStartX - swipeThreshold) {
             if (currentIdx < tabs.length - 1) {

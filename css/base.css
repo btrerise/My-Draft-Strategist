@@ -2730,7 +2730,8 @@ button.pos-filter {
 :root { --rail-w: 96px; --rail-inset: 0px; }
 .nav-rail-menu,
 .menu-section-label,
-.close-menu-btn .icon-collapse { display: none; }
+.close-menu-btn .icon-collapse,
+.nav-bar .nav-rail-settings { display: none; }
 
 @media (min-width: 600px) and (max-width: 839.98px) {
     .nav-bar { justify-content: center; gap: 4px; padding-left: 16px; padding-right: 16px; }
@@ -2757,6 +2758,8 @@ button.pos-filter {
         overflow-y: auto;
         overscroll-behavior: contain;
     }
+    /* Settings at the rail's foot (S45); on phones and tablets it's in the menu. */
+    .nav-bar .nav-rail-settings { display: flex; margin-top: auto; }
     .nav-rail-menu { display: flex; align-self: center; flex: 0 0 auto; width: 48px; height: 48px; margin-bottom: 28px; }
     /* Material 3's collapsed rail: 64dp items 4dp apart (6dp, the 32dp indicator round the 24dp icon, 4dp, the 16dp
        label, 6dp), from 88px down. */

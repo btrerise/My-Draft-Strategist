@@ -41,12 +41,20 @@ export function setFaabStyle(style) {
     applyFaabSettingsToUI();
 }
 
-// The Settings page's FAAB Bids group: shown only with a FAAB league (hasFaab), the switch, and the style choice
+// The Settings page's FAAB Bids group: always shown, greyed out without a FAAB league (hasFaab); the switch, and the style choice
 // (only while on).
 export function applyFaabSettingsToUI(hasFaab) {
     const s = faabSettings();
     const group = document.getElementById('faabSettingsGroup');
-    if (group && typeof hasFaab === 'boolean') group.hidden = !hasFaab;
+    // Always on the page (S45, owner: someone exploring should see it), greyed out and off-limits without a FAAB league.
+    if (group && typeof hasFaab === 'boolean') {
+        group.classList.toggle('is-unavailable', !hasFaab);
+        const note = document.getElementById('faabUnavailableNote');
+        if (note) note.hidden = hasFaab;
+        const sw = document.getElementById('faabBidsToggle');
+        if (sw) sw.disabled = !hasFaab;
+        group.querySelectorAll('#faabStyleOptions button').forEach(b => { b.disabled = !hasFaab; });
+    }
     const toggle = document.getElementById('faabBidsToggle');
     if (toggle) toggle.checked = s.on;
     const options = document.getElementById('faabStyleOptions');

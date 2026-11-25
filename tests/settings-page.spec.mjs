@@ -31,7 +31,10 @@ test.describe('Lineup Strategist: Settings', () => {
         expect(headings).toEqual(['Lineup', 'Notifications', 'FAAB Bids', 'Backup & Restore']);
         for (const h of ['Lineup', 'Notifications', 'FAAB Bids', 'Backup & Restore']) await expect(settings.locator('.settings-group-title', { hasText: h })).toBeVisible();
         const folds = await settings.locator('details > summary').allInnerTexts();
-        expect(folds.map(f => f.trim())).toEqual(['MVP / LVP Lines', 'Danger Zone']);
+        expect(folds.map(f => f.trim().split('\n')[0])).toEqual(['MVP / LVP Lines', 'Danger Zone']);
+        // A fold says what it does without opening (owner, S45).
+        await expect(settings.locator('summary', { hasText: 'MVP / LVP Lines' }).locator('.sos-summary-tag')).toBeVisible();
+        await expect(settings.locator('summary', { hasText: 'MVP / LVP Lines' }).locator('.sos-summary-tag')).toContainText('MVP or LVP');
         await expect(settings.locator('#starterAlertsToggle')).toBeVisible();
         await expect(settings.locator('[data-action="exportMlsSettings"]')).toBeVisible();
 
@@ -119,6 +122,55 @@ test.describe('Draft Strategist: Settings', () => {
         await page.waitForLoadState('networkidle');
         await expect(page.locator('#stackToggle')).toBeChecked();
         await expect(page.locator('#byeWarningToggle')).toBeChecked();
+        await expectClean(page, state);
+    });
+});
+
+test.describe('Settings: the rail, the restore card, and every switch on one edge (owner round, S45)', () => {
+    test('the rail has Settings at its foot on computers only', async ({ page }) => {
+        for (const [path, tabs] of [['/lineup/', 5], ['/', 4]]) {
+            const state = await openApp(page, path);
+            const gear = page.locator('.nav-bar .nav-rail-settings');
+            if ((page.viewportSize()?.width || 0) >= 840) {
+                await expect(gear).toBeVisible();
+                const [g, last] = await Promise.all([gear.boundingBox(), page.locator('.nav-bar .nav-btn').nth(tabs - 1).boundingBox()]);
+                expect(g.y, 'below the tabs').toBeGreaterThan(last.y + last.height);
+                const bar = await page.locator('.nav-bar').boundingBox();
+                expect(g.y + g.height, 'at the rail\'s foot').toBeGreaterThan(bar.y + bar.height - 40);
+                await gear.click();
+                await expect(page.locator('#settingsTab')).toHaveClass(/\bactive\b/);
+                await expect(gear).toHaveAttribute('aria-current', 'page');
+            } else {
+                await expect(gear).toBeHidden(); // the menu has it
+            }
+            await expectClean(page, state);
+        }
+    });
+
+    test('Dashboard: "Already use it? Import Backup" shows only while nothing is set up', async ({ page }) => {
+        for (const [path, seed] of [['/lineup/', seedMls], ['/', seedMds]]) {
+            const state = await openApp(page, path);
+            const card = page.locator('#restoreCard');
+            await expect(card).toBeVisible();
+            // Its button opens the same file chooser as Backup & Restore's.
+            const chooser = page.waitForEvent('filechooser');
+            await card.getByRole('button', { name: 'Import Backup' }).click();
+            await chooser;
+            await seed(page);
+            await showTab(page, 'setup');
+            await expect(card).toBeHidden();
+            await expectClean(page, state);
+        }
+    });
+
+    test('Lineup Settings: every switch ends at the same right edge', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await showTab(page, 'settings');
+        await page.evaluate(() => document.getElementById('faabSettingsGroup').classList.remove('is-unavailable'));
+        const edges = await page.locator('#settingsTab .toggle-switch').evaluateAll(els => els.filter(e => e.offsetParent).map(e => Math.round(e.getBoundingClientRect().right)));
+        expect(edges.length).toBeGreaterThan(3);
+        expect([...new Set(edges)]).toHaveLength(1);
         await expectClean(page, state);
     });
 });

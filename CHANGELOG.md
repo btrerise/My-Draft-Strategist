@@ -240,7 +240,10 @@ What changed for users in each version of the two apps, in plain language. Newes
   long MVP / LVP Lines form and the Danger Zone stay folded. The Dashboard is shorter. **Add Player Manually** stays
   on the Dashboard, at the foot of Active League Requirements, and shows only while a manual league is open (a Sleeper
   league's players come from Sleeper, and a sync replaces them). A starter alert's card also has an **Alert settings**
-  link that opens the Notifications section there.
+  link that opens the Notifications section there. On computers Settings is also at the foot of the side rail. With
+  nothing added yet, the Dashboard offers **Import Backup** for anyone who already has a backup file. FAAB Bids is
+  always on the page, greyed out and saying why until a league uses FAAB, and the MVP / LVP Lines and Danger Zone
+  folds say what they do without opening.
 
 - **Tabs and buttons are counted.** The visitor counter now also notes which tabs and main buttons are tapped (just the
   name, never your leagues), so the tools people use can be told apart from the ones they don't. The Guide's Visitor Counts line says so.

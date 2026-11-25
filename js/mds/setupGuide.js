@@ -54,6 +54,10 @@ import { renderSetupStep, scrollToCard } from '../shared/ui/setupChecklist.js';
         const order = ['rankings', 'draft', 'adp'];
         const nextStep = order.find(step => !s[step]) || null;
 
+        // The restore card (S45): only while nothing is set up yet.
+        const restoreCard = document.getElementById('restoreCard');
+        if (restoreCard) restoreCard.hidden = s.rankings || s.draft;
+
         // Setup Checklist, at the top of the Setup tab: all three steps until everything is in
         // place, then hidden. The jump links say "Show me ↓", since every step is on this tab.
         const checklist = document.getElementById('setupChecklist');

@@ -125,6 +125,13 @@ opens Settings with Notifications open.
 open sections under headings (no folds, no On/Off title labels); MVP / LVP Lines (a long form) and Danger Zone stay folded.
 Draft Strategist's page never had folds.
 
+**Owner's notes, round 2.** (1) A Dashboard card "Already use it? Import Backup" (`#restoreCard`) while nothing is added (no
+leagues / no rankings or draft). (2) Settings also at the rail's foot on computers (`.nav-rail-settings`; swipes ignore it).
+(3) Every switch on the Lineup page ends at one right edge (group rows flush; a spec measures it). (4) MVP / LVP Lines and
+Danger Zone carry a one-line tagline. (5) FAAB Bids always shown, greyed with a note when no league uses FAAB.
+(6) Folding Add/Sync League and Active League Requirements once a league exists was decided in U1 (2026-11-13; the
+"Dashboard and Scout tidy" card, to run after S45, remembered per user): not built here.
+
 **User-visible effect.** No browser flash on any tap, on all three pages. Buttons answer a press as before (M2's tint and
 corners, unchanged). Things that open something without being a button now answer a press with the same tint, where
 before they had the browser's flash only: every fold (`<summary>`: Recent Sync Logs, Advanced Settings' Notifications,

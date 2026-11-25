@@ -342,9 +342,15 @@ test.describe('Lineup Strategist suggested FAAB bid', () => {
         await expectClean(page, state);
     });
 
-    test('a league that isn\'t FAAB: waivers, but no bid, no setting and no toast', async ({ page }) => {
+    test('a league that isn\'t FAAB: waivers, but no bid, no toast, and the setting greyed out', async ({ page }) => {
         const state = await setup(page, { waiverType: 0, on: false });
-        await expect(page.locator('#faabSettingsGroup')).toBeHidden();
+        // Still on the Settings page, for someone exploring (S45), but off-limits and saying why.
+        await showTab(page, 'settings');
+        await expect(page.locator('#faabSettingsGroup')).toBeVisible();
+        await expect(page.locator('#faabSettingsGroup')).toHaveClass(/\bis-unavailable\b/);
+        await expect(page.locator('#faabBidsToggle')).toBeDisabled();
+        await expect(page.locator('#faabUnavailableNote')).toBeVisible();
+        await showTab(page, 'setup');
         const cook = player(page, 'James Cook');
         await expect(cook.locator('.mls-wv-chip')).toHaveText('W');
         await page.waitForLoadState('networkidle');
