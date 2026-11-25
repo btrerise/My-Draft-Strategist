@@ -251,13 +251,12 @@ test.describe('Bye Crunch: Find for that week, and Got it (round 7)', () => {
     });
 });
 
-// Round 8: on by default, with the same switch in the Lineup tab's Lineup settings and in Advanced Settings (Lineup);
-// Early Games' "Fill in from the schedule" is in Advanced Settings too.
+// Round 8: on by default, with the same switch in the Lineup tab's Lineup settings and in Settings (Lineup);
+// Early Games' "Fill in from the schedule" is in Settings too.
 test.describe('Bye Crunch: the switch, in both places (round 8)', () => {
-    test('off in Advanced Settings: no note on the card or the Lineup tab, Lineup settings follows; on again from there, after a reload', async ({ page }) => {
+    test('off in Settings: no note on the card or the Lineup tab, Lineup settings follows; on again from there, after a reload', async ({ page }) => {
         const state = await open(page, 12);
-        const settings = page.locator('details.lineup-switches');
-        await settings.locator('summary').click();
+        await showTab(page, 'settings');
         const adv = page.locator('#byeCrunchToggleSettings');
         await expect(adv).toBeChecked();
         await adv.uncheck();
@@ -280,9 +279,9 @@ test.describe('Bye Crunch: the switch, in both places (round 8)', () => {
         await expectClean(page, state);
     });
 
-    test('Early Games\' "Fill in from the schedule" in Advanced Settings follows the card\'s, and the other way', async ({ page }) => {
+    test('Early Games\' "Fill in from the schedule" in Settings follows the card\'s, and the other way', async ({ page }) => {
         const state = await open(page, 2);
-        await page.locator('details.lineup-switches > summary').click();
+        await showTab(page, 'settings');
         const adv = page.locator('#earlyFromScheduleToggleSettings');
         await expect(adv).toBeChecked();
         await adv.uncheck();

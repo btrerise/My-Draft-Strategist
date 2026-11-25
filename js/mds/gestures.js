@@ -28,6 +28,7 @@ import { showTab } from './ui.js';
         // of documentation reads as a misfire rather than a tab change (same call as js/mls/nav.js).
         const tabs = ['setup', 'tracker', 'team', 'board'];
         const currentIdx = tabs.indexOf(activeNavBtn.getAttribute('data-target'));
+        if (currentIdx === -1) return; // Settings has a button on the rail (computers only), but isn't a swipe stop
 
         if (diffX < 0 && currentIdx < tabs.length - 1) {
             // Swiped Left -> Next Tab

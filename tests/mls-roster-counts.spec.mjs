@@ -43,13 +43,15 @@ test.describe('Roster tab position counts', () => {
         expect(await chipLabels(page)).toEqual(['All 13', 'QB 1', 'RB 0', 'WR 7', 'TE 3', 'K 1', 'DEF 1']);
         await expect(chip(page, 'RB')).toBeDisabled();
 
-        // Add one back from Setup's Add Player Manually.
-        await showTab(page, 'setup');
-        await page.locator('summary', { hasText: 'Add Player Manually' }).click();
-        await page.fill('#manualName', 'James Cook');
-        await page.selectOption('#manualPos', 'RB');
-        await page.fill('#manualTeam', 'BUF');
-        await page.getByRole('button', { name: 'Add Player to Active Roster' }).click();
+        // Add one back the way Add Player Manually does. Its Dashboard card shows only for a manual league (S45), so
+        // this Sleeper league calls the same function with the form filled in.
+        await expect(page.locator('#manualAddCard')).toBeHidden();
+        await page.evaluate(async () => {
+            document.getElementById('manualName').value = 'James Cook';
+            document.getElementById('manualPos').value = 'RB';
+            document.getElementById('manualTeam').value = 'BUF';
+            (await import('/js/mls/leagues/addPlayer.js')).addManualPlayer();
+        });
         await showTab(page, 'roster');
         expect(await chipLabels(page)).toEqual(['All 14', 'QB 1', 'RB 1', 'WR 7', 'TE 3', 'K 1', 'DEF 1']);
         await expect(chip(page, 'RB')).toBeEnabled();

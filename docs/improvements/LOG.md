@@ -108,6 +108,7 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - T3 | LOG.md | T3 — T-Score table on phones, its tooltips, and no Sync button
 - A2 | LOG.md | A2 — Umami: which tabs and tools are used (Tab, Tool and Section events)
 - W2 | LOG.md | W2 — CI: the Dashboard screenshot that sometimes catches Sync's "Synced Successfully"
+- S45 | LOG.md | S45 — A Settings page in both apps (set-once settings off the Dashboards)
 
 ## F23 — The flash when tapping things on phones
 
@@ -1258,3 +1259,38 @@ on phones", closed by the owner on 2026-11-14 (one league per row on phones is i
 PNGs byte-identical, and `--repeat-each 30` on both projects gave the same picture every run (see the final report).
 
 **User-visible effect.** None. **Left over.** Nothing.
+
+## S45 — A Settings page in both apps (set-once settings off the Dashboards)
+
+**Decisions** (owner, 2026-11-25, from a 375 / 1280px sketch, then two user-hat rounds):
+1. **Settings** tab (`settings`, `#settings`, gear icon): in the menu's More group below the Guide and T-Score (where
+   people look for it), and at the foot of the rail on computers. Not a swipe stop.
+2. **Lineup Strategist's page**: Show Player Headshots, then open sections under headings (Lineup, Notifications, FAAB
+   Bids, Backup & Restore); MVP / LVP Lines and Danger Zone stay folded, each with a one-line tagline. Every switch ends
+   at one right edge. FAAB Bids is always shown, greyed with a note when no league uses FAAB.
+3. **Draft Strategist's page** moves only the set-once part: the five switches (Stacks, Bye Weeks, T-Score, Collapse
+   Cards, Headshots), Backup & Restore, Reset Controls. Limits, teams, rounds, Third Round Reversal (saved per draft)
+   and Call Outs stay.
+4. **Add Player Manually** stays on the Dashboard, a fold at the foot of Active League Requirements, shown only for
+   `manual_` / `handoff_` leagues (a Sleeper sync replaces the roster with Sleeper's).
+5. An "Already use it? Import Backup" card (`#restoreCard`) on each Dashboard while nothing is set up; the starter-alert
+   card has an "Alert settings" link (`notify()`'s `link`) to Notifications.
+6. Folding Add/Sync League and Active League Requirements once a league exists is U1's first card (2026-11-13), not built here.
+
+**One behaviour change.** Highlight Stacks and Bye Week Warnings saved only with the Dashboard's Save Settings button, so
+they now save as flipped (`autoSaveSettings`, as T-Score's did; that also saves unsaved Dashboard limits). No storage keys.
+
+**User-visible effect.** Shorter Dashboards, Settings in the menu and the rail, the Guide's wording follows.
+
+**Tests.** New `settings-page.spec.mjs`; the specs that opened these sections on the Dashboard follow; `MLS_TABS` /
+`MDS_TABS` gain `settings`; `nav-rail` knows the entry and the gear. Two phone `mls-starter-alert` timing tests fail on
+main too (one desktop one flakes 1 in 6 there). Full suite: only `visual.spec.mjs` fails, as in any cloud session.
+
+**Screenshots** (re-taken on CI, commit 340edee, 24 PNGs; opened the new Settings pair and the phone Draft Strategist
+Dashboard: different only where the change is; predicted by rendering main and this branch in one container). Both widths:
+`mls-empty-setup`, `mls-league-setup`, `mds-empty-setup` (shorter; Import Backup card), `mls-league-guide`,
+`mds-empty-guide` (new text). Desktop only, the rail's gear: `mds-empty-{tracker,team,board}`, `mds-draft-{tracker,team,board}`,
+`mls-league-{roster,lineup,scoreboard,scout}`. New, both widths: `mls-league-settings`, `mds-empty-settings`.
+
+**Left over.** N4's "on the clock" switch goes into Draft Strategist's Settings page (its Notifications section).
+Settings has no keyboard shortcut.

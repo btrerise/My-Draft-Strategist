@@ -16,6 +16,7 @@ import { refreshGameTimes, State } from '../state.js';
 import { isBestBallLeague } from '../helpers.js';
 import { getLineupIssues, hasKickedOff } from './gameInfo.js';
 import { goToLineupNeeds, syncAllLeagues } from '../render/dashboard.js';
+import { showTab } from '../nav.js';
 import { STALE_WEEKLY_DAYS, alertMessage, dueWindow, kickoffWindows, leagueFindings, nextCheck, noGameStarters,
     normalizeSettings, sleeperLineup, staleLeagues } from './starterAlertRules.js';
 
@@ -63,6 +64,11 @@ let checking = false;
 // The card's button: the Dashboard's "lineups need you" box (the League Command Center), which lists the same problems
 // with their fixes.
 const DASHBOARD_ACTION = { label: 'Show on the Dashboard', run: () => goToLineupNeeds() };
+// The card's quiet link (S45): the Settings page, scrolled to Notifications.
+const SETTINGS_LINK = { label: 'Alert settings', run: () => showTab('settings').then(() => {
+    const group = document.querySelector('.notify-settings');
+    if (group) group.scrollIntoView({ block: 'start' });
+}) };
 // The system notification's icon: Lineup Strategist's app icon (lineup/manifest.json's, 512px).
 const APP_ICON = '/images/mls-app-icon.png';
 
@@ -104,7 +110,7 @@ export async function runStarterAlertCheck({ refresh = true } = {}) {
         stale.forEach(s => sent.add(`${s.leagueId}:stale`));
         saveSent(sent);
         const how = await notify({ title: message.title, lines: message.lines, groups: message.groups, tag: 'mls-starter-alert', url: '/lineup/',
-            label: 'Starter alert', action: DASHBOARD_ACTION, icon: APP_ICON });
+            label: 'Starter alert', action: DASHBOARD_ACTION, link: SETTINGS_LINK, icon: APP_ICON });
         return { title: message.title, body: message.body, how };
     } finally {
         checking = false;
@@ -201,9 +207,6 @@ export function renderStarterAlertSettings() {
     const toggle = document.getElementById('starterAlertsToggle');
     if (!toggle) return;
     toggle.checked = s.on;
-    // The Notifications fold's title row: whether the alerts are on, seen while it's folded.
-    const state = document.getElementById('notifySettingsState');
-    if (state) { state.textContent = s.on ? 'On' : 'Off'; state.classList.toggle('is-on', s.on); }
     const opts = document.getElementById('starterAlertsOptions');
     if (opts) opts.hidden = !s.on;
     const lead = document.getElementById('starterAlertLead');
@@ -255,7 +258,7 @@ export function sendTestStarterAlert() {
                     'This is a test. Real alerts name your own leagues and players.'],
                 groups: [{ heading: 'Example League', lines: ["Ja'Marr Chase is Out: start Puka Nacua instead?", 'RB slot is empty'] },
                     { heading: null, lines: ['This is a test. Real alerts name your own leagues and players.'] }],
-                tag: 'mls-starter-alert-test', url: '/lineup/', label: 'Starter alert', action: DASHBOARD_ACTION, icon: APP_ICON,
+                tag: 'mls-starter-alert-test', url: '/lineup/', label: 'Starter alert', action: DASHBOARD_ACTION, link: SETTINGS_LINK, icon: APP_ICON,
             });
             if (status) status.textContent = '';
             resolve(how);

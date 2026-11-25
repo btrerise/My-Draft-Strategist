@@ -159,7 +159,7 @@ test.describe('pre-6B storage', () => {
 
         state = await openApp(page, '/lineup/');
         const beforeMls = await dumpStorage(page);
-        await showTab(page, 'setup');
+        await showTab(page, 'settings');
         await page.locator('[data-action="factoryReset"]').dispatchEvent('click');
         await expect(page.locator('#mds-confirm-overlay')).toBeVisible();
         await Promise.all([page.waitForEvent('load'), page.locator('#mds-confirm-overlay [data-confirm-action="ok"]').click()]);

@@ -5,14 +5,14 @@
 // bid). While off, no bid, no "Bid …" placeholder and no history requests. The group shows only when there's a FAAB
 // league. One toast, once, offers to turn them on after Auto-Find or Check a List finds a player on waivers in a FAAB
 // league. Stored in KEYS.mls.faabSettings (so Backup / Restore and Factory Reset have it).
-// S45 (the Settings page) moves the group there, and drops "on the Dashboard" from the toast's text (HINT_TEXT).
+// The Settings page (S45) holds the group; the toast says "…in Settings." (HINT_TEXT).
 import { KEYS } from '../../shared/storage/keys.js';
 import { showToast } from '../../shared/ui/toast.js';
 
 const DEFAULTS = { on: false, style: 'conservative', hintShown: false };
 export const FAAB_STYLES = ['conservative', 'aggressive'];
-// Round 7: "Advanced Settings", the section's name on the Dashboard (S45: "…in Settings.").
-export const HINT_TEXT = 'Need help with FAAB bids? Turn on bid suggestions in Advanced Settings on the Dashboard.';
+// S45: the Settings page (it was Advanced Settings on the Dashboard).
+export const HINT_TEXT = 'Need help with FAAB bids? Turn on bid suggestions in Settings.';
 
 export function faabSettings() {
     let saved = null;
@@ -41,16 +41,19 @@ export function setFaabStyle(style) {
     applyFaabSettingsToUI();
 }
 
-// The Advanced Settings group: shown only with a FAAB league (hasFaab), its title row's state ("Off", "On ·
-// Conservative"), the switch, and the style choice (only while on).
+// The Settings page's FAAB Bids group: always shown, greyed out without a FAAB league (hasFaab); the switch, and the style choice
+// (only while on).
 export function applyFaabSettingsToUI(hasFaab) {
     const s = faabSettings();
     const group = document.getElementById('faabSettingsGroup');
-    if (group && typeof hasFaab === 'boolean') group.hidden = !hasFaab;
-    const state = document.getElementById('faabSettingsState');
-    if (state) {
-        state.textContent = s.on ? `On · ${s.style === 'aggressive' ? 'Aggressive' : 'Conservative'}` : 'Off';
-        state.classList.toggle('is-on', s.on);
+    // Always on the page (S45, owner: someone exploring should see it), greyed out and off-limits without a FAAB league.
+    if (group && typeof hasFaab === 'boolean') {
+        group.classList.toggle('is-unavailable', !hasFaab);
+        const note = document.getElementById('faabUnavailableNote');
+        if (note) note.hidden = hasFaab;
+        const sw = document.getElementById('faabBidsToggle');
+        if (sw) sw.disabled = !hasFaab;
+        group.querySelectorAll('#faabStyleOptions button').forEach(b => { b.disabled = !hasFaab; });
     }
     const toggle = document.getElementById('faabBidsToggle');
     if (toggle) toggle.checked = s.on;

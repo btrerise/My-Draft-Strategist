@@ -127,7 +127,7 @@ function startCardClock(card) {
 // the card's button (it dismisses the card first), or none. A newer alert replaces the card. Returns the card.
 // groups: [{ heading, lines }] in place of lines, for a list under headings (a league's name, then its problems); a
 // group with no heading lists its lines on their own.
-export function showPageAlert({ title, lines = [], groups = null, action = null } = {}) {
+export function showPageAlert({ title, lines = [], groups = null, action = null, link = null } = {}) {
     dismissPageAlert();
     const card = document.createElement('section');
     card.id = CARD_ID;
@@ -155,6 +155,15 @@ export function showPageAlert({ title, lines = [], groups = null, action = null 
     if (!body.children.length) body.remove();
     card.querySelector('.notify-card-close').addEventListener('click', dismissPageAlert);
     const actions = card.querySelector('.notify-card-actions');
+    // link: { label, run }, a quiet text button beside the main one (starter alerts: "Alert settings", S45).
+    if (link && link.label) {
+        const a = document.createElement('button');
+        a.type = 'button';
+        a.className = 'btn-bare notify-card-link';
+        a.textContent = link.label;
+        a.addEventListener('click', () => { dismissPageAlert(); if (link.run) link.run(); });
+        actions.appendChild(a);
+    }
     if (action && action.label) {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -162,7 +171,8 @@ export function showPageAlert({ title, lines = [], groups = null, action = null 
         btn.textContent = action.label;
         btn.addEventListener('click', () => { dismissPageAlert(); if (action.run) action.run(); });
         actions.appendChild(btn);
-    } else actions.remove();
+    }
+    if (!actions.children.length) actions.remove();
     document.body.appendChild(card);
     startCardClock(card);
     return card;
@@ -171,11 +181,11 @@ export function showPageAlert({ title, lines = [], groups = null, action = null 
 // --- THE ALERT ---
 // title: plain text; lines: plain-text lines (the notification's body, one per line, and the card's list). tag: one
 // notification per tag (a newer one replaces it). url: the page a tap opens ('/lineup/', '/'). label: the flashing tab
-// name's short text. action: the card's button ({ label, run }). icon: the app icon's URL for the system notification. The card always shows. Resolves to how else it was
+// name's short text. action: the card's button ({ label, run }). link: a quiet second button ({ label, run }). icon: the app icon's URL for the system notification. The card always shows. Resolves to how else it was
 // shown: 'notification' (the system's, when you're not looking at the page), 'page' (the card only: you're looking at
 // it) or 'title' (the card, and the tab's name flashing while it's hidden, with no notification permission).
-export async function notify({ title, lines = [], groups = null, tag, url = '/', label = title, action = null, icon } = {}) {
-    if (typeof document !== 'undefined') showPageAlert({ title, lines, groups, action });
+export async function notify({ title, lines = [], groups = null, tag, url = '/', label = title, action = null, link = null, icon } = {}) {
+    if (typeof document !== 'undefined') showPageAlert({ title, lines, groups, action, link });
     const hidden = typeof document !== 'undefined' && document.visibilityState !== 'visible';
     // Already looking at the page (in view, its window in front): the card is enough (N2 round 4: both at once was
     // redundant). Elsewhere: the system notification too.

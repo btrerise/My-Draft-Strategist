@@ -122,6 +122,10 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
         const syncCard = document.getElementById('setupSyncCard');
         if (syncCard) syncCard.classList.toggle('pulse-border', !hasLeagues);
 
+        // The restore card (S45): only while nothing is added yet.
+        const restoreCard = document.getElementById('restoreCard');
+        if (restoreCard) restoreCard.hidden = hasLeagues;
+
         // ROS Rankings Pulse
         const rosCard = document.getElementById('rosRankingsCard');
         if (rosCard) rosCard.classList.toggle('pulse-border', hasLeagues && !hasRos);
