@@ -279,6 +279,7 @@ test.describe('Starter alerts: Send a test alert', () => {
 test.describe('Starter alerts: the card on the page', () => {
     test('the card\'s "Alert settings" link opens Settings with Notifications open (S45)', async ({ page }) => {
         const { state } = await setup(page, { mode: 'denied', when: KICK_1PM - 3 * 60 * MIN });
+        await toggle(page).check();
         await page.getByRole('button', { name: 'Send a test alert' }).click();
         const card = page.locator('#notifyPageAlert');
         await expect(card).toBeVisible({ timeout: 10_000 });
