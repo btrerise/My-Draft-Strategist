@@ -3013,7 +3013,8 @@ a[data-nocount-link] { color: var(--primary-green); font-weight: 600; white-spac
 .notify-card-group { margin: 10px 0 0; font-size: 0.85rem; font-weight: 600; color: var(--text-main, #f3f4f6); }
 .notify-card-lines { margin: 4px 0 0; padding-left: 1.1rem; display: grid; gap: 4px; color: var(--text-muted); }
 .notify-card-body > .notify-card-lines:first-child { margin-top: 8px; }
-.notify-card-actions { margin-top: 12px; display: flex; justify-content: flex-end; }
+.notify-card-actions { margin-top: 12px; display: flex; justify-content: flex-end; align-items: center; gap: 16px; }
+.notify-card-link { color: var(--text-muted); font-size: 0.85rem; text-decoration: underline; cursor: pointer; }
 @media (max-width: 839.98px) {
     .notify-card { left: 8px; right: 8px; width: auto; bottom: calc(90px + env(safe-area-inset-bottom)); }
 }

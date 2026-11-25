@@ -118,6 +118,9 @@ translucent blue-grey box; not intentional, `css/base.css` removed it only on th
 tint (a 10% wash of the control's own colour while pressed, a button's corners 6 → 4px; intentional, Material 3's
 pressed state).
 
+**Also (user-hat round, owner).** The starter-alert card has a quiet "Alert settings" link (`notify()`'s new `link`) that
+opens Settings with Notifications open.
+
 **User-visible effect.** No browser flash on any tap, on all three pages. Buttons answer a press as before (M2's tint and
 corners, unchanged). Things that open something without being a button now answer a press with the same tint, where
 before they had the browser's flash only: every fold (`<summary>`: Recent Sync Logs, Advanced Settings' Notifications,
@@ -1270,8 +1273,8 @@ PNGs byte-identical, and `--repeat-each 30` on both projects gave the same pictu
 3. Draft Strategist moves only the set-once part: Highlight Stacks, Bye Week Warnings, T-Score Analytics, Collapse Player
    Cards, Show Player Headshots, Backup & Restore, Reset Controls. Roster limits, teams, rounds, Third Round Reversal (saved
    in each draft profile) and Call Outs stay on the Dashboard.
-4. **Add Player Manually** stays on the Dashboard in its own card (`#manualAddCard`, after Active League Requirements),
-   shown only while the open league is `manual_` or `handoff_` (`isManualLeague`). Checked first: a Sleeper sync
+4. **Add Player Manually** stays on the Dashboard as a fold at the foot of the Active League Requirements card (`#manualAddCard`; first built as its own card, folded in
+   after the owner's user-hat review), shown only while the open league is `manual_` or `handoff_` (`isManualLeague`). Checked first: a Sleeper sync
    replaces a league's roster with Sleeper's (`leagues/sync.js`), so hand-added players on one don't last.
 
 **What changed.** `lineup/index.html`, `index.html`: the `settingsTab` and the drawer entry; the Guide text that said

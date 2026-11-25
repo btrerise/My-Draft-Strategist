@@ -277,6 +277,20 @@ test.describe('Starter alerts: Send a test alert', () => {
 });
 
 test.describe('Starter alerts: the card on the page', () => {
+    test('the card\'s "Alert settings" link opens Settings with Notifications open (S45)', async ({ page }) => {
+        const { state } = await setup(page, { mode: 'denied', when: KICK_1PM - 3 * 60 * MIN });
+        await page.getByRole('button', { name: 'Send a test alert' }).click();
+        const card = page.locator('#notifyPageAlert');
+        await expect(card).toBeVisible({ timeout: 10_000 });
+        await showTab(page, 'setup');
+        await page.evaluate(() => { document.querySelector('details.notify-settings').open = false; });
+        await card.getByRole('button', { name: 'Alert settings' }).click();
+        await expect(card).toHaveCount(0);
+        await expect(page.locator('#settingsTab')).toHaveClass(/\bactive\b/);
+        await expect(page.locator('details.notify-settings')).toHaveJSProperty('open', true);
+        await expectClean(page, state);
+    });
+
     test('a window behind another app doesn\'t count as looking: the card waits for you to come back', async ({ page }) => {
         const { state } = await setup(page, { mode: 'denied', when: KICK_1PM - 3 * 60 * MIN });
         await toggle(page).check();

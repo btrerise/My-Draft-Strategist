@@ -431,33 +431,33 @@
             <small class="text-helper">Changes as soon as you pick.</small>
             <small id="leagueStyleKeepers" class="text-helper"></small>
         </div>
+        <!-- ADD PLAYER MANUALLY (improvements S45): for manual and hand-off leagues only (a Sleeper sync replaces the roster
+             with Sleeper's). Shown while the open league is one; js/mls/leagues/sync.js, addPlayer.js. -->
+        <div id="manualAddCard" class="manual-add-card" hidden>
+        <details class="sos-details-accordion">
+                <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Add Player Manually</summary>
+                <div class="accordion-body">
+                    <div class="manual-player-grid">
+                        <input type="text" id="manualName" class="form-input" placeholder="Player Name" autocomplete="off" aria-label="Player name" aria-describedby="manualKeyHint">
+                        <select id="manualPos" class="form-input" aria-label="Player position">
+                            <option value="QB">QB</option>
+                            <option value="RB">RB</option>
+                            <option value="WR">WR</option>
+                            <option value="TE">TE</option>
+                            <option value="K">K</option>
+                            <option value="DEF">DEF</option>
+                        </select>
+                        <input type="text" id="manualTeam" class="form-input" placeholder="Team" autocomplete="off" aria-label="Player team">
+                    </div>
+                    <p id="manualKeyHint" class="mls-manual-key-hint">Tip: type a name and press <kbd>Enter</kbd> to pick it, then <kbd>Enter</kbd> again to add. Use <kbd>&uarr;</kbd> <kbd>&darr;</kbd> when there are several matches.</p>
+                    <button class="btn btn-primary mt-2" data-action="addManualPlayer">Add Player to Active Roster</button>
+                    <div id="manualAddMsg" class="manual-add-feedback" role="status" aria-live="polite"></div>
+                    <div id="manualAddLog" class="mls-manual-log" aria-live="polite"></div>
+                </div>
+            </details>
+        </div>
     </section>
 
-    <!-- ADD PLAYER MANUALLY (improvements S45): for manual and hand-off leagues only (a Sleeper sync replaces the roster
-         with Sleeper's). Shown beside Active League Requirements while the open league is one; js/mls/leagues/addPlayer.js. -->
-    <section class="settings-card" id="manualAddCard" hidden>
-        <details class="sos-details-accordion">
-            <summary class="sos-summary chevron-summary"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Add Player Manually</summary>
-            <div class="accordion-body">
-                <div class="manual-player-grid">
-                    <input type="text" id="manualName" class="form-input" placeholder="Player Name" autocomplete="off" aria-label="Player name" aria-describedby="manualKeyHint">
-                    <select id="manualPos" class="form-input" aria-label="Player position">
-                        <option value="QB">QB</option>
-                        <option value="RB">RB</option>
-                        <option value="WR">WR</option>
-                        <option value="TE">TE</option>
-                        <option value="K">K</option>
-                        <option value="DEF">DEF</option>
-                    </select>
-                    <input type="text" id="manualTeam" class="form-input" placeholder="Team" autocomplete="off" aria-label="Player team">
-                </div>
-                <p id="manualKeyHint" class="mls-manual-key-hint">Tip: type a name and press <kbd>Enter</kbd> to pick it, then <kbd>Enter</kbd> again to add. Use <kbd>&uarr;</kbd> <kbd>&darr;</kbd> when there are several matches.</p>
-                <button class="btn btn-primary mt-2" data-action="addManualPlayer">Add Player to Active Roster</button>
-                <div id="manualAddMsg" class="manual-add-feedback" role="status" aria-live="polite"></div>
-                <div id="manualAddLog" class="mls-manual-log" aria-live="polite"></div>
-            </div>
-        </details>
-    </section>
     <!-- The Dashboard foot (improvements K2): our Ko-fi button and Share, in place of Ko-fi's PNG badge -->
     <div class="hero-kofi">
         <p class="kofi-note">Lineup Strategist is free, with no ads. One person builds it.</p>
