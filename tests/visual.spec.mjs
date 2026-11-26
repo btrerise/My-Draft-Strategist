@@ -57,12 +57,12 @@ test('MDS mid-draft tabs', async ({ page }) => {
 });
 
 test('MLS empty setup', async ({ page }) => {
-    await openApp(page, '/lineup/');
+    await openApp(page, '/lineup/', { setupFolds: 'default' });
     await shot(page, 'mls-empty-setup');
 });
 
 test('MLS synced league tabs', async ({ page }) => {
-    await openApp(page, '/lineup/');
+    await openApp(page, '/lineup/', { setupFolds: 'default' });
     // Sync's button reads "Synced Successfully" for 2.5s (flashButton), then goes back to "Sync Sleeper". The Dashboard
     // baseline has the flash, so hold it: cancel the reset timer the moment the flash text is set (improvements W2).
     await page.evaluate(() => {

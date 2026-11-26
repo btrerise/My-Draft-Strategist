@@ -109,6 +109,7 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - A2 | LOG.md | A2 — Umami: which tabs and tools are used (Tab, Tool and Section events)
 - W2 | LOG.md | W2 — CI: the Dashboard screenshot that sometimes catches Sync's "Synced Successfully"
 - S45 | LOG.md | S45 — A Settings page in both apps (set-once settings off the Dashboards)
+- U4 | LOG.md | U4 — Dashboard and Scout tidy: setup folds once you have a league, and the signposts go
 
 ## F23 — The flash when tapping things on phones
 
@@ -1294,3 +1295,32 @@ Dashboard: different only where the change is; predicted by rendering main and t
 
 **Left over.** N4's "on the clock" switch goes into Draft Strategist's Settings page (its Notifications section).
 Settings has no keyboard shortcut.
+
+## U4 — Dashboard and Scout tidy: setup folds once you have a league, and the signposts go
+
+From U1 (option 1's base; owner's pick, 2026-11-13) on top of S45. No new decisions asked.
+
+**User-visible effect.** With a league, the Dashboard's Add/Sync League ("N leagues") and Active League Requirements
+(the active league's slots, "QB 1 · RB 2 · …") are one line each, a chevron to open; with none they are open and
+look exactly as before (`mls-empty-setup` unchanged). Scout's Sleeper Sync banner shows only while no Sleeper league
+is synced (a manual league doesn't count); dismissing still hides it for good. The Injury Auditor and Power Rankings
+signpost cards are gone (Lineup and Scout end earlier). The Guide's Requirements line says it's one line.
+
+**Where.** `js/mls/leagues/setupFolds.js` (new, in `PRECACHE_ASSETS`): `renderSetupFolds` (called from
+`updatePulsePrompts`, `loadActiveLeagueData`, `saveRequirements`) and `toggleSetupFold` (`data-action`). One key,
+`mls_setup_folds` = `{ sync?, reqs?: true }`, only what was opened; closed is the default, so closing removes the key;
+Backup and Factory Reset pick it up through `STORAGE_KEYS`. Tapping does nothing while there is no league. Markup: the
+`h3` holds the toggle button, the card's body is wrapped in `#setupSyncBody` / `#activeReqBody`; CSS `.setup-fold-*`
+in `mls.css`. Banner: `init.js` (`isFullyMappedLeague`); it starts `display: none` in `lineup/index.html`. Removed:
+`#injuryAuditPointer`, `#powerRankingsScoutPointer`, `goToPowerRankings` and its action, `.mls-moved-pointer` CSS.
+`goToLineupNeeds` stays (the starter alert uses it). `CACHE_NAME` v2.10.24.
+
+**Tests.** New `mls-setup-folds.spec.mjs` (empty Dashboard open and inert; league: both closed, open on tap, kept across
+reload, closing forgets; the Requirements line after Save; banner before/after a sync, dismissal, manual league; no
+signposts). `mls-lineup-needs` now expects the pointer gone. Because many specs fill those fields after a sync,
+`preparePage` seeds both folds open once per tab (`{ setupFolds: 'default' }` opts out: the fold spec and the two MLS
+screenshot tests).
+
+**Screenshots** (to re-take on CI): see the commit message list.
+
+**Left over.** U1's cards 2 to 4 (fold the occasional tools, jump chips, Umami events) are separate.

@@ -48,8 +48,7 @@ export function renderRosterPowerStrip(teams, ctx = {}) {
     el.style.display = 'block';
 }
 
-// Scrolls the Roster tab's Power Rankings card into view (the snapshot's link above; the Scout
-// tab's temporary pointer uses it too, via goToPowerRankings). #powerRankingsCard carries a
+// Scrolls the Roster tab's Power Rankings card into view (the snapshot's link above). #powerRankingsCard carries a
 // scroll-margin-top in css/mls.css so the sticky header doesn't cover the card title.
 export const scrollToPowerRankings = function() {
     const card = document.getElementById('powerRankingsCard');

@@ -60,8 +60,24 @@ function sleeperFixture(pathname) {
  * Returns { errors, unmocked } -- arrays filled in as the page runs. Use expectClean() to
  * assert on them.
  */
-export async function preparePage(page) {
+export async function preparePage(page, { setupFolds = 'open' } = {}) {
     const errors = [];
+
+    // Lineup Strategist's Dashboard folds Add/Sync League and Active League Requirements once a league exists
+    // (improvements U4). Most specs fill those fields after syncing, so by default the first load starts with both
+    // opened, as a person would have left them; once per tab (sessionStorage), so a reload keeps what a spec then does.
+    // { setupFolds: 'default' } leaves them alone: the fold's own spec and the screenshots.
+    if (setupFolds === 'open') {
+        await page.addInitScript(() => {
+            try {
+                if (sessionStorage.getItem('test_setup_folds_seeded')) return;
+                sessionStorage.setItem('test_setup_folds_seeded', '1');
+                if (location.pathname.startsWith('/lineup') && localStorage.getItem('mls_setup_folds') === null) {
+                    localStorage.setItem('mls_setup_folds', '{"sync":true,"reqs":true}');
+                }
+            } catch (e) { /* no storage */ }
+        });
+    }
     const unmocked = [];
 
     await page.clock.setFixedTime(FIXED_NOW);
@@ -118,8 +134,8 @@ export async function expectClean(page, { errors }) {
  * produced errors -- so a broken import reports the 404 rather than a confusing
  * "showTab is not a function" further down the test.
  */
-export async function openApp(page, path, { beforeGoto } = {}) {
-    const state = await preparePage(page);
+export async function openApp(page, path, { beforeGoto, setupFolds } = {}) {
+    const state = await preparePage(page, { setupFolds });
     // A spec's own routes for requests the page makes while it loads (T-Score's In-Season sheet, improvements T1):
     // added after preparePage's, so they win over its catch-all abort.
     if (beforeGoto) await beforeGoto(page);
