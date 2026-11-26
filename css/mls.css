@@ -2601,6 +2601,9 @@ button.ir-slot-badge { font-family: inherit; line-height: inherit; cursor: point
 .has-fold .setup-fold-toggle { cursor: pointer; }
 .has-fold .setup-fold-toggle .chevron { display: block; }
 .has-fold.is-folded .setup-fold-summary { display: block; }
+/* Requirements: the title on one line and the slots under it, wrapping rather than cut off on a phone. */
+#activeReqCard .setup-fold-toggle { flex-wrap: wrap; row-gap: 0.15rem; }
+#activeReqCard .setup-fold-summary { flex-basis: 100%; padding-left: calc(14px + 0.5rem); white-space: normal; overflow: visible; }
 .has-fold.is-folded > .card-header { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
 #setupSyncCard.has-fold.is-folded > .card-header > .tooltip-container { display: none; }
 
