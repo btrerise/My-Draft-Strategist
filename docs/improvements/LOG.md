@@ -1321,6 +1321,8 @@ signposts). `mls-lineup-needs` now expects the pointer gone. Because many specs 
 `preparePage` seeds both folds open once per tab (`{ setupFolds: 'default' }` opts out: the fold spec and the two MLS
 screenshot tests).
 
-**Screenshots** (to re-take on CI): see the commit message list.
+**Screenshots** (re-taken on CI; predicted by rendering main and this branch in one container; `mls-empty-setup` identical,
+as required). Both widths: `mls-league-setup` (both cards one line), `mls-league-lineup`, `mls-league-scout` (the
+signpost cards and the banner gone), `mls-league-guide` (the Requirements wording).
 
 **Left over.** U1's cards 2 to 4 (fold the occasional tools, jump chips, Umami events) are separate.
