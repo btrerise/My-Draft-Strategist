@@ -432,7 +432,7 @@ test('While Sleeper\'s player list loads, and if it fails, the list still shows'
     // A fresh browser (no cached player list), with Sleeper's player list held, then failing.
     const context = await browser.newContext({ viewport: page.viewportSize(), serviceWorkers: 'block' });
     const fresh = await context.newPage();
-    await preparePage(fresh);
+    await preparePage(fresh, { setupFolds: 'default' }); // the saved localStorage below already has the folds (improvements U4)
     let release;
     const held = new Promise(r => { release = r; });
     await fresh.route(/sleeper\.(app|com)\/v1\/players\/nfl$/, async (route) => { await held; await route.fulfill({ status: 500, body: 'null' }); });
