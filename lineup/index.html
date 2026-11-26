@@ -358,7 +358,7 @@
     <section id="setupSyncCard" class="settings-card">
        <header class="card-header">
     <h3>
-        <span>Add/Sync League</span>
+        <button type="button" class="btn-bare setup-fold-toggle" data-action="toggleSetupFold" data-fold="sync" aria-expanded="true" aria-controls="setupSyncBody"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg><span>Add/Sync League</span><span class="setup-fold-summary"></span></button>
     </h3>
     <div class="tooltip-container">
         <div class="tooltip-icon">i</div>
@@ -366,6 +366,7 @@
     </div>
 </header>
 
+<div id="setupSyncBody">
         <div class="input-group">
             <label for="newLeagueName">League Name / Nickname</label>
             <input type="text" id="newLeagueName" class="form-input" placeholder="Auto-fills from Sleeper if blank">
@@ -403,16 +404,18 @@
             Import All My Leagues
         </button>
         <p class="text-helper mt-2">Finds and syncs every league for this username - just the username above is needed, no League ID.</p>
+</div>
     </section>
 
     <!-- ACTIVE LEAGUE REQUIREMENTS -->
     <!-- Elevated out of the Settings page's accordion list: this is a primary, frequently-
          needed configuration (it drives lineup slot assignment for whichever league is
          selected), not a secondary setting someone should have to expand a menu to find. -->
-    <section class="settings-card">
+    <section id="activeReqCard" class="settings-card">
         <header class="card-header">
-            <h3><span>Active League Requirements</span></h3>
+            <h3><button type="button" class="btn-bare setup-fold-toggle" data-action="toggleSetupFold" data-fold="reqs" aria-expanded="true" aria-controls="activeReqBody"><svg class="chevron" aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg><span>Active League Requirements</span><span class="setup-fold-summary"></span></button></h3>
         </header>
+        <div id="activeReqBody">
         <p class="card-desc">These numbers dictate how many players are assigned to each starting slot. They auto-populate during Sleeper sync.</p>
         <div id="activeLeagueReqTitle" class="league-req-subtitle">(Select a League)</div>
         <div class="roster-grid mb-4">
@@ -469,6 +472,7 @@
                     <div id="manualAddLog" class="mls-manual-log" aria-live="polite"></div>
                 </div>
             </details>
+        </div>
         </div>
     </section>
 
@@ -1089,17 +1093,6 @@
             <div id="simPlayerLookupResult" class="mt-3" style="display: none;"></div>
         </div>
     </section>
-
-    <!-- GLOBAL INJURY AUDITOR: folded into the Dashboard's "lineups need you" box (improvements S11, round 4), which
-         is each league card's to-dos since S12. Sync All ("Sync All again") gets the injury news; the cards list injured
-         starters, IR moves and your Sleeper lineup's differences. This one-line pointer catches people who still look for it here, like the
-         Power Rankings pointer on the Scout tab. -->
-    <section class="settings-card mls-moved-pointer" id="injuryAuditPointer">
-        <p class="card-desc mls-moved-pointer-text">
-            The <strong>Global Injury Auditor</strong> is now part of the Dashboard's list of lineups that need you: injured starters and IR moves in every league, updated by Sync All.
-            <button type="button" class="mls-moved-pointer-link btn-bare" data-action="goToLineupNeeds">Go to the Dashboard &rarr;</button>
-        </p>
-    </section>
 </div>
         
         <!-- SCOUT TAB -->
@@ -1118,7 +1111,7 @@
     <h2 class="sr-only">Scout</h2>
     
     <!-- INFO BANNER -->
-    <div class="info-banner" id="sleeperSyncBanner" style="display: flex; justify-content: space-between; align-items: flex-start;">
+    <div class="info-banner" id="sleeperSyncBanner" style="display: none; justify-content: space-between; align-items: flex-start;">
     <div class="cluster cluster-sm">
         <div class="info-banner-icon" aria-hidden="true">i</div>
         <div><strong>Sleeper Sync Required:</strong> To see exactly which team owns a player or if they are a Free Agent, you must sync a Sleeper league on the Dashboard. Otherwise, this tool will only display the player's Weekly/ROS ranks.</div>
@@ -1361,17 +1354,7 @@
         <div id="tradeOutput" class="scout-output-container" aria-live="polite"></div>
     </section>
     
-    <!-- POSITIONAL POWER RANKINGS: moved to the Roster tab (2026-09-27). This one-line pointer
-         catches people who still look for it here -- see goToPowerRankings in js/mls/power/rosterCard.js for the
-         removal note. -->
-    <section class="settings-card mls-moved-pointer" id="powerRankingsScoutPointer">
-        <p class="card-desc mls-moved-pointer-text">
-            <strong>Positional Power Rankings</strong> now live on the Roster tab and update automatically.
-            <button type="button" class="mls-moved-pointer-link btn-bare" data-action="goToPowerRankings">Go to Power Rankings &rarr;</button>
-        </p>
-    </section>
-
-    <!-- TRADE FINDER -->
+<!-- TRADE FINDER -->
 <section class="settings-card">
     <header class="card-header">
         <h3>
@@ -1749,7 +1732,7 @@
                         </ul>
                     </li>
                     <li><strong class="text-main">Paid leagues:</strong> Tap Edit, then "$ Paid" on each league you pay for. Paid leagues get a "$" badge and their own record in the Week Recap.</li>
-                    <li><strong class="text-main">Active League Requirements:</strong> The number of starting slots at each position for the active league. These auto-populate during Sleeper sync; for manual leagues, set them yourself and tap "Save Requirements".</li>
+                    <li><strong class="text-main">Active League Requirements:</strong> Once you have a league this is one line showing its slots; tap it to open. The number of starting slots at each position for the active league. These auto-populate during Sleeper sync; for manual leagues, set them yourself and tap "Save Requirements".</li>
                     <li><strong class="text-main">League style (keeper leagues):</strong> Keeper leagues differ, so choose whether this one <strong class="text-main">Plays like dynasty</strong> (the default: Contender / Retool / Rebuild labels, the Future column, draft picks, dynasty market values and In-Season rankings) or <strong class="text-main">Plays like redraft</strong> (treated as a redraft league everywhere). It shows how many players Sleeper lets each team keep. The Roster tab's Power Rankings card says which style a keeper league uses, with a link here.</li>
                 </ul>
             </div>

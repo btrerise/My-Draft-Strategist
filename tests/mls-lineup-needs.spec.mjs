@@ -505,11 +505,9 @@ test.describe('Lineups that need you', () => {
         // A name Sleeper doesn't know: a note that its injuries aren't checked (the Auditor's "unmatched").
         await expect(line(page, 'Bench League').locator('.mls-needs-item.is-unmatched')).toHaveText('No injury news for Zack\u00a0Nobody: name not found on Sleeper');
 
-        // The Lineup tab's pointer where the Global Injury Auditor was.
+        // The signpost card where the Global Injury Auditor was is gone (improvements U4).
         await showTab(page, 'lineup');
-        await expect(page.locator('#injuryAuditPointer')).toContainText('Global Injury Auditor is now part of the Dashboard');
-        await page.locator('#injuryAuditPointer').getByRole('button', { name: /Go to the Dashboard/ }).click();
-        await expect(page.locator('#setupTab')).toHaveClass(/\bactive\b/);
+        await expect(page.locator('#injuryAuditPointer')).toHaveCount(0);
         await expectClean(page, state);
     });
 

@@ -14,6 +14,7 @@ import { RANKING_TYPE_CONFIG, fantasyPosition } from '../constants.js';
 import { State } from '../state.js';
 import { getActiveLeague, getShortInjuryStatus, HARD_OUT_STATUSES } from '../helpers.js';
 import { updatePulsePrompts } from '../init.js';
+import { renderSetupFolds } from './setupFolds.js';
 import { clearLeagueScopedResults } from './scoutResults.js';
 import { renderManualAddLog, setManualAddMsg } from './addPlayer.js';
 import { isManualLeague } from './manualInjuries.js';
@@ -431,6 +432,7 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
         renderLeagueStyle(league);
         setVal('sleeperUsername', league.username !== "Manual" ? league.username : "");
         renderManualAddLog(); // show only this league's session adds
+        renderSetupFolds(); // the Requirements line names these slots
     }
 
     // Add Player Manually (improvements S45): its Dashboard card shows only while the open league is a manual or
@@ -507,6 +509,7 @@ import { marketAsRanked, oneQbLook, qbMarketPricing, superflexQbPrices } from '.
         // The Roster tab's position counts show a position you have none of only when a slot takes it
         // (improvements S9), so a new K or DEF count shows up, or goes, right away.
         loadRosterTab();
+        renderSetupFolds();
     };
 
     export const createManualLeague = function() {

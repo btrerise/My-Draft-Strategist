@@ -9,6 +9,8 @@ import { RANKING_TYPE_CONFIG } from './constants.js';
 import { attachPlayerAutocomplete, attachScoutSuggestionHandler } from './players.js';
 import { populateEarlyGameDropdown } from './lineup/earlyGames.js';
 import { activeSeasonRankings, getLeagueRankings, loadActiveLeagueData, refreshLeagueDropdown, syncHeaderLeagueLabel } from './leagues/sync.js';
+import { renderSetupFolds } from './leagues/setupFolds.js';
+import { isFullyMappedLeague } from './scout/allLeaguesSearch.js';
 import { initManualAddForm } from './leagues/addPlayer.js';
 import { initTradePicker } from './trade/picker.js';
 import { applyWaiverScanSettingsToUI } from './scout/waivers.js';
@@ -121,6 +123,17 @@ import { renderSetupStep as renderChecklistStep, scrollToCard } from '../shared/
         // Dashboard Sync Card Pulse
         const syncCard = document.getElementById('setupSyncCard');
         if (syncCard) syncCard.classList.toggle('pulse-border', !hasLeagues);
+
+        // Add/Sync League and Active League Requirements fold once a league exists (U4).
+        renderSetupFolds();
+
+        // Scout's Sleeper Sync banner: only while no Sleeper league is synced; dismissing it still hides it for good (U4).
+        const syncBanner = document.getElementById('sleeperSyncBanner');
+        if (syncBanner) {
+            let dismissed = false;
+            try { dismissed = localStorage.getItem(KEYS.mls.hideSleeperSyncBanner) === 'true'; } catch (e) { /* shown */ }
+            syncBanner.style.display = dismissed || State.leagues.some(isFullyMappedLeague) ? 'none' : 'flex';
+        }
 
         // The restore card (S45): only while nothing is added yet.
         const restoreCard = document.getElementById('restoreCard');

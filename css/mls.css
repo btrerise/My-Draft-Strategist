@@ -2593,12 +2593,19 @@ button.ir-slot-badge { font-family: inherit; line-height: inherit; cursor: point
     .mls-poscount-note { font-size: 0.6rem; }
 }
 
-/* Scout tab's temporary "moved to the Roster tab" pointer -- see goToPowerRankings in js/mls/power/rosterCard.js
-   for when to remove it. */
-.mls-moved-pointer { padding-top: 0.9rem; padding-bottom: 0.9rem; }
-.mls-moved-pointer-text { margin: 0; }
-/* Now a <button> (was <a href="#">); the underline keeps the old link look. */
-.mls-moved-pointer-link { color: #c4b5fd; font-weight: 600; white-space: nowrap; text-decoration: underline; }
+/* The Dashboard's Add/Sync League and Active League Requirements, folded to one line once a league exists
+   (js/mls/leagues/setupFolds.js, improvements U4). With no league the card is open and the toggle is plain text. */
+.setup-fold-toggle { display: flex; align-items: center; gap: 0.5rem; min-width: 0; max-width: 100%; color: inherit; font: inherit; text-align: left; cursor: default; }
+.setup-fold-toggle .chevron { display: none; flex-shrink: 0; color: var(--text-muted); }
+.setup-fold-summary { display: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; font-weight: 400; color: var(--text-muted); }
+.has-fold .setup-fold-toggle { cursor: pointer; }
+.has-fold .setup-fold-toggle .chevron { display: block; }
+.has-fold.is-folded .setup-fold-summary { display: block; }
+/* Requirements: the title on one line and the slots under it, wrapping rather than cut off on a phone. */
+#activeReqCard .setup-fold-toggle { flex-wrap: wrap; row-gap: 0.15rem; }
+#activeReqCard .setup-fold-summary { flex-basis: 100%; padding-left: calc(14px + 0.5rem); white-space: normal; overflow: visible; }
+.has-fold.is-folded > .card-header { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+#setupSyncCard.has-fold.is-folded > .card-header > .tooltip-container { display: none; }
 
 /* "What changed" after replacing a ranking set (js/mls/rankings/changeSummary.js, improvements S3): under the
    rankings card that owns the set. The top lists your players and your lineup as compact

@@ -235,6 +235,12 @@ What changed for users in each version of the two apps, in plain language. Newes
 
 ### Unreleased
 
+- **A shorter Dashboard and Scout.** Once you have a league, **Add/Sync League** and **Active League Requirements**
+  are one line each (the requirements line shows the league's slots); tap one to open it, and it stays as you leave it.
+  With no league they are open, as before. The two cards that only said where a feature moved (the Global Injury
+  Auditor and Positional Power Rankings) are gone; the Guide says where both are. Scout's "Sleeper Sync Required" note
+  now shows only while no Sleeper league is synced.
+
 - **A Settings page.** Advanced Settings moved off the Dashboard to a new **Settings** page in the menu, below the
   Guide and T-Score. Show Player Headshots, Lineup, Notifications, FAAB Bids and Backup & Restore sit open under headings; the
   long MVP / LVP Lines form and the Danger Zone stay folded. The Dashboard is shorter. **Add Player Manually** stays

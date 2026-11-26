@@ -23,6 +23,7 @@ import { addEarlyTeam, dismissEarlySwaps, removeEarlyTeam, restoreEarlyTeam, set
 import { dismissByeCrunch, explainIrSlot, setByeCrunchOn, toggleLineupNeeds, toggleLockCountdown } from './lineup/gameInfo.js';
 import { activeOwnRankings, activePowerRankings, activeSeasonRankings, addAndSyncLeague, leagueQbMarketPricing, setQbMarketPrices, createManualLeague, cycleLeague, deleteLeagueManager, getLeagueRankings, getLeagueSeasonRankings, moveLeague, saveRequirements, setLeagueStyle, switchActiveLeague, syncActiveLeague } from './leagues/sync.js';
 import './leagues/scoutResults.js';
+import { toggleSetupFold } from './leagues/setupFolds.js';
 import { checkForDraftStrategistHandoff, dismissDraftStrategistHandoff, importDraftStrategistRoster } from './leagues/handoff.js';
 import { addManualPlayer, deletePlayer } from './leagues/addPlayer.js';
 import { importAllSleeperLeagues } from './leagues/importAll.js';
@@ -64,7 +65,7 @@ import './shortcuts.js';
 import { computePositionalPower, POWER_UNRANKED_RANK, powerRankFor, powerTier, powerValueForRank } from './power/shared.js';
 import './power/futureValue.js';
 import { getPowerLeagueKind } from './power/directionLabels.js';
-import { goToLeagueStyle, goToPowerRankings, goToSeasonPicker, refreshPowerRankings, setPowerCompeting, updatePowerSetting } from './power/rosterCard.js';
+import { goToLeagueStyle, goToSeasonPicker, refreshPowerRankings, setPowerCompeting, updatePowerSetting } from './power/rosterCard.js';
 import { scrollToPowerRankings } from './power/snapshot.js';
 import { scrollToPlayoffPicture } from './sim/playoffOdds.js';
 import { selectPastTrade } from './power/tradeLine.js';
@@ -171,6 +172,7 @@ const clickActions = {
     toggleFinalWhatIf() { toggleFinalWhatIf(this.dataset.leagueId); },
     // The Scoreboard's folds (MVPs & LVPs, Still in play) and Show all (week/thisWeek.js, improvements S22), and the
     // MVP / LVP lines in Advanced Settings
+    toggleSetupFold() { toggleSetupFold(this.dataset.fold); },
     toggleWeekFold() { toggleWeekFold(this.dataset.fold); },
     // Export on the Scoreboard: a summary image to share (week/shareImage.js, S22 round 2)
     exportScoreboard() { exportScoreboard(); },
@@ -301,7 +303,6 @@ const clickActions = {
     // Its Value by: Dynasty | In-Season in a league with both sets (S24, round 3); the trade re-runs in place.
     setFairBasis() { setFairBasis(this.dataset.basis); runScout('trade'); },
     undoFairChange() { const before = takeFairUndo(); if (before) restoreTrade(before); },
-    goToPowerRankings() { goToPowerRankings(); },
     goToLeagueStyle() { goToLeagueStyle(); },
     goToSeasonPicker() { goToSeasonPicker(); },
     // Price QBs by Market Consensus (superflex), per league (S24, round 9)

@@ -1,6 +1,6 @@
 // Moved from js/mls/legacy.js (lineup/mls.js before 3A) in refactor chunk 3F: POSITIONAL POWER
-// RANKINGS: ROSTER TAB CARD, plus the card's table renderer and Scout-tab pointer
-// (goToPowerRankings, runPositionalStrength, renderPowerRankingsTable), which sat after ACTIVE
+// RANKINGS: ROSTER TAB CARD, plus the card's table renderer
+// (runPositionalStrength, renderPowerRankingsTable), which sat after ACTIVE
 // ROSTER: POWER RANKINGS SNAPSHOT.
 import { escapeHtml } from '../../shared/html.js';
 import { RANKING_TYPE_CONFIG, slotDisplayName, tierTag } from '../constants.js';
@@ -265,16 +265,6 @@ export function refreshPowerRankings() {
     // What a past trade did, under the strip (improvements S29): the same rankings, on the league as it was.
     renderPastTradeLine({ league, src, future: futureInfo.future });
 }
-
-// Scout tab's one-line "moved to the Roster tab" pointer (see #powerRankingsScoutPointer in
-// index.html). The delay lets showTab's own scroll-to-top start before scrolling to the card,
-// the same trick scoutGoToLeague uses.
-// TODO (added 2026-09-27): recommend removing this pointer -- the #powerRankingsScoutPointer
-// section in index.html, this function, and the .mls-moved-pointer CSS -- on or after
-// 2026-10-04, once regular users have had a week to find the card's new home.
-export const goToPowerRankings = function() {
-    showTab('roster').then(() => setTimeout(() => scrollToPowerRankings(), 60));
-};
 
 // Kept for anything still calling the old Scout-tab button handler.
 export const runPositionalStrength = function() {
