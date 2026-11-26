@@ -1323,6 +1323,7 @@ screenshot tests).
 
 **Screenshots** (re-taken on CI; predicted by rendering main and this branch in one container; `mls-empty-setup` identical,
 as required). Both widths: `mls-league-setup` (both cards one line), `mls-league-lineup`, `mls-league-scout` (the
-signpost cards and the banner gone), `mls-league-guide` (the Requirements wording).
+signpost cards and the banner gone), `mls-league-guide` (the Requirements wording). The Requirements line sits under
+its title and wraps (owner, after seeing it at 375px), so `mls-league-setup` was re-taken once more.
 
 **Left over.** U1's cards 2 to 4 (fold the occasional tools, jump chips, Umami events) are separate.
