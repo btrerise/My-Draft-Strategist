@@ -110,6 +110,7 @@ One line per entry: `ID | file (under docs/improvements/) | heading`. Older entr
 - W2 | LOG.md | W2 — CI: the Dashboard screenshot that sometimes catches Sync's "Synced Successfully"
 - S45 | LOG.md | S45 — A Settings page in both apps (set-once settings off the Dashboards)
 - U4 | LOG.md | U4 — Dashboard and Scout tidy: setup folds once you have a league, and the signposts go
+- S51 | LOG.md | S51 — Your record and place on the Dashboard, and a Competing / Rebuilding badge
 
 ## F23 — The flash when tapping things on phones
 
@@ -1327,3 +1328,46 @@ signpost cards and the banner gone), `mls-league-guide` (the Requirements wordin
 its title and wraps (owner, after seeing it at 375px), so `mls-league-setup` was re-taken once more.
 
 **Left over.** U1's cards 2 to 4 (fold the occasional tools, jump chips, Umami events) are separate.
+
+## S51 — Your record and place on the Dashboard, and a Competing / Rebuilding badge
+
+From the owner's notes of 2026-11-12: "Add Record/standings to Dashboard, and maybe a Contending/Rebuilding badge."
+
+**User-visible effect.** Each Sleeper league's card shows your record and place on its second line (round 3; first picked beside the name)
+("7–3 · 2nd of 12"; with divisions your seed, "2nd seed of 6", or "Out of playoffs (8th)"), as of the last sync. A dynasty
+or keeper league's card also has a **Competing** / **Rebuilding** badge 
+from the Roster tab's "I'm competing this year" (green Competing, blue Rebuilding: amber means "needs you" on cards; a small chevron shows it taps); tapping it makes that league active and opens the Roster tab with
+focus on the switch. Nothing for a manual league, a league synced before S21, or before anyone has played; redraft
+leagues get no badge. Guide legend line added.
+
+**Owner's decisions (asked before building, all my suggestions).** (1) Record beside the name in the title row.
+(2) W-L and place, the seed and "Out of playoffs" with divisions; no PF. (3) S28's own switch only, dynasty and keeper
+only (Power Rankings' label not shown). (4) The badge is a button to the Roster tab's switch; cards keep your order
+(no sorting or grouping by place).
+
+**Where.** `recordParts` / `recordLineText` in `js/mls/week/scoreboard.js`: the one helper for the words, used by the
+Roster tab's `renderRosterRecord` too (its output is unchanged). `leagueCards.js` (record in `.mls-lc-titlerow`, badge
+after the chips), `directionBadgeMarkup` in `badges.js`, `openCompetingSwitch` in `power/rosterCard.js` (action in
+`main.js`), CSS `.mls-lc-record` / `.mls-direction-badge` in `mls.css`. `CACHE_NAME` v2.10.25.
+
+**Tests.** `tests/unit/recordLine.test.mjs` (text, ties, divisions, out of playoffs, none); `mls-league-record.spec.mjs`
+(record at 375px and nothing past the edge, same words on the Roster tab, divisions and out, manual league none; badge
+absent in redraft, follows the switch in dynasty, tap opens and focuses it).
+
+**Screenshots** (predicted by rendering main and this branch in one container; to be re-taken on CI):
+`desktop|phone/mls-league-setup` (the Fixture League's card now shows its record) and `desktop|phone/mls-league-guide`
+(the new legend line makes the page taller). `desktop/mls-league-guide` was re-taken once more at the end: CI's check
+failed on it after the last rounds (cause not found; only that PNG differed, and the update run named it).
+
+**After review as a user (owner: do 2 and 3, keep the record as is; checked on the owner's 19-league backup).** Rebuilding
+went blue; the badge got a chevron. The status row still fits at 375px with EARLY and the badge; "N to fix" wraps to its
+own line as it already did.
+
+**Round 3 (owner).** The record moved to the card's second line, first, before the format; the TEP number is dropped
+from the format on cards only ("TEP"; the Roster tab keeps "(+0.5)"). The badge became quiet text (word and chevron, no icon, colours muted) at
+the end of that line, still a tap to the Roster tab's switch; the name button is now the name alone. Screenshots to re-take: `mls-league-setup`, both widths.
+
+**Round 4 (owner).** Card formats are shortened (`shortFormat`: "Dyn SF ½ PPR TEP", "BB"; full text in the tooltip) to
+keep the Dashboard hub tight, and tapping the second line switches the league again (the badge keeps its own action).
+
+**Left over.** Nothing required. Not built: Power Rankings' Contender / Retool label on the card; PF on the card.

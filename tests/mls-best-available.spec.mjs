@@ -141,7 +141,7 @@ test.describe('Lineup Strategist Best available in your leagues', () => {
         await expect(line(page, 'Fixture League').locator('.is-upgrade')).toHaveCount(0);
         // Synced today: nothing to say (S12 round 4 shows the sync only when it's old or failed). Every line links to
         // the league in Sleeper.
-        await expect(leagueCard(page, 'Fixture League').locator('.mls-lc-meta')).toHaveText('Redraft 1QB PPR');
+        await expect(leagueCard(page, 'Fixture League').locator('.mls-lc-format')).toHaveText('Redraft 1QB PPR');
         await expect(line(page, 'Fixture League').locator('a.mls-ba-sleeper')).toHaveAttribute('href', `https://sleeper.com/leagues/${FIXTURE_LEAGUE_ID}`);
         await expect(line(page, 'Fixture League').locator('a.mls-ba-sleeper')).toHaveAttribute('target', '_blank');
         // Desktop only: on phones the link would open the Sleeper app's home, not the league.

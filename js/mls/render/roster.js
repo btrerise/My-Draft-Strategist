@@ -14,7 +14,7 @@ import { activeOwnRankings, fitRankBadges, refreshPowerRankings } from '../main.
 import { rankMoveChip } from '../rankings/moveChips.js';
 import { posCountChipMarkup, rankBadgeParts, rankGapChipMarkup } from '../badges.js';
 import { displayRanksFor, leagueRankDisplayIndex } from '../rankings/displayRanks.js';
-import { ordinal } from '../week/scoreboard.js';
+import { ordinal, recordParts } from '../week/scoreboard.js';
 import { ODDS_EVENT, ODDS_TITLE, playoffChanceHTML, playoffOddsFor, pctLabel, renderPlayoffPicture, schedulePlayoffOdds } from '../sim/playoffOdds.js';
 import { hasSeasonSlot, seasonOffer, seasonSetFor } from '../rankings/season.js';
 import { rankGap, rankGapTip, superflexQbPrices } from '../rankings/nowAndLater.js';
@@ -361,23 +361,19 @@ function renderRosterRecord(league) {
     if (!el) return;
     const r = league && league.record;
     if (!r) { el.hidden = true; el.textContent = ''; return; }
-    const wl = `${r.wins}\u2013${r.losses}${r.ties ? `\u2013${r.ties}` : ''}`;
+    const rp = recordParts(r);
+    const wl = rp.wl;
     const part = (cls, html) => `<span class="mls-roster-record-part${cls ? ` ${cls}` : ''}">${html}</span>`;
-    const divisions = !!(r.division && r.divisionRank);
+    const divisions = rp.divisions;
     // Your playoff chance (improvements S55), when it's been worked out (sim/playoffOdds.js).
     const odds = playoffOddsFor(league);
     schedulePlayoffOdds();
-    let seed = '';
-    if (divisions && r.seed) {
-        seed = (!r.playoffTeams || r.seed <= r.playoffTeams)
-            ? part('mls-roster-record-seed', `${ordinal(r.seed)} seed${r.playoffTeams ? ` of ${r.playoffTeams}` : ''}`)
-            : part('mls-roster-record-seed is-out', `Out of playoffs (${ordinal(r.seed)})`);
-    }
+    const seed = rp.seed ? part(`mls-roster-record-seed${rp.out ? ' is-out' : ''}`, rp.seed) : '';
     const points = (abbr, title, rank, total) =>
         `<abbr title="${title}">${abbr}</abbr> ${ordinal(rank)} <span class="text-helper">(${total.toFixed(1)})</span>`;
     el.innerHTML = '<span class="mls-roster-record-list">'
         + part('', `<strong class="mls-roster-record-wl">${wl}</strong>`
-            + (r.standing && !seed ? ` <span class="mls-roster-record-standing">(${ordinal(r.standing)} of ${r.of})</span>` : ''))
+            + (rp.standing ? ` <span class="mls-roster-record-standing">(${rp.standing})</span>` : ''))
         + (divisions ? part('mls-roster-record-division', `${ordinal(r.divisionRank)} in ${escapeHtml(r.division)}`) : '')
         + seed
         + part('mls-roster-record-points', points('PF', 'Points for', r.pfRank, r.pf)

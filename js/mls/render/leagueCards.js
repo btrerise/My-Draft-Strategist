@@ -36,11 +36,13 @@ import { State } from '../state.js';
 import { isBestBallLeague } from '../helpers.js';
 import { earlySwapCardLine, isEarlyPlayer } from '../lineup/earlyGames.js';
 import { getValidSleeperStarterIds, hasKickedOff } from '../lineup/gameInfo.js';
-import { bestBallBadgeMarkup, leagueStatusChipMarkup, paidBadgeMarkup } from '../badges.js';
+import { bestBallBadgeMarkup, directionBadgeMarkup, leagueStatusChipMarkup, paidBadgeMarkup } from '../badges.js';
 import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, reoptimizeKickedOffLeagues, renderLastSynced, renderLineupNeeds, syncChangesFor, syncChangesHTML } from './dashboard.js';
 import { renderBestAvailable } from '../scout/bestAvailable.js';
 import { refreshThisWeek, renderThisWeek } from '../week/thisWeek.js';
 import { ODDS_EVENT, cardOddsHTML, schedulePlayoffOdds } from '../sim/playoffOdds.js';
+import { leagueDirection, recordLineText } from '../week/scoreboard.js';
+import { getPowerLeagueKind } from '../power/directionLabels.js';
 import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/viewTransition.js';
 
     const CHEVRON = `<svg class="chevron mls-lc-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
@@ -67,6 +69,14 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
 
     // Edit mode (the toolbar's Edit / Done; Reorder until S21): ▲ ▼ ✕ and "$ Paid" on each card. In memory: it starts off on every visit.
     let reordering = false;
+
+    // The format as the card spells it (improvements S51, owner's choice: the Dashboard is a hub for many leagues, so the
+    // line stays short): no TEP number, "Dyn" / "BB" and "½ PPR". The Roster tab and the full text in the
+    // tooltip keep the whole badge.
+    export function shortFormat(f) {
+        return f.replace(/(TEP)\s*\(\+[\d.]+\)/, '$1').replace(/^Dynasty\b/, 'Dyn')
+            .replace(/^Best Ball\b/, 'BB').replace(/\bHalf-PPR\b/, '\u00bd PPR');
+    }
 
     // A league's status, as the Command Center's table worked it out before S12 (its Rankings and Lineup columns,
     // the EARLY badge, the format and the sync age). sleeper: the league's Sleeper changes from
@@ -109,7 +119,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
                 sync = { cls: (!syncFresh || syncFresh.isStale) ? 'freshness-stale' : 'freshness-ok', text: syncFresh ? syncFresh.label : 'Last sync unknown', title: syncFresh ? syncFresh.title : '' };
             }
         }
-        return { rankingsFresh, lineup, early, sync, format: l.formatBadge || '' };
+        return { rankingsFresh, lineup, early, sync, format: shortFormat(l.formatBadge || ''), formatFull: l.formatBadge || '' };
     }
 
     function statusChipsHTML(st) {
@@ -144,8 +154,6 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         const count = need.fix;
         // The sync age only when it's worth a look (old, unknown or failed), not "Synced today" on every card.
         const syncNote = st.sync && st.sync.cls !== 'freshness-ok' ? `<span class="${st.sync.cls}"${st.sync.title ? ` title="${st.sync.title}"` : ''}>${st.sync.text}</span>` : '';
-        const meta = [st.format ? `<span class="mls-lc-format">${escapeHtml(st.format)}</span>` : '', syncNote]
-            .filter(Boolean).join('<span class="mls-lc-sep"> · </span>');
 
         const todo = line || sleeper ? leagueTodoHTML(line, sleeper) : '';
         // What this visit's Sync All changed on the roster, under the status row so a folded card shows it too.
@@ -156,14 +164,27 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         // Playoff chances (improvements S55): under the status row, so a folded card shows them too.
         const odds = cardOddsHTML(l);
         const n = State.leagues.length;
+        // Your record and place as of the last sync (improvements S51; nothing for a manual league, one synced before S21
+        // or before anyone has played), and a dynasty or keeper league's direction from your own switch.
+        const recordText = isOffSleeper(l) ? null : recordLineText(l.record);
+        const direction = leagueDirection(getPowerLeagueKind(l), !!l.powerCompeting);
+        // The second line (S51): your record and place, the format, a sync note, and a dynasty or keeper league's plan.
+        // The direction is its own item, not after a dot, so a line that wraps before it doesn't end on a dangling dot.
+        const facts = [recordText ? `<span class="mls-lc-record" title="Your record and place as of your last sync">${escapeHtml(recordText)}</span>` : '',
+            st.format ? `<span class="mls-lc-format" title="${escapeHtml(st.formatFull)}">${escapeHtml(st.format)}</span>` : '', syncNote]
+            .filter(Boolean).join('<span class="mls-lc-sep" aria-hidden="true"> \u00b7 </span>');
+        const meta = (facts ? `<span class="mls-lc-facts">${facts}</span>` : '')
+            + (direction ? directionBadgeMarkup(direction, { leagueId: l.leagueId, name: l.name || 'this league' }) : '');
         return `
             <li class="mls-lc-card${active ? ' is-active' : ''}${needsYou ? ' needs-you' : ''}${collapsed ? ' is-collapsed' : ''}" data-league-id="${id}">
                 <div class="mls-lc-head">
                     <button type="button" class="btn-bare mls-lc-fold" data-focus-key="fold:${id}" data-action="toggleLeagueCard" data-league-id="${id}" aria-expanded="${collapsed ? 'false' : 'true'}" aria-label="${collapsed ? 'Unfold' : 'Fold'} ${name}">${CHEVRON}</button>
+                    <div class="mls-lc-titles">
                     <button type="button" class="mls-lc-name-btn" data-focus-key="row:${id}" data-action="switchActiveLeague" data-league-id="${id}"${active ? ' aria-current="true"' : ''}>
                         <strong class="mls-lc-name">${l.paid ? paidBadgeMarkup() + ' ' : ''}${name}</strong>
-                        ${meta ? `<span class="mls-lc-meta">${meta}</span>` : ''}
                     </button>
+                    ${meta ? `<div class="mls-lc-meta" data-action="switchActiveLeague" data-league-id="${id}">${meta}</div>` : ''}
+                    </div>
                     ${reordering ? `<div class="mls-lc-controls">
                         ${isOffSleeper(l) ? '' : `<button type="button" class="btn-sm btn-secondary mls-lc-paid${l.paid ? ' is-on' : ''}" data-focus-key="paid:${id}" data-action="toggleLeaguePaid" data-league-id="${id}" aria-pressed="${l.paid ? 'true' : 'false'}" aria-label="Paid league: ${name}" title="A league you pay for: This week splits your W-L paid and free">$ Paid</button>`}
                         <button type="button" class="btn-sm btn-secondary mls-league-move-btn" data-focus-key="up:${id}" data-action="moveLeague" data-index="${index}" data-direction="-1" ${index === 0 ? 'disabled' : ''} aria-label="Move ${name} up">▲</button>
