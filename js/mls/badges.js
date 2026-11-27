@@ -215,7 +215,9 @@ export const directionBadgeMarkup = (direction, { sample = false, leagueId = '',
     const inner = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${DIRECTION_ICONS[direction]}</svg>${word}`;
     const cls = `badge mls-direction-badge is-${direction}`;
     if (sample) return `<span class="${cls}">${inner}</span>`;
-    return `<button type="button" class="${cls}" data-action="openCompetingSwitch" data-league-id="${escapeHtml(leagueId)}" data-focus-key="dir:${escapeHtml(leagueId)}" title="Your plan for ${escapeHtml(name)}: tap to change it on the Roster tab" aria-label="${word}: change on the Roster tab">${inner}</button>`;
+    // A chevron says it's tappable (a phone has no hover).
+    const go = '<svg class="mls-direction-go" aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+    return `<button type="button" class="${cls}" data-action="openCompetingSwitch" data-league-id="${escapeHtml(leagueId)}" data-focus-key="dir:${escapeHtml(leagueId)}" title="Your plan for ${escapeHtml(name)}: tap to change it on the Roster tab" aria-label="${word}: change on the Roster tab">${inner}${go}</button>`;
 };
 // A matchup's result as it stands: W, L or T (green, red, grey).
 export const weekResultMarkup = (result) =>

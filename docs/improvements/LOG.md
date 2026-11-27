@@ -1336,7 +1336,7 @@ From the owner's notes of 2026-11-12: "Add Record/standings to Dashboard, and ma
 **User-visible effect.** Each Sleeper league's card shows your record and place beside its name, in the title row
 ("7–3 · 2nd of 12"; with divisions your seed, "2nd seed of 6", or "Out of playoffs (8th)"), as of the last sync. A dynasty
 or keeper league's card also has a **Competing** / **Rebuilding** badge (trending-up / rotate icon) in the status row,
-from the Roster tab's "I'm competing this year"; tapping it makes that league active and opens the Roster tab with
+from the Roster tab's "I'm competing this year" (green Competing, blue Rebuilding: amber means "needs you" on cards; a small chevron shows it taps); tapping it makes that league active and opens the Roster tab with
 focus on the switch. Nothing for a manual league, a league synced before S21, or before anyone has played; redraft
 leagues get no badge. Guide legend line added.
 
@@ -1357,5 +1357,9 @@ absent in redraft, follows the switch in dynasty, tap opens and focuses it).
 **Screenshots** (predicted by rendering main and this branch in one container; to be re-taken on CI):
 `desktop|phone/mls-league-setup` (the Fixture League's card now shows its record) and `desktop|phone/mls-league-guide`
 (the new legend line makes the page taller).
+
+**After review as a user (owner: do 2 and 3, keep the record as is; checked on the owner's 19-league backup).** Rebuilding
+went blue; the badge got a chevron. The status row still fits at 375px with EARLY and the badge; "N to fix" wraps to its
+own line as it already did.
 
 **Left over.** Nothing required. Not built: Power Rankings' Contender / Retool label on the card; PF on the card.
