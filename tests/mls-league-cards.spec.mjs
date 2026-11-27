@@ -110,7 +110,7 @@ test.describe('League Command Center: one card per league', () => {
             // league has no Sleeper lineup to compare yet (amber).
             expect(await chipTones(page, 'Fixture League')).toEqual(['Rankings:good', 'Lineup:danger']);
             expect(await chipTones(page, SECOND)).toEqual(['Rankings:good', 'Lineup:warn']);
-            await expect(card(page, 'Fixture League').locator('.mls-lc-meta')).toHaveText('Redraft 1QB PPR');
+            await expect(card(page, 'Fixture League').locator('.mls-lc-format')).toHaveText('Redraft 1QB PPR');
             // The Fixture League: its activation ("1 to fix") and its Sleeper changes ("1 to set"), both amber (F12).
             await expect(card(page, 'Fixture League').locator('.mls-lc-count-todo')).toHaveText('1 to fix');
             await expect(card(page, 'Fixture League').locator('.mls-lc-count-sleeper')).toHaveText('1 to set');

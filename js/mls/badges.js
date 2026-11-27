@@ -212,7 +212,7 @@ const DIRECTION_ICONS = {
 };
 export const directionBadgeMarkup = (direction, { sample = false, leagueId = '', name = '' } = {}) => {
     const word = direction === 'competing' ? 'Competing' : 'Rebuilding';
-    const inner = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${DIRECTION_ICONS[direction]}</svg>${word}`;
+    const inner = `<svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${DIRECTION_ICONS[direction]}</svg>${word}`;
     const cls = `badge mls-direction-badge is-${direction}`;
     if (sample) return `<span class="${cls}">${inner}</span>`;
     // A chevron says it's tappable (a phone has no hover).

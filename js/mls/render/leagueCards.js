@@ -111,7 +111,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
                 sync = { cls: (!syncFresh || syncFresh.isStale) ? 'freshness-stale' : 'freshness-ok', text: syncFresh ? syncFresh.label : 'Last sync unknown', title: syncFresh ? syncFresh.title : '' };
             }
         }
-        return { rankingsFresh, lineup, early, sync, format: l.formatBadge || '' };
+        return { rankingsFresh, lineup, early, sync, format: (l.formatBadge || '').replace(/(TEP)\s*\(\+[\d.]+\)/, '$1') };
     }
 
     function statusChipsHTML(st) {
@@ -146,8 +146,6 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         const count = need.fix;
         // The sync age only when it's worth a look (old, unknown or failed), not "Synced today" on every card.
         const syncNote = st.sync && st.sync.cls !== 'freshness-ok' ? `<span class="${st.sync.cls}"${st.sync.title ? ` title="${st.sync.title}"` : ''}>${st.sync.text}</span>` : '';
-        const meta = [st.format ? `<span class="mls-lc-format">${escapeHtml(st.format)}</span>` : '', syncNote]
-            .filter(Boolean).join('<span class="mls-lc-sep"> · </span>');
 
         const todo = line || sleeper ? leagueTodoHTML(line, sleeper) : '';
         // What this visit's Sync All changed on the roster, under the status row so a folded card shows it too.
@@ -162,14 +160,23 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         // or before anyone has played), and a dynasty or keeper league's direction from your own switch.
         const recordText = isOffSleeper(l) ? null : recordLineText(l.record);
         const direction = leagueDirection(getPowerLeagueKind(l), !!l.powerCompeting);
+        // The second line (S51): your record and place, the format, a sync note, and a dynasty or keeper league's plan.
+        // The direction is its own item, not after a dot, so a line that wraps before it doesn't end on a dangling dot.
+        const facts = [recordText ? `<span class="mls-lc-record" title="Your record and place as of your last sync">${escapeHtml(recordText)}</span>` : '',
+            st.format ? `<span class="mls-lc-format">${escapeHtml(st.format)}</span>` : '', syncNote]
+            .filter(Boolean).join('<span class="mls-lc-sep" aria-hidden="true"> \u00b7 </span>');
+        const meta = (facts ? `<span class="mls-lc-facts">${facts}</span>` : '')
+            + (direction ? directionBadgeMarkup(direction, { leagueId: l.leagueId, name: l.name || 'this league' }) : '');
         return `
             <li class="mls-lc-card${active ? ' is-active' : ''}${needsYou ? ' needs-you' : ''}${collapsed ? ' is-collapsed' : ''}" data-league-id="${id}">
                 <div class="mls-lc-head">
                     <button type="button" class="btn-bare mls-lc-fold" data-focus-key="fold:${id}" data-action="toggleLeagueCard" data-league-id="${id}" aria-expanded="${collapsed ? 'false' : 'true'}" aria-label="${collapsed ? 'Unfold' : 'Fold'} ${name}">${CHEVRON}</button>
+                    <div class="mls-lc-titles">
                     <button type="button" class="mls-lc-name-btn" data-focus-key="row:${id}" data-action="switchActiveLeague" data-league-id="${id}"${active ? ' aria-current="true"' : ''}>
-                        <span class="mls-lc-titlerow"><strong class="mls-lc-name">${l.paid ? paidBadgeMarkup() + ' ' : ''}${name}</strong>${recordText ? `<span class="mls-lc-record" title="Your record and place as of your last sync">${escapeHtml(recordText)}</span>` : ''}</span>
-                        ${meta ? `<span class="mls-lc-meta">${meta}</span>` : ''}
+                        <strong class="mls-lc-name">${l.paid ? paidBadgeMarkup() + ' ' : ''}${name}</strong>
                     </button>
+                    ${meta ? `<div class="mls-lc-meta">${meta}</div>` : ''}
+                    </div>
                     ${reordering ? `<div class="mls-lc-controls">
                         ${isOffSleeper(l) ? '' : `<button type="button" class="btn-sm btn-secondary mls-lc-paid${l.paid ? ' is-on' : ''}" data-focus-key="paid:${id}" data-action="toggleLeaguePaid" data-league-id="${id}" aria-pressed="${l.paid ? 'true' : 'false'}" aria-label="Paid league: ${name}" title="A league you pay for: This week splits your W-L paid and free">$ Paid</button>`}
                         <button type="button" class="btn-sm btn-secondary mls-league-move-btn" data-focus-key="up:${id}" data-action="moveLeague" data-index="${index}" data-direction="-1" ${index === 0 ? 'disabled' : ''} aria-label="Move ${name} up">▲</button>
@@ -178,7 +185,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
                     </div>` : ''}
                 </div>
                 <div class="mls-lc-status">
-                    ${statusChipsHTML(st)}${direction ? directionBadgeMarkup(direction, { leagueId: l.leagueId, name: l.name || 'this league' }) : ''}
+                    ${statusChipsHTML(st)}
                     <span class="mls-lc-counts">${count > 0 ? `<span class="mls-lc-count-todo">${count} to fix</span>` : ''}${need.set ? '<span class="mls-lc-count-sleeper">1 to set</span>' : ''}<span class="mls-lc-count-upgrades" data-league-id="${id}">${ctx.upgrades.get(l.leagueId) || ''}</span></span>
                 </div>
                 ${odds}

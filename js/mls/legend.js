@@ -159,7 +159,7 @@ const GROUPS = [
         [paidBadgeMarkup({ sample: true }),
             'A league you pay for. Mark it with "$ Paid" after tapping Edit on the League Command Center; the Scoreboard splits your record into paid and free.'],
         [directionBadgeMarkup('competing', { sample: true }) + directionBadgeMarkup('rebuilding', { sample: true }),
-            'On a dynasty or keeper league\'s card on the Dashboard: your own plan for it, from "I\'m competing this year" on the Roster tab (on is Competing, off is Rebuilding). Tap it to change it there. Next to the league\'s name, its record and place as of your last sync ("7\u20133 \u00b7 2nd of 12", or your seed with divisions).'],
+            'On a dynasty or keeper league\'s card on the Dashboard: your own plan for it, from "I\'m competing this year" on the Roster tab (on is Competing, off is Rebuilding). Tap it to change it there. On the card\'s second line, after the league\'s record and place as of your last sync ("7\u20133 \u00b7 2nd of 12", or your seed with divisions).'],
         [weekResultMarkup('W') + weekResultMarkup('L') + weekResultMarkup('T'),
             'In the Dashboard\'s This week card: each matchup as it stands now, winning, losing or tied. Until every game is final it can still change.'],
         [weekStatusMarkup(false) + weekStatusMarkup(true),

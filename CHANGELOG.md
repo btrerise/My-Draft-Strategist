@@ -236,9 +236,10 @@ What changed for users in each version of the two apps, in plain language. Newes
 ### Unreleased
 
 - **Your record and plan on each league's card.** On the Dashboard, each Sleeper league's card shows your record and
-  place beside its name ("7\u20133 \u00b7 2nd of 12", or your seed in a league with divisions, "Out of playoffs (8th)" below
-  the line), as of your last sync. A dynasty or keeper league also shows **Competing** or **Rebuilding**, from your
-  "I'm competing this year" switch; tap it to change it on the Roster tab. Nothing shows for a manual league or before
+  place on its second line ("7–3 · 2nd of 12", or your seed in a league with divisions, "Out of playoffs (8th)" below
+  the line), as of your last sync. A dynasty or keeper league also ends that line with **Competing** or **Rebuilding**, from your
+  "I'm competing this year" switch; tap it to change it on the Roster tab. The TEP number ("+0.5") is left off the card's
+  format; the Roster tab still shows it. Nothing shows for a manual league or before
   anyone has played.
 - **A shorter Dashboard and Scout.** Once you have a league, **Add/Sync League** and **Active League Requirements**
   are one line each (the requirements line shows the league's slots); tap one to open it, and it stays as you leave it.

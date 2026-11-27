@@ -65,4 +65,17 @@ test.describe('League card: record and direction', () => {
         await expect(card(page).locator('.mls-direction-badge')).toHaveText('Rebuilding');
         await expectClean(page, state);
     });
+
+    test('the second line: record first, then the format without the TEP number (the Roster tab keeps it)', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await patch(page, { record: REC, leagueType: 'dynasty', powerCompeting: true, formatBadge: 'Dynasty SF Half-PPR TEP (+0.5)' });
+        const meta = card(page).locator('.mls-lc-meta');
+        await expect(meta).toHaveText(/^7\u20133 \u00b7 2nd of 12 \u00b7 Dynasty SF Half-PPR TEP\s*Competing/);
+        await expect(meta).not.toContainText('+0.5');
+        await expect(card(page).locator('.mls-lc-name-btn')).not.toContainText('7\u20133');
+        await page.evaluate(async () => (await import('/js/mls/main.js')).showTab('roster'));
+        await expect(page.locator('#rosterTab')).toContainText('TEP (+0.5)');
+        await expectClean(page, state);
+    });
 });
