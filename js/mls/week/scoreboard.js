@@ -242,6 +242,30 @@ export function seasonRecord(rosters, rosterId, league) {
         division, divisionRank, seed, playoffTeams };
 }
 
+// The words of your season record (league.record, from seasonRecord), shared by the Roster tab's line and the Dashboard
+// card's so the two never disagree (improvements S51). wl: "7–3" (or "7–3–1"). standing: "2nd of 12" when there are no
+// divisions (null otherwise, or before the standing was stored). With divisions the seed stands in: seed "4th seed of
+// 6", or, below the playoff line, seed "Out of playoffs (7th)" with out: true. Null record (manual league, synced before
+// S21, nobody has played yet): null.
+export function recordParts(r) {
+    if (!r) return null;
+    const wl = `${r.wins}\u2013${r.losses}${r.ties ? `\u2013${r.ties}` : ''}`;
+    const divisions = !!(r.division && r.divisionRank);
+    let seed = null, out = false;
+    if (divisions && r.seed) {
+        out = !!(r.playoffTeams && r.seed > r.playoffTeams);
+        seed = out ? `Out of playoffs (${ordinal(r.seed)})` : `${ordinal(r.seed)} seed${r.playoffTeams ? ` of ${r.playoffTeams}` : ''}`;
+    }
+    const standing = r.standing && !seed ? `${ordinal(r.standing)} of ${r.of}` : null;
+    return { wl, standing, seed, out, divisions };
+}
+
+// "7–3 · 2nd of 12", "7–3 · 2nd seed of 6" or "7–3" alone; null with no record. The Dashboard card's line.
+export function recordLineText(r) {
+    const p = recordParts(r);
+    return p ? [p.wl, p.seed || p.standing].filter(Boolean).join(' \u00b7 ') : null;
+}
+
 // 1st, 2nd, 3rd, 4th... 11th, 12th, 13th, 21st.
 export function ordinal(n) {
     const v = n % 100;

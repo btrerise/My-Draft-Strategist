@@ -16,7 +16,7 @@ import { renderPastTradeLine } from './tradeLine.js';
 import { KEYS } from '../../shared/storage/keys.js';
 import { roomsUseSeason, seasonSetFor } from '../rankings/season.js';
 import { showTab } from '../nav.js';
-import { activePowerRankings, leagueQbMarketPricing } from '../main.js';
+import { activePowerRankings, leagueQbMarketPricing, switchActiveLeague } from '../main.js';
 import { qbMarketNoteHTML, SF_QB_NOTE } from '../rankings/nowAndLater.js';
 
 // --- POSITIONAL POWER RANKINGS: ROSTER TAB CARD ---
@@ -104,6 +104,19 @@ export const setPowerCompeting = function(checked) {
     league.powerCompeting = !!checked;
     localStorage.setItem(KEYS.mls.leagues, JSON.stringify(State.leagues));
     refreshPowerRankings();
+};
+
+// A Dashboard league card's Competing / Rebuilding badge (improvements S51, owner's choice): makes that league the active
+// one and opens the Roster tab with focus on the switch. Instant and no scroll animation when motion is reduced.
+export const openCompetingSwitch = function(leagueId) {
+    if (leagueId && leagueId !== State.activeLeagueId) switchActiveLeague(leagueId);
+    showTab('roster').then(() => {
+        const box = document.getElementById('powerCompeting');
+        if (!box || !box.offsetParent) return;
+        const still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        box.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
+        box.focus({ preventScroll: true });
+    });
 };
 
 // The switch shows in every dynasty and keeper league, whatever the source (improvements S28, the owner's choice: so each

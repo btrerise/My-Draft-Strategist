@@ -204,6 +204,19 @@ export const edgeBadgeMarkup = (delta, buyLow) => buyLow
 // This week card. The words are for screen readers; sighted users get the title on hover.
 export const paidBadgeMarkup = ({ sample = false } = {}) =>
     `<span class="badge mls-paid-badge"${sample ? '' : ' title="Paid league"'}><span aria-hidden="true">$</span><span class="sr-only">Paid league</span></span>`;
+// Competing / Rebuilding on a dynasty or keeper league's Dashboard card (improvements S51): your own "I'm competing this
+// year" switch (Roster tab). On a card it's a button that opens that switch; the legend's sample is a plain span.
+const DIRECTION_ICONS = {
+    competing: '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline>',
+    rebuilding: '<polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>',
+};
+export const directionBadgeMarkup = (direction, { sample = false, leagueId = '', name = '' } = {}) => {
+    const word = direction === 'competing' ? 'Competing' : 'Rebuilding';
+    const inner = `<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${DIRECTION_ICONS[direction]}</svg>${word}`;
+    const cls = `badge mls-direction-badge is-${direction}`;
+    if (sample) return `<span class="${cls}">${inner}</span>`;
+    return `<button type="button" class="${cls}" data-action="openCompetingSwitch" data-league-id="${escapeHtml(leagueId)}" data-focus-key="dir:${escapeHtml(leagueId)}" title="Your plan for ${escapeHtml(name)}: tap to change it on the Roster tab" aria-label="${word}: change on the Roster tab">${inner}</button>`;
+};
 // A matchup's result as it stands: W, L or T (green, red, grey).
 export const weekResultMarkup = (result) =>
     `<span class="badge mls-week-result is-${result === 'W' ? 'win' : (result === 'L' ? 'loss' : 'tie')}">${result === 'W' ? 'W' : (result === 'L' ? 'L' : 'T')}</span>`;

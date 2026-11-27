@@ -36,11 +36,13 @@ import { State } from '../state.js';
 import { isBestBallLeague } from '../helpers.js';
 import { earlySwapCardLine, isEarlyPlayer } from '../lineup/earlyGames.js';
 import { getValidSleeperStarterIds, hasKickedOff } from '../lineup/gameInfo.js';
-import { bestBallBadgeMarkup, leagueStatusChipMarkup, paidBadgeMarkup } from '../badges.js';
+import { bestBallBadgeMarkup, directionBadgeMarkup, leagueStatusChipMarkup, paidBadgeMarkup } from '../badges.js';
 import { collectLineupNeeds, leagueTodoHTML, lineupNeedsHidden, reoptimizeKickedOffLeagues, renderLastSynced, renderLineupNeeds, syncChangesFor, syncChangesHTML } from './dashboard.js';
 import { renderBestAvailable } from '../scout/bestAvailable.js';
 import { refreshThisWeek, renderThisWeek } from '../week/thisWeek.js';
 import { ODDS_EVENT, cardOddsHTML, schedulePlayoffOdds } from '../sim/playoffOdds.js';
+import { leagueDirection, recordLineText } from '../week/scoreboard.js';
+import { getPowerLeagueKind } from '../power/directionLabels.js';
 import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/viewTransition.js';
 
     const CHEVRON = `<svg class="chevron mls-lc-chevron" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
@@ -156,12 +158,16 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         // Playoff chances (improvements S55): under the status row, so a folded card shows them too.
         const odds = cardOddsHTML(l);
         const n = State.leagues.length;
+        // Your record and place as of the last sync (improvements S51; nothing for a manual league, one synced before S21
+        // or before anyone has played), and a dynasty or keeper league's direction from your own switch.
+        const recordText = isOffSleeper(l) ? null : recordLineText(l.record);
+        const direction = leagueDirection(getPowerLeagueKind(l), !!l.powerCompeting);
         return `
             <li class="mls-lc-card${active ? ' is-active' : ''}${needsYou ? ' needs-you' : ''}${collapsed ? ' is-collapsed' : ''}" data-league-id="${id}">
                 <div class="mls-lc-head">
                     <button type="button" class="btn-bare mls-lc-fold" data-focus-key="fold:${id}" data-action="toggleLeagueCard" data-league-id="${id}" aria-expanded="${collapsed ? 'false' : 'true'}" aria-label="${collapsed ? 'Unfold' : 'Fold'} ${name}">${CHEVRON}</button>
                     <button type="button" class="mls-lc-name-btn" data-focus-key="row:${id}" data-action="switchActiveLeague" data-league-id="${id}"${active ? ' aria-current="true"' : ''}>
-                        <strong class="mls-lc-name">${l.paid ? paidBadgeMarkup() + ' ' : ''}${name}</strong>
+                        <span class="mls-lc-titlerow"><strong class="mls-lc-name">${l.paid ? paidBadgeMarkup() + ' ' : ''}${name}</strong>${recordText ? `<span class="mls-lc-record" title="Your record and place as of your last sync">${escapeHtml(recordText)}</span>` : ''}</span>
                         ${meta ? `<span class="mls-lc-meta">${meta}</span>` : ''}
                     </button>
                     ${reordering ? `<div class="mls-lc-controls">
@@ -172,7 +178,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
                     </div>` : ''}
                 </div>
                 <div class="mls-lc-status">
-                    ${statusChipsHTML(st)}
+                    ${statusChipsHTML(st)}${direction ? directionBadgeMarkup(direction, { leagueId: l.leagueId, name: l.name || 'this league' }) : ''}
                     <span class="mls-lc-counts">${count > 0 ? `<span class="mls-lc-count-todo">${count} to fix</span>` : ''}${need.set ? '<span class="mls-lc-count-sleeper">1 to set</span>' : ''}<span class="mls-lc-count-upgrades" data-league-id="${id}">${ctx.upgrades.get(l.leagueId) || ''}</span></span>
                 </div>
                 ${odds}

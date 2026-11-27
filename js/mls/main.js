@@ -68,6 +68,7 @@ import { getPowerLeagueKind } from './power/directionLabels.js';
 import { goToLeagueStyle, goToSeasonPicker, refreshPowerRankings, setPowerCompeting, updatePowerSetting } from './power/rosterCard.js';
 import { scrollToPowerRankings } from './power/snapshot.js';
 import { scrollToPlayoffPicture } from './sim/playoffOdds.js';
+import { openCompetingSwitch } from './power/rosterCard.js';
 import { selectPastTrade } from './power/tradeLine.js';
 import './scout/waiverInsights.js';
 import { lookupSimPlayer, runMatchupSim } from './sim/matchup.js';
@@ -238,6 +239,8 @@ const clickActions = {
     exportMlsSettings() { exportMlsSettings(); },
     chooseBackupFile() { document.getElementById('mlsImportFileInput').click(); },
     factoryReset() { factoryReset(); },
+    // A league card's Competing / Rebuilding badge: its Roster tab switch (improvements S51).
+    openCompetingSwitch() { openCompetingSwitch(this.dataset.leagueId); },
     // Roster tab: Power Rankings snapshot (power/snapshot.js) (5C)
     scrollToPowerRankings() { scrollToPowerRankings(); },
     // The Roster record's playoff chance: to the Playoff picture (improvements S55, round 7).
