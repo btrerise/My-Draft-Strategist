@@ -71,10 +71,10 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
     let reordering = false;
 
     // The format as the card spells it (improvements S51, owner's choice: the Dashboard is a hub for many leagues, so the
-    // line stays short): no TEP number, "Dyn" / "Keep" / "BB" and "½ PPR". The Roster tab and the full text in the
+    // line stays short): no TEP number, "Dyn" / "BB" and "½ PPR". The Roster tab and the full text in the
     // tooltip keep the whole badge.
     export function shortFormat(f) {
-        return f.replace(/(TEP)\s*\(\+[\d.]+\)/, '$1').replace(/^Dynasty\b/, 'Dyn').replace(/^Keeper\b/, 'Keep')
+        return f.replace(/(TEP)\s*\(\+[\d.]+\)/, '$1').replace(/^Dynasty\b/, 'Dyn')
             .replace(/^Best Ball\b/, 'BB').replace(/\bHalf-PPR\b/, '\u00bd PPR');
     }
 
