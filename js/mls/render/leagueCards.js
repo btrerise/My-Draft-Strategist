@@ -70,6 +70,14 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
     // Edit mode (the toolbar's Edit / Done; Reorder until S21): ▲ ▼ ✕ and "$ Paid" on each card. In memory: it starts off on every visit.
     let reordering = false;
 
+    // The format as the card spells it (improvements S51, owner's choice: the Dashboard is a hub for many leagues, so the
+    // line stays short): no TEP number, "Dyn" / "Keep" / "BB" and "½ PPR". The Roster tab and the full text in the
+    // tooltip keep the whole badge.
+    export function shortFormat(f) {
+        return f.replace(/(TEP)\s*\(\+[\d.]+\)/, '$1').replace(/^Dynasty\b/, 'Dyn').replace(/^Keeper\b/, 'Keep')
+            .replace(/^Best Ball\b/, 'BB').replace(/\bHalf-PPR\b/, '\u00bd PPR');
+    }
+
     // A league's status, as the Command Center's table worked it out before S12 (its Rankings and Lineup columns,
     // the EARLY badge, the format and the sync age). sleeper: the league's Sleeper changes from
     // collectLineupNeeds, or null when it matches or there's nothing to compare.
@@ -111,7 +119,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
                 sync = { cls: (!syncFresh || syncFresh.isStale) ? 'freshness-stale' : 'freshness-ok', text: syncFresh ? syncFresh.label : 'Last sync unknown', title: syncFresh ? syncFresh.title : '' };
             }
         }
-        return { rankingsFresh, lineup, early, sync, format: (l.formatBadge || '').replace(/(TEP)\s*\(\+[\d.]+\)/, '$1') };
+        return { rankingsFresh, lineup, early, sync, format: shortFormat(l.formatBadge || ''), formatFull: l.formatBadge || '' };
     }
 
     function statusChipsHTML(st) {
@@ -163,7 +171,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
         // The second line (S51): your record and place, the format, a sync note, and a dynasty or keeper league's plan.
         // The direction is its own item, not after a dot, so a line that wraps before it doesn't end on a dangling dot.
         const facts = [recordText ? `<span class="mls-lc-record" title="Your record and place as of your last sync">${escapeHtml(recordText)}</span>` : '',
-            st.format ? `<span class="mls-lc-format">${escapeHtml(st.format)}</span>` : '', syncNote]
+            st.format ? `<span class="mls-lc-format" title="${escapeHtml(st.formatFull)}">${escapeHtml(st.format)}</span>` : '', syncNote]
             .filter(Boolean).join('<span class="mls-lc-sep" aria-hidden="true"> \u00b7 </span>');
         const meta = (facts ? `<span class="mls-lc-facts">${facts}</span>` : '')
             + (direction ? directionBadgeMarkup(direction, { leagueId: l.leagueId, name: l.name || 'this league' }) : '');
@@ -175,7 +183,7 @@ import { canViewTransition, vtName, withViewTransition } from '../../shared/ui/v
                     <button type="button" class="mls-lc-name-btn" data-focus-key="row:${id}" data-action="switchActiveLeague" data-league-id="${id}"${active ? ' aria-current="true"' : ''}>
                         <strong class="mls-lc-name">${l.paid ? paidBadgeMarkup() + ' ' : ''}${name}</strong>
                     </button>
-                    ${meta ? `<div class="mls-lc-meta">${meta}</div>` : ''}
+                    ${meta ? `<div class="mls-lc-meta" data-action="switchActiveLeague" data-league-id="${id}">${meta}</div>` : ''}
                     </div>
                     ${reordering ? `<div class="mls-lc-controls">
                         ${isOffSleeper(l) ? '' : `<button type="button" class="btn-sm btn-secondary mls-lc-paid${l.paid ? ' is-on' : ''}" data-focus-key="paid:${id}" data-action="toggleLeaguePaid" data-league-id="${id}" aria-pressed="${l.paid ? 'true' : 'false'}" aria-label="Paid league: ${name}" title="A league you pay for: This week splits your W-L paid and free">$ Paid</button>`}

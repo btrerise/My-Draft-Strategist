@@ -2006,7 +2006,7 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 .mls-direction-badge .mls-direction-go { opacity: 0.75; }
 span.mls-direction-badge { cursor: default; }
 .mls-lc-name { color: var(--text-main); font-size: 0.95rem; overflow-wrap: break-word; }
-.mls-lc-meta { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.7rem; font-size: 0.75rem; color: var(--text-muted); overflow-wrap: anywhere; }
+.mls-lc-meta { position: relative; cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.7rem; font-size: 0.75rem; color: var(--text-muted); overflow-wrap: anywhere; }
 .mls-lc-sep { opacity: 0.7; }
 .mls-lc-controls { flex-shrink: 0; display: flex; align-items: center; gap: 0.3rem; }
 .mls-lc-controls .btn-sm { padding: 0.3rem 0.5rem; }

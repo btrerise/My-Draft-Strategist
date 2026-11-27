@@ -1366,4 +1366,7 @@ own line as it already did.
 from the format on cards only ("TEP"; the Roster tab keeps "(+0.5)"). The badge became quiet text (word and chevron, no icon, colours muted) at
 the end of that line, still a tap to the Roster tab's switch; the name button is now the name alone. Screenshots to re-take: `mls-league-setup`, both widths.
 
+**Round 4 (owner).** Card formats are shortened (`shortFormat`: "Dyn SF ½ PPR TEP", "Keep", "BB"; full text in the tooltip) to
+keep the Dashboard hub tight, and tapping the second line switches the league again (the badge keeps its own action).
+
 **Left over.** Nothing required. Not built: Power Rankings' Contender / Retool label on the card; PF on the card.

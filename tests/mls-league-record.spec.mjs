@@ -71,11 +71,24 @@ test.describe('League card: record and direction', () => {
         await seedMls(page);
         await patch(page, { record: REC, leagueType: 'dynasty', powerCompeting: true, formatBadge: 'Dynasty SF Half-PPR TEP (+0.5)' });
         const meta = card(page).locator('.mls-lc-meta');
-        await expect(meta).toHaveText(/^7\u20133 \u00b7 2nd of 12 \u00b7 Dynasty SF Half-PPR TEP\s*Competing/);
+        await expect(meta).toHaveText(/^7\u20133 \u00b7 2nd of 12 \u00b7 Dyn SF \u00bd PPR TEP\s*Competing/);
         await expect(meta).not.toContainText('+0.5');
+        await expect(card(page).locator('.mls-lc-format')).toHaveAttribute('title', 'Dynasty SF Half-PPR TEP (+0.5)');
         await expect(card(page).locator('.mls-lc-name-btn')).not.toContainText('7\u20133');
         await page.evaluate(async () => (await import('/js/mls/main.js')).showTab('roster'));
         await expect(page.locator('#rosterTab')).toContainText('TEP (+0.5)');
+        await expectClean(page, state);
+    });
+
+    test('tapping the second line makes the league active; the badge opens the switch instead', async ({ page }) => {
+        const state = await openApp(page, '/lineup/');
+        await seedMls(page);
+        await patch(page, { record: REC, leagueType: 'dynasty', powerCompeting: true });
+        await page.evaluate(async () => { const { State } = await import('/js/mls/state.js'); State.activeLeagueId = null; });
+        await card(page).locator('.mls-lc-record').click();
+        await expect(card(page)).toHaveClass(/is-active/);
+        await card(page).locator('.mls-direction-badge').click();
+        await expect(page.locator('#rosterTab')).toHaveClass(/active/);
         await expectClean(page, state);
     });
 });
