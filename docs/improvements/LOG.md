@@ -1356,7 +1356,8 @@ absent in redraft, follows the switch in dynasty, tap opens and focuses it).
 
 **Screenshots** (predicted by rendering main and this branch in one container; to be re-taken on CI):
 `desktop|phone/mls-league-setup` (the Fixture League's card now shows its record) and `desktop|phone/mls-league-guide`
-(the new legend line makes the page taller).
+(the new legend line makes the page taller). `desktop/mls-league-guide` was re-taken once more at the end: CI's check
+failed on it after the last rounds (cause not found; only that PNG differed, and the update run named it).
 
 **After review as a user (owner: do 2 and 3, keep the record as is; checked on the owner's 19-league backup).** Rebuilding
 went blue; the badge got a chevron. The status row still fits at 375px with EARLY and the badge; "N to fix" wraps to its
