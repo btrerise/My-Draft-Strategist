@@ -2000,9 +2000,9 @@ button.mls-faab-bid.is-rough, .mls-faab-bid.is-rough { color: var(--text-muted);
 .mls-lc-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .mls-lc-name-btn { align-self: flex-start; max-width: 100%; display: block; padding: 0.2rem 0; background: none; border: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
 .mls-lc-record { font-weight: 600; font-variant-numeric: tabular-nums; }
-.mls-direction-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0; font: inherit; font-weight: 700; border: 0; background: none; cursor: pointer; vertical-align: baseline; }
-.mls-direction-badge.is-competing { color: #34d399; }
-.mls-direction-badge.is-rebuilding { color: #60a5fa; }
+.mls-direction-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0; font: inherit; font-weight: 600; border: 0; background: none; cursor: pointer; vertical-align: baseline; }
+.mls-direction-badge.is-competing { color: color-mix(in srgb, #34d399 70%, var(--text-muted)); }
+.mls-direction-badge.is-rebuilding { color: color-mix(in srgb, #60a5fa 70%, var(--text-muted)); }
 .mls-direction-badge .mls-direction-go { opacity: 0.75; }
 span.mls-direction-badge { cursor: default; }
 .mls-lc-name { color: var(--text-main); font-size: 0.95rem; overflow-wrap: break-word; }
